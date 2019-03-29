@@ -10,6 +10,8 @@ type unitBuilt struct {
 	done    func(a.Preunit, a.Unit, error)
 }
 
+// Adds the provided Preunit to the poset as a Unit.
+// When done calls the callback.
 func (p *Poset) AddUnit(pu a.Preunit, callback func(a.Preunit, a.Unit, error)) {
 	if pu.Creator() < 0 || pu.Creator() > p.nProcesses {
 		callback(pu, nil, a.NewDataError("Invalid creator."))

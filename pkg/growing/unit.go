@@ -20,22 +20,27 @@ func newUnit(pu a.Preunit) *unit {
 	}
 }
 
+// Returns the creator id of the unit.
 func (u *unit) Creator() int {
 	return u.creator
 }
 
+// Returns the hash of the unit.
 func (u *unit) Hash() *a.Hash {
 	return &u.hash
 }
 
+// How many units created by the same process are below the unit.
 func (u *unit) Height() int {
 	return u.height
 }
 
+// Returns the parents of the unit.
 func (u *unit) Parents() []a.Unit {
 	return u.parents
 }
 
+// Returns the level of the unit.
 func (u *unit) Level() int {
 	return u.level
 }
