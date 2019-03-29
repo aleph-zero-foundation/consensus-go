@@ -31,7 +31,7 @@ func (pu *preunit) Parents() []a.Hash {
 var _ = Describe("Poset", func() {
 
 	var (
-		poset    *Poset
+		poset    a.Poset
 		addFirst [][]*preunit
 		wg       sync.WaitGroup
 	)

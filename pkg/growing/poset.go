@@ -8,8 +8,8 @@ import (
 type Poset struct {
 	nProcesses int
 	units      *unitBag
-	primeUnits map[int][][]a.Unit
-	maxUnits   [][]a.Unit
+	primeUnits map[int]a.SlottedUnits
+	maxUnits   a.SlottedUnits
 	adders     []chan *unitBuilt
 	newMaximal chan a.Unit
 }
@@ -24,9 +24,10 @@ func NewPoset(n int) *Poset {
 	newPoset := &Poset{
 		nProcesses: n,
 		units:      &unitBag{},
-		primeUnits: map[int][][]a.Unit{},
-		maxUnits:   make([][]a.Unit, n, n),
-		adders:     adders,
+		primeUnits: map[int]a.SlottedUnits{},
+		// TODO: make some initial SlottedUnits here
+		maxUnits: nil,
+		adders:   adders,
 		// TODO: illusion number
 		newMaximal: make(chan a.Unit, n),
 	}
@@ -43,11 +44,11 @@ func (p *Poset) Below(u1 a.Unit, u2 a.Unit) bool {
 }
 
 // Returns the prime units at the requested level, indexed by their creator ids.
-func (p *Poset) PrimeUnits(level int) [][]a.Unit {
+func (p *Poset) PrimeUnits(level int) a.SlottedUnits {
 	return p.primeUnits[level]
 }
 
 // Returns the maximal units created by respective processes.
-func (p *Poset) MaximalUnitsPerProcess() [][]a.Unit {
+func (p *Poset) MaximalUnitsPerProcess() a.SlottedUnits {
 	return p.maxUnits
 }
