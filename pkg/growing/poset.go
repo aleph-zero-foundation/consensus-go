@@ -24,13 +24,16 @@ func NewPoset(n int) *Poset {
 		// TODO: magic number
 		adders[k] = make(chan *unitBuilt, 10)
 	}
+	initialPrimeUnits := map[int]gomel.SlottedUnits{}
+	for i := 0; i < 10; i++ {
+		initialPrimeUnits[i] = newSlottedUnits(n)
+	}
 	newPoset := &Poset{
 		nProcesses: n,
 		units:      &unitBag{},
-		primeUnits: map[int]gomel.SlottedUnits{},
-		// TODO: make some initial SlottedUnits here
-		maxUnits: nil,
-		adders:   adders,
+		primeUnits: initialPrimeUnits,
+		maxUnits:   newSlottedUnits(n),
+		adders:     adders,
 	}
 	for k := range adders {
 		go newPoset.adder(adders[k])
