@@ -28,13 +28,10 @@ func NewPoset(n int) *Poset {
 		// TODO: make some initial SlottedUnits here
 		maxUnits: nil,
 		adders:   adders,
-		// TODO: illusion number
-		newMaximal: make(chan a.Unit, n),
 	}
 	for k := range adders {
 		go newPoset.adder(adders[k])
 	}
-	go newPoset.maxUpdater()
 	return newPoset
 }
 

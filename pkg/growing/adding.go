@@ -56,14 +56,8 @@ func (p *Poset) addPrime(u a.Unit) {
 	// TODO: actually add
 }
 
-func (p *Poset) maxUpdater() {
-	for {
-		u := <-p.newMaximal
-		if u == nil {
-			return
-		}
-		// TODO: actually update
-	}
+func (p *Poset) updateMaximal(u a.Unit) {
+	// TODO: actually update
 }
 
 func (p *Poset) adder(incoming chan *unitBuilt) {
@@ -100,6 +94,6 @@ func (p *Poset) adder(incoming chan *unitBuilt) {
 		}
 		p.units.add(ub.result)
 		ub.done(ub.preunit, ub.result, nil)
-		p.newMaximal <- ub.result
+		p.updateMaximal(ub.result)
 	}
 }
