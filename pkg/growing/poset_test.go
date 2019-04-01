@@ -31,9 +31,10 @@ func (pu *preunit) Parents() []a.Hash {
 var _ = Describe("Poset", func() {
 
 	var (
-		poset    a.Poset
-		addFirst [][]*preunit
-		wg       sync.WaitGroup
+		nProcesses int
+		poset      a.Poset
+		addFirst   [][]*preunit
+		wg         sync.WaitGroup
 	)
 
 	SuccessChecker := func(_ a.Preunit, _ a.Unit, err error) {
@@ -56,7 +57,8 @@ var _ = Describe("Poset", func() {
 	Describe("small", func() {
 
 		BeforeEach(func() {
-			poset = NewPoset(4)
+			nProcesses = 4
+			poset = NewPoset(nProcesses)
 		})
 
 		Describe("Adding units", func() {
@@ -236,6 +238,7 @@ var _ = Describe("Poset", func() {
 						pu1.hash = parentHashes[0]
 						pu2 := &preunit{}
 						pu2.hash = parentHashes[1]
+						pu2.creator = 1
 						addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
 					})
 
@@ -272,6 +275,155 @@ var _ = Describe("Poset", func() {
 
 					})
 
+				})
+
+			})
+
+		})
+
+		Describe("Retrieving units", func() {
+
+			Context("When the poset is empty", func() {
+
+				It("Should not return any maximal units", func(done Done) {
+					maxUnits := poset.MaximalUnitsPerProcess()
+					for i := 0; i < nProcesses; i++ {
+						Expect(len(maxUnits.Get(i))).To(BeZero())
+					}
+				})
+
+				It("Should not return any prime units", func(done Done) {
+					for l := 0; l < 10; l++ {
+						primeUnits := poset.PrimeUnits(l)
+						for i := 0; i < nProcesses; i++ {
+							Expect(len(primeUnits.Get(i))).To(BeZero())
+						}
+					}
+				})
+
+			})
+
+			Context("When the poset already contains one unit", func() {
+
+				BeforeEach(func() {
+					pu := &preunit{}
+					pu.hash[0] = 1
+					addFirst = [][]*preunit{[]*preunit{pu}}
+				})
+
+				It("Should return it as the only maximal unit", func(done Done) {
+					maxUnits := poset.MaximalUnitsPerProcess()
+					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
+					for i := 1; i < nProcesses; i++ {
+						Expect(len(maxUnits.Get(i))).To(BeZero())
+					}
+				})
+
+				It("Should return it as the only prime unit", func(done Done) {
+					primeUnits := poset.PrimeUnits(0)
+					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
+					for i := 1; i < nProcesses; i++ {
+						Expect(len(primeUnits.Get(i))).To(BeZero())
+					}
+				})
+
+			})
+
+			Context("When the poset contains two units created by different processes", func() {
+
+				BeforeEach(func() {
+					pu1 := &preunit{}
+					pu1.hash[0] = 1
+					pu2 := &preunit{}
+					pu2.hash[1] = 2
+					pu2.creator = 1
+					addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
+				})
+
+				It("Should return both of them as maximal units", func(done Done) {
+					maxUnits := poset.MaximalUnitsPerProcess()
+					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
+					Expect(maxUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
+					for i := 2; i < nProcesses; i++ {
+						Expect(len(maxUnits.Get(i))).To(BeZero())
+					}
+				})
+
+				It("Should return both of them as the respective prime units", func(done Done) {
+					primeUnits := poset.PrimeUnits(0)
+					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
+					Expect(primeUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
+					for i := 2; i < nProcesses; i++ {
+						Expect(len(primeUnits.Get(i))).To(BeZero())
+					}
+				})
+
+			})
+
+			Context("When the poset contains two units created by the same process", func() {
+
+				BeforeEach(func() {
+					pu1 := &preunit{}
+					pu1.hash[0] = 1
+					pu2 := &preunit{}
+					pu2.hash[1] = 2
+					addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
+				})
+
+				It("Should return both of them as maximal units", func(done Done) {
+					maxUnits := poset.MaximalUnitsPerProcess()
+					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
+					Expect(maxUnits.Get(0)[1].Hash()).To(Equal(addFirst[0][1].Hash()))
+					for i := 1; i < nProcesses; i++ {
+						Expect(len(maxUnits.Get(i))).To(BeZero())
+					}
+				})
+
+				It("Should return both of them as the respective prime units", func(done Done) {
+					primeUnits := poset.PrimeUnits(0)
+					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
+					Expect(primeUnits.Get(0)[1].Hash()).To(Equal(addFirst[0][1].Hash()))
+					for i := 1; i < nProcesses; i++ {
+						Expect(len(primeUnits.Get(i))).To(BeZero())
+					}
+				})
+
+			})
+
+			Context("When the poset contains a unit above another one", func() {
+
+				BeforeEach(func() {
+					pu1 := &preunit{}
+					pu1.hash[0] = 1
+					pu2 := &preunit{}
+					pu2.hash[1] = 2
+					pu2.creator = 1
+					pu11 := &preunit{}
+					pu1.hash[0] = 11
+					pu1.parents = []a.Hash{pu1.hash, pu2.hash}
+					addFirst = [][]*preunit{[]*preunit{pu1, pu2}, []*preunit{pu11}}
+				})
+
+				It("Should return it and one of its parents as maximal units", func(done Done) {
+					maxUnits := poset.MaximalUnitsPerProcess()
+					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[1][0].Hash()))
+					Expect(maxUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
+					for i := 2; i < nProcesses; i++ {
+						Expect(len(maxUnits.Get(i))).To(BeZero())
+					}
+				})
+
+				It("Should return both of the parents as the respective prime units and not the top unit", func(done Done) {
+					primeUnits := poset.PrimeUnits(0)
+					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
+					Expect(primeUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
+					for i := 2; i < nProcesses; i++ {
+						Expect(len(primeUnits.Get(i))).To(BeZero())
+					}
+					primeUnits = poset.PrimeUnits(1)
+					for i := 0; i < nProcesses; i++ {
+						Expect(len(primeUnits.Get(i))).To(BeZero())
+					}
 				})
 
 			})
