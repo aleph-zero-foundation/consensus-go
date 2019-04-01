@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"sync"
 	"testing"
-	"time"
 )
 
 const (
@@ -13,6 +12,9 @@ const (
 	NUMBER_OF_MAP_OPERATIONS = 3 * 10 * 100
 	MISS_READS_BIAS          = 10
 	NEW_WRITES               = 90
+	OPERATION_GENERATOR_SEED = 0
+	DATA_GENERATOR_SEED      = 1
+	MISS_GENERATOR_SEED      = 2
 )
 
 type keyValuePair struct {
@@ -21,11 +23,11 @@ type keyValuePair struct {
 }
 
 type testScenario struct {
-	dataGenerator *rand.Rand
+	operationGenerator *rand.Rand
 }
 
 func newTestScenario() testScenario {
-	return testScenario{dataGenerator: rand.New(rand.NewSource(time.Now().UnixNano()))}
+	return testScenario{operationGenerator: rand.New(rand.NewSource(OPERATION_GENERATOR_SEED))}
 }
 
 func (ts *testScenario) testMapAcess(testMap mapUnderTest, readBias uint64, count uint64, tdg testDataGenerator) {
@@ -34,7 +36,7 @@ func (ts *testScenario) testMapAcess(testMap mapUnderTest, readBias uint64, coun
 	}
 
 	for i := uint64(0); i < count; i++ {
-		operation := uint64(ts.dataGenerator.Intn(100))
+		operation := uint64(ts.operationGenerator.Intn(100))
 		if operation < readBias {
 			testMap.load(tdg.getIndex())
 		} else {
@@ -83,8 +85,7 @@ func (tdg *tdgImpl) getIndexAndValue() (uint64, uint64) {
 	return index, value
 }
 
-func newTestDataGenerator(dataGenerator *rand.Rand, missReadBias, newWritesBias uint64, stored []keyValuePair) *tdgImpl {
-	missGenerator := rand.New(rand.NewSource(time.Now().UnixNano()))
+func newTestDataGenerator(dataGenerator, missGenerator *rand.Rand, missReadBias, newWritesBias uint64, stored []keyValuePair) *tdgImpl {
 	return &tdgImpl{
 		dataGenerator: dataGenerator,
 		missGenerator: missGenerator,
@@ -100,9 +101,12 @@ func testSyncMap(
 
 	b.StopTimer()
 
-	seed := time.Now().UnixNano()
-	randGen := rand.New(rand.NewSource(seed))
-	tdg := newTestDataGenerator(randGen, 100, 100, []keyValuePair{})
+	dataSeedGenerator := rand.New(rand.NewSource(DATA_GENERATOR_SEED))
+	missSeedGenerator := rand.New(rand.NewSource(MISS_GENERATOR_SEED))
+
+	dataGenerator := rand.New(rand.NewSource(dataSeedGenerator.Int63()))
+	missGenerator := rand.New(rand.NewSource(missSeedGenerator.Int63()))
+	tdg := newTestDataGenerator(dataGenerator, missGenerator, 100, 100, []keyValuePair{})
 
 	propagateMap(testMap, numberOfInitialElements, tdg)
 
@@ -110,24 +114,25 @@ func testSyncMap(
 	wait := sync.WaitGroup{}
 	wait.Add(goRoutinesCount)
 
-	tester := func(wait *sync.WaitGroup, count uint64, testMap mapUnderTest, startEvent chan struct{}) {
+	tester := func(wait *sync.WaitGroup, count uint64, testMap mapUnderTest, startEvent chan struct{}, dataSeed, missSeed int64) {
 		defer wait.Done()
 
-		seed := time.Now().UnixNano()
-		randGen := rand.New(rand.NewSource(seed))
+		dataGenerator := rand.New(rand.NewSource(dataSeed))
+		missGenerator := rand.New(rand.NewSource(missSeed))
 
 		ts := newTestScenario()
 		storage := make([]keyValuePair, len(tdg.storage)+int(testsCount))
 		copy(storage, tdg.storage)
-		testerTdg := newTestDataGenerator(randGen, missReads, newWrites, storage)
+		testerTdg := newTestDataGenerator(dataGenerator, missGenerator, missReads, newWrites, storage)
 
 		<-startEvent
 
 		ts.testMapAcess(testMap, readBias, testsCount, testerTdg)
 
 	}
+
 	for i := 0; i < goRoutinesCount; i++ {
-		go tester(&wait, testsCount, testMap, startChannel)
+		go tester(&wait, testsCount, testMap, startChannel, dataSeedGenerator.Int63(), missSeedGenerator.Int63())
 	}
 
 	b.StartTimer()
