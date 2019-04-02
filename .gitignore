@@ -1,0 +1,4 @@
+.*.swp
+# benchmark's output
+*.test
+*.out
