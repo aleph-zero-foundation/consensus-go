@@ -93,5 +93,5 @@ func (p *Poset) adder(incoming chan *unitBuilt) {
 		ub.done(ub.preunit, ub.result, nil)
 		p.updateMaximal(ub.result)
 	}
-	// TODO: some cleanup here?
+	p.tasks.Done()
 }

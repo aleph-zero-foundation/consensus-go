@@ -1,6 +1,8 @@
 package growing
 
 import (
+	"sync"
+
 	a "gitlab.com/alephledger/consensus-go/pkg"
 )
 
@@ -12,6 +14,7 @@ type Poset struct {
 	maxUnits   a.SlottedUnits
 	adders     []chan *unitBuilt
 	newMaximal chan a.Unit
+	tasks      sync.WaitGroup
 }
 
 // Constructs a poset for the given amount of processes.
@@ -31,6 +34,7 @@ func NewPoset(n int) *Poset {
 	}
 	for k := range adders {
 		go newPoset.adder(adders[k])
+		newPoset.tasks.Add(1)
 	}
 	return newPoset
 }
@@ -48,4 +52,12 @@ func (p *Poset) PrimeUnits(level int) a.SlottedUnits {
 // Returns the maximal units created by respective processes.
 func (p *Poset) MaximalUnitsPerProcess() a.SlottedUnits {
 	return p.maxUnits
+}
+
+// Stops all the goroutines spawned by this poset.
+func (p *Poset) Stop() {
+	for _, c := range p.adders {
+		close(c)
+	}
+	p.tasks.Wait()
 }

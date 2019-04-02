@@ -63,6 +63,10 @@ var _ = Describe("Poset", func() {
 			poset = NewPoset(nProcesses)
 		})
 
+		AfterEach(func() {
+			poset.(*Poset).Stop()
+		})
+
 		Describe("Adding units", func() {
 
 			var (
@@ -286,14 +290,14 @@ var _ = Describe("Poset", func() {
 
 			Context("When the poset is empty", func() {
 
-				It("Should not return any maximal units", func(done Done) {
+				It("Should not return any maximal units", func() {
 					maxUnits := poset.MaximalUnitsPerProcess()
 					for i := 0; i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
 					}
 				})
 
-				It("Should not return any prime units", func(done Done) {
+				It("Should not return any prime units", func() {
 					for l := 0; l < 10; l++ {
 						primeUnits := poset.PrimeUnits(l)
 						for i := 0; i < nProcesses; i++ {
@@ -312,7 +316,7 @@ var _ = Describe("Poset", func() {
 					addFirst = [][]*preunit{[]*preunit{pu}}
 				})
 
-				It("Should return it as the only maximal unit", func(done Done) {
+				It("Should return it as the only maximal unit", func() {
 					maxUnits := poset.MaximalUnitsPerProcess()
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					for i := 1; i < nProcesses; i++ {
@@ -320,7 +324,7 @@ var _ = Describe("Poset", func() {
 					}
 				})
 
-				It("Should return it as the only prime unit", func(done Done) {
+				It("Should return it as the only prime unit", func() {
 					primeUnits := poset.PrimeUnits(0)
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					for i := 1; i < nProcesses; i++ {
@@ -341,7 +345,7 @@ var _ = Describe("Poset", func() {
 					addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
 				})
 
-				It("Should return both of them as maximal units", func(done Done) {
+				It("Should return both of them as maximal units", func() {
 					maxUnits := poset.MaximalUnitsPerProcess()
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(maxUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
@@ -350,7 +354,7 @@ var _ = Describe("Poset", func() {
 					}
 				})
 
-				It("Should return both of them as the respective prime units", func(done Done) {
+				It("Should return both of them as the respective prime units", func() {
 					primeUnits := poset.PrimeUnits(0)
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(primeUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
@@ -371,7 +375,7 @@ var _ = Describe("Poset", func() {
 					addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
 				})
 
-				It("Should return both of them as maximal units", func(done Done) {
+				It("Should return both of them as maximal units", func() {
 					maxUnits := poset.MaximalUnitsPerProcess()
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(maxUnits.Get(0)[1].Hash()).To(Equal(addFirst[0][1].Hash()))
@@ -380,7 +384,7 @@ var _ = Describe("Poset", func() {
 					}
 				})
 
-				It("Should return both of them as the respective prime units", func(done Done) {
+				It("Should return both of them as the respective prime units", func() {
 					primeUnits := poset.PrimeUnits(0)
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(primeUnits.Get(0)[1].Hash()).To(Equal(addFirst[0][1].Hash()))
@@ -405,7 +409,7 @@ var _ = Describe("Poset", func() {
 					addFirst = [][]*preunit{[]*preunit{pu1, pu2}, []*preunit{pu11}}
 				})
 
-				It("Should return it and one of its parents as maximal units", func(done Done) {
+				It("Should return it and one of its parents as maximal units", func() {
 					maxUnits := poset.MaximalUnitsPerProcess()
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[1][0].Hash()))
 					Expect(maxUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
@@ -414,7 +418,7 @@ var _ = Describe("Poset", func() {
 					}
 				})
 
-				It("Should return both of the parents as the respective prime units and not the top unit", func(done Done) {
+				It("Should return both of the parents as the respective prime units and not the top unit", func() {
 					primeUnits := poset.PrimeUnits(0)
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(primeUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
