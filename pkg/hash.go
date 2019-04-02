@@ -1,4 +1,4 @@
-package alephzero
+package gomel
 
 // A hash, usually used to identify units.
 type Hash [64]byte

@@ -1,4 +1,4 @@
-package alephzero
+package gomel
 
 // A container storing slices of units.
 // Usually the ids will correspond to creators of the units.
