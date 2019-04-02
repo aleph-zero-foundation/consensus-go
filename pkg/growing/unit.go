@@ -10,7 +10,7 @@ type unit struct {
 	height  int
 	parents []a.Unit
 	level   int
-	floor   []a.Unit
+	floor   [][]a.Unit
 }
 
 func newUnit(pu a.Preunit) *unit {
@@ -58,7 +58,7 @@ func (u *unit) setLevel(level int) {
 }
 
 func (u *unit) computeFloor() {
-	floors := [][]a.Unit{}
+	floors := [][][]a.Unit{}
 	for _, parent := range u.parents {
 		if realParent, ok := parent.(*unit); ok {
 			floors = append(floors, realParent.floor)
@@ -69,7 +69,7 @@ func (u *unit) computeFloor() {
 	u.floor = combineFloors(floors)
 }
 
-func combineFloors(floors [][]a.Unit) []a.Unit {
+func combineFloors(floors [][][]a.Unit) [][]a.Unit {
 	// TODO: implement
-	return []a.Unit{}
+	return [][]a.Unit{}
 }

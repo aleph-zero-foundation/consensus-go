@@ -37,18 +37,20 @@ var _ = Describe("Poset", func() {
 		wg         sync.WaitGroup
 	)
 
-	SuccessChecker := func(_ a.Preunit, _ a.Unit, err error) {
-		defer GinkgoRecover()
-		defer wg.Done()
-		Expect(err).NotTo(HaveOccurred())
+	AwaitAddUnit := func(pu a.Preunit, wg *sync.WaitGroup) {
+		wg.Add(1)
+		poset.AddUnit(pu, func(_ a.Preunit, _ a.Unit, err error) {
+			defer GinkgoRecover()
+			defer wg.Done()
+			Expect(err).NotTo(HaveOccurred())
+		})
 	}
 
 	JustBeforeEach(func() {
 		wg = sync.WaitGroup{}
 		for _, pus := range addFirst {
 			for _, pu := range pus {
-				wg.Add(1)
-				poset.AddUnit(pu, SuccessChecker)
+				AwaitAddUnit(pu, &wg)
 			}
 			wg.Wait()
 		}
@@ -104,8 +106,7 @@ var _ = Describe("Poset", func() {
 				Context("When the poset already contains the unit", func() {
 
 					JustBeforeEach(func() {
-						wg.Add(1)
-						poset.AddUnit(addedUnit, SuccessChecker)
+						AwaitAddUnit(addedUnit, &wg)
 						wg.Wait()
 					})
 
@@ -136,6 +137,7 @@ var _ = Describe("Poset", func() {
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(a.Prime(result)).To(BeTrue())
+							Expect(len(result.Parents())).To(BeZero())
 							close(done)
 						})
 					})
@@ -258,8 +260,7 @@ var _ = Describe("Poset", func() {
 					Context("When the poset already contains the unit", func() {
 
 						JustBeforeEach(func() {
-							wg.Add(1)
-							poset.AddUnit(addedUnit, SuccessChecker)
+							AwaitAddUnit(addedUnit, &wg)
 							wg.Wait()
 						})
 

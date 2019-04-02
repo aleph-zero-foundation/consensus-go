@@ -13,7 +13,7 @@ type unitBuilt struct {
 // Adds the provided Preunit to the poset as a Unit.
 // When done calls the callback.
 func (p *Poset) AddUnit(pu a.Preunit, callback func(a.Preunit, a.Unit, error)) {
-	if pu.Creator() < 0 || pu.Creator() > p.nProcesses {
+	if pu.Creator() < 0 || pu.Creator() >= p.nProcesses {
 		callback(pu, nil, a.NewDataError("Invalid creator."))
 		return
 	}
@@ -25,7 +25,7 @@ func (p *Poset) AddUnit(pu a.Preunit, callback func(a.Preunit, a.Unit, error)) {
 	p.adders[pu.Creator()] <- toAdd
 }
 
-func (p *Poset) checkSigature(pu a.Preunit) error {
+func (p *Poset) checkSignature(pu a.Preunit) error {
 	// TODO: actually check
 	return nil
 }
@@ -60,31 +60,28 @@ func (p *Poset) updateMaximal(u a.Unit) {
 	// TODO: actually update
 }
 
+func (p *Poset) prepareUnit(ub *unitBuilt) error {
+	err := p.units.dehashParents(ub)
+	if err != nil {
+		return err
+	}
+	err = p.checkSignature(ub.preunit)
+	if err != nil {
+		return err
+	}
+	err = setHeight(ub)
+	if err != nil {
+		return err
+	}
+	ub.result.computeFloor()
+	p.computeLevel(ub)
+	err = p.checkCompliance(ub.result)
+	return err
+}
+
 func (p *Poset) adder(incoming chan *unitBuilt) {
-	for {
-		ub := <-incoming
-		if ub == nil {
-			// TODO: some cleanup here?
-			return
-		}
-		err := p.units.dehashParents(ub)
-		if err != nil {
-			ub.done(ub.preunit, nil, err)
-			continue
-		}
-		err = p.checkSigature(ub.preunit)
-		if err != nil {
-			ub.done(ub.preunit, nil, err)
-			continue
-		}
-		err = setHeight(ub)
-		if err != nil {
-			ub.done(ub.preunit, nil, err)
-			continue
-		}
-		ub.result.computeFloor()
-		p.computeLevel(ub)
-		err = p.checkCompliance(ub.result)
+	for ub := range incoming {
+		err := p.prepareUnit(ub)
 		if err != nil {
 			ub.done(ub.preunit, nil, err)
 			continue
@@ -96,4 +93,5 @@ func (p *Poset) adder(incoming chan *unitBuilt) {
 		ub.done(ub.preunit, ub.result, nil)
 		p.updateMaximal(ub.result)
 	}
+	// TODO: some cleanup here?
 }
