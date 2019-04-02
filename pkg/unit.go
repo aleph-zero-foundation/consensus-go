@@ -1,4 +1,4 @@
-package alephzero
+package gomel
 
 import "errors"
 

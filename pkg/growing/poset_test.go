@@ -6,25 +6,25 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	a "gitlab.com/alephledger/consensus-go/pkg"
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	. "gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
 type preunit struct {
 	creator int
-	hash    a.Hash
-	parents []a.Hash
+	hash    gomel.Hash
+	parents []gomel.Hash
 }
 
 func (pu *preunit) Creator() int {
 	return pu.creator
 }
 
-func (pu *preunit) Hash() *a.Hash {
+func (pu *preunit) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
-func (pu *preunit) Parents() []a.Hash {
+func (pu *preunit) Parents() []gomel.Hash {
 	return pu.parents
 }
 
@@ -32,14 +32,14 @@ var _ = Describe("Poset", func() {
 
 	var (
 		nProcesses int
-		poset      a.Poset
+		poset      gomel.Poset
 		addFirst   [][]*preunit
 		wg         sync.WaitGroup
 	)
 
-	AwaitAddUnit := func(pu a.Preunit, wg *sync.WaitGroup) {
+	AwaitAddUnit := func(pu gomel.Preunit, wg *sync.WaitGroup) {
 		wg.Add(1)
-		poset.AddUnit(pu, func(_ a.Preunit, _ a.Unit, err error) {
+		poset.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			defer GinkgoRecover()
 			defer wg.Done()
 			Expect(err).NotTo(HaveOccurred())
@@ -72,8 +72,8 @@ var _ = Describe("Poset", func() {
 			var (
 				addedUnit    *preunit
 				addedCreator int
-				addedHash    a.Hash
-				parentHashes []a.Hash
+				addedHash    gomel.Hash
+				parentHashes []gomel.Hash
 			)
 
 			BeforeEach(func() {
@@ -95,12 +95,12 @@ var _ = Describe("Poset", func() {
 				Context("When the poset is empty", func() {
 
 					It("Should be added as a dealing unit", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(a.Prime(result)).To(BeTrue())
+							Expect(gomel.Prime(result)).To(BeTrue())
 							close(done)
 						})
 					})
@@ -115,11 +115,11 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should report that fact", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(&a.DuplicateUnit{}))
+							Expect(err).To(MatchError(&gomel.DuplicateUnit{}))
 							close(done)
 						})
 					})
@@ -135,12 +135,12 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should be added as a second dealing unit", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(a.Prime(result)).To(BeTrue())
+							Expect(gomel.Prime(result)).To(BeTrue())
 							Expect(len(result.Parents())).To(BeZero())
 							close(done)
 						})
@@ -154,18 +154,18 @@ var _ = Describe("Poset", func() {
 
 				BeforeEach(func() {
 					addedHash[0] = 43
-					parentHashes = make([]a.Hash, 1)
+					parentHashes = make([]gomel.Hash, 1)
 					parentHashes[0][0] = 1
 				})
 
 				Context("When the poset is empty", func() {
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(a.NewDataError("Missing parent")))
+							Expect(err).To(MatchError(gomel.NewDataError("Missing parent")))
 							close(done)
 						})
 					})
@@ -181,11 +181,11 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should fail because of too few parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(a.NewDataError("Not enough parents")))
+							Expect(err).To(MatchError(gomel.NewDataError("Not enough parents")))
 							close(done)
 						})
 					})
@@ -198,7 +198,7 @@ var _ = Describe("Poset", func() {
 
 				BeforeEach(func() {
 					addedHash[0] = 43
-					parentHashes = make([]a.Hash, 2)
+					parentHashes = make([]gomel.Hash, 2)
 					parentHashes[0][0] = 1
 					parentHashes[1][0] = 2
 				})
@@ -206,11 +206,11 @@ var _ = Describe("Poset", func() {
 				Context("When the poset is empty", func() {
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(a.NewDataError("Missing parent")))
+							Expect(err).To(MatchError(gomel.NewDataError("Missing parent")))
 							close(done)
 						})
 					})
@@ -226,11 +226,11 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(a.NewDataError("Missing parent")))
+							Expect(err).To(MatchError(gomel.NewDataError("Missing parent")))
 							close(done)
 						})
 					})
@@ -249,12 +249,12 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should add the unit successfully", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(a.Prime(result)).To(BeFalse())
+							Expect(gomel.Prime(result)).To(BeFalse())
 							Expect(result.Parents()[0].Hash()).To(Equal(addedUnit.Parents()[0]))
 							Expect(result.Parents()[1].Hash()).To(Equal(addedUnit.Parents()[1]))
 							close(done)
@@ -269,11 +269,11 @@ var _ = Describe("Poset", func() {
 						})
 
 						It("Should report that fact", func(done Done) {
-							poset.AddUnit(addedUnit, func(pu a.Preunit, result a.Unit, err error) {
+							poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 								Expect(result).To(BeNil())
-								Expect(err).To(MatchError(&a.DuplicateUnit{}))
+								Expect(err).To(MatchError(&gomel.DuplicateUnit{}))
 								close(done)
 							})
 						})
@@ -405,7 +405,7 @@ var _ = Describe("Poset", func() {
 					pu2.creator = 1
 					pu11 := &preunit{}
 					pu1.hash[0] = 11
-					pu1.parents = []a.Hash{pu1.hash, pu2.hash}
+					pu1.parents = []gomel.Hash{pu1.hash, pu2.hash}
 					addFirst = [][]*preunit{[]*preunit{pu1, pu2}, []*preunit{pu11}}
 				})
 

@@ -1,20 +1,20 @@
 package growing
 
 import (
-	a "gitlab.com/alephledger/consensus-go/pkg"
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 type unitBuilt struct {
-	preunit a.Preunit
+	preunit gomel.Preunit
 	result  *unit
-	done    func(a.Preunit, a.Unit, error)
+	done    func(gomel.Preunit, gomel.Unit, error)
 }
 
 // Adds the provided Preunit to the poset as a Unit.
 // When done calls the callback.
-func (p *Poset) AddUnit(pu a.Preunit, callback func(a.Preunit, a.Unit, error)) {
+func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
 	if pu.Creator() < 0 || pu.Creator() >= p.nProcesses {
-		callback(pu, nil, a.NewDataError("Invalid creator."))
+		callback(pu, nil, gomel.NewDataError("Invalid creator."))
 		return
 	}
 	toAdd := &unitBuilt{
@@ -25,7 +25,7 @@ func (p *Poset) AddUnit(pu a.Preunit, callback func(a.Preunit, a.Unit, error)) {
 	p.adders[pu.Creator()] <- toAdd
 }
 
-func (p *Poset) checkSignature(pu a.Preunit) error {
+func (p *Poset) checkSignature(pu gomel.Preunit) error {
 	// TODO: actually check
 	return nil
 }
@@ -36,7 +36,7 @@ func setHeight(ub *unitBuilt) error {
 		return nil
 	}
 	if ub.result.Parents()[0].Creator() != ub.preunit.Creator() {
-		return a.NewComplianceError("Not descendant of first parent")
+		return gomel.NewComplianceError("Not descendant of first parent")
 	}
 	ub.result.setHeight(ub.result.Parents()[0].Height() + 1)
 	return nil
@@ -47,16 +47,16 @@ func (p *Poset) computeLevel(ub *unitBuilt) {
 	ub.result.setLevel(0)
 }
 
-func (p *Poset) checkCompliance(u a.Unit) error {
+func (p *Poset) checkCompliance(u gomel.Unit) error {
 	// TODO: actually check, also should be separate file, cause it'll be long
 	return nil
 }
 
-func (p *Poset) addPrime(u a.Unit) {
+func (p *Poset) addPrime(u gomel.Unit) {
 	// TODO: actually add
 }
 
-func (p *Poset) updateMaximal(u a.Unit) {
+func (p *Poset) updateMaximal(u gomel.Unit) {
 	// TODO: actually update
 }
 
@@ -86,7 +86,7 @@ func (p *Poset) adder(incoming chan *unitBuilt) {
 			ub.done(ub.preunit, nil, err)
 			continue
 		}
-		if a.Prime(ub.result) {
+		if gomel.Prime(ub.result) {
 			p.addPrime(ub.result)
 		}
 		p.units.add(ub.result)

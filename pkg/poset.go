@@ -1,4 +1,4 @@
-package alephzero
+package gomel
 
 // A poset, as defined by the Aleph whitepaper.
 type Poset interface {

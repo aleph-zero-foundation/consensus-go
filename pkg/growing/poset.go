@@ -3,17 +3,17 @@ package growing
 import (
 	"sync"
 
-	a "gitlab.com/alephledger/consensus-go/pkg"
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 // An implementation of Poset that is intended to be used during poset creation.
 type Poset struct {
 	nProcesses int
 	units      *unitBag
-	primeUnits map[int]a.SlottedUnits
-	maxUnits   a.SlottedUnits
+	primeUnits map[int]gomel.SlottedUnits
+	maxUnits   gomel.SlottedUnits
 	adders     []chan *unitBuilt
-	newMaximal chan a.Unit
+	newMaximal chan gomel.Unit
 	tasks      sync.WaitGroup
 }
 
@@ -27,7 +27,7 @@ func NewPoset(n int) *Poset {
 	newPoset := &Poset{
 		nProcesses: n,
 		units:      &unitBag{},
-		primeUnits: map[int]a.SlottedUnits{},
+		primeUnits: map[int]gomel.SlottedUnits{},
 		// TODO: make some initial SlottedUnits here
 		maxUnits: nil,
 		adders:   adders,
@@ -40,17 +40,17 @@ func NewPoset(n int) *Poset {
 }
 
 // Checks whether u1 < u2.
-func (p *Poset) Below(u1 a.Unit, u2 a.Unit) bool {
+func (p *Poset) Below(u1 gomel.Unit, u2 gomel.Unit) bool {
 	return true
 }
 
 // Returns the prime units at the requested level, indexed by their creator ids.
-func (p *Poset) PrimeUnits(level int) a.SlottedUnits {
+func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 	return p.primeUnits[level]
 }
 
 // Returns the maximal units created by respective processes.
-func (p *Poset) MaximalUnitsPerProcess() a.SlottedUnits {
+func (p *Poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return p.maxUnits
 }
 

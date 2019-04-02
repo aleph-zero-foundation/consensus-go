@@ -1,19 +1,17 @@
 package growing
 
-import (
-	a "gitlab.com/alephledger/consensus-go/pkg"
-)
+import gomel "gitlab.com/alephledger/consensus-go/pkg"
 
 type unit struct {
 	creator int
-	hash    a.Hash
+	hash    gomel.Hash
 	height  int
-	parents []a.Unit
+	parents []gomel.Unit
 	level   int
-	floor   [][]a.Unit
+	floor   [][]gomel.Unit
 }
 
-func newUnit(pu a.Preunit) *unit {
+func newUnit(pu gomel.Preunit) *unit {
 	return &unit{
 		creator: pu.Creator(),
 		hash:    *pu.Hash(),
@@ -26,7 +24,7 @@ func (u *unit) Creator() int {
 }
 
 // Returns the hash of the unit.
-func (u *unit) Hash() *a.Hash {
+func (u *unit) Hash() *gomel.Hash {
 	return &u.hash
 }
 
@@ -36,7 +34,7 @@ func (u *unit) Height() int {
 }
 
 // Returns the parents of the unit.
-func (u *unit) Parents() []a.Unit {
+func (u *unit) Parents() []gomel.Unit {
 	return u.parents
 }
 
@@ -49,7 +47,7 @@ func (u *unit) setHeight(height int) {
 	u.height = height
 }
 
-func (u *unit) addParent(parent a.Unit) {
+func (u *unit) addParent(parent gomel.Unit) {
 	u.parents = append(u.parents, parent)
 }
 
@@ -58,7 +56,7 @@ func (u *unit) setLevel(level int) {
 }
 
 func (u *unit) computeFloor() {
-	floors := [][][]a.Unit{}
+	floors := [][][]gomel.Unit{}
 	for _, parent := range u.parents {
 		if realParent, ok := parent.(*unit); ok {
 			floors = append(floors, realParent.floor)
@@ -69,7 +67,7 @@ func (u *unit) computeFloor() {
 	u.floor = combineFloors(floors)
 }
 
-func combineFloors(floors [][][]a.Unit) [][]a.Unit {
+func combineFloors(floors [][][]gomel.Unit) [][]gomel.Unit {
 	// TODO: implement
-	return [][]a.Unit{}
+	return [][]gomel.Unit{}
 }

@@ -1,4 +1,4 @@
-package alephzero
+package gomel
 
 // An error representing incorrect data received from a process.
 // Indicates a problem with the process providing the data.
