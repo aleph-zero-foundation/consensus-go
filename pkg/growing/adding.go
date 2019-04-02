@@ -85,8 +85,7 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	setHeight(ub)
 	ub.result.computeFloor()
 	p.computeLevel(ub)
-	err = p.checkCompliance(ub.result)
-	return err
+	return p.checkCompliance(ub.result)
 }
 
 func (p *Poset) addUnit(ub *unitBuilt) {
