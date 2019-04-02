@@ -63,7 +63,19 @@ func (p *Poset) addPrime(u gomel.Unit) {
 }
 
 func (p *Poset) updateMaximal(u gomel.Unit) {
-	// TODO: actually update
+	creator := u.Creator()
+	maxByCreator := p.maxUnits.Get(creator)
+	newMaxByCreator := make([]gomel.Unit, 0)
+	// The below code works properly assuming that no unit in the Poset created by creatorId is >= u
+	for _, v := range maxByCreator {
+		// It is assumed that p.Below implements strict inequality <
+		if !p.Below(v, u) {
+			newMaxByCreator = append(newMaxByCreator, v)
+		}
+	}
+	newMaxByCreator = append(newMaxByCreator, u)
+	// Note that since only the adder[creator] goroutine is ever writing to p.maxUnits[creator], the below line is safe
+	p.maxUnits.Set(creator, newMaxByCreator)
 }
 
 func (p *Poset) computeForkingHeight(u *unit) {
