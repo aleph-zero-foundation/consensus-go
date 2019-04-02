@@ -30,16 +30,29 @@ func (p *Poset) checkSignature(pu gomel.Preunit) error {
 	return nil
 }
 
-func setHeight(ub *unitBuilt) error {
-	if len(ub.result.parents) == 0 {
-		ub.result.setHeight(0)
+func (p *Poset) precheck(ub *unitBuilt) error {
+	err := p.checkSignature(ub.preunit)
+	if err != nil {
+		return err
+	}
+	if len(ub.result.Parents()) == 0 {
 		return nil
+	}
+	if len(ub.result.Parents()) < 2 {
+		return gomel.NewDataError("Not enough parents")
 	}
 	if ub.result.Parents()[0].Creator() != ub.preunit.Creator() {
 		return gomel.NewComplianceError("Not descendant of first parent")
 	}
-	ub.result.setHeight(ub.result.Parents()[0].Height() + 1)
 	return nil
+}
+
+func setHeight(ub *unitBuilt) {
+	if len(ub.result.parents) == 0 {
+		ub.result.setHeight(0)
+	} else {
+		ub.result.setHeight(ub.result.Parents()[0].Height() + 1)
+	}
 }
 
 func (p *Poset) computeLevel(ub *unitBuilt) {
@@ -65,14 +78,11 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	if err != nil {
 		return err
 	}
-	err = p.checkSignature(ub.preunit)
+	err = p.precheck(ub)
 	if err != nil {
 		return err
 	}
-	err = setHeight(ub)
-	if err != nil {
-		return err
-	}
+	setHeight(ub)
 	ub.result.computeFloor()
 	p.computeLevel(ub)
 	err = p.checkCompliance(ub.result)
