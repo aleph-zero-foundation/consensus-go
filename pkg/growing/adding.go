@@ -89,19 +89,23 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	return err
 }
 
+func (p *Poset) addUnit(ub *unitBuilt) {
+	err := p.prepareUnit(ub)
+	if err != nil {
+		ub.done(ub.preunit, nil, err)
+		return
+	}
+	if gomel.Prime(ub.result) {
+		p.addPrime(ub.result)
+	}
+	p.units.add(ub.result)
+	ub.done(ub.preunit, ub.result, nil)
+	p.updateMaximal(ub.result)
+}
+
 func (p *Poset) adder(incoming chan *unitBuilt) {
 	for ub := range incoming {
-		err := p.prepareUnit(ub)
-		if err != nil {
-			ub.done(ub.preunit, nil, err)
-			continue
-		}
-		if gomel.Prime(ub.result) {
-			p.addPrime(ub.result)
-		}
-		p.units.add(ub.result)
-		ub.done(ub.preunit, ub.result, nil)
-		p.updateMaximal(ub.result)
+		p.addUnit(ub)
 	}
 	p.tasks.Done()
 }
