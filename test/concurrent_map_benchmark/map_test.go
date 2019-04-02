@@ -7,14 +7,14 @@ import (
 )
 
 const (
-	INITIAL_ELEMS_COUNT      = 100000
-	NUMBER_OF_ROUTINES       = 512
-	NUMBER_OF_MAP_OPERATIONS = 3 * 10 * 100
-	MISS_READS_BIAS          = 10
-	NEW_WRITES               = 90
-	OPERATION_GENERATOR_SEED = 0
-	DATA_GENERATOR_SEED      = 1
-	MISS_GENERATOR_SEED      = 2
+	initialElemsCount      = 100000
+	numberOfRoutines       = 512
+	numberOfMapOperations  = 3 * 10 * 100
+	missReadsBias          = 10
+	newWrites              = 90
+	operationGeneratorSeed = 0
+	dataGeneratorSeed      = 1
+	missGeneratorSeed      = 2
 )
 
 type keyValuePair struct {
@@ -27,7 +27,7 @@ type testScenario struct {
 }
 
 func newTestScenario() testScenario {
-	return testScenario{operationGenerator: rand.New(rand.NewSource(OPERATION_GENERATOR_SEED))}
+	return testScenario{operationGenerator: rand.New(rand.NewSource(operationGeneratorSeed))}
 }
 
 func (ts *testScenario) testMapAcess(testMap mapUnderTest, readBias uint64, count uint64, tdg testDataGenerator) {
@@ -101,8 +101,8 @@ func testSyncMap(
 
 	b.StopTimer()
 
-	dataSeedGenerator := rand.New(rand.NewSource(DATA_GENERATOR_SEED))
-	missSeedGenerator := rand.New(rand.NewSource(MISS_GENERATOR_SEED))
+	dataSeedGenerator := rand.New(rand.NewSource(dataGeneratorSeed))
+	missSeedGenerator := rand.New(rand.NewSource(missGeneratorSeed))
 
 	dataGenerator := rand.New(rand.NewSource(dataSeedGenerator.Int63()))
 	missGenerator := rand.New(rand.NewSource(missSeedGenerator.Int63()))
@@ -224,9 +224,9 @@ func testMapPerformance(b *testing.B, testMap mapUnderTest, readBias, missReads,
 
 	for n := 0; n < b.N; n++ {
 		testSyncMap(
-			INITIAL_ELEMS_COUNT,
-			NUMBER_OF_ROUTINES,
-			NUMBER_OF_MAP_OPERATIONS,
+			initialElemsCount,
+			numberOfRoutines,
+			numberOfMapOperations,
 			readBias,
 			missReads,
 			newWrites,
@@ -238,35 +238,35 @@ func testMapPerformance(b *testing.B, testMap mapUnderTest, readBias, missReads,
 func BenchmarkSyncedMap(b *testing.B) {
 	var testMap mapUnderTest = &syncedMap{}
 	b.ResetTimer()
-	testMapPerformance(b, testMap, 90, MISS_READS_BIAS, NEW_WRITES)
+	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
 }
 
 func BenchmarkRWMap(b *testing.B) {
 	var testMap mapUnderTest = newMapWithRWMutex()
 	b.ResetTimer()
-	testMapPerformance(b, testMap, 90, MISS_READS_BIAS, NEW_WRITES)
+	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
 }
 
 func BenchmarkMutexMap(b *testing.B) {
 	var testMap mapUnderTest = newMapWithMutex()
 	b.ResetTimer()
-	testMapPerformance(b, testMap, 90, MISS_READS_BIAS, NEW_WRITES)
+	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
 }
 
 func BenchmarkSyncedMapMoreWrites(b *testing.B) {
 	var testMap mapUnderTest = &syncedMap{}
 	b.ResetTimer()
-	testMapPerformance(b, testMap, 10, MISS_READS_BIAS, NEW_WRITES)
+	testMapPerformance(b, testMap, 10, missReadsBias, newWrites)
 }
 
 func BenchmarkRWMapMoreWrites(b *testing.B) {
 	var testMap mapUnderTest = newMapWithRWMutex()
 	b.ResetTimer()
-	testMapPerformance(b, testMap, 10, MISS_READS_BIAS, NEW_WRITES)
+	testMapPerformance(b, testMap, 10, missReadsBias, newWrites)
 }
 
 func BenchmarkMutexMapMoreWrites(b *testing.B) {
 	var testMap mapUnderTest = newMapWithMutex()
 	b.ResetTimer()
-	testMapPerformance(b, testMap, 10, MISS_READS_BIAS, NEW_WRITES)
+	testMapPerformance(b, testMap, 10, missReadsBias, newWrites)
 }
