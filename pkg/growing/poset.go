@@ -31,7 +31,7 @@ func NewPoset(n int) *Poset {
 	}
 	newPoset := &Poset{
 		nProcesses: n,
-		units:      &unitBag{},
+		units:      newUnitBag(),
 		primeUnits: initialPrimeUnits,
 		maxUnits:   newSlottedUnits(n),
 		adders:     adders,

@@ -46,6 +46,13 @@ var _ = Describe("Poset", func() {
 		})
 	}
 
+	BeforeEach(func() {
+		nProcesses = 0
+		poset = nil
+		addFirst = nil
+		wg = sync.WaitGroup{}
+	})
+
 	JustBeforeEach(func() {
 		wg = sync.WaitGroup{}
 		for _, pus := range addFirst {
@@ -78,6 +85,9 @@ var _ = Describe("Poset", func() {
 
 			BeforeEach(func() {
 				addedUnit = &preunit{}
+				addedCreator = 0
+				addedHash = gomel.Hash{}
+				parentHashes = []gomel.Hash{}
 			})
 
 			JustBeforeEach(func() {
@@ -255,8 +265,8 @@ var _ = Describe("Poset", func() {
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(gomel.Prime(result)).To(BeFalse())
-							Expect(result.Parents()[0].Hash()).To(Equal(addedUnit.Parents()[0]))
-							Expect(result.Parents()[1].Hash()).To(Equal(addedUnit.Parents()[1]))
+							Expect(*result.Parents()[0].Hash()).To(Equal(addedUnit.Parents()[0]))
+							Expect(*result.Parents()[1].Hash()).To(Equal(addedUnit.Parents()[1]))
 							close(done)
 						})
 					})
