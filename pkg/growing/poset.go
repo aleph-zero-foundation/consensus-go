@@ -1,8 +1,9 @@
 package growing
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"sync"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 // An implementation of Poset that is intended to be used during poset creation.
@@ -39,6 +40,10 @@ func NewPoset(n int) *Poset {
 		newPoset.tasks.Add(1)
 	}
 	return newPoset
+}
+
+func (p *Poset) isQuorum(number int) bool {
+	return 3*number >= 2*p.nProcesses
 }
 
 // Returns the prime units at the requested level, indexed by their creator ids.

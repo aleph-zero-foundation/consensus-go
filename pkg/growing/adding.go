@@ -49,8 +49,38 @@ func (p *Poset) precheck(ub *unitBuilt) error {
 }
 
 func (p *Poset) computeLevel(ub *unitBuilt) {
-	// TODO: actually compute
-	ub.result.setLevel(0)
+	if len(ub.result.parents) == 0 {
+		ub.result.setLevel(0)
+	} else {
+		maxLevelParents := 0
+		for _, w := range ub.result.parents {
+			if w.Level() > maxLevelParents {
+				maxLevelParents = w.Level()
+			}
+		}
+		nSeen := 0
+		for pid := 0; pid < p.nProcesses; pid++ {
+			pidSeen := 0
+			for _, v := range p.PrimeUnits(maxLevelParents).Get(pid) {
+				if p.Below(v, ub.result) {
+					pidSeen = 1
+					break
+				}
+			}
+			nSeen += pidSeen
+			// optimization to not loop over all processes if quorum cannot be reached anyway
+			if !p.isQuorum(nSeen + p.nProcesses - 1 - pid) {
+                break
+			}
+		}
+		if p.isQuorum(nSeen) {
+			ub.result.setLevel(maxLevelParents + 1)
+		} else {
+			ub.result.setLevel(maxLevelParents)
+		}
+
+	}
+
 }
 
 func (p *Poset) checkCompliance(u gomel.Unit) error {
