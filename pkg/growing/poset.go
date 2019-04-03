@@ -26,7 +26,7 @@ func NewPoset(n int) *Poset {
 	newPoset := &Poset{
 		nProcesses: n,
 		units:      newUnitBag(),
-		primeUnits: newLevelMap(10, n),
+		primeUnits: newLevelMap(n, 10),
 		maxUnits:   newSlottedUnits(n),
 		adders:     adders,
 	}
@@ -46,9 +46,8 @@ func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 	res, err := p.primeUnits.getLevel(level)
 	if err != nil {
 		return newSlottedUnits(p.nProcesses)
-	} else {
-		return res
 	}
+	return res
 }
 
 // Returns the maximal units created by respective processes.

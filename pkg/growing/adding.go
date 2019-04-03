@@ -70,7 +70,7 @@ func (p *Poset) computeLevel(ub *unitBuilt) {
 			nSeen += pidSeen
 			// optimization to not loop over all processes if quorum cannot be reached anyway
 			if !p.isQuorum(nSeen + p.nProcesses - 1 - pid) {
-                break
+				break
 			}
 		}
 		if p.isQuorum(nSeen) {
@@ -105,14 +105,11 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 	newMaxByCreator := make([]gomel.Unit, 0)
 	// The below code works properly assuming that no unit in the Poset created by creator is >= u
 	for _, v := range maxByCreator {
-		// It is assumed that p.Below implements strict inequality <
 		if !p.Below(v, u) {
 			newMaxByCreator = append(newMaxByCreator, v)
 		}
 	}
 	newMaxByCreator = append(newMaxByCreator, u)
-	// Only the adder goroutine corresponding to this creator is ever writing to p.maxUnits[creator].
-	// Hence p.maxUnits[creator] cannot change between the Get() above and the Set() below.
 	p.maxUnits.Set(creator, newMaxByCreator)
 }
 
