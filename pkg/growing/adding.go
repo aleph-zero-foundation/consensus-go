@@ -83,7 +83,7 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 		return err
 	}
 	setHeight(ub)
-	ub.result.computeFloor()
+	ub.result.computeFloor(p.nProcesses)
 	p.computeLevel(ub)
 	return p.checkCompliance(ub.result)
 }
@@ -106,5 +106,35 @@ func (p *Poset) adder(incoming chan *unitBuilt) {
 	defer p.tasks.Done()
 	for ub := range incoming {
 		p.addUnit(ub)
+		if ub == nil {
+			// TODO: some cleanup here?
+			return
+		}
+		err := p.units.dehashParents(ub)
+		if err != nil {
+			ub.done(ub.preunit, nil, err)
+			continue
+		}
+		err = p.checkSignature(ub.preunit)
+		if err != nil {
+			ub.done(ub.preunit, nil, err)
+			continue
+		}
+
+		setHeight(ub)
+
+		ub.result.computeFloor(p.nProcesses)
+		p.computeLevel(ub)
+		err = p.checkCompliance(ub.result)
+		if err != nil {
+			ub.done(ub.preunit, nil, err)
+			continue
+		}
+		if gomel.Prime(ub.result) {
+			p.addPrime(ub.result)
+		}
+		p.units.add(ub.result)
+		ub.done(ub.preunit, ub.result, nil)
+		p.updateMaximal(ub.result)
 	}
 }
