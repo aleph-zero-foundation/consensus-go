@@ -89,7 +89,14 @@ func (p *Poset) checkCompliance(u gomel.Unit) error {
 }
 
 func (p *Poset) addPrime(u gomel.Unit) {
-	// TODO: actually add
+	if u.Level() > p.primeUnits.getHeight() {
+		p.primeUnits.extendBy(10)
+	}
+	su, _ := p.primeUnits.getLevel(u.Level())
+	creator := u.Creator()
+	primesByCreator := append(su.Get(creator), u)
+	// this assumes that we are adding u for the first time
+	su.Set(creator, primesByCreator)
 }
 
 func (p *Poset) updateMaximal(u gomel.Unit) {

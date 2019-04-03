@@ -10,7 +10,7 @@ import (
 type Poset struct {
 	nProcesses int
 	units      *unitBag
-	primeUnits map[int]gomel.SlottedUnits
+	primeUnits *levelMap
 	maxUnits   gomel.SlottedUnits
 	adders     []chan *unitBuilt
 	tasks      sync.WaitGroup
@@ -23,15 +23,10 @@ func NewPoset(n int) *Poset {
 		// TODO: magic number
 		adders[k] = make(chan *unitBuilt, 10)
 	}
-	initialPrimeUnits := map[int]gomel.SlottedUnits{}
-	// TODO: magic number
-	for i := 0; i < 10; i++ {
-		initialPrimeUnits[i] = newSlottedUnits(n)
-	}
 	newPoset := &Poset{
 		nProcesses: n,
 		units:      newUnitBag(),
-		primeUnits: initialPrimeUnits,
+		primeUnits: newLevelMap(10, n),
 		maxUnits:   newSlottedUnits(n),
 		adders:     adders,
 	}
@@ -48,7 +43,12 @@ func (p *Poset) isQuorum(number int) bool {
 
 // Returns the prime units at the requested level, indexed by their creator ids.
 func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
-	return p.primeUnits[level]
+	res, err := p.primeUnits.getLevel(level)
+	if err != nil {
+		return newSlottedUnits(p.nProcesses)
+	} else {
+		return res
+	}
 }
 
 // Returns the maximal units created by respective processes.
