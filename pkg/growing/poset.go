@@ -25,6 +25,7 @@ func NewPoset(n int) *Poset {
 		adders[k] = make(chan *unitBuilt, 10)
 	}
 	initialPrimeUnits := map[int]gomel.SlottedUnits{}
+	// TODO: magic number
 	for i := 0; i < 10; i++ {
 		initialPrimeUnits[i] = newSlottedUnits(n)
 	}
