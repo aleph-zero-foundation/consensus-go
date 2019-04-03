@@ -103,8 +103,8 @@ func (p *Poset) addUnit(ub *unitBuilt) {
 }
 
 func (p *Poset) adder(incoming chan *unitBuilt) {
+	defer p.tasks.Done()
 	for ub := range incoming {
 		p.addUnit(ub)
 	}
-	p.tasks.Done()
 }
