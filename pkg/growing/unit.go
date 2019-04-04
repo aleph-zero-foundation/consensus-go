@@ -1,6 +1,7 @@
 package growing
 
 import (
+	"fmt"
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"sync"
 )
@@ -47,8 +48,12 @@ func (u *unit) Level() int {
 	return u.level
 }
 
-func (u *unit) setHeight(height int) {
-	u.height = height
+func (u *unit) computeHeight() {
+	if len(u.parents) == 0 {
+		u.height = 0
+	} else {
+		u.height = u.Parents()[0].Height() + 1
+	}
 }
 
 func (u *unit) addParent(parent gomel.Unit) {
@@ -60,6 +65,9 @@ func (u *unit) setLevel(level int) {
 }
 
 func (u *unit) computeFloor(nProcesses int) {
+	u.floor = make([][]*unit, nProcesses, nProcesses)
+	u.floor[u.creator] = []*unit{u}
+
 	floors := make([][]*unit, nProcesses, nProcesses)
 
 	for _, parent := range u.parents {
@@ -72,9 +80,11 @@ func (u *unit) computeFloor(nProcesses int) {
 		}
 	}
 
-	u.floor = make([][]*unit, nProcesses, nProcesses)
 	var wg sync.WaitGroup
 	for pid := 0; pid < nProcesses; pid++ {
+		if pid == u.creator {
+			continue
+		}
 		pid := pid
 		wg.Add(1)
 		go func() {
@@ -120,6 +130,7 @@ func combineFloorsPerProc(floors []*unit, newFloor []*unit) {
 //====================================================================================
 
 func (u *unit) belowWithinProc(v *unit) (bool, error) {
+	fmt.Println("bwp", u.creator, v.creator, u.height, v.height, v.forkingHeight)
 	if u.creator != v.creator {
 		return false, gomel.NewDataError("Different creators")
 	}
@@ -158,6 +169,7 @@ func (u *unit) Below(v gomel.Unit) bool {
 		// TODO: this might be needed in the far future when there are special units that separate existing and nonexistent units
 	}
 	for _, w := range V.floor[u.creator] {
+
 		if ok, _ := u.belowWithinProc(w); ok {
 			return true
 		}

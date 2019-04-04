@@ -2,6 +2,7 @@ package growing
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"math"
 )
 
 type unitBuilt struct {
@@ -47,14 +48,6 @@ func (p *Poset) precheck(ub *unitBuilt) error {
 	return nil
 }
 
-func setHeight(ub *unitBuilt) {
-	if len(ub.result.parents) == 0 {
-		ub.result.setHeight(0)
-	} else {
-		ub.result.setHeight(ub.result.Parents()[0].Height() + 1)
-	}
-}
-
 func (p *Poset) computeLevel(ub *unitBuilt) {
 	// TODO: actually compute
 	ub.result.setLevel(0)
@@ -73,6 +66,31 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 	// TODO: actually update
 }
 
+func (p *Poset) computeForkingHeight(u *unit) {
+	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
+	// as long as units created by one process are added atomically
+	if len(u.Parents()) == 0 {
+		// TODO handle forking dealing units
+		u.forkingHeight = math.MaxInt32
+		return
+	}
+	up := u.parents[0].(*unit)
+	found := false
+	for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
+		if v == up {
+			found = true
+			break
+		}
+	}
+	if found {
+		u.forkingHeight = up.forkingHeight
+	} else {
+		// there is already a unit that has up as a predecessor, hence u is a fork
+		u.forkingHeight = up.height
+	}
+
+}
+
 func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	err := p.units.dehashParents(ub)
 	if err != nil {
@@ -82,9 +100,10 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	if err != nil {
 		return err
 	}
-	setHeight(ub)
+	ub.result.computeHeight()
 	ub.result.computeFloor(p.nProcesses)
 	p.computeLevel(ub)
+	p.computeForkingHeight(ub.result)
 	return p.checkCompliance(ub.result)
 }
 
@@ -106,35 +125,5 @@ func (p *Poset) adder(incoming chan *unitBuilt) {
 	defer p.tasks.Done()
 	for ub := range incoming {
 		p.addUnit(ub)
-		if ub == nil {
-			// TODO: some cleanup here?
-			return
-		}
-		err := p.units.dehashParents(ub)
-		if err != nil {
-			ub.done(ub.preunit, nil, err)
-			continue
-		}
-		err = p.checkSignature(ub.preunit)
-		if err != nil {
-			ub.done(ub.preunit, nil, err)
-			continue
-		}
-
-		setHeight(ub)
-
-		ub.result.computeFloor(p.nProcesses)
-		p.computeLevel(ub)
-		err = p.checkCompliance(ub.result)
-		if err != nil {
-			ub.done(ub.preunit, nil, err)
-			continue
-		}
-		if gomel.Prime(ub.result) {
-			p.addPrime(ub.result)
-		}
-		p.units.add(ub.result)
-		ub.done(ub.preunit, ub.result, nil)
-		p.updateMaximal(ub.result)
 	}
 }
