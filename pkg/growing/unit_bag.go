@@ -8,17 +8,24 @@ import (
 
 type unitBag struct {
 	sync.RWMutex
+	contents map[gomel.Hash]*unit
+}
+
+func newUnitBag() *unitBag {
+	return &unitBag{contents: map[gomel.Hash]*unit{}}
 }
 
 func (units *unitBag) add(u *unit) {
 	units.Lock()
 	defer units.Unlock()
-	// TODO: implement
+	units.contents[*u.Hash()] = u
 }
 
 func (units *unitBag) get(h gomel.Hash) (*unit, bool) {
-	// TODO: implement
-	return nil, false
+	units.RLock()
+	defer units.RUnlock()
+	u, ok := units.contents[h]
+	return u, ok
 }
 
 func (units *unitBag) dehashParents(ub *unitBuilt) error {
