@@ -88,18 +88,20 @@ func (u *unit) computeFloor(nProcesses int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			combineFloorsPerProc(floors[pid], u.floor[pid])
+			u.floor[pid] = combineFloorsPerProc(floors[pid])
 		}()
 	}
 
 	wg.Wait()
 }
 
-func combineFloorsPerProc(floors []*unit, newFloor []*unit) {
+func combineFloorsPerProc(floors []*unit) []*unit {
+	newFloor := []*unit{}
+
 	// Computes maximal elements in floors and stores them in newFloor
 	// floors contains elements created by only one proc
 	if len(floors) == 0 {
-		return
+		return newFloor
 	}
 
 	for _, u := range floors {
@@ -122,4 +124,6 @@ func combineFloorsPerProc(floors []*unit, newFloor []*unit) {
 			newFloor[ri] = u
 		}
 	}
+
+	return newFloor
 }

@@ -20,7 +20,7 @@ func (u *unit) belowWithinProc(v *unit) (bool, error) {
 	// in forking situation we have to check if going down from v to u.height we find u
 	w := v
 	for w.height > u.height {
-		wVal, err := gomel.Predecessor(u)
+		wVal, err := gomel.Predecessor(w)
 		if err != nil {
 			return false, err
 		}
