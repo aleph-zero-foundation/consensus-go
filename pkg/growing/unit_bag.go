@@ -28,11 +28,6 @@ func (units *unitBag) get(h gomel.Hash) (*unit, bool) {
 	return u, ok
 }
 
-func (units *unitBag) contains(u *unit) bool {
-	// TODO: implement
-	return true
-}
-
 func (units *unitBag) dehashParents(ub *unitBuilt) error {
 	units.RLock()
 	defer units.RUnlock()

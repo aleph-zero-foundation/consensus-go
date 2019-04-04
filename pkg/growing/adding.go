@@ -69,9 +69,13 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 func (p *Poset) computeForkingHeight(u *unit) {
 	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
 	// as long as units created by one process are added atomically
-	if len(u.Parents()) == 0 {
-		// TODO handle forking dealing units
-		u.forkingHeight = math.MaxInt32
+	if len(u.parents) == 0 {
+		if len(p.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
+			//this is a forking dealing unit
+			u.forkingHeight = 0
+		} else {
+			u.forkingHeight = math.MaxInt32
+		}
 		return
 	}
 	up := u.parents[0].(*unit)
@@ -86,9 +90,17 @@ func (p *Poset) computeForkingHeight(u *unit) {
 		u.forkingHeight = up.forkingHeight
 	} else {
 		// there is already a unit that has up as a predecessor, hence u is a fork
-		u.forkingHeight = up.height
+		if up.forkingHeight < up.height {
+			u.forkingHeight = up.forkingHeight
+		} else {
+			u.forkingHeight = up.height
+			for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
+				for w := v.(*unit); w != up; w = w.Parents()[0].(*unit) {
+					w.forkingHeight = up.height
+				}
+			}
+		}
 	}
-
 }
 
 func (p *Poset) prepareUnit(ub *unitBuilt) error {

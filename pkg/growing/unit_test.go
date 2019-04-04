@@ -26,11 +26,7 @@ var _ = Describe("Units", func() {
 			defer GinkgoRecover()
 			defer wg.Done()
 			Expect(err).NotTo(HaveOccurred())
-			if _, ok := units[result.Creator()][result.Height()]; ok {
-				units[result.Creator()][result.Height()] = append(units[result.Creator()][result.Height()], result)
-			} else {
-				units[result.Creator()][result.Height()] = []gomel.Unit{result}
-			}
+			units[result.Creator()][result.Height()] = append(units[result.Creator()][result.Height()], result)
 		})
 	}
 
@@ -83,7 +79,7 @@ var _ = Describe("Units", func() {
 			})
 
 		})
-		Describe("Checking symmetry of Below", func() {
+		Describe("Checking lack of symmetry of Below", func() {
 
 			BeforeEach(func() {
 				pu0 := &preunit{}
@@ -128,8 +124,8 @@ var _ = Describe("Units", func() {
 				pu21 := &preunit{}
 				pu21.hash[2] = 32
 				pu21.creator = 2
-				pu21.parents = []gomel.Hash{pu01.hash, pu2.hash}
-				addFirst = [][]*preunit{[]*preunit{pu0, pu1}, []*preunit{pu01},
+				pu21.parents = []gomel.Hash{pu2.hash, pu01.hash}
+				addFirst = [][]*preunit{[]*preunit{pu0, pu1, pu2}, []*preunit{pu01},
 					[]*preunit{pu02, pu21}}
 			})
 
