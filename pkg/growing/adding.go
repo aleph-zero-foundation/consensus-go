@@ -1,8 +1,9 @@
 package growing
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"math"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 type unitBuilt struct {
@@ -62,7 +63,7 @@ func (p *Poset) computeLevel(ub *unitBuilt) {
 		for pid := 0; pid < p.nProcesses; pid++ {
 			pidSeen := 0
 			for _, v := range p.PrimeUnits(maxLevelParents).Get(pid) {
-				if p.Below(v, ub.result) {
+				if v.Below(ub.result) {
 					pidSeen = 1
 					break
 				}
@@ -105,7 +106,7 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 	newMaxByCreator := make([]gomel.Unit, 0)
 	// The below code works properly assuming that no unit in the Poset created by creator is >= u
 	for _, v := range maxByCreator {
-		if !p.Below(v, u) {
+		if !v.Below(u) {
 			newMaxByCreator = append(newMaxByCreator, v)
 		}
 	}
