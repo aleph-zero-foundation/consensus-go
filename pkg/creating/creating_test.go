@@ -60,13 +60,13 @@ func (u1 *unit) Below(u2 gomel.Unit) bool {
 	for len(toVisit) > 0 {
 		u := toVisit[0]
 		toVisit = toVisit[1:]
-		visiting[*u.Hash()] = true
 		if u.Hash() == u1.Hash() {
 			return true
 		}
 		for _, p := range u.Parents() {
 			if p.Height() >= height && !visiting[*p.Hash()] {
 				toVisit = append(toVisit, p)
+				visiting[*p.Hash()] = true
 			}
 		}
 	}
