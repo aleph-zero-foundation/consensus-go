@@ -158,7 +158,7 @@ var _ = Describe("Units", func() {
 
 			})
 
-			It("Forked dealing units should be incomparable.", func() {
+			It("Should return false for both below queries.", func() {
 				u0 := units[0][0][0]
 				u1 := units[0][0][1]
 
