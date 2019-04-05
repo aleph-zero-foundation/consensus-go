@@ -1,9 +1,8 @@
 package growing
 
 import (
-	"sync"
-
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"sync"
 )
 
 // An implementation of Poset that is intended to be used during poset creation.
@@ -13,7 +12,6 @@ type Poset struct {
 	primeUnits map[int]gomel.SlottedUnits
 	maxUnits   gomel.SlottedUnits
 	adders     []chan *unitBuilt
-	newMaximal chan gomel.Unit
 	tasks      sync.WaitGroup
 }
 
@@ -41,11 +39,6 @@ func NewPoset(n int) *Poset {
 		newPoset.tasks.Add(1)
 	}
 	return newPoset
-}
-
-// Checks whether u1 < u2.
-func (p *Poset) Below(u1 gomel.Unit, u2 gomel.Unit) bool {
-	return true
 }
 
 // Returns the prime units at the requested level, indexed by their creator ids.

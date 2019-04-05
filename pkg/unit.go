@@ -8,6 +8,8 @@ type Unit interface {
 	Height() int
 	Parents() []Unit
 	Level() int
+	Below(Unit) bool
+	Above(Unit) bool
 }
 
 // Returns the predecessor of a unit, i.e. the unit created by the same process that is one of this unit's parents.
