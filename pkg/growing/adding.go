@@ -120,7 +120,7 @@ func (p *Poset) computeForkingHeight(u *unit) {
 	if len(u.parents) == 0 {
 		if len(p.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
 			//this is a forking dealing unit
-			u.forkingHeight = 0
+			u.forkingHeight = -1
 		} else {
 			u.forkingHeight = math.MaxInt32
 		}
