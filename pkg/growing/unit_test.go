@@ -167,6 +167,38 @@ var _ = Describe("Units", func() {
 			})
 
 		})
+
+		Describe("Checking Below works properly for two forks going out of one unit.", func() {
+
+			BeforeEach(func() {
+				puBase := &preunit{}
+				puBase.hash[0] = 0
+				pu.creator = 0
+				pu1 := &preunit{}
+				pu1.hash[0] = 1
+				pu1.creator = 0
+				pu2 := &preunit{}
+				pu2.hash[0] = 2
+				pu2.creator = 0
+
+				addFirst = [][]*preunit{[]*preunit{puBase}, []*preunit{pu1}, []*preunit{pu2}}
+
+			})
+
+			It("Should correctly answer all pairs of below queries.", func() {
+				uBase := units[0][0][0]
+				u1 := units[0][1][0]
+				u2 := units[0][1][1]
+
+				Expect(uBase.Below(u1)).To(BeTrue())
+				Expect(uBase.Below(u2)).To(BeTrue())
+				Expect(u1.Below(uBase)).To(BeFalse())
+				Expect(u2.Below(uBase)).To(BeFalse())
+				Expect(u1.Below(u2)).To(BeFalse())
+				Expect(u2.Below(u1)).To(BeFalse())
+			})
+
+		})
 	})
 
 })
