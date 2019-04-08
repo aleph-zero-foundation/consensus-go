@@ -1,8 +1,9 @@
 package growing
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"math"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 type unitBuilt struct {
@@ -49,8 +50,38 @@ func (p *Poset) precheck(ub *unitBuilt) error {
 }
 
 func (p *Poset) computeLevel(ub *unitBuilt) {
-	// TODO: actually compute
-	ub.result.setLevel(0)
+	if len(ub.result.parents) == 0 {
+		ub.result.setLevel(0)
+	} else {
+		maxLevelParents := 0
+		for _, w := range ub.result.parents {
+			if w.Level() > maxLevelParents {
+				maxLevelParents = w.Level()
+			}
+		}
+		nSeen := 0
+		for pid := 0; pid < p.nProcesses; pid++ {
+			pidSeen := 0
+			for _, v := range p.PrimeUnits(maxLevelParents).Get(pid) {
+				if v.Below(ub.result) {
+					pidSeen = 1
+					break
+				}
+			}
+			nSeen += pidSeen
+			// optimization to not loop over all processes if quorum cannot be reached anyway
+			if !p.isQuorum(nSeen + p.nProcesses - 1 - pid) {
+				break
+			}
+		}
+		if p.isQuorum(nSeen) {
+			ub.result.setLevel(maxLevelParents + 1)
+		} else {
+			ub.result.setLevel(maxLevelParents)
+		}
+
+	}
+
 }
 
 func (p *Poset) checkCompliance(u gomel.Unit) error {
@@ -59,11 +90,28 @@ func (p *Poset) checkCompliance(u gomel.Unit) error {
 }
 
 func (p *Poset) addPrime(u gomel.Unit) {
-	// TODO: actually add
+	if u.Level() > p.primeUnits.getHeight() {
+		p.primeUnits.extendBy(10)
+	}
+	su, _ := p.primeUnits.getLevel(u.Level())
+	creator := u.Creator()
+	primesByCreator := append(su.Get(creator), u)
+	// this assumes that we are adding u for the first time
+	su.Set(creator, primesByCreator)
 }
 
 func (p *Poset) updateMaximal(u gomel.Unit) {
-	// TODO: actually update
+	creator := u.Creator()
+	maxByCreator := p.maxUnits.Get(creator)
+	newMaxByCreator := make([]gomel.Unit, 0)
+	// The below code works properly assuming that no unit in the Poset created by creator is >= u
+	for _, v := range maxByCreator {
+		if !v.Below(u) {
+			newMaxByCreator = append(newMaxByCreator, v)
+		}
+	}
+	newMaxByCreator = append(newMaxByCreator, u)
+	p.maxUnits.Set(creator, newMaxByCreator)
 }
 
 func (p *Poset) computeForkingHeight(u *unit) {

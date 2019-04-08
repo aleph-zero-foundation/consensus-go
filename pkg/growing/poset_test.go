@@ -472,6 +472,61 @@ var _ = Describe("Poset", func() {
 			})
 
 		})
+
+		Describe("Growing level", func() {
+
+			Context("When the poset contains dealing units and 3 additional units", func() {
+
+				BeforeEach(func() {
+					pu0 := &preunit{}
+					pu0.hash[0] = 1
+					pu0.creator = 0
+					pu1 := &preunit{}
+					pu1.hash[0] = 2
+					pu1.creator = 1
+					pu2 := &preunit{}
+					pu2.hash[0] = 3
+					pu2.creator = 2
+					pu3 := &preunit{}
+					pu3.hash[0] = 4
+					pu3.creator = 3
+
+					puAbove4 := &preunit{}
+					puAbove4.creator = 0
+					puAbove4.parents = []gomel.Hash{pu0.hash, pu1.hash, pu2.hash, pu3.hash}
+					puAbove4.hash[0] = 114
+
+					puAbove3 := &preunit{}
+					puAbove3.creator = 1
+					puAbove3.parents = []gomel.Hash{pu1.hash, pu0.hash, pu2.hash}
+					puAbove3.hash[0] = 113
+
+					puAbove2 := &preunit{}
+					puAbove2.creator = 2
+					puAbove2.parents = []gomel.Hash{pu2.hash, pu0.hash}
+					puAbove2.hash[0] = 112
+
+					addFirst = [][]*preunit{[]*preunit{pu0, pu1, pu2, pu3}, []*preunit{puAbove4, puAbove3, puAbove2}}
+				})
+
+				It("Should return exactly two prime units at level 1 (processes 0, 1).", func() {
+					primeUnits := poset.PrimeUnits(1)
+					Expect(primeUnits).NotTo(BeNil())
+
+					Expect(len(primeUnits.Get(0))).To(Equal(1))
+					Expect(primeUnits.Get(0)[0].Level()).To(Equal(1))
+
+					Expect(len(primeUnits.Get(1))).To(Equal(1))
+					Expect(primeUnits.Get(1)[0].Level()).To(Equal(1))
+
+					Expect(len(primeUnits.Get(2))).To(Equal(0))
+					Expect(len(primeUnits.Get(3))).To(Equal(0))
+
+				})
+
+			})
+
+		})
 	})
 
 })
