@@ -27,13 +27,12 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	p.adders[pu.Creator()] <- toAdd
 }
 
-func (p *Poset) checkSignature(pu gomel.Preunit) error {
-	// TODO: actually check
-	return nil
+func (p *Poset) verifySignature(pu gomel.Preunit) bool {
+	return p.pubKeys[pu.Creator()].Verify(pu)
 }
 
 func (p *Poset) precheck(ub *unitBuilt) error {
-	err := p.checkSignature(ub.preunit)
+	err := p.verifySignature(ub.preunit)
 	if err != nil {
 		return err
 	}
