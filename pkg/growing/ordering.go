@@ -2,8 +2,14 @@ package growing
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	utils "gitlab.com/alephledger/consensus-go/pkg/utils"
 )
+
+func commonForkingHeight(u, v *unit) int {
+	if u.forkingHeight < v.forkingHeight {
+		return u.forkingHeight
+	}
+	return v.forkingHeight
+}
 
 func (u *unit) belowWithinProc(v *unit) (bool, error) {
 	if u.creator != v.creator {
@@ -13,9 +19,7 @@ func (u *unit) belowWithinProc(v *unit) (bool, error) {
 		return false, nil
 	}
 
-	// if u is below the pid's forking height then there is a path from v to u
-	commonForkingHeight := utils.Min(v.forkingHeight, u.forkingHeight)
-	if u.height <= commonForkingHeight {
+	if u.height <= commonForkingHeight(u, v) {
 		return true, nil
 	}
 
