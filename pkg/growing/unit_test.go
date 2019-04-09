@@ -143,6 +143,30 @@ var _ = Describe("Units", func() {
 			})
 
 		})
+
+		Describe("Checking Below works properly for forked dealing units.", func() {
+
+			BeforeEach(func() {
+				pu0 := &preunit{}
+				pu0.hash[0] = 1
+				pu0.creator = 0
+				pu1 := &preunit{}
+				pu1.hash[0] = 2
+				pu1.creator = 0
+
+				addFirst = [][]*preunit{[]*preunit{pu0}, []*preunit{pu1}}
+
+			})
+
+			It("Should return false for both below queries.", func() {
+				u0 := units[0][0][0]
+				u1 := units[0][0][1]
+
+				Expect(u0.Below(u1)).To(BeFalse())
+				Expect(u1.Below(u0)).To(BeFalse())
+			})
+
+		})
 	})
 
 })
