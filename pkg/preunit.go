@@ -4,4 +4,5 @@ package gomel
 type Preunit interface {
 	BaseUnit
 	Parents() []Hash
+	SetSignature(Signature)
 }
