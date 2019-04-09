@@ -27,8 +27,11 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	p.adders[pu.Creator()] <- toAdd
 }
 
-func (p *Poset) verifySignature(pu gomel.Preunit) bool {
-	return p.pubKeys[pu.Creator()].Verify(pu)
+func (p *Poset) verifySignature(pu gomel.Preunit) error {
+	if !p.pubKeys[pu.Creator()].Verify(pu) {
+		return gomel.NewDataError("Invalid Signature")
+	}
+	return nil
 }
 
 func (p *Poset) precheck(ub *unitBuilt) error {

@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
@@ -18,6 +19,8 @@ var _ = Describe("Units", func() {
 		addFirst   [][]*preunit
 		units      map[int]map[int][]gomel.Unit
 		wg         sync.WaitGroup
+		pubKeys    []signing.PublicKey
+		privKeys   []signing.PrivateKey
 	)
 
 	AwaitAddUnit := func(pu gomel.Preunit, wg *sync.WaitGroup) {
@@ -45,6 +48,7 @@ var _ = Describe("Units", func() {
 		wg = sync.WaitGroup{}
 		for _, pus := range addFirst {
 			for _, pu := range pus {
+				pu.SetSignature(privKeys[pu.creator].Sign(pu))
 				AwaitAddUnit(pu, &wg)
 			}
 			wg.Wait()
@@ -55,7 +59,12 @@ var _ = Describe("Units", func() {
 
 		BeforeEach(func() {
 			nProcesses = 4
-			poset = NewPoset(nProcesses)
+			pubKeys = make([]signing.PublicKey, nProcesses, nProcesses)
+			privKeys = make([]signing.PrivateKey, nProcesses, nProcesses)
+			for i := 0; i < nProcesses; i++ {
+				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
+			}
+			poset = NewPoset(nProcesses, pubKeys)
 		})
 
 		AfterEach(func() {

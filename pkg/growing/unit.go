@@ -10,6 +10,7 @@ type unit struct {
 	height        int
 	level         int
 	forkingHeight int
+	signature     gomel.Signature
 	hash          gomel.Hash
 	parents       []gomel.Unit
 	floor         [][]*unit
@@ -25,6 +26,11 @@ func newUnit(pu gomel.Preunit) *unit {
 // Returns the creator id of the unit.
 func (u *unit) Creator() int {
 	return u.creator
+}
+
+// Signature returns unit's signature.
+func (u *unit) Signature() gomel.Signature {
+	return u.signature
 }
 
 // Returns the hash of the unit.

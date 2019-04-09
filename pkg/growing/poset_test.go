@@ -7,21 +7,31 @@ import (
 	. "github.com/onsi/gomega"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
 type preunit struct {
-	creator int
-	hash    gomel.Hash
-	parents []gomel.Hash
+	creator   int
+	signature gomel.Signature
+	hash      gomel.Hash
+	parents   []gomel.Hash
 }
 
 func (pu *preunit) Creator() int {
 	return pu.creator
 }
 
+func (pu *preunit) Signature() gomel.Signature {
+	return pu.signature
+}
+
 func (pu *preunit) Hash() *gomel.Hash {
 	return &pu.hash
+}
+
+func (pu *preunit) SetSignature(sig gomel.Signature) {
+	pu.signature = sig
 }
 
 func (pu *preunit) Parents() []gomel.Hash {
@@ -35,6 +45,8 @@ var _ = Describe("Poset", func() {
 		poset      gomel.Poset
 		addFirst   [][]*preunit
 		wg         sync.WaitGroup
+		pubKeys    []signing.PublicKey
+		privKeys   []signing.PrivateKey
 	)
 
 	AwaitAddUnit := func(pu gomel.Preunit, wg *sync.WaitGroup) {
@@ -56,6 +68,7 @@ var _ = Describe("Poset", func() {
 	JustBeforeEach(func() {
 		for _, pus := range addFirst {
 			for _, pu := range pus {
+				pu.SetSignature(privKeys[pu.creator].Sign(pu))
 				AwaitAddUnit(pu, &wg)
 			}
 			wg.Wait()
@@ -66,7 +79,12 @@ var _ = Describe("Poset", func() {
 
 		BeforeEach(func() {
 			nProcesses = 4
-			poset = NewPoset(nProcesses)
+			pubKeys = make([]signing.PublicKey, nProcesses, nProcesses)
+			privKeys = make([]signing.PrivateKey, nProcesses, nProcesses)
+			for i := 0; i < nProcesses; i++ {
+				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
+			}
+			poset = NewPoset(nProcesses, pubKeys)
 		})
 
 		AfterEach(func() {
@@ -93,6 +111,7 @@ var _ = Describe("Poset", func() {
 				addedUnit.creator = addedCreator
 				addedUnit.hash = addedHash
 				addedUnit.parents = parentHashes
+				addedUnit.SetSignature(privKeys[addedUnit.creator].Sign(addedUnit))
 			})
 
 			Context("With no parents", func() {
