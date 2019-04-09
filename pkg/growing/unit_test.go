@@ -171,17 +171,22 @@ var _ = Describe("Units", func() {
 		Describe("Checking Below works properly for two forks going out of one unit.", func() {
 
 			BeforeEach(func() {
-				puBase := &preunit{}
-				puBase.hash[0] = 0
-				pu.creator = 0
+				puBase0 := &preunit{}
+				puBase0.hash[0] = 0
+				puBase0.creator = 0
+				puBase1 := &preunit{}
+				puBase1.hash[0] = 1
+				puBase1.creator = 1
 				pu1 := &preunit{}
-				pu1.hash[0] = 1
+				pu1.hash[0] = 10
 				pu1.creator = 0
+				pu1.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
 				pu2 := &preunit{}
-				pu2.hash[0] = 2
+				pu2.hash[0] = 20
 				pu2.creator = 0
+				pu2.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
 
-				addFirst = [][]*preunit{[]*preunit{puBase}, []*preunit{pu1}, []*preunit{pu2}}
+				addFirst = [][]*preunit{[]*preunit{puBase0, puBase1}, []*preunit{pu1}, []*preunit{pu2}}
 
 			})
 
