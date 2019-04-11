@@ -5,4 +5,5 @@ package gomel
 type SlottedUnits interface {
 	Get(id int) []Unit
 	Set(id int, us []Unit)
+	Iterate(work func([]Unit) bool)
 }

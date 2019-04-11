@@ -40,3 +40,12 @@ func (su *slottedUnits) Set(id int, units []gomel.Unit) {
 	su.contents[id] = make([]gomel.Unit, len(units))
 	copy(su.contents[id], units)
 }
+
+// Iterate runs work on its contents cosecutively, until it returns false or the contents run out.
+func (su *slottedUnits) Iterate(work func(units []gomel.Unit) bool) {
+	for id := 0; id < len(su.mxs); id++ {
+		if !work(su.Get(id)) {
+			return
+		}
+	}
+}
