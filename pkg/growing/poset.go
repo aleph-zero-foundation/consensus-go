@@ -19,7 +19,8 @@ type Poset struct {
 }
 
 // Constructs a poset for the given amount of processes.
-func NewPoset(n int, pubKeys []sign.PublicKey) *Poset {
+func NewPoset(pubKeys []sign.PublicKey) *Poset {
+	n := len(pubKeys)
 	adders := make([]chan *unitBuilt, n, n)
 	for k := range adders {
 		// TODO: magic number

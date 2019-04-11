@@ -84,7 +84,7 @@ var _ = Describe("Poset", func() {
 			for i := 0; i < nProcesses; i++ {
 				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			}
-			poset = NewPoset(nProcesses, pubKeys)
+			poset = NewPoset(pubKeys)
 		})
 
 		AfterEach(func() {

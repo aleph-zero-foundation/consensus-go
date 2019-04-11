@@ -60,6 +60,11 @@ var _ = Describe("Signatures", func() {
 			It("Should return true when checking by hand", func() {
 				Expect(pub.Verify(pu)).To(BeTrue())
 			})
+
+			It("Should return false for forged signature", func() {
+				pu.signature[0]++
+				Expect(pub.Verify(pu)).To(BeFalse())
+			})
 		})
 	})
 
