@@ -1,6 +1,9 @@
 package creating
 
 import (
+	"math/rand"
+	"time"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
@@ -23,7 +26,7 @@ func newDealingUnit(creator int) gomel.Preunit {
 }
 
 func maxLevel(mu gomel.SlottedUnits) int {
-	result := 0
+	result := -1
 	mu.Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
 			if u.Level() > result {
@@ -57,6 +60,25 @@ func getNonVisiblePrimes(pu gomel.SlottedUnits, units []gomel.Unit) []gomel.Unit
 	return result
 }
 
+func maximalIn(u gomel.Unit, units []gomel.Unit) bool {
+	for _, v := range units {
+		if u != v && u.Below(v) {
+			return false
+		}
+	}
+	return true
+}
+
+func filterMaximal(units []gomel.Unit) []gomel.Unit {
+	result := []gomel.Unit{}
+	for _, u := range units {
+		if maximalIn(u, units) {
+			result = append(result, u)
+		}
+	}
+	return result
+}
+
 func getCandidatesAtLevel(candidates gomel.SlottedUnits, parents []gomel.Unit, level int) []gomel.Unit {
 	result := []gomel.Unit{}
 	candidates.Iterate(func(units []gomel.Unit) bool {
@@ -67,7 +89,7 @@ func getCandidatesAtLevel(candidates gomel.SlottedUnits, parents []gomel.Unit, l
 				return true
 			}
 			for _, u := range parents {
-				if possibleCandidate == u {
+				if possibleCandidate.Below(u) {
 					return true
 				}
 			}
@@ -75,11 +97,11 @@ func getCandidatesAtLevel(candidates gomel.SlottedUnits, parents []gomel.Unit, l
 		}
 		return true
 	})
-	// TODO: we probably should randomize here, otherwise we always prefer units created by processes of lower id.
+	result = filterMaximal(result)
 	return result
 }
 
-func filterBelow(unit gomel.Unit, units []gomel.Unit) []gomel.Unit {
+func filterOutBelow(unit gomel.Unit, units []gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
 	for _, u := range units {
 		if !u.Below(unit) {
@@ -91,7 +113,7 @@ func filterBelow(unit gomel.Unit, units []gomel.Unit) []gomel.Unit {
 
 func checkCandidate(c gomel.Unit, nvp []gomel.Unit) bool {
 	for _, p := range nvp {
-		if !p.Below(c) {
+		if p.Below(c) {
 			return true
 		}
 	}
@@ -100,13 +122,16 @@ func checkCandidate(c gomel.Unit, nvp []gomel.Unit) bool {
 
 func pickMoreParents(nvp []gomel.Unit, candidates []gomel.Unit, limit int) []gomel.Unit {
 	result := []gomel.Unit{}
-	for _, c := range candidates {
+	// Try the candidates in a random order.
+	perm := rand.New(rand.NewSource(time.Now().Unix())).Perm(len(candidates))
+	for _, i := range perm {
 		if len(result) == limit {
 			return result
 		}
+		c := candidates[i]
 		if checkCandidate(c, nvp) {
 			result = append(result, c)
-			nvp = filterBelow(c, nvp)
+			nvp = filterOutBelow(c, nvp)
 		}
 	}
 	return result

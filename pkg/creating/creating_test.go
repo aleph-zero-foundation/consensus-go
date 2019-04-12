@@ -59,10 +59,6 @@ type unit struct {
 }
 
 func (u *unit) Below(v gomel.Unit) bool {
-	if u.Height() > v.Height() {
-		return false
-	}
-	height := u.Height()
 	toVisit := []gomel.Unit{v}
 	visiting := map[gomel.Hash]bool{}
 	visiting[*v.Hash()] = true
@@ -73,7 +69,7 @@ func (u *unit) Below(v gomel.Unit) bool {
 			return true
 		}
 		for _, p := range w.Parents() {
-			if p.Height() >= height && !visiting[*p.Hash()] {
+			if !visiting[*p.Hash()] {
 				toVisit = append(toVisit, p)
 				visiting[*p.Hash()] = true
 			}
@@ -203,6 +199,34 @@ var _ = Describe("Creating", func() {
 			It("should fail due to not enough parents for the same creator", func() {
 				_, err := NewUnit(p, 0, nProcesses)
 				Expect(err).To(MatchError("No legal parents for the unit."))
+			})
+
+		})
+
+		Context("that contains two dealing units", func() {
+
+			BeforeEach(func() {
+				for id := 0; id < 2; id++ {
+					someUnit := &unit{
+						creator: id,
+						height:  0,
+						parents: nil,
+						level:   0,
+					}
+					someUnit.hash[0] = byte(id + 1)
+					primeUnitsInPoset = append(primeUnitsInPoset, someUnit)
+					maxUnitsInPoset = append(maxUnitsInPoset, someUnit)
+				}
+			})
+
+			It("should return a unit with these parents", func() {
+				pu, err := NewUnit(p, 0, nProcesses)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pu.Creator()).To(Equal(0))
+				Expect(pu.Parents()).NotTo(BeEmpty())
+				Expect(len(pu.Parents())).To(BeEquivalentTo(2))
+				Expect(pu.Parents()[0][0]).To(BeEquivalentTo(1))
+				Expect(pu.Parents()[1][0]).To(BeEquivalentTo(2))
 			})
 
 		})
