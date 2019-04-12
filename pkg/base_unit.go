@@ -3,6 +3,7 @@ package gomel
 // Common properties of all unit-like entities.
 type BaseUnit interface {
 	Creator() int
+	Signature() Signature
 	Hash() *Hash
 }
 

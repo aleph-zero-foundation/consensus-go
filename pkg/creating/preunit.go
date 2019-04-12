@@ -9,18 +9,20 @@ import (
 )
 
 type preunit struct {
-	creator      int
-	parents      []gomel.Hash
-	hashComputed bool
-	hash         gomel.Hash
+	creator   int
+	parents   []gomel.Hash
+	signature gomel.Signature
+	hash      gomel.Hash
 }
 
 func newPreunit(creator int, parents []gomel.Hash) gomel.Preunit {
-	return &preunit{
-		creator:      creator,
-		parents:      parents,
-		hashComputed: false,
+	pu := &preunit{
+		creator: creator,
+		parents: parents,
 	}
+	pu.computeHash()
+
+	return pu
 }
 
 // Returns the creator of the unit.
@@ -28,18 +30,24 @@ func (pu *preunit) Creator() int {
 	return pu.creator
 }
 
+// Signature returns preunit's signature
+func (pu *preunit) Signature() gomel.Signature {
+	return pu.signature
+}
+
+// Computes and returns the hash of this unit.
+func (pu *preunit) Hash() *gomel.Hash {
+	return &pu.hash
+}
+
 // Returns the hashes of the unit's parents.
 func (pu *preunit) Parents() []gomel.Hash {
 	return pu.parents
 }
 
-// Computes and returns the hash of this unit.
-func (pu *preunit) Hash() *gomel.Hash {
-	if !pu.hashComputed {
-		pu.computeHash()
-		pu.hashComputed = true
-	}
-	return &pu.hash
+// SetSignature sets signature of the preunit
+func (pu *preunit) SetSignature(sig gomel.Signature) {
+	pu.signature = sig
 }
 
 func toBytes(data interface{}) []byte {

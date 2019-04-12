@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	sign "gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 )
 
 // An implementation of Poset that is intended to be used during poset creation.
@@ -14,10 +15,12 @@ type Poset struct {
 	maxUnits   gomel.SlottedUnits
 	adders     []chan *unitBuilt
 	tasks      sync.WaitGroup
+	pubKeys    []sign.PublicKey
 }
 
 // Constructs a poset for the given amount of processes.
-func NewPoset(n int) *Poset {
+func NewPoset(pubKeys []sign.PublicKey) *Poset {
+	n := len(pubKeys)
 	adders := make([]chan *unitBuilt, n, n)
 	for k := range adders {
 		// TODO: magic number
@@ -29,6 +32,7 @@ func NewPoset(n int) *Poset {
 		primeUnits: newLevelMap(n, 10),
 		maxUnits:   newSlottedUnits(n),
 		adders:     adders,
+		pubKeys:    pubKeys,
 	}
 	for k := range adders {
 		go newPoset.adder(adders[k])

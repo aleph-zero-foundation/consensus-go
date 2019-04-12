@@ -42,11 +42,12 @@ func newSlottedUnits(n int) gomel.SlottedUnits {
 }
 
 type unit struct {
-	creator int
-	hash    gomel.Hash
-	height  int
-	parents []gomel.Unit
-	level   int
+	creator   int
+	signature gomel.Signature
+	hash      gomel.Hash
+	height    int
+	parents   []gomel.Unit
+	level     int
 }
 
 func (u1 *unit) Below(u2 gomel.Unit) bool {
@@ -79,6 +80,10 @@ func (u1 *unit) Above(u2 gomel.Unit) bool {
 
 func (u *unit) Creator() int {
 	return u.creator
+}
+
+func (u *unit) Signature() gomel.Signature {
+	return u.signature
 }
 
 func (u *unit) Hash() *gomel.Hash {
