@@ -144,11 +144,6 @@ func (p *Poset) computeForkingHeight(u *unit) {
 			u.forkingHeight = up.forkingHeight
 		} else {
 			u.forkingHeight = up.height
-			for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
-				for w := v.(*unit); w != up; w = w.Parents()[0].(*unit) {
-					w.forkingHeight = up.height
-				}
-			}
 		}
 	}
 }

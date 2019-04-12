@@ -4,6 +4,13 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
+func commonForkingHeight(u, v *unit) int {
+	if u.forkingHeight < v.forkingHeight {
+		return u.forkingHeight
+	}
+	return v.forkingHeight
+}
+
 func (u *unit) belowWithinProc(v *unit) (bool, error) {
 	if u.creator != v.creator {
 		return false, gomel.NewDataError("Different creators")
@@ -12,8 +19,7 @@ func (u *unit) belowWithinProc(v *unit) (bool, error) {
 		return false, nil
 	}
 
-	// if u is below the pid's forking height then there is a path from v to u
-	if u.height <= v.forkingHeight {
+	if u.height <= commonForkingHeight(u, v) {
 		return true, nil
 	}
 

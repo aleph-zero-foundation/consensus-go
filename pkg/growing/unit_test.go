@@ -176,6 +176,43 @@ var _ = Describe("Units", func() {
 			})
 
 		})
+
+		Describe("Checking Below works properly for two forks going out of one unit.", func() {
+
+			BeforeEach(func() {
+				puBase0 := &preunit{}
+				puBase0.hash[0] = 0
+				puBase0.creator = 0
+				puBase1 := &preunit{}
+				puBase1.hash[0] = 1
+				puBase1.creator = 1
+				pu1 := &preunit{}
+				pu1.hash[0] = 10
+				pu1.creator = 0
+				pu1.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
+				pu2 := &preunit{}
+				pu2.hash[0] = 20
+				pu2.creator = 0
+				pu2.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
+
+				addFirst = [][]*preunit{[]*preunit{puBase0, puBase1}, []*preunit{pu1}, []*preunit{pu2}}
+
+			})
+
+			It("Should correctly answer all pairs of below queries.", func() {
+				uBase := units[0][0][0]
+				u1 := units[0][1][0]
+				u2 := units[0][1][1]
+
+				Expect(uBase.Below(u1)).To(BeTrue())
+				Expect(uBase.Below(u2)).To(BeTrue())
+				Expect(u1.Below(uBase)).To(BeFalse())
+				Expect(u2.Below(uBase)).To(BeFalse())
+				Expect(u1.Below(u2)).To(BeFalse())
+				Expect(u2.Below(u1)).To(BeFalse())
+			})
+
+		})
 	})
 
 })
