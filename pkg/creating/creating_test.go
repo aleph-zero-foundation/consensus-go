@@ -35,6 +35,14 @@ func (su *slottedUnits) Set(id int, units []gomel.Unit) {
 	su.contents[id] = units
 }
 
+func (su *slottedUnits) Iterate(work func([]gomel.Unit) bool) {
+	for _, units := range su.contents {
+		if !work(units) {
+			return
+		}
+	}
+}
+
 func newSlottedUnits(n int) gomel.SlottedUnits {
 	return &slottedUnits{
 		contents: make([][]gomel.Unit, n),
@@ -50,22 +58,18 @@ type unit struct {
 	level     int
 }
 
-func (u1 *unit) Below(u2 gomel.Unit) bool {
-	if u1.Height() > u2.Height() {
-		return false
-	}
-	height := u1.Height()
-	toVisit := []gomel.Unit{u2}
-	var visiting map[gomel.Hash]bool
-	visiting[*u2.Hash()] = true
+func (u *unit) Below(v gomel.Unit) bool {
+	toVisit := []gomel.Unit{v}
+	visiting := map[gomel.Hash]bool{}
+	visiting[*v.Hash()] = true
 	for len(toVisit) > 0 {
-		u := toVisit[0]
+		w := toVisit[0]
 		toVisit = toVisit[1:]
-		if u == u1 {
+		if w == u {
 			return true
 		}
-		for _, p := range u.Parents() {
-			if p.Height() >= height && !visiting[*p.Hash()] {
+		for _, p := range w.Parents() {
+			if !visiting[*p.Hash()] {
 				toVisit = append(toVisit, p)
 				visiting[*p.Hash()] = true
 			}
@@ -74,8 +78,8 @@ func (u1 *unit) Below(u2 gomel.Unit) bool {
 	return false
 }
 
-func (u1 *unit) Above(u2 gomel.Unit) bool {
-	return u2.Below(u1)
+func (u *unit) Above(v gomel.Unit) bool {
+	return v.Below(u)
 }
 
 func (u *unit) Creator() int {
@@ -156,14 +160,14 @@ var _ = Describe("Creating", func() {
 		Context("that is empty", func() {
 
 			It("should return a dealing unit", func() {
-				pu, err := NewUnit(p, 0)
+				pu, err := NewUnit(p, 0, nProcesses)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pu.Creator()).To(Equal(0))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
 
 			It("should return a dealing unit", func() {
-				pu, err := NewUnit(p, 3)
+				pu, err := NewUnit(p, 3, nProcesses)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pu.Creator()).To(Equal(3))
 				Expect(pu.Parents()).To(BeEmpty())
@@ -186,15 +190,43 @@ var _ = Describe("Creating", func() {
 			})
 
 			It("should return a dealing unit for a different creator", func() {
-				pu, err := NewUnit(p, 3)
+				pu, err := NewUnit(p, 3, nProcesses)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pu.Creator()).To(Equal(3))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
 
 			It("should fail due to not enough parents for the same creator", func() {
-				_, err := NewUnit(p, 0)
-				Expect(err).To(HaveOccurred())
+				_, err := NewUnit(p, 0, nProcesses)
+				Expect(err).To(MatchError("No legal parents for the unit."))
+			})
+
+		})
+
+		Context("that contains two dealing units", func() {
+
+			BeforeEach(func() {
+				for id := 0; id < 2; id++ {
+					someUnit := &unit{
+						creator: id,
+						height:  0,
+						parents: nil,
+						level:   0,
+					}
+					someUnit.hash[0] = byte(id + 1)
+					primeUnitsInPoset = append(primeUnitsInPoset, someUnit)
+					maxUnitsInPoset = append(maxUnitsInPoset, someUnit)
+				}
+			})
+
+			It("should return a unit with these parents", func() {
+				pu, err := NewUnit(p, 0, nProcesses)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pu.Creator()).To(Equal(0))
+				Expect(pu.Parents()).NotTo(BeEmpty())
+				Expect(len(pu.Parents())).To(BeEquivalentTo(2))
+				Expect(pu.Parents()[0][0]).To(BeEquivalentTo(1))
+				Expect(pu.Parents()[1][0]).To(BeEquivalentTo(2))
 			})
 
 		})
@@ -216,12 +248,12 @@ var _ = Describe("Creating", func() {
 			})
 
 			It("should return a unit with some parents", func() {
-				pu, err := NewUnit(p, 0)
+				pu, err := NewUnit(p, 0, nProcesses)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pu.Creator()).To(Equal(0))
 				Expect(pu.Parents()).NotTo(BeEmpty())
 				Expect(len(pu.Parents()) > 1).To(BeTrue())
-				Expect(pu.Parents()[0][0]).To(Equal(1))
+				Expect(pu.Parents()[0][0]).To(BeEquivalentTo(1))
 			})
 
 		})
