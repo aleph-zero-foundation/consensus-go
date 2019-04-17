@@ -11,30 +11,30 @@ import (
 	. "gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
-type preunit struct {
+type preunitMock struct {
 	creator   int
 	signature gomel.Signature
 	hash      gomel.Hash
 	parents   []gomel.Hash
 }
 
-func (pu *preunit) Creator() int {
+func (pu *preunitMock) Creator() int {
 	return pu.creator
 }
 
-func (pu *preunit) Signature() gomel.Signature {
+func (pu *preunitMock) Signature() gomel.Signature {
 	return pu.signature
 }
 
-func (pu *preunit) Hash() *gomel.Hash {
+func (pu *preunitMock) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
-func (pu *preunit) SetSignature(sig gomel.Signature) {
+func (pu *preunitMock) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-func (pu *preunit) Parents() []gomel.Hash {
+func (pu *preunitMock) Parents() []gomel.Hash {
 	return pu.parents
 }
 
@@ -42,8 +42,8 @@ var _ = Describe("Poset", func() {
 
 	var (
 		nProcesses int
-		poset      gomel.Poset
-		addFirst   [][]*preunit
+		poset      *Poset
+		addFirst   [][]*preunitMock
 		wg         sync.WaitGroup
 		pubKeys    []signing.PublicKey
 		privKeys   []signing.PrivateKey
@@ -88,20 +88,20 @@ var _ = Describe("Poset", func() {
 		})
 
 		AfterEach(func() {
-			poset.(*Poset).Stop()
+			poset.Stop()
 		})
 
 		Describe("Adding units", func() {
 
 			var (
-				addedUnit    *preunit
+				addedUnit    *preunitMock
 				addedCreator int
 				addedHash    gomel.Hash
 				parentHashes []gomel.Hash
 			)
 
 			BeforeEach(func() {
-				addedUnit = &preunit{}
+				addedUnit = &preunitMock{}
 				addedCreator = 0
 				addedHash = gomel.Hash{}
 				parentHashes = []gomel.Hash{}
@@ -157,9 +157,9 @@ var _ = Describe("Poset", func() {
 				Context("When the poset contains another parentless unit for this process", func() {
 
 					BeforeEach(func() {
-						pu := &preunit{}
+						pu := &preunitMock{}
 						pu.hash[0] = 1
-						addFirst = [][]*preunit{[]*preunit{pu}}
+						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
 					It("Should be added as a second dealing unit", func(done Done) {
@@ -203,9 +203,9 @@ var _ = Describe("Poset", func() {
 				Context("When the poset contains the parent", func() {
 
 					BeforeEach(func() {
-						pu := &preunit{}
+						pu := &preunitMock{}
 						pu.hash = parentHashes[0]
-						addFirst = [][]*preunit{[]*preunit{pu}}
+						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
 					It("Should fail because of too few parents", func(done Done) {
@@ -248,9 +248,9 @@ var _ = Describe("Poset", func() {
 				Context("When the poset contains one of the parents", func() {
 
 					BeforeEach(func() {
-						pu := &preunit{}
+						pu := &preunitMock{}
 						pu.hash = parentHashes[0]
-						addFirst = [][]*preunit{[]*preunit{pu}}
+						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
 					It("Should fail because of lack of parents", func(done Done) {
@@ -268,12 +268,12 @@ var _ = Describe("Poset", func() {
 				Context("When the poset contains all the parents", func() {
 
 					BeforeEach(func() {
-						pu1 := &preunit{}
+						pu1 := &preunitMock{}
 						pu1.hash = parentHashes[0]
-						pu2 := &preunit{}
+						pu2 := &preunitMock{}
 						pu2.hash = parentHashes[1]
 						pu2.creator = 1
-						addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
+						addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
 					})
 
 					It("Should add the unit successfully", func(done Done) {
@@ -341,10 +341,10 @@ var _ = Describe("Poset", func() {
 			Context("When the poset already contains one unit", func() {
 
 				BeforeEach(func() {
-					pu := &preunit{}
+					pu := &preunitMock{}
 					pu.hash[0] = 1
 					pu.creator = 0
-					addFirst = [][]*preunit{[]*preunit{pu}}
+					addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 				})
 
 				It("Should return it as the only maximal unit", func() {
@@ -372,13 +372,13 @@ var _ = Describe("Poset", func() {
 			Context("When the poset contains two units created by different processes", func() {
 
 				BeforeEach(func() {
-					pu1 := &preunit{}
+					pu1 := &preunitMock{}
 					pu1.hash[0] = 1
 					pu1.creator = 0
-					pu2 := &preunit{}
+					pu2 := &preunitMock{}
 					pu2.hash[0] = 2
 					pu2.creator = 1
-					addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
+					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
 				})
 
 				It("Should return both of them as maximal units", func() {
@@ -410,13 +410,13 @@ var _ = Describe("Poset", func() {
 			Context("When the poset contains two units created by the same process", func() {
 
 				BeforeEach(func() {
-					pu1 := &preunit{}
+					pu1 := &preunitMock{}
 					pu1.hash[0] = 1
 					pu1.creator = 0
-					pu2 := &preunit{}
+					pu2 := &preunitMock{}
 					pu2.hash[0] = 2
 					pu2.creator = 0
-					addFirst = [][]*preunit{[]*preunit{pu1, pu2}}
+					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
 				})
 
 				It("Should return both of them as maximal units", func() {
@@ -446,17 +446,17 @@ var _ = Describe("Poset", func() {
 			Context("When the poset contains a unit above another one", func() {
 
 				BeforeEach(func() {
-					pu1 := &preunit{}
+					pu1 := &preunitMock{}
 					pu1.hash[0] = 1
 					pu1.creator = 0
-					pu2 := &preunit{}
+					pu2 := &preunitMock{}
 					pu2.hash[0] = 2
 					pu2.creator = 1
-					pu11 := &preunit{}
+					pu11 := &preunitMock{}
 					pu11.hash[0] = 11
 					pu11.creator = 0
 					pu11.parents = []gomel.Hash{pu1.hash, pu2.hash}
-					addFirst = [][]*preunit{[]*preunit{pu1, pu2}, []*preunit{pu11}}
+					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}, []*preunitMock{pu11}}
 				})
 
 				It("Should return it and one of its parents as maximal units", func() {
@@ -497,35 +497,35 @@ var _ = Describe("Poset", func() {
 			Context("When the poset contains dealing units and 3 additional units", func() {
 
 				BeforeEach(func() {
-					pu0 := &preunit{}
+					pu0 := &preunitMock{}
 					pu0.hash[0] = 1
 					pu0.creator = 0
-					pu1 := &preunit{}
+					pu1 := &preunitMock{}
 					pu1.hash[0] = 2
 					pu1.creator = 1
-					pu2 := &preunit{}
+					pu2 := &preunitMock{}
 					pu2.hash[0] = 3
 					pu2.creator = 2
-					pu3 := &preunit{}
+					pu3 := &preunitMock{}
 					pu3.hash[0] = 4
 					pu3.creator = 3
 
-					puAbove4 := &preunit{}
+					puAbove4 := &preunitMock{}
 					puAbove4.creator = 0
 					puAbove4.parents = []gomel.Hash{pu0.hash, pu1.hash, pu2.hash, pu3.hash}
 					puAbove4.hash[0] = 114
 
-					puAbove3 := &preunit{}
+					puAbove3 := &preunitMock{}
 					puAbove3.creator = 1
 					puAbove3.parents = []gomel.Hash{pu1.hash, pu0.hash, pu2.hash}
 					puAbove3.hash[0] = 113
 
-					puAbove2 := &preunit{}
+					puAbove2 := &preunitMock{}
 					puAbove2.creator = 2
 					puAbove2.parents = []gomel.Hash{pu2.hash, pu0.hash}
 					puAbove2.hash[0] = 112
 
-					addFirst = [][]*preunit{[]*preunit{pu0, pu1, pu2, pu3}, []*preunit{puAbove4, puAbove3, puAbove2}}
+					addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1, pu2, pu3}, []*preunitMock{puAbove4, puAbove3, puAbove2}}
 				})
 
 				It("Should return exactly two prime units at level 1 (processes 0, 1).", func() {
@@ -546,6 +546,214 @@ var _ = Describe("Poset", func() {
 			})
 
 		})
-	})
 
+		Describe("check compliance", func() {
+
+			var (
+				pu1, pu2, pu3 preunitMock
+				validUnit     preunitMock
+			)
+
+			BeforeEach(func() {
+				pu1.creator = 1
+				pu1.hash[0] = 1
+				pu1.parents = nil
+
+				pu2.creator = 2
+				pu2.hash[0] = 2
+				pu2.parents = nil
+
+				pu3.creator = 3
+				pu3.hash[0] = 3
+				pu3.parents = nil
+
+				validUnit = pu1
+				validUnit.hash[0] = 4
+				validUnit.parents = []gomel.Hash{pu1.hash, pu2.hash, pu3.hash}
+
+				addFirst = [][]*preunitMock{[]*preunitMock{&pu1, &pu2, &pu3}}
+			})
+
+			JustBeforeEach(func() {
+				(&validUnit).SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
+			})
+
+			Describe("check valid unit", func() {
+
+				It("should confirm that a unit is valid", func(done Done) {
+					poset.AddUnit(&validUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						defer GinkgoRecover()
+						Expect(err).NotTo(HaveOccurred())
+						close(done)
+					})
+				})
+			})
+
+			Describe("invalid units", func() {
+				var (
+					invalidUnit preunitMock
+				)
+
+				JustBeforeEach(func() {
+					(&invalidUnit).SetSignature(privKeys[invalidUnit.creator].Sign(&invalidUnit))
+				})
+
+				Describe("violated expand primes", func() {
+					BeforeEach(func() {
+						pu4 := preunitMock{}
+						pu4.creator = pu1.creator
+						pu4.hash[0] = 4
+						pu4.parents = []gomel.Hash{pu1.hash, pu2.hash, pu3.hash}
+
+						pu5 := preunitMock{}
+						pu5.creator = pu2.creator
+						pu5.hash[0] = 5
+						pu5.parents = []gomel.Hash{pu2.hash, pu1.hash, pu3.hash}
+
+						addFirst = append(addFirst, []*preunitMock{&pu4, &pu5})
+
+						invalidUnit = preunitMock{}
+						invalidUnit.creator = 0
+						invalidUnit.hash[0] = 6
+						invalidUnit.parents = []gomel.Hash{pu4.hash, pu5.hash}
+					})
+
+					It("should reject a unit", func(done Done) {
+						poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							defer GinkgoRecover()
+							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
+							close(done)
+						})
+					})
+				})
+
+				Describe("violated self forking evidence", func() {
+					BeforeEach(func() {
+						// forking dealing unit
+						pu3.creator = pu1.creator
+
+						// evidence of the first fork
+						pu4 := preunitMock{}
+						pu4.creator = pu1.creator
+						pu4.hash[0] = 4
+						pu4.parents = []gomel.Hash{pu1.hash, pu2.hash}
+
+						// evidence of the second fork
+						pu5 := preunitMock{}
+						pu5.creator = pu2.creator
+						pu5.hash[0] = 5
+						pu5.parents = []gomel.Hash{pu2.hash, pu3.hash}
+
+						addFirst = append(addFirst, []*preunitMock{&pu4, &pu5})
+
+						// self forking evidence - merge of two previous forks
+						invalidUnit.creator = pu1.creator
+						invalidUnit.hash[0] = 6
+						invalidUnit.parents = []gomel.Hash{pu4.hash, pu5.hash}
+					})
+
+					FIt("should reject a unit", func(done Done) {
+						poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							defer GinkgoRecover()
+							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
+							close(done)
+						})
+					})
+				})
+
+				Describe("violated forker muting rule", func() {
+					var muted *preunitMock
+
+					BeforeEach(func() {
+						pForker1 := preunitMock{}
+						pForker1.creator = 0
+						pForker1.hash[0] = 0
+
+						pForker2 := preunitMock{}
+						pForker2.creator = 0
+						pForker2.hash[0] = 1
+
+						pu1 := preunitMock{}
+						pu1.creator = 1
+						pu1.hash[0] = 2
+
+						pu2 := preunitMock{}
+						pu2.creator = 1
+						pu2.hash[0] = 3
+						pu2.parents = []gomel.Hash{pu1.hash, pForker1.hash}
+
+						pu3 := preunitMock{}
+						pu3.creator = 1
+						pu3.hash[0] = 4
+						pu3.parents = []gomel.Hash{pu2.hash, pForker2.hash}
+
+						addFirst = [][]*preunitMock{
+							[]*preunitMock{&pForker1, &pForker2, &pu1},
+							[]*preunitMock{&pu2},
+							[]*preunitMock{&pu3}}
+
+						muted = &preunitMock{}
+						muted.creator = 0
+						muted.hash[0] = 5
+						muted.parents = []gomel.Hash{pForker1.hash, pu3.hash}
+						muted.SetSignature(privKeys[muted.creator].Sign(muted))
+					})
+
+					It("should reject a unit", func(done Done) {
+						poset.AddUnit(muted, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							defer GinkgoRecover()
+							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
+							close(done)
+						})
+					})
+				})
+
+				Describe("violated checkParentCorrectness", func() {
+
+					Describe("invalid self predecessor", func() {
+						BeforeEach(func() {
+							invalidUnit = preunitMock{}
+							invalidUnit.creator = 0
+							invalidUnit.hash[0] = 4
+							invalidUnit.parents = []gomel.Hash{pu1.hash, pu2.hash}
+						})
+
+						It("should reject a unit", func(done Done) {
+							poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+								defer GinkgoRecover()
+								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
+								close(done)
+							})
+						})
+					})
+
+					Describe("parents are not created by pairwise different process", func() {
+
+						BeforeEach(func() {
+
+							pu4 := preunitMock{}
+							pu4.creator = pu2.creator
+							pu4.hash[0] = 4
+							pu4.parents = []gomel.Hash{pu2.hash, pu1.hash}
+
+							addFirst = append(addFirst, []*preunitMock{&pu4})
+
+							invalidUnit = preunitMock{}
+							invalidUnit.creator = pu3.creator
+							invalidUnit.hash[0] = 5
+							invalidUnit.parents = []gomel.Hash{pu3.hash, pu2.hash, pu4.hash}
+						})
+
+						It("should reject a unit", func(done Done) {
+							poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+								defer GinkgoRecover()
+								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
+								close(done)
+							})
+						})
+					})
+				})
+			})
+		})
+	})
 })
