@@ -15,6 +15,7 @@ type Unit interface {
 	Below(Unit) bool
 	// Above is a counterpart to Below.
 	Above(Unit) bool
+	HasForkingEvidence(creator int) bool
 }
 
 // Predecessor of a unit is one of its parents, the one created by the same process as the given unit.
@@ -33,4 +34,8 @@ func Prime(u Unit) bool {
 		return true
 	}
 	return u.Level() > p.Level()
+}
+
+func Dealing(u Unit) bool {
+	return len(u.Parents()) == 0
 }

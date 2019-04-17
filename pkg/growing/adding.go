@@ -86,11 +86,6 @@ func (p *Poset) computeLevel(ub *unitBuilt) {
 
 }
 
-func (p *Poset) checkCompliance(u gomel.Unit) error {
-	// TODO: actually check, also should be separate file, cause it'll be long
-	return nil
-}
-
 func (p *Poset) addPrime(u gomel.Unit) {
 	if u.Level() > p.primeUnits.getHeight() {
 		p.primeUnits.extendBy(10)

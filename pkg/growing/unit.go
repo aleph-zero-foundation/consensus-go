@@ -53,6 +53,19 @@ func (u *unit) Level() int {
 	return u.level
 }
 
+func (u *unit) HasForkingEvidence(creator int) bool {
+	if creator == u.creator {
+		var floor []*unit
+		for _, parent := range u.parents {
+			actualParent := parent.(*unit)
+			floor = append(floor, actualParent.floor[creator]...)
+		}
+		return len(combineFloorsPerProc(floor)) > 1
+	} else {
+		return len(u.floor[creator]) > 1
+	}
+}
+
 func (u *unit) computeHeight() {
 	if len(u.parents) == 0 {
 		u.height = 0
