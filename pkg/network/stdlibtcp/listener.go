@@ -3,45 +3,63 @@ package stdlibgo
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+
+	"golang.org/x/sync/semaphore"
 )
 
 // listener object is responsible for listening for incoming synchronizations and handling them
 type listener struct {
-	channels []network.Channel
-	poset    gomel.Poset
-	postAdd  func()
-	exitChan chan struct{}
-	channels []network.Channel
+	channels        []network.Channel
+	poset           gomel.Poset
+	postAdd         func()
+	exitChan        chan struct{}
+	listenSemaphore *semaphore.Weighted
 }
 
-func newListener(poset gomel.Poset, postAdd func(), chans []network.Channels) *listener {
+func newListener(poset gomel.Poset, postAdd func(), chans []network.Channels, maxSyncs int) network.Listener {
 	return &listener{
-		channels: chans,
-		poset:    poset,
-		postAdd:  postAdd,
-		exitChan: make(chan struct{}),
+		channels:        chans,
+		poset:           poset,
+		postAdd:         postAdd,
+		exitChan:        make(chan struct{}),
+		listenSemaphore: semaphore.NewWeighted(maxSyncs),
 	}
 }
 
 func (l *listener) Start() {
-	go l.main()
+	for _, channel := range l.channels {
+		go l.sync(channel)
+	}
 }
 
 func (l *listener) Stop() {
 	close(l.exitChan)
 }
 
-func (l *listener) ListenChannels() {
+func (l *listener) ListenChannels() []network.Channel {
 	return l.channels
 }
 
-func (l *listener) main() {
+func (l *listener) sync(channel network.Channel) {
 	for {
 		select {
 		case <-l.exitChan:
 			return
 		default:
-			//do the job
+			poset_info := channel.recvPosetInfo()
+			if !channel.tryAcquire() {
+				// channel already in use
+				return
+			}
+			defer channel.release()
+
+			if !s.listenSemaphore.TryAcquire(1) {
+				// too many incomming syncs
+				return
+			}
+			defer s.syncSem.Release(1)
+
+			// TODO do the job
 		}
 	}
 }

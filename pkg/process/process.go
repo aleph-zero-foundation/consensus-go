@@ -12,16 +12,18 @@ type Process struct {
 	pid        int
 	poset      gomel.Poset
 	creator    *creator
+	chanServ   network.ChannelServer
 	syncer     network.Syncer
 	listener   network.Listener
 }
 
-func newProcess(n, pid int, poset gomel.Poset, creator *creator, syncer network.Syncer, listener network.Listener) *Process {
+func newProcess(n, pid int, poset gomel.Poset, creator *creator, chanServ network.ChannelServer, syncer network.Syncer, listener network.Listener) *Process {
 	newProc := &Process{
 		nProcesses: n,
 		pid:        pid,
 		poset:      poset,
 		creator:    creator,
+		chanServ:   chanServ,
 		syncer:     syncer,
 		listener:   listener,
 	}
@@ -31,6 +33,8 @@ func newProcess(n, pid int, poset gomel.Poset, creator *creator, syncer network.
 func (p *Process) run() {
 	p.creator.start()
 	defer p.creator.stop()
+	p.chanServ.Start()
+	defer p.chanServ.Stop()
 	p.listener.Start()
 	defer p.listener.Stop()
 	p.syncer.Start()
