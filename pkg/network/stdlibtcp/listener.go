@@ -46,18 +46,17 @@ func (l *listener) sync(channel network.Channel) {
 		case <-l.exitChan:
 			return
 		default:
-			poset_info := channel.recvPosetInfo()
 			if !channel.tryAcquire() {
 				// channel already in use
 				return
 			}
 			defer channel.release()
 
-			if !s.listenSemaphore.TryAcquire(1) {
+			if !l.listenSemaphore.TryAcquire(1) {
 				// too many incomming syncs
 				return
 			}
-			defer s.syncSem.Release(1)
+			defer l.syncSem.Release(1)
 
 			// TODO do the job
 		}
