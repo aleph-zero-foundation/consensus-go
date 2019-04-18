@@ -213,7 +213,7 @@ var _ = Describe("Poset", func() {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewDataError("Not enough parents")))
+							Expect(err).To(MatchError(gomel.NewComplianceError("Not enough parents")))
 							close(done)
 						})
 					})
@@ -551,7 +551,6 @@ var _ = Describe("Poset", func() {
 
 			var (
 				pu1, pu2, pu3 preunitMock
-				validUnit     preunitMock
 			)
 
 			BeforeEach(func() {
@@ -567,20 +566,17 @@ var _ = Describe("Poset", func() {
 				pu3.hash[0] = 3
 				pu3.parents = nil
 
-				validUnit = pu1
-				validUnit.hash[0] = 4
-				validUnit.parents = []gomel.Hash{pu1.hash, pu2.hash, pu3.hash}
-
 				addFirst = [][]*preunitMock{[]*preunitMock{&pu1, &pu2, &pu3}}
-			})
-
-			JustBeforeEach(func() {
-				(&validUnit).SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
 			})
 
 			Describe("check valid unit", func() {
 
 				It("should confirm that a unit is valid", func(done Done) {
+					validUnit := pu1
+					validUnit.hash[0] = 4
+					validUnit.parents = []gomel.Hash{pu1.hash, pu2.hash, pu3.hash}
+					(&validUnit).SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
+
 					poset.AddUnit(&validUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 						defer GinkgoRecover()
 						Expect(err).NotTo(HaveOccurred())
@@ -652,7 +648,7 @@ var _ = Describe("Poset", func() {
 						invalidUnit.parents = []gomel.Hash{pu4.hash, pu5.hash}
 					})
 
-					FIt("should reject a unit", func(done Done) {
+					It("should reject a unit", func(done Done) {
 						poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
@@ -708,9 +704,10 @@ var _ = Describe("Poset", func() {
 					})
 				})
 
-				Describe("violated checkParentCorrectness", func() {
+				Describe("violated precheck", func() {
 
 					Describe("invalid self predecessor", func() {
+
 						BeforeEach(func() {
 							invalidUnit = preunitMock{}
 							invalidUnit.creator = 0
@@ -726,6 +723,47 @@ var _ = Describe("Poset", func() {
 							})
 						})
 					})
+
+					Describe("invalid number of parents", func() {
+
+						BeforeEach(func() {
+							invalidUnit = preunitMock{}
+							invalidUnit.creator = 1
+							invalidUnit.hash[0] = 4
+							invalidUnit.parents = []gomel.Hash{pu1.hash}
+						})
+
+						It("should reject a unit", func(done Done) {
+
+							poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+								defer GinkgoRecover()
+								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
+								close(done)
+							})
+						})
+					})
+
+					Describe("first parent is not self-predecessor", func() {
+
+						BeforeEach(func() {
+							invalidUnit = preunitMock{}
+							invalidUnit.creator = 1
+							invalidUnit.hash[0] = 4
+							invalidUnit.parents = []gomel.Hash{pu2.hash, pu1.hash}
+						})
+
+						It("should reject a unit", func(done Done) {
+
+							poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+								defer GinkgoRecover()
+								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
+								close(done)
+							})
+						})
+					})
+				})
+
+				Describe("violated checkParentsDiversity", func() {
 
 					Describe("parents are not created by pairwise different process", func() {
 

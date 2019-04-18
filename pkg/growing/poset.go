@@ -66,3 +66,16 @@ func (p *Poset) Stop() {
 	}
 	p.tasks.Wait()
 }
+
+func (p *Poset) getPrimeUnitsAtLevelBelowUnit(level int, u gomel.Unit) []gomel.Unit {
+	var result []gomel.Unit
+	primes := p.PrimeUnits(level)
+	for process := 0; process < p.nProcesses; process++ {
+		for _, prime := range primes.Get(process) {
+			if prime.Below(u) {
+				result = append(result, prime)
+			}
+		}
+	}
+	return result
+}

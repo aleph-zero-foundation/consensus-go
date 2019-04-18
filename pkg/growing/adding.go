@@ -34,23 +34,6 @@ func (p *Poset) verifySignature(pu gomel.Preunit) error {
 	return nil
 }
 
-func (p *Poset) precheck(ub *unitBuilt) error {
-	err := p.verifySignature(ub.preunit)
-	if err != nil {
-		return err
-	}
-	if len(ub.result.Parents()) == 0 {
-		return nil
-	}
-	if len(ub.result.Parents()) < 2 {
-		return gomel.NewDataError("Not enough parents")
-	}
-	if ub.result.Parents()[0].Creator() != ub.preunit.Creator() {
-		return gomel.NewComplianceError("Not descendant of first parent")
-	}
-	return nil
-}
-
 func (p *Poset) computeLevel(ub *unitBuilt) {
 	if len(ub.result.parents) == 0 {
 		ub.result.setLevel(0)
@@ -148,7 +131,7 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	if err != nil {
 		return err
 	}
-	err = p.precheck(ub)
+	err = p.checkBasicParentsCorrectness(ub.result)
 	if err != nil {
 		return err
 	}

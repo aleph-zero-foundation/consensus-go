@@ -54,6 +54,8 @@ func (u *unit) Level() int {
 }
 
 func (u *unit) HasForkingEvidence(creator int) bool {
+	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
+	// check whether collection of these maximal units has a single maximal element
 	if creator == u.creator {
 		var floor []*unit
 		for _, parent := range u.parents {

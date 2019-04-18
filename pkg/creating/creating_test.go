@@ -54,12 +54,13 @@ func newSlottedUnits(n int) gomel.SlottedUnits {
 }
 
 type unit struct {
-	creator   int
-	signature gomel.Signature
-	hash      gomel.Hash
-	height    int
-	parents   []gomel.Unit
-	level     int
+	creator            int
+	signature          gomel.Signature
+	hash               gomel.Hash
+	height             int
+	parents            []gomel.Unit
+	level              int
+	hasForkingEvidence map[int]bool
 }
 
 func (u *unit) Below(v gomel.Unit) bool {
@@ -108,6 +109,10 @@ func (u *unit) Parents() []gomel.Unit {
 
 func (u *unit) Level() int {
 	return u.level
+}
+
+func (u *unit) HasForkingEvidence(creator int) bool {
+	return u.hasForkingEvidence[creator]
 }
 
 var _ = Describe("Creating", func() {
