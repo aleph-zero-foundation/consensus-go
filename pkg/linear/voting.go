@@ -121,3 +121,50 @@ func superMajority(p *growing.Poset, votes []int) int {
 	}
 	return -1;
 }
+
+// Decides if uc is popular (i.e. it can be used as a timing unit)
+// returns 0,1 (decision) or -1 (decision cannot be inferred yet)
+func decideUnitIsPopular(p *growing.Poset, uc gomel.Unit) int {
+	//TODO: memo
+	VOTING_LEVEL, PI_DELTA_LEVEL := 3, 12; // TODO: Read this from config
+
+	// At levels +2, +3,..., +(VOTING_LEVEL-1) it might be possible to prove that the consensus will be "1"
+	// This is being tried in the loop below -- as Lemma 2.3.(1) in "Lewelewele" allows us to do:
+	// -- whenever there is unit U at one of this levels that proves popularity of U_c, we can conclude the decision is "1"
+	for level := uc.Level() + 2; level < uc.Level() + VOTING_LEVEL; level++ {
+		decision := 0;
+		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
+			for _, v := range primes {
+				if provesPopularity(p, uc, v) == 1 {
+					decision = 1;
+					return false;
+				}
+			}
+			return true;
+		});
+		if decision == 1 {
+			return decision;
+		}
+	}
+	
+	// At level +VOTING_LEVEL+1, +VOTING_LEVEL+2, ..., +PI_DELTA_LEVEL-1 we use fast consensus algorithm
+	for level := uc.Level() + VOTING_LEVEL; level < uc.Level() + PI_DELTA_LEVEL; level++ {
+		decision := 0;
+		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
+			for _, v := range primes {
+				if computeVote(p, v, uc) == 1 {
+					decision = 1;
+					return false;
+				}
+			}
+			return true;
+		});
+		if decision == 1 {
+			return decision;
+		}
+	}
+
+	// at levels >= +PI_DELTA_LEVEL we use pi-delta consensus
+	// TODO: implement PI_DELTA
+	return -1;
+}
