@@ -43,3 +43,32 @@ func provesPopularity (p *growing.Poset, uc gomel.Unit, v gomel.Unit) int {
 	} 
 	return 0;
 }
+
+// Vote of u on popularity of uc as described in fast consenssus algorithm
+// returns 0 or 1
+func defaultVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) int {
+	VOTING_LEVEL := 3; // TODO: Read this constant from config
+	r := u.Level() - uc.Level() + VOTING_LEVEL;
+	if r <= 0 {
+		panic("Default vote is asked on too low unit level.");
+	} 
+	if r == 1 {
+		return 1;
+	}
+	if r == 2 {
+		return 0;
+	}
+	return simpleCoin(uc, u.Level());
+}
+
+// Deterministic function of a unit and level
+// It is implemented as level-th bit of unit hash
+// return 1 or 0
+func simpleCoin(u gomel.Unit, level int) int {
+	index := level % (8 * len(u.Hash()));
+	byteIndex, bitIndex := index / 8, index % 8;
+	if u.Hash()[byteIndex] & (1<<uint(bitIndex)) > 0 {
+		return 1;
+	} 
+	return 0;
+}
