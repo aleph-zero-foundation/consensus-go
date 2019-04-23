@@ -72,3 +72,52 @@ func simpleCoin(u gomel.Unit, level int) int {
 	} 
 	return 0;
 }
+
+// Determine the vote of unit u on popularity of uc.
+// If the first round of voting is at level L then:
+// - at lvl L the vote is just whether u proves popularity of uc (i.e. whether uc <<< u)
+// - at lvl (L+1) the vote is the supermajority of votes of prime ancestors (at level L)
+// - at lvl (L+2) the vote is the supermajority of votes (replaced by default_vote if no supermajority) of prime ancestors (at level L+1)
+// - etc.
+// returns 0,1 or -1 (bot)
+func computeVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) int {
+	VOTING_LEVEL := 3 // TODO: Read this constant from config
+	r := u.Level() - uc.Level() - VOTING_LEVEL
+	if r < 0 {
+		panic("Vote is asked on too low unit level.");
+	}
+	if r == 0 {
+		return provesPopularity(p, u, uc); 
+	} else {
+		votesLevelBelow := []int{};
+		primesLevelBelow := p.PrimeUnits(u.Level() - 1);
+		primesLevelBelow.Iterate(func(primes []gomel.Unit) bool {
+			for _, v := range primes {
+				voteV := computeVote(p, v, uc);
+				if voteV == -1 {
+					voteV = defaultVote(p, v, uc);
+				}
+				votesLevelBelow = append(votesLevelBelow, voteV);
+			}
+			return true;
+		});
+		return superMajority(p, votesLevelBelow);
+	}
+}
+
+// Checks if votes for 0 or 1 makes quorum.
+// returns 0 or 1 when there is supermajority 
+// -1 (bot) otherwise 
+func superMajority(p *growing.Poset, votes []int) int {
+	cnt := make(map[int]int);
+	for _, vote := range votes {
+		cnt[vote]++;
+	}
+	if p.IsQuorum(cnt[0]) {
+		return 0;
+	}
+	if p.IsQuorum(cnt[1]) {
+		return 1;
+	}
+	return -1;
+}
