@@ -72,11 +72,11 @@ func (p *Poset) computeLevel(ub *unitBuilt) {
 			}
 			nSeen += pidSeen
 			// optimization to not loop over all processes if quorum cannot be reached anyway
-			if !p.isQuorum(nSeen + p.nProcesses - 1 - pid) {
+			if !p.IsQuorum(nSeen + p.nProcesses - 1 - pid) {
 				break
 			}
 		}
-		if p.isQuorum(nSeen) {
+		if p.IsQuorum(nSeen) {
 			ub.result.setLevel(maxLevelParents + 1)
 		} else {
 			ub.result.setLevel(maxLevelParents)

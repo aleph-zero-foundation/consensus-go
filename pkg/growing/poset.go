@@ -41,7 +41,7 @@ func NewPoset(pubKeys []sign.PublicKey) *Poset {
 	return newPoset
 }
 
-func (p *Poset) isQuorum(number int) bool {
+func (p *Poset) IsQuorum(number int) bool {
 	return 3*number >= 2*p.nProcesses
 }
 
