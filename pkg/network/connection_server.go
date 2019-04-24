@@ -9,7 +9,7 @@ type ConnectionServer interface {
 
 	// Dial starts a service that periodically tries to establish a new connection to
 	// a remote peer
-	Dial(policy func() int) chan Connection
+	Dial() chan Connection
 
 	// DialPolicy returns a function that governs the choice of peers
 	DialPolicy() func() int

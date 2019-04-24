@@ -3,6 +3,7 @@ package process
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 // Process is a top level object responsible for creating new units and
@@ -12,17 +13,17 @@ type Process struct {
 	pid        int
 	poset      gomel.Poset
 	creator    *creator
-	chanServ   network.ConnectionServer
-	syncer     network.Syncer
+	connServ   network.ConnectionServer
+	syncer     sync.Syncer
 }
 
-func NewProcess(n, pid int, poset gomel.Poset, creator *creator, connServ network.ConnectionServer, syncer network.Syncer) *Process {
+func NewProcess(n, pid int, poset gomel.Poset, creator *creator, connServ network.ConnectionServer, syncer sync.Syncer) *Process {
 	newProc := &Process{
 		nProcesses: n,
 		pid:        pid,
 		poset:      poset,
 		creator:    creator,
-		chanServ:   chanServ,
+		connServ:   connServ,
 		syncer:     syncer,
 	}
 	return newProc
@@ -31,9 +32,9 @@ func NewProcess(n, pid int, poset gomel.Poset, creator *creator, connServ networ
 func (p *Process) Run() {
 	p.creator.start()
 	defer p.creator.stop()
-	p.chanServ.Listen()
-	p.chanServ.Dial()
-	defer p.chanServ.Stop()
+	p.connServ.Listen()
+	p.connServ.Dial()
+	defer p.connServ.Stop()
 	p.syncer.Start()
 	defer p.syncer.Stop()
 
