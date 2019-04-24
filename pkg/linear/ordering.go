@@ -35,7 +35,8 @@ func posetMaxLevel(p gomel.Poset) int {
 	return maxLevel
 }
 
-// AttemptTimingDecision picks as many timing units as possible and returns the level up to which the timing units are picked.
+// AttemptTimingDecision picks as many timing units as possible
+// and returns the first level without timing unit picked yet
 func (o *Ordering) AttemptTimingDecision() int {
 	maxLevel := posetMaxLevel(o.poset)
 	for level := len(o.timingUnits); level <= maxLevel; level++ {
@@ -46,7 +47,7 @@ func (o *Ordering) AttemptTimingDecision() int {
 			return level
 		}
 	}
-	return 0
+	return len(o.timingUnits)
 }
 
 // Tries to pick a timing unit on a given level
