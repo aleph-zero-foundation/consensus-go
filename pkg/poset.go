@@ -5,4 +5,5 @@ type Poset interface {
 	AddUnit(pu Preunit, callback func(Preunit, Unit, error))
 	PrimeUnits(level int) SlottedUnits
 	MaximalUnitsPerProcess() SlottedUnits
+	IsQuorum(number int) bool
 }

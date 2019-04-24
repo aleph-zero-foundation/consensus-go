@@ -2,7 +2,6 @@ package linear
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	growing "gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
 type vote int
@@ -19,7 +18,7 @@ const (
 // (2) level(w) <= level(v) - 2 or level(w) = level(v) - 1 and w is a prime unit
 // It might be further optimized by using floors, but at this point gomel.Unit
 // doesn't define floors
-func provesPopularity(p *growing.Poset, uc gomel.Unit, v gomel.Unit) bool {
+func provesPopularity(p gomel.Poset, uc gomel.Unit, v gomel.Unit) bool {
 	//TODO: memo
 	if uc.Level() >= v.Level() || !uc.Below(v) {
 		return false
@@ -90,7 +89,7 @@ func simpleCoin(u gomel.Unit, level int) int {
 // - at lvl (L+1) the vote is the supermajority of votes of prime ancestors (at level L)
 // - at lvl (L+2) the vote is the supermajority of votes (replaced by default_vote if no supermajority) of prime ancestors (at level L+1)
 // - etc.
-func computeVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) vote {
+func computeVote(p gomel.Poset, u gomel.Unit, uc gomel.Unit) vote {
 	VOTING_LEVEL := 3 // TODO: Read this constant from config
 	r := u.Level() - uc.Level() - VOTING_LEVEL
 	if r < 0 {
@@ -121,7 +120,7 @@ func computeVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) vote {
 
 // Checks if votes for POPULAR or UNPOPULAR makes a quorum.
 // returns the vote making a quorum or UNDECIDED if there is no quorum
-func superMajority(p *growing.Poset, votes []vote) vote {
+func superMajority(p gomel.Poset, votes []vote) vote {
 	cnt := make(map[vote]int)
 	for _, vote := range votes {
 		cnt[vote]++
@@ -137,7 +136,7 @@ func superMajority(p *growing.Poset, votes []vote) vote {
 
 // Decides if uc is popular (i.e. it can be used as a timing unit)
 // Returns vote
-func decideUnitIsPopular(p *growing.Poset, uc gomel.Unit) vote {
+func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 	//TODO: memo
 	VOTING_LEVEL, PI_DELTA_LEVEL := 3, 12 // TODO: Read this from config
 
