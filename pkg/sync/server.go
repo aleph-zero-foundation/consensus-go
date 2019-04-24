@@ -16,40 +16,31 @@ type Server struct {
 	poset        gomel.Poset
 	inConnChan   chan network.Connection
 	outConnChan  chan network.Connection
-	inSyncProto  In
-	outSyncProto In
-	inSem        chan struct{}
-	outSem       chan struct{}
+	inSyncProto  Protocol
+	outSyncProto Protocol
 	exitChan     chan struct{}
 }
 
 // NewServer needs a local poset and sources of in/out connections.
-func NewServer(poset gomel.Poset, inConnChan, outConnChan chan network.Connection, inSyncProto In, outSyncProto Out) *Server {
-	cs := &Server{
+func NewServer(poset gomel.Poset, inConnChan, outConnChan chan network.Connection, inSyncProto Protocol, outSyncProto Protocol) *Server {
+	return &Server{
 		poset:        poset,
 		inConnChan:   inConnChan,
 		outConnChan:  outConnChan,
 		inSyncProto:  inSyncProto,
 		outSyncProto: outSyncProto,
-		inSem:        make(chan struct{}, N_INSYNC),
-		outSem:       make(chan struct{}, N_OUTSYNC),
 		exitChan:     make(chan struct{}),
 	}
-
-	cs.inSyncProto.OnDone(func() {
-		<-cs.inSem
-	})
-	cs.outSyncProto.OnDone(func() {
-		<-cs.outSem
-	})
-
-	return cs
 }
 
 // Start starts server
 func (s *Server) Start() {
-	go s.syncDispatcher(s.inConnChan, s.inSem, s.inSyncProto.Run)
-	go s.syncDispatcher(s.outConnChan, s.outSem, s.outSyncProto.Run)
+	for i := 0; i < N_INSYNC; i++ {
+		go s.syncDispatcher(s.inConnChan, s.inSyncProto.Run)
+	}
+	for i := 0; i < N_OUTSYNC; i++ {
+		go s.syncDispatcher(s.outConnChan, s.outSyncProto.Run)
+	}
 }
 
 // Stop stops server
@@ -57,15 +48,14 @@ func (s *Server) Stop() {
 	close(s.exitChan)
 }
 
-func (s *Server) syncDispatcher(connChan chan network.Connection, sem chan struct{}, syncProto func(poset gomel.Poset, conn network.Connection)) {
+func (s *Server) syncDispatcher(connChan chan network.Connection, syncProto func(poset gomel.Poset, conn network.Connection)) {
 	for {
 		select {
 		case <-s.exitChan:
 			// clean things up
 			return
 		case conn := <-connChan:
-			sem <- struct{}{}
-			go syncProto(s.poset, conn)
+			syncProto(s.poset, conn)
 		}
 	}
 }

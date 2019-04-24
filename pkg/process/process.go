@@ -6,6 +6,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
+// NOTE this is a simple wrapper showcasing how to use creator, network.ConnectionServer,
+// and sync.Server together. It will be removed in the future and its code moved to cmd.
 // Process is a top level object responsible for creating new units and
 // exchanging them with other Processes
 type Process struct {
@@ -17,14 +19,11 @@ type Process struct {
 	server     sync.Server
 }
 
-func NewProcess(n, pid int, poset gomel.Poset, creator *creator, connServ network.ConnectionServer, server sync.Server) *Process {
+func NewProcess(creator *creator, connServ network.ConnectionServer, server sync.Server) *Process {
 	newProc := &Process{
-		nProcesses: n,
-		pid:        pid,
-		poset:      poset,
-		creator:    creator,
-		connServ:   connServ,
-		server:     server,
+		creator:  creator,
+		connServ: connServ,
+		server:   server,
 	}
 	return newProc
 }
