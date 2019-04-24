@@ -24,23 +24,23 @@ func provesPopularity(p gomel.Poset, uc gomel.Unit, v gomel.Unit) bool {
 		return false
 	}
 	// simple BFS from v
-	seenProcesses := make(map[int]int)
-	seenUnits := make(map[*gomel.Unit]int)
-	seenUnits[&v] = 1
-	queue := []*gomel.Unit{&v}
+	seenProcesses := make(map[int]bool)
+	seenUnits := make(map[gomel.Unit]bool)
+	seenUnits[v] = true
+	queue := []gomel.Unit{v}
 	for len(queue) > 0 {
-		w := *queue[0]
+		w := queue[0]
 		queue = queue[1:]
 		if w.Level() <= v.Level()-2 || (w.Level() == v.Level()-1 && gomel.Prime(w)) {
-			seenProcesses[w.Creator()] = 1
+			seenProcesses[w.Creator()] = true
 			if p.IsQuorum(len(seenProcesses)) {
 				return true
 			}
 		}
 		for _, wParent := range w.Parents() {
-			if _, exists := seenUnits[&wParent]; !exists && uc.Below(wParent) {
-				queue = append(queue, &wParent)
-				seenUnits[&wParent] = 1
+			if _, exists := seenUnits[wParent]; !exists && uc.Below(wParent) {
+				queue = append(queue, wParent)
+				seenUnits[wParent] = true
 			}
 		}
 	}
