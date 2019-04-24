@@ -25,8 +25,8 @@ func provesPopularity(p gomel.Poset, uc gomel.Unit, v gomel.Unit) bool {
 	}
 	// simple BFS from v
 	seenProcesses := make(map[int]bool)
-	seenUnits := make(map[gomel.Unit]bool)
-	seenUnits[v] = true
+	seenUnits := make(map[gomel.Hash]bool)
+	seenUnits[*v.Hash()] = true
 	queue := []gomel.Unit{v}
 	for len(queue) > 0 {
 		w := queue[0]
@@ -38,9 +38,9 @@ func provesPopularity(p gomel.Poset, uc gomel.Unit, v gomel.Unit) bool {
 			}
 		}
 		for _, wParent := range w.Parents() {
-			if _, exists := seenUnits[wParent]; !exists && uc.Below(wParent) {
+			if _, exists := seenUnits[*wParent.Hash()]; !exists && uc.Below(wParent) {
 				queue = append(queue, wParent)
-				seenUnits[wParent] = true
+				seenUnits[*wParent.Hash()] = true
 			}
 		}
 	}
