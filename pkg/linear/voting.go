@@ -5,17 +5,24 @@ import (
 	growing "gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
+type vote int
+
+const (
+	POPULAR vote = iota
+	UNPOPULAR
+	UNDECIDED
+)
+
 // Checks whether v proves that uc is pupular on v's level.
 // Which means that at least 2/3 * N processes created a unit w such that:
 // (1) uc <= w <= v
 // (2) level(w) <= level(v) - 2 or level(w) = level(v) - 1 and w is a prime unit
-// returns 0 or 1
 // It might be further optimized by using floors, but at this point gomel.Unit
 // doesn't define floors
-func provesPopularity(p *growing.Poset, uc gomel.Unit, v gomel.Unit) int {
+func provesPopularity(p *growing.Poset, uc gomel.Unit, v gomel.Unit) bool {
 	//TODO: memo
 	if uc.Level() >= v.Level() || !uc.Below(v) {
-		return 0
+		return false
 	}
 	// simple BFS from v
 	seenProcesses := make(map[int]int)
@@ -28,7 +35,7 @@ func provesPopularity(p *growing.Poset, uc gomel.Unit, v gomel.Unit) int {
 		if w.Level() <= v.Level()-2 || (w.Level() == v.Level()-1 && gomel.Prime(w)) {
 			seenProcesses[w.Creator()] = 1
 			if p.IsQuorum(len(seenProcesses)) {
-				return 1
+				return true
 			}
 		}
 		for _, wParent := range w.Parents() {
@@ -39,26 +46,30 @@ func provesPopularity(p *growing.Poset, uc gomel.Unit, v gomel.Unit) int {
 		}
 	}
 	if p.IsQuorum(len(seenProcesses)) {
-		return 1
+		return true
 	}
-	return 0
+	return false
 }
 
 // Vote of u on popularity of uc as described in fast consenssus algorithm
-// returns 0 or 1
-func defaultVote(u gomel.Unit, uc gomel.Unit) int {
+func defaultVote(u gomel.Unit, uc gomel.Unit) vote {
 	VOTING_LEVEL := 3 // TODO: Read this constant from config
 	r := u.Level() - uc.Level() + VOTING_LEVEL
 	if r <= 0 {
 		panic("Default vote is asked on too low unit level.")
 	}
 	if r == 1 {
-		return 1
+		return POPULAR
 	}
 	if r == 2 {
-		return 0
+		return UNPOPULAR
 	}
-	return simpleCoin(uc, u.Level())
+	coinToss := simpleCoin(uc, u.Level())
+	if coinToss == 0 {
+		return POPULAR
+	} else {
+		return UNPOPULAR
+	}
 }
 
 // Deterministic function of a unit and level
@@ -79,17 +90,20 @@ func simpleCoin(u gomel.Unit, level int) int {
 // - at lvl (L+1) the vote is the supermajority of votes of prime ancestors (at level L)
 // - at lvl (L+2) the vote is the supermajority of votes (replaced by default_vote if no supermajority) of prime ancestors (at level L+1)
 // - etc.
-// returns 0,1 or -1 (bot)
-func computeVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) int {
+func computeVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) vote {
 	VOTING_LEVEL := 3 // TODO: Read this constant from config
 	r := u.Level() - uc.Level() - VOTING_LEVEL
 	if r < 0 {
 		panic("Vote is asked on too low unit level.")
 	}
 	if r == 0 {
-		return provesPopularity(p, u, uc)
+		if provesPopularity(p, u, uc) {
+			return POPULAR
+		} else {
+			return UNPOPULAR
+		}
 	} else {
-		votesLevelBelow := []int{}
+		votesLevelBelow := []vote{}
 		primesLevelBelow := p.PrimeUnits(u.Level() - 1)
 		primesLevelBelow.Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
@@ -105,26 +119,25 @@ func computeVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) int {
 	}
 }
 
-// Checks if votes for 0 or 1 makes quorum.
-// returns 0 or 1 when there is supermajority
-// -1 (bot) otherwise
-func superMajority(p *growing.Poset, votes []int) int {
-	cnt := make(map[int]int)
+// Checks if votes for POPULAR or UNPOPULAR makes a quorum.
+// returns the vote making a quorum or UNDECIDED if there is no quorum
+func superMajority(p *growing.Poset, votes []vote) vote {
+	cnt := make(map[vote]int)
 	for _, vote := range votes {
 		cnt[vote]++
 	}
-	if p.IsQuorum(cnt[0]) {
-		return 0
+	if p.IsQuorum(cnt[POPULAR]) {
+		return POPULAR
 	}
-	if p.IsQuorum(cnt[1]) {
-		return 1
+	if p.IsQuorum(cnt[UNPOPULAR]) {
+		return UNPOPULAR
 	}
-	return -1
+	return UNDECIDED
 }
 
 // Decides if uc is popular (i.e. it can be used as a timing unit)
-// returns 0,1 (decision) or -1 (decision cannot be inferred yet)
-func decideUnitIsPopular(p *growing.Poset, uc gomel.Unit) int {
+// Returns vote
+func decideUnitIsPopular(p *growing.Poset, uc gomel.Unit) vote {
 	//TODO: memo
 	VOTING_LEVEL, PI_DELTA_LEVEL := 3, 12 // TODO: Read this from config
 
@@ -132,38 +145,38 @@ func decideUnitIsPopular(p *growing.Poset, uc gomel.Unit) int {
 	// This is being tried in the loop below -- as Lemma 2.3.(1) in "Lewelewele" allows us to do:
 	// -- whenever there is unit U at one of this levels that proves popularity of U_c, we can conclude the decision is "1"
 	for level := uc.Level() + 2; level < uc.Level()+VOTING_LEVEL; level++ {
-		decision := 0
+		decision := UNDECIDED
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				if provesPopularity(p, uc, v) == 1 {
-					decision = 1
+				if provesPopularity(p, uc, v) {
+					decision = POPULAR
 					return false
 				}
 			}
 			return true
 		})
-		if decision == 1 {
+		if decision == POPULAR {
 			return decision
 		}
 	}
 
 	// At level +VOTING_LEVEL+1, +VOTING_LEVEL+2, ..., +PI_DELTA_LEVEL-1 we use fast consensus algorithm
 	for level := uc.Level() + VOTING_LEVEL; level < uc.Level()+PI_DELTA_LEVEL; level++ {
-		decision := 0
+		decision := UNDECIDED
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				if computeVote(p, v, uc) == 1 {
-					decision = 1
+				if computeVote(p, v, uc) == POPULAR {
+					decision = POPULAR
 					return false
 				}
 			}
 			return true
 		})
-		if decision == 1 {
+		if decision == POPULAR {
 			return decision
 		}
 	}
 	// at levels >= +PI_DELTA_LEVEL we use pi-delta consensus
 	// TODO: implement PI_DELTA
-	return -1
+	return UNDECIDED
 }
