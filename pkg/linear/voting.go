@@ -160,18 +160,18 @@ func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 	}
 
 	// At level +VOTING_LEVEL+1, +VOTING_LEVEL+2, ..., +PI_DELTA_LEVEL-1 we use fast consensus algorithm
-	for level := uc.Level() + VOTING_LEVEL; level < uc.Level()+PI_DELTA_LEVEL; level++ {
+	for level := uc.Level() + VOTING_LEVEL + 1; level < uc.Level()+PI_DELTA_LEVEL; level++ {
 		decision := UNDECIDED
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				if computeVote(p, v, uc) == POPULAR {
-					decision = POPULAR
+				if computeVote(p, v, uc) == defaultVote(v, uc) {
+					decision = defaultVote(v, uc)
 					return false
 				}
 			}
 			return true
 		})
-		if decision == POPULAR {
+		if decision != UNDECIDED {
 			return decision
 		}
 	}
