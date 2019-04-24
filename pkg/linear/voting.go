@@ -46,7 +46,7 @@ func provesPopularity(p *growing.Poset, uc gomel.Unit, v gomel.Unit) int {
 
 // Vote of u on popularity of uc as described in fast consenssus algorithm
 // returns 0 or 1
-func defaultVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) int {
+func defaultVote(u gomel.Unit, uc gomel.Unit) int {
 	VOTING_LEVEL := 3 // TODO: Read this constant from config
 	r := u.Level() - uc.Level() + VOTING_LEVEL
 	if r <= 0 {
@@ -95,7 +95,7 @@ func computeVote(p *growing.Poset, u gomel.Unit, uc gomel.Unit) int {
 			for _, v := range primes {
 				voteV := computeVote(p, v, uc)
 				if voteV == -1 {
-					voteV = defaultVote(p, v, uc)
+					voteV = defaultVote(v, uc)
 				}
 				votesLevelBelow = append(votesLevelBelow, voteV)
 			}
