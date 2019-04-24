@@ -1,9 +1,13 @@
 package gomel
 
-// A poset, as defined by the Aleph whitepaper.
+// Poset is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Poset interface {
-	AddUnit(pu Preunit, callback func(Preunit, Unit, error))
-	PrimeUnits(level int) SlottedUnits
+	// AddUnits tries to transform a preunit to a corresponding unit and add it to the poset.
+	// After that, the generic callback function is called on that preunit, unit and potential error raised during these operations.
+	AddUnit(Preunit, func(Preunit, Unit, error))
+	// PrimeUnits returns all prime units on a given level of the poset.
+	PrimeUnits(int) SlottedUnits
+	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
 	IsQuorum(number int) bool
 }

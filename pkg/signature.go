@@ -1,4 +1,4 @@
 package gomel
 
-// Signature of a unit
+// Signature of a unit.
 type Signature []byte
