@@ -23,7 +23,7 @@ func NewOrdering(poset gomel.Poset, crp gomel.CommonRandomPermutation) gomel.Lin
 
 // Returns maximal level of a unit in a poset
 func posetMaxLevel(p gomel.Poset) int {
-	maxLevel := 0
+	maxLevel := -1
 	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			if v.Level() > maxLevel {
