@@ -55,7 +55,8 @@ func defaultVote(u gomel.Unit, uc gomel.Unit) vote {
 	VOTING_LEVEL := 3 // TODO: Read this constant from config
 	r := u.Level() - uc.Level() + VOTING_LEVEL
 	if r <= 0 {
-		panic("Default vote is asked on too low unit level.")
+		// "Default vote is asked on too low unit level."
+		return UNDECIDED
 	}
 	if r == 1 {
 		return POPULAR
@@ -93,7 +94,8 @@ func computeVote(p gomel.Poset, u gomel.Unit, uc gomel.Unit) vote {
 	VOTING_LEVEL := 3 // TODO: Read this constant from config
 	r := u.Level() - uc.Level() - VOTING_LEVEL
 	if r < 0 {
-		panic("Vote is asked on too low unit level.")
+		//"Vote is asked on too low unit level."
+		return UNDECIDED
 	}
 	if r == 0 {
 		if provesPopularity(p, u, uc) {
