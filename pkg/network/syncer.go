@@ -53,6 +53,7 @@ func (s *Syncer) Start() {
 	go syncDispatcher(s.outConnChan, s.outSem, s.outSyncProto.Run)
 }
 
+// Stop stops syncer
 func (s *Syncer) Stop() {
 	close(s.exitChan)
 }

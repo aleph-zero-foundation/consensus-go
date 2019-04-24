@@ -5,13 +5,13 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-// In represents protocol for incomming synchronization
+// In represents a protocol for incomming synchronization
 type In interface {
 	Run(gomel.Poset, network.Connection)
 	OnDone(func())
 }
 
-// Out represents protocol for outgoing synchronization
+// Out represents a protocol for outgoing synchronization
 type Out interface {
 	Run(gomel.Poset, network.Connection)
 	OnDone(func())
