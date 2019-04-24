@@ -14,17 +14,17 @@ type Process struct {
 	poset      gomel.Poset
 	creator    *creator
 	connServ   network.ConnectionServer
-	syncer     sync.Syncer
+	server     sync.Server
 }
 
-func NewProcess(n, pid int, poset gomel.Poset, creator *creator, connServ network.ConnectionServer, syncer sync.Syncer) *Process {
+func NewProcess(n, pid int, poset gomel.Poset, creator *creator, connServ network.ConnectionServer, server sync.Server) *Process {
 	newProc := &Process{
 		nProcesses: n,
 		pid:        pid,
 		poset:      poset,
 		creator:    creator,
 		connServ:   connServ,
-		syncer:     syncer,
+		server:     server,
 	}
 	return newProc
 }
@@ -35,8 +35,8 @@ func (p *Process) Run() {
 	p.connServ.Listen()
 	p.connServ.Dial()
 	defer p.connServ.Stop()
-	p.syncer.Start()
-	defer p.syncer.Stop()
+	p.server.Start()
+	defer p.server.Stop()
 
 	<-p.creator.done
 }

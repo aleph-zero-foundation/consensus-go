@@ -11,9 +11,6 @@ type ConnectionServer interface {
 	// a remote peer
 	Dial() chan Connection
 
-	// DialPolicy returns a function that governs the choice of peers
-	DialPolicy() func() int
-
 	// Stop halts both Listen and Dial services.
 	Stop()
 }

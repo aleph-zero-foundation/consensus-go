@@ -10,9 +10,9 @@ const (
 	N_OUTSYNC = 10
 )
 
-// Syncer retrieves ready-to-use connections and dispatches workers that use
+// Server retrieves ready-to-use connections and dispatches workers that use
 // the connections for running in/out synchronizations according to a sync-protocol
-type Syncer struct {
+type Server struct {
 	poset        gomel.Poset
 	inConnChan   chan network.Connection
 	outConnChan  chan network.Connection
@@ -23,9 +23,9 @@ type Syncer struct {
 	exitChan     chan struct{}
 }
 
-// NewSyncer needs a local poset and sources of in/out connections.
-func NewSyncer(poset gomel.Poset, inConnChan, outConnChan chan network.Connection, inSyncProto In, outSyncProto Out) *Syncer {
-	cs := &Syncer{
+// NewServer needs a local poset and sources of in/out connections.
+func NewServer(poset gomel.Poset, inConnChan, outConnChan chan network.Connection, inSyncProto In, outSyncProto Out) *Server {
+	cs := &Server{
 		poset:        poset,
 		inConnChan:   inConnChan,
 		outConnChan:  outConnChan,
@@ -46,18 +46,18 @@ func NewSyncer(poset gomel.Poset, inConnChan, outConnChan chan network.Connectio
 	return cs
 }
 
-// Start starts syncer
-func (s *Syncer) Start() {
+// Start starts server
+func (s *Server) Start() {
 	go s.syncDispatcher(s.inConnChan, s.inSem, s.inSyncProto.Run)
 	go s.syncDispatcher(s.outConnChan, s.outSem, s.outSyncProto.Run)
 }
 
-// Stop stops syncer
-func (s *Syncer) Stop() {
+// Stop stops server
+func (s *Server) Stop() {
 	close(s.exitChan)
 }
 
-func (s *Syncer) syncDispatcher(connChan chan network.Connection, sem chan struct{}, syncProto func(poset gomel.Poset, conn network.Connection)) {
+func (s *Server) syncDispatcher(connChan chan network.Connection, sem chan struct{}, syncProto func(poset gomel.Poset, conn network.Connection)) {
 	for {
 		select {
 		case <-s.exitChan:
