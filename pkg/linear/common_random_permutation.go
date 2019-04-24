@@ -1,4 +1,4 @@
-package gomel
+package linear
 
 // Random permutation shared between processes
 type CommonRandomPermutation interface {

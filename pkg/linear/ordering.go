@@ -9,11 +9,11 @@ import (
 type Ordering struct {
 	poset       gomel.Poset
 	timingUnits []gomel.Unit
-	crp         gomel.CommonRandomPermutation
+	crp         CommonRandomPermutation
 }
 
 // NewOrdering creates a ordering wrapper for the given poset.
-func NewOrdering(poset gomel.Poset, crp gomel.CommonRandomPermutation) gomel.LinearOrdering {
+func NewOrdering(poset gomel.Poset, crp CommonRandomPermutation) gomel.LinearOrdering {
 	return &Ordering{
 		poset:       poset,
 		timingUnits: []gomel.Unit{},

@@ -66,7 +66,7 @@ func newSlottedUnits(n int) gomel.SlottedUnits {
 var _ = Describe("Ordering", func() {
 	var (
 		poset    gomel.Poset
-		crp      gomel.CommonRandomPermutation
+		crp      CommonRandomPermutation
 		ordering gomel.LinearOrdering
 	)
 	BeforeEach(func() {
