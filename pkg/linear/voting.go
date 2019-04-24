@@ -107,7 +107,7 @@ func computeVote(p gomel.Poset, u gomel.Unit, uc gomel.Unit) vote {
 		primesLevelBelow.Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
 				voteV := computeVote(p, v, uc)
-				if voteV == -1 {
+				if voteV == UNDECIDED {
 					voteV = defaultVote(v, uc)
 				}
 				votesLevelBelow = append(votesLevelBelow, voteV)
