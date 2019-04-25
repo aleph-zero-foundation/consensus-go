@@ -98,7 +98,7 @@ func computeVote(p gomel.Poset, u gomel.Unit, uc gomel.Unit) vote {
 		return UNDECIDED
 	}
 	if r == 0 {
-		if provesPopularity(p, u, uc) {
+		if provesPopularity(p, uc, u) {
 			return POPULAR
 		} else {
 			return UNPOPULAR
