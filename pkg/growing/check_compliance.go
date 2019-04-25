@@ -71,7 +71,6 @@ func (p *Poset) checkBasicParentsCorrectness(u gomel.Unit) error {
 }
 
 // Check if all parents are created by pairwise different processes.
-// This method assumes that parents of a given unit are already added to the poset.
 func checkParentsDiversity(u gomel.Unit) error {
 
 	processFilter := map[int]bool{}
