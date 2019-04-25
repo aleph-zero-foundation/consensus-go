@@ -14,11 +14,7 @@ import (
 func (p *Poset) checkCompliance(u gomel.Unit) error {
 	if gomel.Dealing(u) {
 		// This is a dealing unit, and its signature is correct --> we only need to check whether threshold coin is included
-		if err := checkThresholdCoinIncluded(u); err != nil {
-			return err
-		} else {
-			return nil
-		}
+		return checkThresholdCoinIncluded(u)
 	}
 	// 1. Parents are created by pairwise different processes.
 	if err := checkParentsDiversity(u); err != nil {
