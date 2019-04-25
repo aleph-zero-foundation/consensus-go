@@ -21,25 +21,16 @@ func (units *unitBag) add(u *unit) {
 	units.contents[*u.Hash()] = u
 }
 
-func (units *unitBag) get(h gomel.Hash) (*unit, bool) {
+func (units *unitBag) get(hashes []gomel.Hash) []gomel.Unit {
 	units.RLock()
 	defer units.RUnlock()
-	u, ok := units.contents[h]
-	return u, ok
-}
-
-func (units *unitBag) dehashParents(ub *unitBuilt) error {
-	units.RLock()
-	defer units.RUnlock()
-	if _, ok := units.get(*ub.preunit.Hash()); ok {
-		return &gomel.DuplicateUnit{}
-	}
-	for _, h := range ub.preunit.Parents() {
-		parent, ok := units.get(h)
-		if !ok {
-			return gomel.NewDataError("Missing parent")
+	result := make([]gomel.Unit, len(hashes))
+	for i, h := range hashes {
+		if u, ok := units.contents[h]; ok {
+			result[i] = u
+		} else {
+			result[i] = nil
 		}
-		ub.result.addParent(parent)
 	}
-	return nil
+	return result
 }

@@ -57,8 +57,22 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 	p.maxUnits.Set(creator, newMaxByCreator)
 }
 
+func (p *Poset) dehashParents(ub *unitBuilt) error {
+	if u := p.units.get([]gomel.Hash{*ub.preunit.Hash()}); u[0] != nil {
+		return &gomel.DuplicateUnit{}
+	}
+	possibleParents := p.units.get(ub.preunit.Parents())
+	for _, parent := range possibleParents {
+		if parent == nil {
+			return gomel.NewDataError("Missing parent")
+		}
+		ub.result.addParent(parent)
+	}
+	return nil
+}
+
 func (p *Poset) prepareUnit(ub *unitBuilt) error {
-	err := p.units.dehashParents(ub)
+	err := p.dehashParents(ub)
 	if err != nil {
 		return err
 	}
