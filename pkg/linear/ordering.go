@@ -5,14 +5,14 @@ import (
 	"sort"
 )
 
-// Ordering is an implementation of LinearOrdering intended to work with a growing Poset.
+// Ordering is an implementation of LinearOrdering interface.
 type Ordering struct {
 	poset       gomel.Poset
 	timingUnits []gomel.Unit
 	crp         CommonRandomPermutation
 }
 
-// NewOrdering creates a ordering wrapper for the given poset.
+// NewOrdering creates an Ordering wrapper around a given poset.
 func NewOrdering(poset gomel.Poset, crp CommonRandomPermutation) gomel.LinearOrdering {
 	return &Ordering{
 		poset:       poset,
@@ -21,7 +21,7 @@ func NewOrdering(poset gomel.Poset, crp CommonRandomPermutation) gomel.LinearOrd
 	}
 }
 
-// Returns maximal level of a unit in a poset
+// posetMaxLevel returns the maximal level of a unit in a poset.
 func posetMaxLevel(p gomel.Poset) int {
 	maxLevel := -1
 	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
@@ -35,8 +35,7 @@ func posetMaxLevel(p gomel.Poset) int {
 	return maxLevel
 }
 
-// AttemptTimingDecision picks as many timing units as possible
-// and returns the first level without timing unit picked yet
+// AttemptTimingDecision chooses as many new timing units as possible and returns the level of the highest timing unit chosen so far.
 func (o *Ordering) AttemptTimingDecision() int {
 	maxLevel := posetMaxLevel(o.poset)
 	for level := len(o.timingUnits); level <= maxLevel; level++ {
@@ -50,8 +49,7 @@ func (o *Ordering) AttemptTimingDecision() int {
 	return len(o.timingUnits)
 }
 
-// Tries to pick a timing unit on a given level
-// returns nil if it cannot be decided yet
+// DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
 func (o *Ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	VOTING_LEVEL := 3 // TODO: Read from config
 	if posetMaxLevel(o.poset) < level+VOTING_LEVEL {
@@ -75,8 +73,7 @@ func (o *Ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	return nil
 }
 
-// TimingRound returns all the units in timing round r. If the timing decision has not yet been taken it returns an error.
+// TODO: implement
 func (o *Ordering) TimingRound(r int) ([]gomel.Unit, error) {
-	// TODO: implement
 	return nil, nil
 }
