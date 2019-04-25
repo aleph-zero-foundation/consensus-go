@@ -94,7 +94,7 @@ func checkThresholdCoinIncluded(u gomel.Unit) error {
 // Checks if the unit U does not provide evidence of its creator forking.
 func checkNoSelfForkingEvidence(u gomel.Unit) error {
 	if u.HasForkingEvidence(u.Creator()) {
-		return gomel.NewComplianceError("A unit is an evidence of self forking")
+		return gomel.NewComplianceError("A unit is evidence of self forking")
 	} else {
 		return nil
 	}
