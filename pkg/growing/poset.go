@@ -70,12 +70,13 @@ func (p *Poset) Stop() {
 func (p *Poset) getPrimeUnitsAtLevelBelowUnit(level int, u gomel.Unit) []gomel.Unit {
 	var result []gomel.Unit
 	primes := p.PrimeUnits(level)
-	for process := 0; process < p.nProcesses; process++ {
-		for _, prime := range primes.Get(process) {
+	primes.Iterate(func(units []gomel.Unit) bool {
+		for _, prime := range units {
 			if prime.Below(u) {
 				result = append(result, prime)
 			}
 		}
-	}
+		return true
+	})
 	return result
 }
