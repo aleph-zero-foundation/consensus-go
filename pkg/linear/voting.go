@@ -142,10 +142,11 @@ func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 	//TODO: memo
 	VOTING_LEVEL, PI_DELTA_LEVEL := 3, 12 // TODO: Read this from config
 
+	posetLevelReached := posetMaxLevel(p)
 	// At levels +2, +3,..., +(VOTING_LEVEL-1) it might be possible to prove that the consensus will be "1"
 	// This is being tried in the loop below -- as Lemma 2.3.(1) in "Lewelewele" allows us to do:
 	// -- whenever there is unit U at one of this levels that proves popularity of U_c, we can conclude the decision is "1"
-	for level := uc.Level() + 2; level < uc.Level()+VOTING_LEVEL; level++ {
+	for level := uc.Level() + 2; level < uc.Level()+VOTING_LEVEL && level < posetLevelReached; level++ {
 		decision := UNDECIDED
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
@@ -162,7 +163,7 @@ func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 	}
 
 	// At level +VOTING_LEVEL+1, +VOTING_LEVEL+2, ..., +PI_DELTA_LEVEL-1 we use fast consensus algorithm
-	for level := uc.Level() + VOTING_LEVEL + 1; level < uc.Level()+PI_DELTA_LEVEL; level++ {
+	for level := uc.Level() + VOTING_LEVEL + 1; level < uc.Level()+PI_DELTA_LEVEL && level < posetLevelReached; level++ {
 		decision := UNDECIDED
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
