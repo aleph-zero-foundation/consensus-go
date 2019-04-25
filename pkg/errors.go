@@ -40,3 +40,16 @@ type DuplicateUnit struct {
 func (e *DuplicateUnit) Error() string {
 	return "Unit already in poset."
 }
+
+// ConfigError is returned when a provided configuration can not be parsed.
+type ConfigError struct {
+	msg string
+}
+
+func (e *ConfigError) Error() string {
+	return "ConfigError: " + e.msg
+}
+
+func NewConfigError(msg string) *ConfigError {
+	return &ConfigError{msg}
+}
