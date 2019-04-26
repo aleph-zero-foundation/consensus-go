@@ -16,7 +16,7 @@ type preunit struct {
 }
 
 // newPreunit constructs a a new preunit with given parents and creator id.
-func newPreunit(creator int, parents []gomel.Hash) gomel.Preunit {
+func NewPreunit(creator int, parents []gomel.Hash) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
 		parents: parents,

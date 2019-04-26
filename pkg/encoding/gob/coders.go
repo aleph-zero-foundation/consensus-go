@@ -9,9 +9,9 @@ import (
 )
 
 type netunit struct {
-	creator   int
-	signature gomel.Signature
-	parents   []gomel.Hash
+	Creator   int
+	Signature gomel.Signature
+	Parents   []gomel.Hash
 }
 
 type encoder struct {
@@ -45,8 +45,14 @@ func NewDecoder(r io.Reader) encoding.Decoder {
 }
 
 func (d *decoder) DecodeUnits() ([]gomel.Preunit, error) {
-	netunits := make([]netunit)
+	netunits := make([]netunit, 0)
 	if err := d.engine.Decode(&netunits); err != nil {
 		return nil, err
 	}
+	preunits := make([]gomel.Preunit, len(netunits))
+	for i, netunit := range netunits {
+		preunits[i] = creating.NewPreunit(netunit.Creator, netunit.Parents)
+		preunits[i].SetSignature(netunit.Signature)
+	}
+	return preunits, nil
 }
