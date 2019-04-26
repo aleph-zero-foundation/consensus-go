@@ -15,6 +15,7 @@ type preunit struct {
 	hash      gomel.Hash
 }
 
+// newPreunit constructs a a new preunit with given parents and creator id.
 func newPreunit(creator int, parents []gomel.Hash) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
@@ -25,37 +26,39 @@ func newPreunit(creator int, parents []gomel.Hash) gomel.Preunit {
 	return pu
 }
 
-// Returns the creator of the unit.
+// Creator of the preunit.
 func (pu *preunit) Creator() int {
 	return pu.creator
 }
 
-// Signature returns preunit's signature
+// Signature of the preunit.
 func (pu *preunit) Signature() gomel.Signature {
 	return pu.signature
 }
 
-// Computes and returns the hash of this unit.
+// Hash of the preunit.
 func (pu *preunit) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
-// Returns the hashes of the unit's parents.
+// Parents returns hashes of the preunit's parents.
 func (pu *preunit) Parents() []gomel.Hash {
 	return pu.parents
 }
 
-// SetSignature sets signature of the preunit
+// SetSignature sets signature of the preunit.
 func (pu *preunit) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
+// toBytes returns a byte representation of any object.
 func toBytes(data interface{}) []byte {
 	var newData bytes.Buffer
 	binary.Write(&newData, binary.LittleEndian, data)
 	return newData.Bytes()
 }
 
+// computeHash computes preunit's hash value and puts it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	data.Write(toBytes(pu.creator))
