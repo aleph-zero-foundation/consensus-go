@@ -23,6 +23,10 @@ func (p *poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return p.maximalUnits
 }
 
+func (p *poset) IsQuorum(_ int) bool {
+	return false
+}
+
 type slottedUnits struct {
 	contents [][]gomel.Unit
 }
