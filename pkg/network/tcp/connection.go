@@ -25,6 +25,6 @@ func (c *conn) Write(b []byte) (int, error) {
 }
 
 func (c *conn) Close() error {
-	c.inUse.release()
+	defer c.inUse.release()
 	return c.link.Close()
 }

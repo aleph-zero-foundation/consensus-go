@@ -63,7 +63,11 @@ func (cs *connServer) Listen() (chan network.Connection, error) {
 					// TODO log the error
 				}
 				// check if we are already syncing with remotePeer
-				m := cs.inUse[link.RemoteAddr()]
+				m, ok := cs.inUse[link.RemoteAddr()]
+				if !ok {
+					// TODO log that a stranger called us
+					continue
+				}
 				if m.tryAcquire() {
 					cs.listenChan <- newConn(link, m)
 				}
