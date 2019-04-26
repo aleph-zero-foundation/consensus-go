@@ -73,7 +73,8 @@ func (o *Ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	return nil
 }
 
-// TODO: implement
+// TimingRound returns all the units in timing round r. If the timing decision has not yet been taken it returns an error.
 func (o *Ordering) TimingRound(r int) ([]gomel.Unit, error) {
+	// TODO: implement
 	return nil, nil
 }
