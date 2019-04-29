@@ -4,15 +4,17 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
-// Encoder encodes different type of data and writes them to a io.Writer that it was instantiated with.
+// Encoder encodes data for sending it over the network.
 type Encoder interface {
-	// EncodeUnits encodes a slice of units and writes the encoded data to the io.Writer.
-	EncodeUnits([]gomel.Unit) error
+	// EncodeUnits encodes layers of units to be sent over the newtork.
+	// The layers are represented as a slice of slices of units.
+	// The encoder writes the encoded data to a io.Writer it was instantiated with.
+	EncodeUnits([][]gomel.Unit) error
 }
 
-// Decoder reads data from io.Reader it was instantiated with and returns a decoded slice of preunits.
+// Decoder decodes data recieved from the network.
 type Decoder interface {
-	// DecodePreunits reads encoded data from the io.Reader and tries to decode them
-	// as a silce of preunits.
-	DecodePreunits() ([]gomel.Preunit, error)
+	// DecodePreunits reads encoded data from a io.Reader it was instantiated with and
+	// tries to decode them as a silce of slices of preunits.
+	DecodePreunits() ([][]gomel.Preunit, error)
 }

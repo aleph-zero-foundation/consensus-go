@@ -8,78 +8,117 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding/gob"
+	"math/rand"
 )
 
 var _ = Describe("Encoding/Decoding", func() {
 	var (
-		units   []gomel.Unit
+		layers  [][]gomel.Unit
 		encoder Encoder
 		decoder Decoder
 		network *bytes.Buffer
 		privKey signing.PrivateKey
 	)
 	BeforeEach(func() {
-		units = make([]gomel.Unit, 0)
+		layers = make([][]gomel.Unit, 0)
 		network = &bytes.Buffer{}
 		encoder = NewEncoder(network)
 		decoder = NewDecoder(network)
 		_, privKey, _ = signing.GenerateKeys()
 	})
-	Context("An empty silce", func() {
+	Context("An empty silce of layers", func() {
 		It("should be encoded/decoded to an empty slice of preunis", func() {
-			eerr := encoder.EncodeUnits(units)
+			eerr := encoder.EncodeUnits(layers)
 			Expect(eerr).NotTo(HaveOccurred())
 			preunits, derr := decoder.DecodePreunits()
 			Expect(derr).NotTo(HaveOccurred())
-			Expect(len(preunits)).To(Equal(0))
+			Expect(len(preunits)).To(Equal(len(layers)))
 		})
 	})
-	Context("A slice of one unit", func() {
+	Context("One layer with one unit", func() {
 		BeforeEach(func() {
 			pu := &preunit{}
 			pu.SetSignature(privKey.Sign(pu))
 			u := unit{}
 			u.hash = pu.hash
 			u.signature = pu.signature
-			units = append(units, &u)
+			layers = append(layers, []gomel.Unit{&u})
 
 		})
-		It("should be encoded/decoded to a slice of one preunit corresponding to a given unit", func() {
-			eerr := encoder.EncodeUnits(units)
+		It("should be encoded/decoded to one layer with one preunit corresponding to a given unit", func() {
+			eerr := encoder.EncodeUnits(layers)
 			Expect(eerr).NotTo(HaveOccurred())
 			preunits, derr := decoder.DecodePreunits()
 			Expect(derr).NotTo(HaveOccurred())
-			Expect(len(preunits)).To(Equal(1))
-			pu := preunits[0]
-			u := units[0]
+			Expect(len(preunits)).To(Equal(len(layers)))
+			Expect(len(preunits[0])).To(Equal(len(layers[0])))
+			pu := preunits[0][0]
+			u := layers[0][0]
 			Expect(eq(pu, u)).To(BeTrue())
 		})
 	})
-	Context("A slice of 10 units", func() {
+	Context("One layer with 10 units", func() {
 		BeforeEach(func() {
+			layer := make([]gomel.Unit, 10)
 			for i := 0; i < 10; i++ {
 				pu := &preunit{}
-				pu.hash[0] = 1
+				pu.hash[0] = byte(i)
 				pu.SetSignature(privKey.Sign(pu))
 				u := unit{}
 				u.hash = pu.hash
 				u.signature = pu.signature
-				units = append(units, &u)
+				layer[i] = &u
 			}
+			layers = append(layers, layer)
 
 		})
-		It("should be encoded/decoded to a slice of 10 preunits corresponding to given units", func() {
-			eerr := encoder.EncodeUnits(units)
+		It("should be encoded/decoded to one layer with 10 preunits corresponding to given units", func() {
+			eerr := encoder.EncodeUnits(layers)
 			Expect(eerr).NotTo(HaveOccurred())
 			preunits, derr := decoder.DecodePreunits()
 			Expect(derr).NotTo(HaveOccurred())
-			Expect(len(preunits)).To(Equal(10))
-			for i, pu := range preunits {
-				u := units[i]
+			Expect(len(preunits)).To(Equal(len(layers)))
+			Expect(len(preunits[0])).To(Equal(len(layers[0])))
+			for i, pu := range preunits[0] {
+				u := layers[0][i]
 				Expect(eq(pu, u)).To(BeTrue())
 			}
 		})
 	})
+	Context("10 layers with random number of units", func() {
+		BeforeEach(func() {
+			for i := 0; i < 10; i++ {
+				nUnits := rand.Intn(10)
+				layer := make([]gomel.Unit, nUnits)
+				for j := 0; j < nUnits; j++ {
+					pu := &preunit{}
+					pu.hash[i] = byte(j)
+					pu.SetSignature(privKey.Sign(pu))
+					u := unit{}
+					u.hash = pu.hash
+					u.signature = pu.signature
+					layer[j] = &u
+				}
+				layers = append(layers, layer)
+			}
+
+		})
+		It("should be encoded/decoded to 10 layers with preunits corresponding to given units", func() {
+			eerr := encoder.EncodeUnits(layers)
+			Expect(eerr).NotTo(HaveOccurred())
+			preunits, derr := decoder.DecodePreunits()
+			Expect(derr).NotTo(HaveOccurred())
+			Expect(len(preunits)).To(Equal(len(layers)))
+			for i, layer := range preunits {
+				Expect(len(layer)).To(Equal(len(layers[i])))
+				for j, pu := range layer {
+					u := layers[i][j]
+					Expect(eq(pu, u)).To(BeTrue())
+				}
+			}
+		})
+	})
+
 })
 
 func eq(pu gomel.Preunit, u gomel.Unit) bool {
@@ -165,6 +204,10 @@ func (u *unit) Parents() []gomel.Unit {
 
 func (u *unit) Level() int {
 	return u.level
+}
+
+func (u *unit) HasForkingEvidence(creator int) bool {
+	return false
 }
 
 func (u *unit) Below(v gomel.Unit) bool {
