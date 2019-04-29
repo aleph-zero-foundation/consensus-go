@@ -139,11 +139,13 @@ func superMajority(p gomel.Poset, votes []vote) vote {
 	return UNDECIDED
 }
 
-func coinToss(uc gomel.Unit, u gomel.Unit) int {
+func coinToss(p gomel.Poset, uc gomel.Unit, u gomel.Unit) int {
+	// TODO: implement using threshold coin
 	return 0
 }
 
-func existsTc(p gomel.Poset, votes []vote, uc gomel.Unit, u gomel.Unit) vote {
+// Computes the exists function from the whitepaper, including the coin toss if necessary.
+func existsTC(p gomel.Poset, votes []vote, uc gomel.Unit, u gomel.Unit) vote {
 	for _, voteConsidered := range votes {
 		if voteConsidered == POPULAR {
 			return POPULAR
@@ -156,13 +158,14 @@ func existsTc(p gomel.Poset, votes []vote, uc gomel.Unit, u gomel.Unit) vote {
 		}
 	}
 
-	if coinToss(uc, u) == 1 {
+	if coinToss(p, uc, u) == 1 {
 		return POPULAR
 	} else {
 		return UNPOPULAR
 	}
 }
 
+// Computes the value of Pi from the paper
 func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 	PI_DELTA_LEVEL := 12 // TODO: Read this from config
 	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL) + 1
@@ -190,16 +193,17 @@ func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 		return true
 	})
 	if r%2 == 0 {
-		return existsTc(p, votesLevelBelow, uc, u)
+		return existsTC(p, votesLevelBelow, uc, u)
 	} else {
 		return superMajority(p, votesLevelBelow)
 	}
 }
 
+// Computes the value of Delta from the paper
 func computeDelta(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 	PI_DELTA_LEVEL := 12 // TODO: Read from config
 	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL) + 1
-	if r%2 == 0 {
+	if r%2 == 1 {
 		// Delta used on an odd level
 		return UNDECIDED
 	}
@@ -259,7 +263,23 @@ func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 			return decision
 		}
 	}
+
 	// at levels >= +PI_DELTA_LEVEL we use pi-delta consensus
-	// TODO: implement PI_DELTA
+	for level := uc.Level() + PI_DELTA_LEVEL + 1; level <= posetLevelReached; level += 2 {
+		decision := UNDECIDED
+		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
+			for _, v := range primes {
+				if voteV := computeDelta(p, uc, v); voteV != UNDECIDED {
+					decision = voteV
+					return false
+				}
+			}
+			return true
+		})
+		if decision != UNDECIDED {
+			return decision
+		}
+	}
+
 	return UNDECIDED
 }
