@@ -53,6 +53,21 @@ func (u *unit) Level() int {
 	return u.level
 }
 
+func (u *unit) HasForkingEvidence(creator int) bool {
+	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
+	// check whether collection of these maximal units has a single maximal element
+	if creator == u.creator {
+		var floor []*unit
+		for _, parent := range u.parents {
+			actualParent := parent.(*unit)
+			floor = append(floor, actualParent.floor[creator]...)
+		}
+		return len(combineFloorsPerProc(floor)) > 1
+	} else {
+		return len(u.floor[creator]) > 1
+	}
+}
+
 func (u *unit) computeHeight() {
 	if len(u.parents) == 0 {
 		u.height = 0

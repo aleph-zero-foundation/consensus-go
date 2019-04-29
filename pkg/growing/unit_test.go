@@ -16,7 +16,7 @@ var _ = Describe("Units", func() {
 	var (
 		nProcesses int
 		poset      gomel.Poset
-		addFirst   [][]*preunit
+		addFirst   [][]*preunitMock
 		units      map[int]map[int][]gomel.Unit
 		wg         sync.WaitGroup
 		pubKeys    []signing.PublicKey
@@ -74,9 +74,9 @@ var _ = Describe("Units", func() {
 		Describe("Checking reflexivity of Below", func() {
 
 			BeforeEach(func() {
-				pu := &preunit{}
+				pu := &preunitMock{}
 				pu.hash[0] = 1
-				addFirst = [][]*preunit{[]*preunit{pu}}
+				addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 			})
 
 			It("Should return true", func() {
@@ -91,15 +91,15 @@ var _ = Describe("Units", func() {
 		Describe("Checking lack of symmetry of Below", func() {
 
 			BeforeEach(func() {
-				pu0 := &preunit{}
+				pu0 := &preunitMock{}
 				pu0.hash[0] = 1
-				pu1 := &preunit{}
+				pu1 := &preunitMock{}
 				pu1.hash[1] = 2
 				pu1.creator = 1
-				pu01 := &preunit{}
+				pu01 := &preunitMock{}
 				pu01.hash[0] = 12
 				pu01.parents = []gomel.Hash{pu0.hash, pu1.hash}
-				addFirst = [][]*preunit{[]*preunit{pu0, pu1}, []*preunit{pu01}}
+				addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1}, []*preunitMock{pu01}}
 			})
 
 			It("Should be true in one direction and false in the other", func() {
@@ -116,26 +116,26 @@ var _ = Describe("Units", func() {
 		Describe("Checking transitivity of Below", func() {
 
 			BeforeEach(func() {
-				pu0 := &preunit{}
+				pu0 := &preunitMock{}
 				pu0.hash[0] = 1
-				pu1 := &preunit{}
+				pu1 := &preunitMock{}
 				pu1.hash[1] = 2
 				pu1.creator = 1
-				pu2 := &preunit{}
+				pu2 := &preunitMock{}
 				pu2.hash[2] = 3
 				pu2.creator = 2
-				pu01 := &preunit{}
+				pu01 := &preunitMock{}
 				pu01.hash[0] = 12
 				pu01.parents = []gomel.Hash{pu0.hash, pu1.hash}
-				pu02 := &preunit{}
+				pu02 := &preunitMock{}
 				pu02.hash[0] = 13
 				pu02.parents = []gomel.Hash{pu01.hash, pu2.hash}
-				pu21 := &preunit{}
+				pu21 := &preunitMock{}
 				pu21.hash[2] = 32
 				pu21.creator = 2
 				pu21.parents = []gomel.Hash{pu2.hash, pu01.hash}
-				addFirst = [][]*preunit{[]*preunit{pu0, pu1, pu2}, []*preunit{pu01},
-					[]*preunit{pu02, pu21}}
+				addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1, pu2}, []*preunitMock{pu01},
+					[]*preunitMock{pu02, pu21}}
 			})
 
 			It("Should be true if two relations are true", func() {
@@ -156,14 +156,14 @@ var _ = Describe("Units", func() {
 		Describe("Checking Below works properly for forked dealing units.", func() {
 
 			BeforeEach(func() {
-				pu0 := &preunit{}
+				pu0 := &preunitMock{}
 				pu0.hash[0] = 1
 				pu0.creator = 0
-				pu1 := &preunit{}
+				pu1 := &preunitMock{}
 				pu1.hash[0] = 2
 				pu1.creator = 0
 
-				addFirst = [][]*preunit{[]*preunit{pu0}, []*preunit{pu1}}
+				addFirst = [][]*preunitMock{[]*preunitMock{pu0}, []*preunitMock{pu1}}
 
 			})
 
@@ -180,22 +180,22 @@ var _ = Describe("Units", func() {
 		Describe("Checking Below works properly for two forks going out of one unit.", func() {
 
 			BeforeEach(func() {
-				puBase0 := &preunit{}
+				puBase0 := &preunitMock{}
 				puBase0.hash[0] = 0
 				puBase0.creator = 0
-				puBase1 := &preunit{}
+				puBase1 := &preunitMock{}
 				puBase1.hash[0] = 1
 				puBase1.creator = 1
-				pu1 := &preunit{}
+				pu1 := &preunitMock{}
 				pu1.hash[0] = 10
 				pu1.creator = 0
 				pu1.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
-				pu2 := &preunit{}
+				pu2 := &preunitMock{}
 				pu2.hash[0] = 20
 				pu2.creator = 0
 				pu2.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
 
-				addFirst = [][]*preunit{[]*preunit{puBase0, puBase1}, []*preunit{pu1}, []*preunit{pu2}}
+				addFirst = [][]*preunitMock{[]*preunitMock{puBase0, puBase1}, []*preunitMock{pu1}, []*preunitMock{pu2}}
 
 			})
 
