@@ -16,7 +16,7 @@ type connServer struct {
 	listenChan  chan network.Connection
 	dialChan    chan network.Connection
 	dialPolicy  func() int
-	inUse       map[net.Addr]mutex
+	inUse       map[net.Addr]*mutex
 	exitChan    chan struct{}
 }
 
@@ -26,13 +26,13 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int
 		return nil, err
 	}
 	remoteTCPs := make([]*net.TCPAddr, len(remoteAddrs))
-	inUse := make(map[net.Addr]mutex)
+	inUse := make(map[net.Addr]*mutex)
 	for i, remoteAddr := range remoteAddrs {
 		if remoteTCP, err := net.ResolveTCPAddr("tcp", remoteAddr); err != nil {
 			return nil, err
 		} else {
 			remoteTCPs[i] = remoteTCP
-			inUse[remoteTCP] = mutex{new(uint32)}
+			inUse[remoteTCP] = newMutex()
 		}
 	}
 

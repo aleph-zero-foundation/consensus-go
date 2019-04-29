@@ -1,15 +1,24 @@
 package tcp
 
-import "sync/atomic"
-
 type mutex struct {
-	token *uint32
+	token chan struct{}
 }
 
-func (m mutex) tryAcquire() bool {
-	return atomic.CompareAndSwapUint32(m.token, 0, 1)
+func newMutex() *mutex {
+	m := mutex{make(chan struct{}, 1)}
+	m.token <- struct{}{}
+	return &m
 }
 
-func (m mutex) release() {
-	atomic.StoreUint32(m.token, 0)
+func (m *mutex) tryAcquire() bool {
+	select {
+	case _, ok := <-m.token:
+		return ok
+	default:
+		return false
+	}
+}
+
+func (m *mutex) release() {
+	m.token <- struct{}{}
 }

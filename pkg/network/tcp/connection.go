@@ -6,10 +6,10 @@ import (
 
 type conn struct {
 	link  *net.TCPConn
-	inUse mutex
+	inUse *mutex
 }
 
-func newConn(link *net.TCPConn, m mutex) *conn {
+func newConn(link *net.TCPConn, m *mutex) *conn {
 	return &conn{
 		link:  link,
 		inUse: m,
