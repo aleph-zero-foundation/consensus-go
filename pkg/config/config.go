@@ -38,9 +38,6 @@ type Configuration struct {
 	// whether to use threshold coin
 	UseTcoin bool
 
-	// precompute popularity proof to ease computational load of Poset.compute_vote procedure
-	PrecomputePopularity bool
-
 	// whether to use the adaptive strategy of determining create_delay
 	AdaptiveDelay bool
 
@@ -61,9 +58,6 @@ type Configuration struct {
 
 	// name of our logger and logfile
 	LoggerName string
-
-	// source of txs
-	TxSource string
 }
 
 // NewDefaultConfiguration returns default set of parameters.
@@ -94,8 +88,6 @@ func NewDefaultConfiguration() Configuration {
 
 		UseTcoin: true,
 
-		PrecomputePopularity: false,
-
 		AdaptiveDelay: true,
 
 		VotingLevel: 3,
@@ -109,8 +101,6 @@ func NewDefaultConfiguration() Configuration {
 		HostPort: 8888,
 
 		LoggerName: "aleph",
-
-		TxSource: "tx_source_gen",
 	}
 	result.AddShares = result.PiDeltaLevel - 1
 	return result
