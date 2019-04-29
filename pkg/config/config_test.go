@@ -15,7 +15,7 @@ var _ = Describe("Configuration", func() {
 		Describe("Store and Load Configuration", func() {
 			It("should return same Configuration", func() {
 				config := NewDefaultConfiguration()
-				config.N_PARENTS = 10000
+				config.NParents = 10000
 				configCopy := config
 
 				// store configuation using a buffer
@@ -33,7 +33,7 @@ var _ = Describe("Configuration", func() {
 
 		Describe("parsing incomplete JSON configuration", func() {
 			It("should return an error", func() {
-				jsonConfig := "{\"N_PARENTS\": 1000}"
+				jsonConfig := "{\"NParents\": 1000}"
 				configStream := strings.NewReader(jsonConfig)
 
 				var config Configuration
@@ -44,7 +44,7 @@ var _ = Describe("Configuration", func() {
 
 		Describe("configuration with non-existent field", func() {
 			It("should return an error", func() {
-				jsonConfig := "{\"BLA_BLA\": 1000}"
+				jsonConfig := "{\"BlaBla\": 1000}"
 				configStream := strings.NewReader(jsonConfig)
 
 				var config Configuration
@@ -67,8 +67,8 @@ var _ = Describe("Configuration", func() {
 		Describe("configuration with nil value", func() {
 			It("should be parsed correctly", func() {
 				config := NewDefaultConfiguration()
-				config.UNITS_LIMIT = nil
-				config.SYNCS_LIMIT = Value(10)
+				config.UnitsLimit = nil
+				config.SyncsLimit = Value(10)
 				configCopy := config
 
 				// store configuation using a buffer
