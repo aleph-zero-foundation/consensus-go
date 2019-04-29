@@ -144,6 +144,10 @@ func (u *unit) Level() int {
 	return u.level
 }
 
+func (u *unit) HasForkingEvidence(creator int) bool {
+	return false
+}
+
 func setLevel(u *unit, p *poset) {
 	if u.Height() == 0 {
 		u.level = 0
