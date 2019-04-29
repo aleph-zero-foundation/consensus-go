@@ -4,12 +4,15 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
-// Encoder encodes different type of date and writes them to a io.Writer that it was instantiated with
+// Encoder encodes different type of data and writes them to a io.Writer that it was instantiated with.
 type Encoder interface {
-	EncodePreunits([]gomel.Unit) error
+	// EncodeUnits encodes a slice of units and writes the encoded data to the io.Writer.
+	EncodeUnits([]gomel.Unit) error
 }
 
-// Decoder reads data from io.Reader it was instantiated with and returns a decoded slice of preunits
+// Decoder reads data from io.Reader it was instantiated with and returns a decoded slice of preunits.
 type Decoder interface {
-	DecodePreunits() ([]gomel.Unit, error)
+	// DecodePreunits reads encoded data from the io.Reader and tries to decode them
+	// as a silce of preunits.
+	DecodePreunits() ([]gomel.Preunit, error)
 }
