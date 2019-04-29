@@ -34,39 +34,45 @@ func (p *Poset) verifySignature(pu gomel.Preunit) error {
 	return nil
 }
 
-func (p *Poset) computeLevel(ub *unitBuilt) {
-	if len(ub.result.parents) == 0 {
-		ub.result.setLevel(0)
-	} else {
-		maxLevelParents := 0
-		for _, w := range ub.result.parents {
-			if w.Level() > maxLevelParents {
-				maxLevelParents = w.Level()
-			}
+func computeLevelUsingFloor(p *Poset, unit *unit) int {
+	// NOTE: unit.floor[pid][0] should be occupied by a unit with maximal level
+	maxLevelParents := 0
+	for _, w := range unit.parents {
+		wLevel := w.Level()
+		if wLevel > maxLevelParents {
+			maxLevelParents = wLevel
 		}
-		nSeen := 0
-		for pid := 0; pid < p.nProcesses; pid++ {
-			pidSeen := 0
-			for _, v := range p.PrimeUnits(maxLevelParents).Get(pid) {
-				if v.Below(ub.result) {
-					pidSeen = 1
-					break
-				}
-			}
-			nSeen += pidSeen
-			// optimization to not loop over all processes if quorum cannot be reached anyway
-			if !p.IsQuorum(nSeen + p.nProcesses - 1 - pid) {
-				break
-			}
-		}
-		if p.IsQuorum(nSeen) {
-			ub.result.setLevel(maxLevelParents + 1)
-		} else {
-			ub.result.setLevel(maxLevelParents)
-		}
-
 	}
 
+	nSeen := 0
+	for pid, vs := range unit.floor {
+
+		if len(vs) > 0 {
+			level := vs[0].Level()
+			if level == maxLevelParents {
+				nSeen++
+			}
+		}
+
+		// optimization to not loop over all processes if quorum cannot be reached anyway
+		if !p.IsQuorum(nSeen + (p.nProcesses - (pid + 1))) {
+			break
+		}
+
+		if p.IsQuorum(nSeen) {
+			return maxLevelParents + 1
+		}
+	}
+	return maxLevelParents
+}
+
+func (p *Poset) computeLevel(ub *unitBuilt) {
+	if gomel.Dealing(ub.result) {
+		ub.result.setLevel(0)
+		return
+	}
+	level := computeLevelUsingFloor(p, ub.result)
+	ub.result.setLevel(level)
 }
 
 func (p *Poset) addPrime(u gomel.Unit) {

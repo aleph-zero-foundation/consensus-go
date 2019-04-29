@@ -109,7 +109,21 @@ func (u *unit) computeFloor(nProcesses int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			u.floor[pid] = combineFloorsPerProc(floors[pid])
+			combinedFloor := combineFloorsPerProc(floors[pid])
+			u.floor[pid] = combinedFloor
+
+			if len(combinedFloor) <= 0 {
+				return
+			}
+
+			// NOTE: floor[0] should be occupied by a unit with maximal level
+			maxIx := 0
+			for ix, unit := range combinedFloor {
+				if unit.Level() > combinedFloor[maxIx].Level() {
+					maxIx = ix
+				}
+			}
+			combinedFloor[0], combinedFloor[maxIx] = combinedFloor[maxIx], combinedFloor[0]
 		}()
 	}
 
