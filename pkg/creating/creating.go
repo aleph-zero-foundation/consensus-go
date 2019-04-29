@@ -13,6 +13,7 @@ func (e *noAvailableParents) Error() string {
 	return "No legal parents for the unit."
 }
 
+// getPredecessor picks one of the units in mu produced by the given creator.
 func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 	maxUnits := mu.Get(creator)
 	if len(maxUnits) == 0 {
@@ -21,10 +22,12 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 	return maxUnits[0]
 }
 
+// newDealingUnit creates a new preunit with the given creator and no parents.
 func newDealingUnit(creator int) gomel.Preunit {
 	return newPreunit(creator, []gomel.Hash{})
 }
 
+// maxLevel returns the maximal level from units present in mu.
 func maxLevel(mu gomel.SlottedUnits) int {
 	result := -1
 	mu.Iterate(func(units []gomel.Unit) bool {
@@ -38,6 +41,7 @@ func maxLevel(mu gomel.SlottedUnits) int {
 	return result
 }
 
+// belowAny checks if a given unit is below any of the units.
 func belowAny(unit gomel.Unit, units []gomel.Unit) bool {
 	for _, u := range units {
 		if unit.Below(u) {
@@ -47,9 +51,20 @@ func belowAny(unit gomel.Unit, units []gomel.Unit) bool {
 	return false
 }
 
-func getNonVisiblePrimes(pu gomel.SlottedUnits, units []gomel.Unit) []gomel.Unit {
+// aboveAny checks if a given unit is above any of the units.
+func aboveAny(unit gomel.Unit, units []gomel.Unit) bool {
+	for _, u := range units {
+		if u.Below(unit) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterNotBelow picks all the units in su that are not below any of the units.
+func filterNotBelow(su gomel.SlottedUnits, units []gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
-	pu.Iterate(func(primes []gomel.Unit) bool {
+	su.Iterate(func(primes []gomel.Unit) bool {
 		for _, prime := range primes {
 			if !belowAny(prime, units) {
 				result = append(result, prime)
@@ -60,6 +75,7 @@ func getNonVisiblePrimes(pu gomel.SlottedUnits, units []gomel.Unit) []gomel.Unit
 	return result
 }
 
+// maximalIn checks if the given unit u is maximal (in the partial order sense) in units.
 func maximalIn(u gomel.Unit, units []gomel.Unit) bool {
 	for _, v := range units {
 		if u != v && u.Below(v) {
@@ -69,6 +85,7 @@ func maximalIn(u gomel.Unit, units []gomel.Unit) bool {
 	return true
 }
 
+// filterMaximal returns units that are maximal (in the partial order sense) from among units.
 func filterMaximal(units []gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
 	for _, u := range units {
@@ -79,15 +96,21 @@ func filterMaximal(units []gomel.Unit) []gomel.Unit {
 	return result
 }
 
+// getCandidatesAtLevel chooses units from candidates that are:
+// a) produced by non-forking process,
+// b) at the given level,
+// c) not below any unit in parents.
 func getCandidatesAtLevel(candidates gomel.SlottedUnits, parents []gomel.Unit, level int) []gomel.Unit {
 	result := []gomel.Unit{}
 	candidates.Iterate(func(units []gomel.Unit) bool {
-		// Only pick candidates from nonforking processes.
+		// a)
 		if len(units) == 1 {
 			possibleCandidate := units[0]
+			// b)
 			if possibleCandidate.Level() != level {
 				return true
 			}
+			// c)
 			for _, u := range parents {
 				if possibleCandidate.Below(u) {
 					return true
@@ -101,7 +124,8 @@ func getCandidatesAtLevel(candidates gomel.SlottedUnits, parents []gomel.Unit, l
 	return result
 }
 
-func filterOutBelow(unit gomel.Unit, units []gomel.Unit) []gomel.Unit {
+// filterOutBelow chooses from units the ones that are not below the given unit.
+func filterOutBelow(units []gomel.Unit, unit gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
 	for _, u := range units {
 		if !u.Below(unit) {
@@ -111,32 +135,27 @@ func filterOutBelow(unit gomel.Unit, units []gomel.Unit) []gomel.Unit {
 	return result
 }
 
-func checkCandidate(c gomel.Unit, nvp []gomel.Unit) bool {
-	for _, p := range nvp {
-		if p.Below(c) {
-			return true
-		}
-	}
-	return false
-}
-
-func pickMoreParents(nvp []gomel.Unit, candidates []gomel.Unit, limit int) []gomel.Unit {
+// pickMoreParents chooses from candidates, in a random order, up to limit units that fulfill
+// "expand primes" rule with respect to prime units contained in nvp.
+func pickMoreParents(candidates, nvp []gomel.Unit, limit int) []gomel.Unit {
 	result := []gomel.Unit{}
-	// Try the candidates in a random order.
 	perm := rand.New(rand.NewSource(time.Now().Unix())).Perm(len(candidates))
 	for _, i := range perm {
 		if len(result) == limit {
 			return result
 		}
 		c := candidates[i]
-		if checkCandidate(c, nvp) {
+		if aboveAny(c, nvp) {
 			result = append(result, c)
-			nvp = filterOutBelow(c, nvp)
+			nvp = filterOutBelow(nvp, c)
 		}
 	}
 	return result
 }
 
+// combineParents merges two slices of units. Expects units in parents to be sorted via ascending level
+// and units in newParents to all have the same level. Returned slice is also sorted and follows
+// the same order as parents and newParents.
 func combineParents(parents, newParents []gomel.Unit) []gomel.Unit {
 	if len(newParents) == 0 {
 		return parents
@@ -157,6 +176,7 @@ func combineParents(parents, newParents []gomel.Unit) []gomel.Unit {
 	return result
 }
 
+// hashes returns a slice with hashes of given units.
 func hashes(units []gomel.Unit) []gomel.Hash {
 	result := make([]gomel.Hash, len(units))
 	for i, u := range units {
@@ -181,8 +201,8 @@ func NewUnit(poset gomel.Poset, creator int, maximumParents int) (gomel.Preunit,
 	// Usually this loop spans over at most two levels.
 	for level := posetLevel; level >= predecessor.Level() && len(parents) < maximumParents; level-- {
 		candidates := getCandidatesAtLevel(mu, parents, level)
-		nvp := getNonVisiblePrimes(poset.PrimeUnits(level), parents)
-		parents = combineParents(parents, pickMoreParents(nvp, candidates, maximumParents-len(parents)))
+		nvp := filterNotBelow(poset.PrimeUnits(level), parents)
+		parents = combineParents(parents, pickMoreParents(candidates, nvp, maximumParents-len(parents)))
 	}
 	if len(parents) < 2 {
 		return nil, &noAvailableParents{}
