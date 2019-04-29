@@ -139,6 +139,84 @@ func superMajority(p gomel.Poset, votes []vote) vote {
 	return UNDECIDED
 }
 
+func coinToss(uc gomel.Unit, u gomel.Unit) int {
+	return 0
+}
+
+func existsTc(p gomel.Poset, votes []vote, uc gomel.Unit, u gomel.Unit) vote {
+	for _, voteConsidered := range votes {
+		if voteConsidered == POPULAR {
+			return POPULAR
+		}
+	}
+
+	for _, voteConsidered := range votes {
+		if voteConsidered == UNPOPULAR {
+			return UNPOPULAR
+		}
+	}
+
+	if coinToss(uc, u) == 1 {
+		return POPULAR
+	} else {
+		return UNPOPULAR
+	}
+}
+
+func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
+	PI_DELTA_LEVEL := 12 // TODO: Read this from config
+	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL) + 1
+	if r < 1 {
+		// PI-DELTA protocol used on a too low level
+		return UNDECIDED
+	}
+	votesLevelBelow := []vote{}
+	primesLevelBelow := p.PrimeUnits(u.Level() - 1)
+	primesLevelBelow.Iterate(func(primes []gomel.Unit) bool {
+		for _, v := range primes {
+			if !v.Below(u) {
+				continue
+			}
+			if r == 1 {
+				voteV := computeVote(p, v, uc)
+				if voteV == UNDECIDED {
+					voteV = defaultVote(v, uc)
+				}
+				votesLevelBelow = append(votesLevelBelow, voteV)
+			} else {
+				votesLevelBelow = append(votesLevelBelow, computePi(p, uc, u))
+			}
+		}
+		return true
+	})
+	if r%2 == 0 {
+		return existsTc(p, votesLevelBelow, uc, u)
+	} else {
+		return superMajority(p, votesLevelBelow)
+	}
+}
+
+func computeDelta(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
+	PI_DELTA_LEVEL := 12 // TODO: Read from config
+	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL) + 1
+	if r%2 == 0 {
+		// Delta used on an odd level
+		return UNDECIDED
+	}
+	piValuesBelow := []vote{}
+	primesLevelBelow := p.PrimeUnits(u.Level() - 1)
+	primesLevelBelow.Iterate(func(primes []gomel.Unit) bool {
+		for _, v := range primes {
+			if !v.Below(u) {
+				continue
+			}
+			piValuesBelow = append(piValuesBelow, computePi(p, uc, v))
+		}
+		return true
+	})
+	return superMajority(p, piValuesBelow)
+}
+
 // Decides if uc is popular (i.e. it can be used as a timing unit)
 // Returns vote
 func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
