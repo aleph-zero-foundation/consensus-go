@@ -41,6 +41,7 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int
 		remoteAddrs: remoteTCPs,
 		listenChan:  make(chan network.Connection, N_LQUEUE),
 		dialChan:    make(chan network.Connection, N_SQUEUE),
+		dialPolicy:  dialPolicy,
 		inUse:       inUse,
 		exitChan:    make(chan struct{}),
 	}, nil
