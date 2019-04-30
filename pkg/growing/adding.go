@@ -67,11 +67,10 @@ func computeLevelUsingFloor(p *Poset, unit *unit) int {
 }
 
 func (p *Poset) computeLevel(ub *unitBuilt) {
-	if gomel.Dealing(ub.result) {
-		ub.result.setLevel(0)
-		return
+	level := 0
+	if !gomel.Dealing(ub.result) {
+		level = computeLevelUsingFloor(p, ub.result)
 	}
-	level := computeLevelUsingFloor(p, ub.result)
 	ub.result.setLevel(level)
 }
 
