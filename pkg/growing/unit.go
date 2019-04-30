@@ -69,6 +69,94 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	}
 }
 
+func (u *unit) init(poset *Poset) {
+	u.computeHeight()
+	u.computeFloor(poset.nProcesses)
+	u.computeLevel()
+	u.computeForkingHeight(poset)
+}
+
+func (u *unit) addParent(parent gomel.Unit) {
+	u.parents = append(u.parents, parent)
+}
+
+func (u *unit) setLevel(level int) {
+	u.level = level
+}
+
+func (u *unit) computeHeight() {
+	if len(u.parents) == 0 {
+		u.height = 0
+	} else {
+		u.height = u.Parents()[0].Height() + 1
+	}
+}
+
+func (u *unit) computeFloor(nProcesses int) {
+	u.floor = make([][]*unit, nProcesses, nProcesses)
+	u.floor[u.creator] = []*unit{u}
+
+	floors := make([][]*unit, nProcesses, nProcesses)
+
+	for _, parent := range u.parents {
+		if realParent, ok := parent.(*unit); ok {
+			for pid := 0; pid < nProcesses; pid++ {
+				floors[pid] = append(floors[pid], realParent.floor[pid]...)
+			}
+		} else {
+			// TODO: this might be needed in the far future when there are special units that separate existing and nonexistent units
+		}
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(nProcesses - 1)
+
+	for pid := 0; pid < nProcesses; pid++ {
+		if pid == u.creator {
+			continue
+		}
+		go func(pid int) {
+			defer wg.Done()
+			u.floor[pid] = combineFloorsPerProc(floors[pid])
+		}(pid)
+	}
+
+	wg.Wait()
+}
+
+func combineFloorsPerProc(floors []*unit) []*unit {
+	newFloor := []*unit{}
+
+	// Computes maximal elements in floors and stores them in newFloor
+	// floors contains elements created by only one proc
+	if len(floors) == 0 {
+		return newFloor
+	}
+
+	for _, u := range floors {
+		found, ri := false, -1
+		for k, v := range newFloor {
+			if ok, _ := u.aboveWithinProc(v); ok {
+				found = true
+				ri = k
+				break
+			}
+			if ok, _ := u.belowWithinProc(v); ok {
+				found = true
+			}
+		}
+		if !found {
+			newFloor = append(newFloor, u)
+		}
+
+		if ri >= 0 {
+			newFloor[ri] = u
+		}
+	}
+
+	return newFloor
+}
+
 func (u *unit) computeLevel() {
 	if gomel.Dealing(u) {
 		u.setLevel(0)
@@ -138,92 +226,4 @@ func (u *unit) computeForkingHeight(p *Poset) {
 			u.forkingHeight = up.height
 		}
 	}
-}
-
-func (u *unit) init(poset *Poset) {
-	u.computeHeight()
-	u.computeFloor(poset.nProcesses)
-	u.computeLevel()
-	u.computeForkingHeight(poset)
-}
-
-func (u *unit) computeHeight() {
-	if len(u.parents) == 0 {
-		u.height = 0
-	} else {
-		u.height = u.Parents()[0].Height() + 1
-	}
-}
-
-func (u *unit) addParent(parent gomel.Unit) {
-	u.parents = append(u.parents, parent)
-}
-
-func (u *unit) setLevel(level int) {
-	u.level = level
-}
-
-func (u *unit) computeFloor(nProcesses int) {
-	u.floor = make([][]*unit, nProcesses, nProcesses)
-	u.floor[u.creator] = []*unit{u}
-
-	floors := make([][]*unit, nProcesses, nProcesses)
-
-	for _, parent := range u.parents {
-		if realParent, ok := parent.(*unit); ok {
-			for pid := 0; pid < nProcesses; pid++ {
-				floors[pid] = append(floors[pid], realParent.floor[pid]...)
-			}
-		} else {
-			// TODO: this might be needed in the far future when there are special units that separate existing and nonexistent units
-		}
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(nProcesses - 1)
-
-	for pid := 0; pid < nProcesses; pid++ {
-		if pid == u.creator {
-			continue
-		}
-		go func(pid int) {
-			defer wg.Done()
-			u.floor[pid] = combineFloorsPerProc(floors[pid])
-		}(pid)
-	}
-
-	wg.Wait()
-}
-
-func combineFloorsPerProc(floors []*unit) []*unit {
-	newFloor := []*unit{}
-
-	// Computes maximal elements in floors and stores them in newFloor
-	// floors contains elements created by only one proc
-	if len(floors) == 0 {
-		return newFloor
-	}
-
-	for _, u := range floors {
-		found, ri := false, -1
-		for k, v := range newFloor {
-			if ok, _ := u.aboveWithinProc(v); ok {
-				found = true
-				ri = k
-				break
-			}
-			if ok, _ := u.belowWithinProc(v); ok {
-				found = true
-			}
-		}
-		if !found {
-			newFloor = append(newFloor, u)
-		}
-
-		if ri >= 0 {
-			newFloor[ri] = u
-		}
-	}
-
-	return newFloor
 }
