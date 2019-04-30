@@ -101,30 +101,16 @@ func (u *unit) computeFloor(nProcesses int) {
 	}
 
 	var wg sync.WaitGroup
+	wg.Add(nProcesses - 1)
+
 	for pid := 0; pid < nProcesses; pid++ {
 		if pid == u.creator {
 			continue
 		}
-		pid := pid
-		wg.Add(1)
-		go func() {
+		go func(pid int) {
 			defer wg.Done()
-			combinedFloor := combineFloorsPerProc(floors[pid])
-			u.floor[pid] = combinedFloor
-
-			if len(combinedFloor) <= 0 {
-				return
-			}
-
-			// NOTE: floor[0] should be occupied by a unit with maximal level
-			maxIx := 0
-			for ix, unit := range combinedFloor {
-				if unit.Level() > combinedFloor[maxIx].Level() {
-					maxIx = ix
-				}
-			}
-			combinedFloor[0], combinedFloor[maxIx] = combinedFloor[maxIx], combinedFloor[0]
-		}()
+			u.floor[pid] = combineFloorsPerProc(floors[pid])
+		}(pid)
 	}
 
 	wg.Wait()

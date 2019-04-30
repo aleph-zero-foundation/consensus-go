@@ -47,10 +47,10 @@ func computeLevelUsingFloor(p *Poset, unit *unit) int {
 	nSeen := 0
 	for pid, vs := range unit.floor {
 
-		if len(vs) > 0 {
-			level := vs[0].Level()
-			if level == maxLevelParents {
+		for _, unit := range vs {
+			if unit.Level() == maxLevelParents {
 				nSeen++
+				break
 			}
 		}
 
