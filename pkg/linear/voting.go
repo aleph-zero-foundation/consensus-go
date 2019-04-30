@@ -265,6 +265,10 @@ func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 	}
 
 	// at levels >= +PI_DELTA_LEVEL we use pi-delta consensus
+	// The decisions (delta) are made at levels +PI_DELTA_LEVEL+1, +PI_DELTA_LEVEL+3, etc
+	// whereas decisions in the paper are made at levels: +2, +4, etc
+	// Therefore the round type r := v.Level() - uc.Level() - PI_DELTA_LEVEL
+	// used in computePi and computeDelta and R_uc(v) defined in the paper have opposite parity
 	for level := uc.Level() + PI_DELTA_LEVEL + 1; level <= posetLevelReached; level += 2 {
 		decision := UNDECIDED
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
