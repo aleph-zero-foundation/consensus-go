@@ -168,8 +168,8 @@ func existsTC(p gomel.Poset, votes []vote, uc gomel.Unit, u gomel.Unit) vote {
 // Computes the value of Pi from the paper
 func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 	PI_DELTA_LEVEL := 12 // TODO: Read this from config
-	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL) + 1
-	if r < 1 {
+	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL)
+	if r < 0 {
 		// PI-DELTA protocol used on a too low level
 		return UNDECIDED
 	}
@@ -180,7 +180,7 @@ func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 			if !v.Below(u) {
 				continue
 			}
-			if r == 1 {
+			if r == 0 {
 				voteV := computeVote(p, v, uc)
 				if voteV == UNDECIDED {
 					voteV = defaultVote(v, uc)
@@ -192,7 +192,7 @@ func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 		}
 		return true
 	})
-	if r%2 == 0 {
+	if r%2 == 1 {
 		return existsTC(p, votesLevelBelow, uc, u)
 	} else {
 		return superMajority(p, votesLevelBelow)
@@ -202,9 +202,9 @@ func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 // Computes the value of Delta from the paper
 func computeDelta(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 	PI_DELTA_LEVEL := 12 // TODO: Read from config
-	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL) + 1
-	if r%2 == 1 {
-		// Delta used on an odd level
+	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL)
+	if r%2 == 0 {
+		// Delta used on an even level
 		return UNDECIDED
 	}
 	piValuesBelow := []vote{}
