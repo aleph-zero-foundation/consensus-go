@@ -2,6 +2,7 @@ package growing
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"math"
 	"sync"
 )
 
@@ -66,6 +67,84 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	} else {
 		return len(u.floor[creator]) > 1
 	}
+}
+
+func (u *unit) computeLevel() {
+	if gomel.Dealing(u) {
+		u.setLevel(0)
+		return
+	}
+
+	nProcesses := len(u.floor)
+	maxLevelParents := 0
+	for _, w := range u.parents {
+		wLevel := w.Level()
+		if wLevel > maxLevelParents {
+			maxLevelParents = wLevel
+		}
+	}
+
+	level := maxLevelParents
+	nSeen := 0
+	for pid, vs := range u.floor {
+
+		for _, unit := range vs {
+			if unit.Level() == maxLevelParents {
+				nSeen++
+				break
+			}
+		}
+
+		// optimization to not loop over all processes if quorum cannot be reached anyway
+		if !IsQuorum(nProcesses, nSeen+(nProcesses-(pid+1))) {
+			break
+		}
+
+		if IsQuorum(nProcesses, nSeen) {
+			level = maxLevelParents + 1
+			break
+		}
+	}
+	u.setLevel(level)
+}
+
+func (u *unit) computeForkingHeight(p *Poset) {
+	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
+	// as long as units created by one process are added atomically
+	if len(u.parents) == 0 {
+		if len(p.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
+			//this is a forking dealing unit
+			u.forkingHeight = -1
+		} else {
+			u.forkingHeight = math.MaxInt32
+		}
+		return
+	}
+	up := u.parents[0].(*unit)
+	found := false
+	for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
+		if v == up {
+			found = true
+			break
+		}
+	}
+	if found {
+		u.forkingHeight = up.forkingHeight
+	} else {
+		// there is already a unit that has up as a predecessor, hence u is a fork
+		if up.forkingHeight < up.height {
+			u.forkingHeight = up.forkingHeight
+		} else {
+			u.forkingHeight = up.height
+		}
+	}
+}
+
+func (u *unit) init(poset *Poset) {
+	u.computeHeight()
+	u.computeFloor(poset.nProcesses)
+	u.computeLevel()
+	u.computeForkingHeight(poset)
 }
 
 func (u *unit) computeHeight() {
