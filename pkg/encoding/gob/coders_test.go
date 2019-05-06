@@ -27,7 +27,7 @@ var _ = Describe("Encoding/Decoding", func() {
 		_, privKey, _ = signing.GenerateKeys()
 	})
 	Context("An empty silce of layers", func() {
-		It("should be encoded/decoded to an empty slice of preunis", func() {
+		It("should be encoded/decoded to an empty slice of preunits", func() {
 			eerr := encoder.EncodeUnits(layers)
 			Expect(eerr).NotTo(HaveOccurred())
 			preunits, derr := decoder.DecodePreunits()
