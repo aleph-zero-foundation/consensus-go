@@ -66,7 +66,7 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	if err != nil {
 		return err
 	}
-	ub.result.init(p)
+	ub.result.initialize(p)
 	return p.checkCompliance(ub.result)
 }
 

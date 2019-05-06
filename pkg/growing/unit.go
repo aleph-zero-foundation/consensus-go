@@ -69,7 +69,7 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	}
 }
 
-func (u *unit) init(poset *Poset) {
+func (u *unit) initialize(poset *Poset) {
 	u.computeHeight()
 	u.computeFloor(poset.nProcesses)
 	u.computeLevel()
