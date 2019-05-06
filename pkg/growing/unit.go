@@ -85,10 +85,11 @@ func (u *unit) setLevel(level int) {
 }
 
 func (u *unit) computeHeight() {
-	if len(u.parents) == 0 {
+	if gomel.Dealing(u) {
 		u.height = 0
 	} else {
-		u.height = u.Parents()[0].Height() + 1
+		predecessor, _ := gomel.Predecessor(u)
+		u.height = predecessor.Height() + 1
 	}
 }
 
@@ -199,7 +200,7 @@ func (u *unit) computeLevel() {
 func (u *unit) computeForkingHeight(p *Poset) {
 	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
 	// as long as units created by one process are added atomically
-	if len(u.parents) == 0 {
+	if gomel.Dealing(u) {
 		if len(p.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
 			//this is a forking dealing unit
 			u.forkingHeight = -1
@@ -208,22 +209,23 @@ func (u *unit) computeForkingHeight(p *Poset) {
 		}
 		return
 	}
-	up := u.parents[0].(*unit)
+	predTmp, _ := gomel.Predecessor(u)
+	predecessor := predTmp.(*unit)
 	found := false
 	for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
-		if v == up {
+		if v == predecessor {
 			found = true
 			break
 		}
 	}
 	if found {
-		u.forkingHeight = up.forkingHeight
+		u.forkingHeight = predecessor.forkingHeight
 	} else {
-		// there is already a unit that has up as a predecessor, hence u is a fork
-		if up.forkingHeight < up.height {
-			u.forkingHeight = up.forkingHeight
+		// there is already a unit that has 'predecessor' as a predecessor, hence u is a fork
+		if predecessor.forkingHeight < predecessor.height {
+			u.forkingHeight = predecessor.forkingHeight
 		} else {
-			u.forkingHeight = up.height
+			u.forkingHeight = predecessor.height
 		}
 	}
 }
