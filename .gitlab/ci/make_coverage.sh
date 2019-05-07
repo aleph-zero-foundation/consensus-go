@@ -1,6 +1,12 @@
 #!/bin/bash
 #
 # Code coverage generation
+#
+# parameters: <required pkg name> <required coverage output file> <optional html output file>
+
+PKG=$1
+REPORT_OUTPUT=$2
+HTML_REPORT_OUTPUT=$3
 
 COVERAGE_DIR="${COVERAGE_DIR:-coverage}"
 PKG_LIST=$(go list ${PKG}/... | grep -v /vendor/)
@@ -18,12 +24,9 @@ echo 'mode: count' > "${COVERAGE_DIR}"/coverage.cov ;
 tail -q -n +2 "${COVERAGE_DIR}"/*.cov >> "${COVERAGE_DIR}"/coverage.cov ;
 
 # Display the global code coverage
-go tool cover -func="${COVERAGE_DIR}"/coverage.cov ;
+go tool cover -func="${COVERAGE_DIR}"/coverage.cov -o ${REPORT_OUTPUT} ;
 
 # If needed, generate HTML report
-if [ "$1" == "html" ]; then
-    go tool cover -html="${COVERAGE_DIR}"/coverage.cov -o $2 ;
+if [ -z "$3" ]; then
+    go tool cover -html="${COVERAGE_DIR}"/coverage.cov -o ${HTML_REPORT_OUTPUT} ;
 fi
-
-# Remove the coverage files directory
-rm -rf "$COVERAGE_DIR";

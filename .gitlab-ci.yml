@@ -19,12 +19,12 @@ stages:
 
 before_script:
   - chmod +x .gitlab/ci/before_script.sh
-  - .gitlab/ci/before_script.sh
+  - .gitlab/ci/before_script.sh ${GOPATH} ${MAIN_FOLDER} ${PKG} ${VENDOR_NAME} ${CI_PROJECT_DIR}
 
 unit_tests:
   stage: test
   script:
-    - .gitlab/ci/make_test.sh
+    - .gitlab/ci/make_test.sh ${PKG}
 
 race_detector:
   stage: test
@@ -43,18 +43,19 @@ memory_sanitizer:
 code_coverage_report:
   stage: test
   script:
-    - .gitlab/ci/make_coverage.sh html coverage.html
+    - .gitlab/ci/make_coverage.sh ${PKG} coverage.output coverage.html
   only:
     - devel
   artifacts:
     paths:
+      - coverage.output
       - coverage.html
     expire_in: 1 week
 
 lint_code:
   stage: test
   script:
-    - .gitlab/ci/make_lint.sh golint.out
+    - .gitlab/ci/make_lint.sh ${PKG} golint.out
   only:
     - devel
   artifacts:
@@ -65,4 +66,4 @@ lint_code:
 build:
   stage: build
   script:
-    - .gitlab/ci/make_build.sh
+    - .gitlab/ci/make_build.sh ${PKG}
