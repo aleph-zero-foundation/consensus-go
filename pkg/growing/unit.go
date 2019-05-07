@@ -2,6 +2,7 @@ package growing
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"math"
 	"sync"
 )
 
@@ -68,12 +69,11 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	}
 }
 
-func (u *unit) computeHeight() {
-	if len(u.parents) == 0 {
-		u.height = 0
-	} else {
-		u.height = u.Parents()[0].Height() + 1
-	}
+func (u *unit) initialize(poset *Poset) {
+	u.computeHeight()
+	u.computeFloor(poset.nProcesses)
+	u.computeLevel()
+	u.computeForkingHeight(poset)
 }
 
 func (u *unit) addParent(parent gomel.Unit) {
@@ -82,6 +82,15 @@ func (u *unit) addParent(parent gomel.Unit) {
 
 func (u *unit) setLevel(level int) {
 	u.level = level
+}
+
+func (u *unit) computeHeight() {
+	if gomel.Dealing(u) {
+		u.height = 0
+	} else {
+		predecessor, _ := gomel.Predecessor(u)
+		u.height = predecessor.Height() + 1
+	}
 }
 
 func (u *unit) computeFloor(nProcesses int) {
@@ -101,16 +110,16 @@ func (u *unit) computeFloor(nProcesses int) {
 	}
 
 	var wg sync.WaitGroup
+	wg.Add(nProcesses - 1)
+
 	for pid := 0; pid < nProcesses; pid++ {
 		if pid == u.creator {
 			continue
 		}
-		pid := pid
-		wg.Add(1)
-		go func() {
+		go func(pid int) {
 			defer wg.Done()
 			u.floor[pid] = combineFloorsPerProc(floors[pid])
-		}()
+		}(pid)
 	}
 
 	wg.Wait()
@@ -147,4 +156,76 @@ func combineFloorsPerProc(floors []*unit) []*unit {
 	}
 
 	return newFloor
+}
+
+func (u *unit) computeLevel() {
+	if gomel.Dealing(u) {
+		u.setLevel(0)
+		return
+	}
+
+	nProcesses := len(u.floor)
+	maxLevelParents := 0
+	for _, w := range u.parents {
+		wLevel := w.Level()
+		if wLevel > maxLevelParents {
+			maxLevelParents = wLevel
+		}
+	}
+
+	level := maxLevelParents
+	nSeen := 0
+	for pid, vs := range u.floor {
+
+		for _, unit := range vs {
+			if unit.Level() == maxLevelParents {
+				nSeen++
+				break
+			}
+		}
+
+		// optimization to not loop over all processes if quorum cannot be reached anyway
+		if !IsQuorum(nProcesses, nSeen+(nProcesses-(pid+1))) {
+			break
+		}
+
+		if IsQuorum(nProcesses, nSeen) {
+			level = maxLevelParents + 1
+			break
+		}
+	}
+	u.setLevel(level)
+}
+
+func (u *unit) computeForkingHeight(p *Poset) {
+	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
+	// as long as units created by one process are added atomically
+	if gomel.Dealing(u) {
+		if len(p.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
+			//this is a forking dealing unit
+			u.forkingHeight = -1
+		} else {
+			u.forkingHeight = math.MaxInt32
+		}
+		return
+	}
+	predTmp, _ := gomel.Predecessor(u)
+	predecessor := predTmp.(*unit)
+	found := false
+	for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
+		if v == predecessor {
+			found = true
+			break
+		}
+	}
+	if found {
+		u.forkingHeight = predecessor.forkingHeight
+	} else {
+		// there is already a unit that has 'predecessor' as a predecessor, hence u is a fork
+		if predecessor.forkingHeight < predecessor.height {
+			u.forkingHeight = predecessor.forkingHeight
+		} else {
+			u.forkingHeight = predecessor.height
+		}
+	}
 }

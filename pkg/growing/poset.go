@@ -41,8 +41,12 @@ func NewPoset(pubKeys []sign.PublicKey) *Poset {
 	return newPoset
 }
 
+func IsQuorum(nProcesses int, subsetSize int) bool {
+	return 3*subsetSize >= 2*nProcesses
+}
+
 func (p *Poset) IsQuorum(number int) bool {
-	return 3*number >= 2*p.nProcesses
+	return IsQuorum(p.nProcesses, number)
 }
 
 // Returns the prime units at the requested level, indexed by their creator ids.

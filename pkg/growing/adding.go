@@ -1,8 +1,6 @@
 package growing
 
 import (
-	"math"
-
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
@@ -34,41 +32,6 @@ func (p *Poset) verifySignature(pu gomel.Preunit) error {
 	return nil
 }
 
-func (p *Poset) computeLevel(ub *unitBuilt) {
-	if len(ub.result.parents) == 0 {
-		ub.result.setLevel(0)
-	} else {
-		maxLevelParents := 0
-		for _, w := range ub.result.parents {
-			if w.Level() > maxLevelParents {
-				maxLevelParents = w.Level()
-			}
-		}
-		nSeen := 0
-		for pid := 0; pid < p.nProcesses; pid++ {
-			pidSeen := 0
-			for _, v := range p.PrimeUnits(maxLevelParents).Get(pid) {
-				if v.Below(ub.result) {
-					pidSeen = 1
-					break
-				}
-			}
-			nSeen += pidSeen
-			// optimization to not loop over all processes if quorum cannot be reached anyway
-			if !p.IsQuorum(nSeen + p.nProcesses - 1 - pid) {
-				break
-			}
-		}
-		if p.IsQuorum(nSeen) {
-			ub.result.setLevel(maxLevelParents + 1)
-		} else {
-			ub.result.setLevel(maxLevelParents)
-		}
-
-	}
-
-}
-
 func (p *Poset) addPrime(u gomel.Unit) {
 	if u.Level() > p.primeUnits.getHeight() {
 		p.primeUnits.extendBy(10)
@@ -94,38 +57,6 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 	p.maxUnits.Set(creator, newMaxByCreator)
 }
 
-func (p *Poset) computeForkingHeight(u *unit) {
-	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
-	// as long as units created by one process are added atomically
-	if len(u.parents) == 0 {
-		if len(p.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
-			//this is a forking dealing unit
-			u.forkingHeight = -1
-		} else {
-			u.forkingHeight = math.MaxInt32
-		}
-		return
-	}
-	up := u.parents[0].(*unit)
-	found := false
-	for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
-		if v == up {
-			found = true
-			break
-		}
-	}
-	if found {
-		u.forkingHeight = up.forkingHeight
-	} else {
-		// there is already a unit that has up as a predecessor, hence u is a fork
-		if up.forkingHeight < up.height {
-			u.forkingHeight = up.forkingHeight
-		} else {
-			u.forkingHeight = up.height
-		}
-	}
-}
-
 func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	err := p.units.dehashParents(ub)
 	if err != nil {
@@ -135,10 +66,7 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	if err != nil {
 		return err
 	}
-	ub.result.computeHeight()
-	ub.result.computeFloor(p.nProcesses)
-	p.computeLevel(ub)
-	p.computeForkingHeight(ub.result)
+	ub.result.initialize(p)
 	return p.checkCompliance(ub.result)
 }
 
