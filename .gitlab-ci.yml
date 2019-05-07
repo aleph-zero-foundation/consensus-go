@@ -1,0 +1,69 @@
+image: golang:1.10.4
+
+cache:
+  paths:
+    - /apt-cache
+    - /go/src/github.com
+    - /go/src/golang.org
+    - /go/src/google.golang.org
+    - /go/src/gopkg.in
+
+variables:
+  VENDOR_NAME: 'alephledger'
+  MAIN_FOLDER: 'gitlab.com/alephledger'
+  PKG: '${MAIN_FOLDER}/consensus-go'
+
+stages:
+  - test
+  - build
+
+before_script:
+  - chmod +x .gitlab/ci/before_script.sh
+  - .gitlab/ci/before_script.sh ${GOPATH} ${MAIN_FOLDER} ${PKG} ${VENDOR_NAME} ${CI_PROJECT_DIR}
+
+unit_tests:
+  stage: test
+  script:
+    - .gitlab/ci/make_test.sh ${PKG}
+
+race_detector:
+  stage: test
+  script:
+    - .gitlab/ci/make_race.sh
+  only:
+    - devel
+
+memory_sanitizer:
+  stage: test
+  script:
+    - .gitlab/ci/make_msan.sh
+  only:
+    - devel
+
+code_coverage_report:
+  stage: test
+  script:
+    - .gitlab/ci/make_coverage.sh ${PKG} coverage.output coverage.html
+  only:
+    - devel
+  artifacts:
+    paths:
+      - coverage.output
+      - coverage.html
+    expire_in: 1 week
+
+lint_code:
+  stage: test
+  script:
+    - .gitlab/ci/make_lint.sh ${PKG} golint.out
+  only:
+    - devel
+  artifacts:
+    paths:
+      - golint.out
+    expire_in: 1 week
+
+build:
+  stage: build
+  script:
+    - .gitlab/ci/make_build.sh ${PKG}
