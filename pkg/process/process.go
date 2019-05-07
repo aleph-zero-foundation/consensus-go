@@ -6,7 +6,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-// NOTE this is a simple wrapper showcasing how to use creator, network.ConnectionServer,
+// Process is a simple wrapper showcasing how to use creator, network.ConnectionServer,
 // and sync.Server together. It will be removed in the future and its code moved to cmd.
 // Process is a top level object responsible for creating new units and
 // exchanging them with other Processes
@@ -19,6 +19,7 @@ type Process struct {
 	server     sync.Server
 }
 
+// NewProcess creates a Process.
 func NewProcess(creator *creator, connServ network.ConnectionServer, server sync.Server) *Process {
 	newProc := &Process{
 		creator:  creator,
@@ -28,6 +29,7 @@ func NewProcess(creator *creator, connServ network.ConnectionServer, server sync
 	return newProc
 }
 
+// Run starts the process.
 func (p *Process) Run() {
 	p.creator.start()
 	defer p.creator.stop()

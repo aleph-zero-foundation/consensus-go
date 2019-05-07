@@ -10,7 +10,7 @@ type unitBuilt struct {
 	done    func(gomel.Preunit, gomel.Unit, error)
 }
 
-// Adds the provided Preunit to the poset as a Unit.
+// AddUnit adds the provided Preunit to the poset as a Unit.
 // When done calls the callback.
 func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
 	if pu.Creator() < 0 || pu.Creator() >= p.nProcesses {

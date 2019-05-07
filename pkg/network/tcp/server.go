@@ -1,8 +1,9 @@
 package tcp
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"net"
+
+	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
 const (

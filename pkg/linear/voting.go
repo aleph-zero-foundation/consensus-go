@@ -67,9 +67,8 @@ func defaultVote(u gomel.Unit, uc gomel.Unit) vote {
 	coinToss := simpleCoin(uc, u.Level())
 	if coinToss == 0 {
 		return POPULAR
-	} else {
-		return UNPOPULAR
 	}
+	return UNPOPULAR
 }
 
 // Deterministic function of a unit and level
@@ -194,9 +193,8 @@ func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 	})
 	if r%2 == 1 {
 		return existsTC(p, votesLevelBelow, uc, u)
-	} else {
-		return superMajority(p, votesLevelBelow)
 	}
+	return superMajority(p, votesLevelBelow)
 }
 
 // Computes the value of Delta from the paper

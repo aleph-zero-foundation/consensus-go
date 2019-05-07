@@ -1,6 +1,6 @@
 package linear
 
-// Random permutation shared between processes
+// CommonRandomPermutation represents random permutation shared between processes.
 type CommonRandomPermutation interface {
 	Get(level int) []int
 }

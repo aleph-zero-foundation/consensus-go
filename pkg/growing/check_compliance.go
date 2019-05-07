@@ -73,9 +73,8 @@ func checkParentsDiversity(u gomel.Unit) error {
 	for _, parent := range u.Parents() {
 		if processFilter[parent.Creator()] {
 			return gomel.NewComplianceError("Some of a unit's parents are created by the same process")
-		} else {
-			processFilter[parent.Creator()] = true
 		}
+		processFilter[parent.Creator()] = true
 	}
 	return nil
 }
@@ -91,9 +90,8 @@ func checkThresholdCoinIncluded(u gomel.Unit) error {
 func checkNoSelfForkingEvidence(u gomel.Unit) error {
 	if u.HasForkingEvidence(u.Creator()) {
 		return gomel.NewComplianceError("A unit is evidence of self forking")
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // Checks if the unit U respects the forker-muting policy, i.e.:

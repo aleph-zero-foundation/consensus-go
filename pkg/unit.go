@@ -22,7 +22,7 @@ type Unit interface {
 func Predecessor(u Unit) (Unit, error) {
 	pars := u.Parents()
 	if len(pars) == 0 {
-		return nil, errors.New("TODO: Make better error for parentless.")
+		return nil, errors.New("Todo: Make better error for parentless")
 	}
 	return pars[0], nil
 }
@@ -36,6 +36,7 @@ func Prime(u Unit) bool {
 	return u.Level() > p.Level()
 }
 
+// Dealing checks if u is a dealing unit.
 func Dealing(u Unit) bool {
 	return len(u.Parents()) == 0
 }

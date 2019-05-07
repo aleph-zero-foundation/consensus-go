@@ -1,8 +1,9 @@
 package linear
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"sort"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 // Ordering is an implementation of LinearOrdering interface.

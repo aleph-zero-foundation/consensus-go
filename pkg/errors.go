@@ -50,6 +50,7 @@ func (e *ConfigError) Error() string {
 	return "ConfigError: " + e.msg
 }
 
+// NewConfigError constructs a ConfigError from a given msg.
 func NewConfigError(msg string) *ConfigError {
 	return &ConfigError{msg}
 }
