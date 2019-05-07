@@ -21,7 +21,7 @@ done ;
 
 # Merge the coverage profile files
 echo 'mode: count' > "${COVERAGE_DIR}/coverage.cov" ;
-tail -q -n +2 "${COVERAGE_DIR}/*.cov" >> "${COVERAGE_DIR}/coverage.cov" ;
+tail -q -n +2 "${COVERAGE_DIR}"/*.cov >> "${COVERAGE_DIR}/coverage.cov" ;
 
 # Display the global code coverage
 go tool cover -func="${COVERAGE_DIR}/coverage.cov" -o ${REPORT_OUTPUT} ;
