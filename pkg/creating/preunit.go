@@ -61,7 +61,7 @@ func toBytes(data interface{}) []byte {
 // computeHash computes preunit's hash value and puts it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
-	data.Write(toBytes(pu.creator))
+	data.Write(toBytes(int32(pu.creator)))
 	data.Write(toBytes(pu.parents))
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }
