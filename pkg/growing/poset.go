@@ -18,7 +18,7 @@ type Poset struct {
 	pubKeys    []sign.PublicKey
 }
 
-// NewPoset constructs a poset for the given amount of processes.
+// NewPoset constructs a poset using given public keys of processes.
 func NewPoset(pubKeys []sign.PublicKey) *Poset {
 	n := len(pubKeys)
 	adders := make([]chan *unitBuilt, n, n)

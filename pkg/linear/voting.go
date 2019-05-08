@@ -10,6 +10,8 @@ const (
 	popular vote = iota
 	unpopular
 	undecided
+)
+const (
 	votingLevel  = 3  // todo: pull from config
 	piDeltaLevel = 12 // todo: pull from config
 )
@@ -121,8 +123,8 @@ func computeVote(p gomel.Poset, u gomel.Unit, uc gomel.Unit) vote {
 
 }
 
-// Checks if votes for popular or unpopular makes a quorum.
-// returns the vote making a quorum or undecided if there is no quorum
+// Checks if votes for popular or unpopular make a quorum.
+// Returns the vote making a quorum or undecided if there is no quorum.
 func superMajority(p gomel.Poset, votes []vote) vote {
 	cnt := make(map[vote]int)
 	for _, vote := range votes {
