@@ -1,6 +1,7 @@
 package growing
 
 import (
+	"fmt"
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
@@ -33,10 +34,16 @@ func (p *Poset) verifySignature(pu gomel.Preunit) error {
 }
 
 func (p *Poset) addPrime(u gomel.Unit) {
-	if u.Level() > p.primeUnits.getHeight() {
+	if u.Level() >= p.primeUnits.Len() {
 		p.primeUnits.extendBy(10)
 	}
-	su, _ := p.primeUnits.getLevel(u.Level())
+	su, err := p.primeUnits.getLevel(u.Level())
+	if err != nil {
+		fmt.Println(err)
+	}
+	if su == nil {
+		fmt.Println("nil su", u.Level(), p.primeUnits.Len())
+	}
 	creator := u.Creator()
 	primesByCreator := append(su.Get(creator), u)
 	// this assumes that we are adding u for the first time
