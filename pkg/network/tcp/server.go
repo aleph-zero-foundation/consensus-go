@@ -21,6 +21,7 @@ type connServer struct {
 	exitChan    chan struct{}
 }
 
+// NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs and dialPolicy.
 func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
@@ -31,10 +32,9 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int
 	for i, remoteAddr := range remoteAddrs {
 		if remoteTCP, err := net.ResolveTCPAddr("tcp", remoteAddr); err != nil {
 			return nil, err
-		} else {
-			remoteTCPs[i] = remoteTCP
-			inUse[remoteTCP] = newMutex()
 		}
+		remoteTCPs[i] = remoteTCP
+		inUse[remoteTCP] = newMutex()
 	}
 
 	return &connServer{

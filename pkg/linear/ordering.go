@@ -6,6 +6,10 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
+const (
+	VOTING_LEVEL = 3
+)
+
 // Ordering is an implementation of LinearOrdering interface.
 type Ordering struct {
 	poset       gomel.Poset
@@ -52,7 +56,6 @@ func (o *Ordering) AttemptTimingDecision() int {
 
 // DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
 func (o *Ordering) DecideTimingOnLevel(level int) gomel.Unit {
-	VOTING_LEVEL := 3 // TODO: Read from config
 	if posetMaxLevel(o.poset) < level+VOTING_LEVEL {
 		return nil
 	}
