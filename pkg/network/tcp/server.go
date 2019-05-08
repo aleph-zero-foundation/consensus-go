@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	N_LQUEUE = 10 // TODO move to config
-	N_SQUEUE = 10 // TODO move to config
+	listQueueLen = 10 // todo: pull from config
+	syncQueueLen = 10 // todo: pull from config
 )
 
 type connServer struct {
@@ -30,7 +30,8 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int
 	remoteTCPs := make([]*net.TCPAddr, len(remoteAddrs))
 	inUse := make(map[net.Addr]*mutex)
 	for i, remoteAddr := range remoteAddrs {
-		if remoteTCP, err := net.ResolveTCPAddr("tcp", remoteAddr); err != nil {
+		remoteTCP, err := net.ResolveTCPAddr("tcp", remoteAddr)
+		if err != nil {
 			return nil, err
 		}
 		remoteTCPs[i] = remoteTCP
@@ -40,8 +41,8 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int
 	return &connServer{
 		localAddr:   localTCP,
 		remoteAddrs: remoteTCPs,
-		listenChan:  make(chan network.Connection, N_LQUEUE),
-		dialChan:    make(chan network.Connection, N_SQUEUE),
+		listenChan:  make(chan network.Connection, listQueueLen),
+		dialChan:    make(chan network.Connection, syncQueueLen),
 		dialPolicy:  dialPolicy,
 		inUse:       inUse,
 		exitChan:    make(chan struct{}),

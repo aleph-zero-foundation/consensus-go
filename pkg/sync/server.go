@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	N_INSYNC  = 10
-	N_OUTSYNC = 10
+	nInitSync = 10 // todo: pull from config
+	nRecvSync = 10 // todo: pull from config
 )
 
 // Server retrieves ready-to-use connections and dispatches workers that use
@@ -35,10 +35,10 @@ func NewServer(poset gomel.Poset, inConnChan, outConnChan chan network.Connectio
 
 // Start starts server
 func (s *Server) Start() {
-	for i := 0; i < N_INSYNC; i++ {
+	for i := 0; i < nInitSync; i++ {
 		go s.syncDispatcher(s.inConnChan, s.inSyncProto.Run)
 	}
-	for i := 0; i < N_OUTSYNC; i++ {
+	for i := 0; i < nRecvSync; i++ {
 		go s.syncDispatcher(s.outConnChan, s.outSyncProto.Run)
 	}
 }
