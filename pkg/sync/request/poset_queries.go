@@ -7,8 +7,8 @@ import (
 )
 
 type unitInfo struct {
-	hash   gomel.Hash
-	height int
+	Hash   gomel.Hash
+	Height int
 }
 
 func toInfo(unit gomel.Unit) *unitInfo {
@@ -69,14 +69,16 @@ func posetMaxSnapshot(poset gomel.Poset) [][]gomel.Unit {
 		maxUnits = append(maxUnits, units)
 		return true
 	})
+	// The maximal units constructed through iterate might be inconsistent, i.e. contain units with parents that are not below any of their creators "maximal units".
+	// Because of that, we fix this in a potentially expensive procedure. We don't expect this to be particularly bad in most cases, but we should make sure in some experiments.
 	return consistentMaximal(maxUnits)
 }
 
 func minimalHeight(info []*unitInfo) int {
 	result := -1
 	for _, i := range info {
-		if i.height < result || result == -1 {
-			result = i.height
+		if i.Height < result || result == -1 {
+			result = i.Height
 		}
 	}
 	return result
@@ -95,7 +97,7 @@ func maximalHeight(units []gomel.Unit) int {
 func hashesSetFromInfo(info []*unitInfo) map[gomel.Hash]bool {
 	result := map[gomel.Hash]bool{}
 	for _, i := range info {
-		result[i.hash] = true
+		result[i.Hash] = true
 	}
 	return result
 }
@@ -103,7 +105,7 @@ func hashesSetFromInfo(info []*unitInfo) map[gomel.Hash]bool {
 func hashesSliceFromInfo(info []*unitInfo) []gomel.Hash {
 	result := []gomel.Hash{}
 	for _, i := range info {
-		result = append(result, i.hash)
+		result = append(result, i.Hash)
 	}
 	return result
 }
@@ -254,21 +256,40 @@ func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info [][]*unitInfo,
 	return toLayers(toSend)
 }
 
-func unknownHashes(poset gomel.Poset, info []*unitInfo) []gomel.Hash {
+func unknownHashes(poset gomel.Poset, info []*unitInfo, alsoKnown [][]gomel.Preunit) ([]gomel.Hash, bool) {
 	result := []gomel.Hash{}
+	any := false
 	units := poset.Get(hashesSliceFromInfo(info))
 	for i, u := range units {
 		if u == nil {
-			result = append(result, info[i].hash)
+			actuallyKnown := false
+			// TODO: This might be slow and might happen often. Think about optimizing.
+			for _, units := range alsoKnown {
+				for _, v := range units {
+					if *v.Hash() == info[i].Hash {
+						actuallyKnown = true
+						break
+					}
+				}
+			}
+			if !actuallyKnown {
+				result = append(result, info[i].Hash)
+				any = true
+			}
 		}
 	}
-	return result
+	return result, any
 }
 
-func requestsToSend(poset gomel.Poset, info [][]*unitInfo) [][]gomel.Hash {
+func requestsToSend(poset gomel.Poset, info [][]*unitInfo, aquiredUnits [][]gomel.Preunit) ([][]gomel.Hash, bool) {
 	result := [][]gomel.Hash{}
+	any := false
 	for i := range info {
-		result = append(result, unknownHashes(poset, info[i]))
+		hashes, a := unknownHashes(poset, info[i], aquiredUnits)
+		result = append(result, hashes)
+		if a {
+			any = true
+		}
 	}
-	return result
+	return result, any
 }
