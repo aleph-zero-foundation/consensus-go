@@ -2,10 +2,11 @@ package gob
 
 import (
 	"encoding/gob"
+	"io"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
-	"io"
 )
 
 // A helper type for sending units over the network

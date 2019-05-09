@@ -1,8 +1,9 @@
 package linear
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"sort"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 // Ordering is an implementation of LinearOrdering interface.
@@ -51,8 +52,7 @@ func (o *Ordering) AttemptTimingDecision() int {
 
 // DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
 func (o *Ordering) DecideTimingOnLevel(level int) gomel.Unit {
-	VOTING_LEVEL := 3 // TODO: Read from config
-	if posetMaxLevel(o.poset) < level+VOTING_LEVEL {
+	if posetMaxLevel(o.poset) < level+votingLevel {
 		return nil
 	}
 	for _, pid := range o.crp.Get(level) {
@@ -62,10 +62,10 @@ func (o *Ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		})
 		for _, uc := range primeUnitsByCurrProcess {
 			decision := decideUnitIsPopular(o.poset, uc)
-			if decision == POPULAR {
+			if decision == popular {
 				return uc
 			}
-			if decision == UNDECIDED {
+			if decision == undecided {
 				return nil
 			}
 		}

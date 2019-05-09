@@ -51,7 +51,7 @@ type Configuration struct {
 	AddShares uint
 
 	// default ip address of a process
-	HostIp string
+	HostIP string
 
 	// default port of incoming syncs
 	HostPort uint
@@ -96,7 +96,7 @@ func NewDefaultConfiguration() Configuration {
 
 		AddShares: 0,
 
-		HostIp: "127.0.0.1",
+		HostIP: "127.0.0.1",
 
 		HostPort: 8888,
 

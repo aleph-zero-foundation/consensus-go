@@ -1,9 +1,10 @@
 package growing
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"math"
 	"sync"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 type unit struct {
@@ -64,9 +65,8 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 			floor = append(floor, actualParent.floor[creator]...)
 		}
 		return len(combineFloorsPerProc(floor)) > 1
-	} else {
-		return len(u.floor[creator]) > 1
 	}
+	return len(u.floor[creator]) > 1
 }
 
 func (u *unit) initialize(poset *Poset) {

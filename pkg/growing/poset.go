@@ -7,7 +7,7 @@ import (
 	sign "gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 )
 
-// An implementation of Poset that is intended to be used during poset creation.
+// Poset that is intended to be used during poset creation.
 type Poset struct {
 	nProcesses int
 	units      *unitBag
@@ -18,7 +18,7 @@ type Poset struct {
 	pubKeys    []sign.PublicKey
 }
 
-// Constructs a poset for the given amount of processes.
+// NewPoset constructs a poset using given public keys of processes.
 func NewPoset(pubKeys []sign.PublicKey) *Poset {
 	n := len(pubKeys)
 	adders := make([]chan *unitBuilt, n, n)
@@ -41,15 +41,17 @@ func NewPoset(pubKeys []sign.PublicKey) *Poset {
 	return newPoset
 }
 
+// IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
 func IsQuorum(nProcesses int, subsetSize int) bool {
 	return 3*subsetSize >= 2*nProcesses
 }
 
+// IsQuorum checks if the given number of processes forms a quorum amongst all processes.
 func (p *Poset) IsQuorum(number int) bool {
 	return IsQuorum(p.nProcesses, number)
 }
 
-// Returns the prime units at the requested level, indexed by their creator ids.
+// PrimeUnits returns the prime units at the requested level, indexed by their creator ids.
 func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 	res, err := p.primeUnits.getLevel(level)
 	if err != nil {
@@ -58,12 +60,12 @@ func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 	return res
 }
 
-// Returns the maximal units created by respective processes.
+// MaximalUnitsPerProcess returns the maximal units created by respective processes.
 func (p *Poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return p.maxUnits
 }
 
-// Stops all the goroutines spawned by this poset.
+// Stop stops all the goroutines spawned by this poset.
 func (p *Poset) Stop() {
 	for _, c := range p.adders {
 		close(c)

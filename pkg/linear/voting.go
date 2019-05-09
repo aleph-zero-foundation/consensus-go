@@ -7,9 +7,13 @@ import (
 type vote int
 
 const (
-	POPULAR vote = iota
-	UNPOPULAR
-	UNDECIDED
+	popular vote = iota
+	unpopular
+	undecided
+)
+const (
+	votingLevel  = 3  // todo: pull from config
+	piDeltaLevel = 12 // todo: pull from config
 )
 
 // Checks whether v proves that uc is pupular on v's level.
@@ -52,24 +56,22 @@ func provesPopularity(p gomel.Poset, uc gomel.Unit, v gomel.Unit) bool {
 
 // Vote of u on popularity of uc as described in fast consenssus algorithm
 func defaultVote(u gomel.Unit, uc gomel.Unit) vote {
-	VOTING_LEVEL := 3 // TODO: Read this constant from config
-	r := u.Level() - uc.Level() + VOTING_LEVEL
+	r := u.Level() - uc.Level() + votingLevel
 	if r <= 0 {
 		// "Default vote is asked on too low unit level."
-		return UNDECIDED
+		return undecided
 	}
 	if r == 1 {
-		return POPULAR
+		return popular
 	}
 	if r == 2 {
-		return UNPOPULAR
+		return unpopular
 	}
 	coinToss := simpleCoin(uc, u.Level())
 	if coinToss == 0 {
-		return POPULAR
-	} else {
-		return UNPOPULAR
+		return popular
 	}
+	return unpopular
 }
 
 // Deterministic function of a unit and level
@@ -91,52 +93,50 @@ func simpleCoin(u gomel.Unit, level int) int {
 // - at lvl (L+2) the vote is the supermajority of votes (replaced by default_vote if no supermajority) of prime ancestors (at level L+1)
 // - etc.
 func computeVote(p gomel.Poset, u gomel.Unit, uc gomel.Unit) vote {
-	VOTING_LEVEL := 3 // TODO: Read this constant from config
-	r := u.Level() - uc.Level() - VOTING_LEVEL
+	r := u.Level() - uc.Level() - votingLevel
 	if r < 0 {
 		//"Vote is asked on too low unit level."
-		return UNDECIDED
+		return undecided
 	}
 	if r == 0 {
 		if provesPopularity(p, uc, u) {
-			return POPULAR
-		} else {
-			return UNPOPULAR
+			return popular
 		}
-	} else {
-		votesLevelBelow := []vote{}
-		primesLevelBelow := p.PrimeUnits(u.Level() - 1)
-		primesLevelBelow.Iterate(func(primes []gomel.Unit) bool {
-			for _, v := range primes {
-				if !v.Below(u) {
-					continue
-				}
-				voteV := computeVote(p, v, uc)
-				if voteV == UNDECIDED {
-					voteV = defaultVote(v, uc)
-				}
-				votesLevelBelow = append(votesLevelBelow, voteV)
-			}
-			return true
-		})
-		return superMajority(p, votesLevelBelow)
+		return unpopular
 	}
+	votesLevelBelow := []vote{}
+	primesLevelBelow := p.PrimeUnits(u.Level() - 1)
+	primesLevelBelow.Iterate(func(primes []gomel.Unit) bool {
+		for _, v := range primes {
+			if !v.Below(u) {
+				continue
+			}
+			voteV := computeVote(p, v, uc)
+			if voteV == undecided {
+				voteV = defaultVote(v, uc)
+			}
+			votesLevelBelow = append(votesLevelBelow, voteV)
+		}
+		return true
+	})
+	return superMajority(p, votesLevelBelow)
+
 }
 
-// Checks if votes for POPULAR or UNPOPULAR makes a quorum.
-// returns the vote making a quorum or UNDECIDED if there is no quorum
+// Checks if votes for popular or unpopular make a quorum.
+// Returns the vote making a quorum or undecided if there is no quorum.
 func superMajority(p gomel.Poset, votes []vote) vote {
 	cnt := make(map[vote]int)
 	for _, vote := range votes {
 		cnt[vote]++
 	}
-	if p.IsQuorum(cnt[POPULAR]) {
-		return POPULAR
+	if p.IsQuorum(cnt[popular]) {
+		return popular
 	}
-	if p.IsQuorum(cnt[UNPOPULAR]) {
-		return UNPOPULAR
+	if p.IsQuorum(cnt[unpopular]) {
+		return unpopular
 	}
-	return UNDECIDED
+	return undecided
 }
 
 func coinToss(p gomel.Poset, uc gomel.Unit, u gomel.Unit) int {
@@ -147,31 +147,29 @@ func coinToss(p gomel.Poset, uc gomel.Unit, u gomel.Unit) int {
 // Computes the exists function from the whitepaper, including the coin toss if necessary.
 func existsTC(p gomel.Poset, votes []vote, uc gomel.Unit, u gomel.Unit) vote {
 	for _, voteConsidered := range votes {
-		if voteConsidered == POPULAR {
-			return POPULAR
+		if voteConsidered == popular {
+			return popular
 		}
 	}
 
 	for _, voteConsidered := range votes {
-		if voteConsidered == UNPOPULAR {
-			return UNPOPULAR
+		if voteConsidered == unpopular {
+			return unpopular
 		}
 	}
 
 	if coinToss(p, uc, u) == 1 {
-		return POPULAR
-	} else {
-		return UNPOPULAR
+		return popular
 	}
+	return unpopular
 }
 
 // Computes the value of Pi from the paper
 func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
-	PI_DELTA_LEVEL := 12 // TODO: Read this from config
-	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL)
+	r := u.Level() - (uc.Level() + piDeltaLevel)
 	if r < 0 {
 		// PI-DELTA protocol used on a too low level
-		return UNDECIDED
+		return undecided
 	}
 	votesLevelBelow := []vote{}
 	primesLevelBelow := p.PrimeUnits(u.Level() - 1)
@@ -182,7 +180,7 @@ func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 			}
 			if r == 0 {
 				voteV := computeVote(p, v, uc)
-				if voteV == UNDECIDED {
+				if voteV == undecided {
 					voteV = defaultVote(v, uc)
 				}
 				votesLevelBelow = append(votesLevelBelow, voteV)
@@ -194,18 +192,16 @@ func computePi(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 	})
 	if r%2 == 1 {
 		return existsTC(p, votesLevelBelow, uc, u)
-	} else {
-		return superMajority(p, votesLevelBelow)
 	}
+	return superMajority(p, votesLevelBelow)
 }
 
 // Computes the value of Delta from the paper
 func computeDelta(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
-	PI_DELTA_LEVEL := 12 // TODO: Read from config
-	r := u.Level() - (uc.Level() + PI_DELTA_LEVEL)
+	r := u.Level() - (uc.Level() + piDeltaLevel)
 	if r%2 == 0 {
 		// Delta used on an even level
-		return UNDECIDED
+		return undecided
 	}
 	piValuesBelow := []vote{}
 	primesLevelBelow := p.PrimeUnits(u.Level() - 1)
@@ -225,31 +221,30 @@ func computeDelta(p gomel.Poset, uc gomel.Unit, u gomel.Unit) vote {
 // Returns vote
 func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 	//TODO: memo
-	VOTING_LEVEL, PI_DELTA_LEVEL := 3, 12 // TODO: Read this from config
 
 	posetLevelReached := posetMaxLevel(p)
-	// At levels +2, +3,..., +(VOTING_LEVEL-1) it might be possible to prove that the consensus will be "1"
+	// At levels +2, +3,..., +(votingLevel-1) it might be possible to prove that the consensus will be "1"
 	// This is being tried in the loop below -- as Lemma 2.3.(1) in "Lewelewele" allows us to do:
 	// -- whenever there is unit U at one of this levels that proves popularity of U_c, we can conclude the decision is "1"
-	for level := uc.Level() + 2; level < uc.Level()+VOTING_LEVEL && level <= posetLevelReached; level++ {
-		decision := UNDECIDED
+	for level := uc.Level() + 2; level < uc.Level()+votingLevel && level <= posetLevelReached; level++ {
+		decision := undecided
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
 				if provesPopularity(p, uc, v) {
-					decision = POPULAR
+					decision = popular
 					return false
 				}
 			}
 			return true
 		})
-		if decision == POPULAR {
+		if decision == popular {
 			return decision
 		}
 	}
 
-	// At level +VOTING_LEVEL+1, +VOTING_LEVEL+2, ..., +PI_DELTA_LEVEL-1 we use fast consensus algorithm
-	for level := uc.Level() + VOTING_LEVEL + 1; level < uc.Level()+PI_DELTA_LEVEL && level <= posetLevelReached; level++ {
-		decision := UNDECIDED
+	// At level +votingLevel+1, +votingLevel+2, ..., +piDeltaLevel-1 we use fast consensus algorithm
+	for level := uc.Level() + votingLevel + 1; level < uc.Level()+piDeltaLevel && level <= posetLevelReached; level++ {
+		decision := undecided
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
 				if computeVote(p, v, uc) == defaultVote(v, uc) {
@@ -259,31 +254,31 @@ func decideUnitIsPopular(p gomel.Poset, uc gomel.Unit) vote {
 			}
 			return true
 		})
-		if decision != UNDECIDED {
+		if decision != undecided {
 			return decision
 		}
 	}
 
-	// at levels >= +PI_DELTA_LEVEL we use pi-delta consensus
-	// The decisions (delta) are made at levels +PI_DELTA_LEVEL+1, +PI_DELTA_LEVEL+3, etc
+	// at levels >= +piDeltaLevel we use pi-delta consensus
+	// The decisions (delta) are made at levels +piDeltaLevel+1, +piDeltaLevel+3, etc
 	// whereas decisions in the paper are made at levels: +2, +4, etc
-	// Therefore the round type r := v.Level() - uc.Level() - PI_DELTA_LEVEL
+	// Therefore the round type r := v.Level() - uc.Level() - piDeltaLevel
 	// used in computePi and computeDelta and R_uc(v) defined in the paper have opposite parity
-	for level := uc.Level() + PI_DELTA_LEVEL + 1; level <= posetLevelReached; level += 2 {
-		decision := UNDECIDED
+	for level := uc.Level() + piDeltaLevel + 1; level <= posetLevelReached; level += 2 {
+		decision := undecided
 		p.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				if voteV := computeDelta(p, uc, v); voteV != UNDECIDED {
+				if voteV := computeDelta(p, uc, v); voteV != undecided {
 					decision = voteV
 					return false
 				}
 			}
 			return true
 		})
-		if decision != UNDECIDED {
+		if decision != undecided {
 			return decision
 		}
 	}
 
-	return UNDECIDED
+	return undecided
 }

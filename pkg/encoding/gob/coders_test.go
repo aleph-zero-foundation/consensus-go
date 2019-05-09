@@ -2,13 +2,14 @@ package gob_test
 
 import (
 	"bytes"
+	"math/rand"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding/gob"
-	"math/rand"
 )
 
 var _ = Describe("Encoding/Decoding", func() {
