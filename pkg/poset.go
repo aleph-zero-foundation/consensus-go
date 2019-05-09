@@ -10,4 +10,5 @@ type Poset interface {
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
 	IsQuorum(number int) bool
+	GetNProcesses() int
 }

@@ -9,6 +9,7 @@ import (
 )
 
 type poset struct {
+	nProcesses   int
 	primeUnits   []gomel.SlottedUnits
 	maximalUnits gomel.SlottedUnits
 }
@@ -25,6 +26,10 @@ func (p *poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 
 func (p *poset) IsQuorum(_ int) bool {
 	return false
+}
+
+func (p *poset) GetNProcesses() int {
+	return p.nProcesses
 }
 
 type slottedUnits struct {
@@ -118,18 +123,21 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 var _ = Describe("Creating", func() {
 
 	var (
-		pu []gomel.SlottedUnits
-		mu gomel.SlottedUnits
-		p  *poset
+		pu         []gomel.SlottedUnits
+		mu         gomel.SlottedUnits
+		p          *poset
+		nProcesses int
 	)
 
 	BeforeEach(func() {
 		mu = nil
 		pu = nil
+		nProcesses = 4
 	})
 
 	JustBeforeEach(func() {
 		p = &poset{
+			nProcesses:   nProcesses,
 			primeUnits:   pu,
 			maximalUnits: mu,
 		}
@@ -138,13 +146,11 @@ var _ = Describe("Creating", func() {
 	Describe("in a small poset", func() {
 
 		var (
-			nProcesses        int
 			maxUnitsInPoset   []gomel.Unit
 			primeUnitsInPoset []gomel.Unit
 		)
 
 		BeforeEach(func() {
-			nProcesses = 4
 			pu = []gomel.SlottedUnits{}
 			for i := 0; i < 10; i++ {
 				pu = append(pu, newSlottedUnits(nProcesses))
