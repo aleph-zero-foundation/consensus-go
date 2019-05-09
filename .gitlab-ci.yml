@@ -63,6 +63,11 @@ lint_code:
       - golint.out
     expire_in: 1 week
 
+fmt:
+  stage: test
+  script:
+    - .gitlab/ci/make_fmt.sh ${PKG}
+
 build:
   stage: build
   script:
