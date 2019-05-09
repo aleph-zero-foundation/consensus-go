@@ -25,7 +25,11 @@ func (testPosetReader) ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel
 	scanner.Scan()
 	text := scanner.Text()
 	var n int
-	fmt.Sscanf(text, "%d", &n)
+
+	_, err := fmt.Sscanf(text, "%d", &n)
+	if err != nil {
+		return nil, err
+	}
 
 	p := pf.CreatePoset(n)
 	preunitHashes := make(map[[3]int]gomel.Hash)
@@ -36,7 +40,12 @@ func (testPosetReader) ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel
 		parents := []gomel.Hash{}
 		for i, t := range strings.Split(text, " ") {
 			var creator, height, version int
-			fmt.Sscanf(t, "%d-%d-%d", &creator, &height, &version)
+
+			_, err := fmt.Sscanf(t, "%d-%d-%d", &creator, &height, &version)
+			if err != nil {
+				return nil, err
+			}
+
 			if i == 0 {
 				puCreator, puHeight, puVersion = creator, height, version
 			} else {
