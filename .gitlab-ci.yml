@@ -31,11 +31,6 @@ race_detector:
   script:
     - .gitlab/ci/make_race.sh ${PKG}
 
-memory_sanitizer:
-  stage: test
-  script:
-    - .gitlab/ci/make_msan.sh ${PKG}
-
 code_coverage_report:
   stage: test
   script:
