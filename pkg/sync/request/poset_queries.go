@@ -2,6 +2,7 @@ package request
 
 import (
 	"sort"
+	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
@@ -16,13 +17,13 @@ func toInfo(unit gomel.Unit) *unitInfo {
 }
 
 func toPosetInfo(maxSnapshot [][]gomel.Unit) [][]*unitInfo {
-	result := [][]*unitInfo{}
-	for _, units := range maxSnapshot {
-		infoHere := []*unitInfo{}
-		for _, u := range units {
-			infoHere = append(infoHere, toInfo(u))
+	result := make([][]*unitInfo, len(maxSnapshot))
+	for i, units := range maxSnapshot {
+		infoHere := make([]*unitInfo, len(units))
+		for j, u := range units {
+			infoHere[j] = toInfo(u)
 		}
-		result = append(result, infoHere)
+		result[i] = infoHere
 	}
 	return result
 }
@@ -45,8 +46,8 @@ func fixMaximal(u gomel.Unit, maxes [][]gomel.Unit) [][]gomel.Unit {
 				if !m.Below(p) {
 					newMaxes = append(newMaxes, m)
 				}
-				newMaxes = append(newMaxes, p)
 			}
+			newMaxes = append(newMaxes, p)
 			maxes[creator] = newMaxes
 			maxes = fixMaximal(p, maxes)
 		}
@@ -71,6 +72,7 @@ func posetMaxSnapshot(poset gomel.Poset) [][]gomel.Unit {
 	})
 	// The maximal units constructed through iterate might be inconsistent, i.e. contain units with parents that are not below any of their creators "maximal units".
 	// Because of that, we fix this in a potentially expensive procedure. We don't expect this to be particularly bad in most cases, but we should make sure in some experiments.
+	// TODO: Make sure in some experiments.
 	return consistentMaximal(maxUnits)
 }
 
@@ -103,9 +105,9 @@ func hashesSetFromInfo(info []*unitInfo) map[gomel.Hash]bool {
 }
 
 func hashesSliceFromInfo(info []*unitInfo) []gomel.Hash {
-	result := []gomel.Hash{}
-	for _, i := range info {
-		result = append(result, i.Hash)
+	result := make([]gomel.Hash, len(info))
+	for i, in := range info {
+		result[i] = in.Hash
 	}
 	return result
 }
@@ -118,6 +120,10 @@ func hashesFromUnits(units []gomel.Unit) map[gomel.Hash]bool {
 	return result
 }
 
+// unitsToSendByProcess returns the units that are predecessors of maxes and successors of tops.
+// A special case occurs when there are no tops, but maxes exist --
+// then simply all predecessors of maxes are returned.
+// This is to avoid the fourth round of the protocol in initial exchanges in cases with no forks.
 func unitsToSendByProcess(tops []*unitInfo, maxes []gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
 	sort.Slice(maxes, func(i, j int) bool {
@@ -217,21 +223,26 @@ func requestedToSend(poset gomel.Poset, info []*unitInfo, requests []gomel.Hash)
 }
 
 func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {
-	if layer[u] != 0 {
-		return layer[u]
-	}
-	maxParentLayer := 0
-	for _, v := range u.Parents() {
-		if computeLayer(v, layer) > maxParentLayer {
-			maxParentLayer = computeLayer(v, layer)
+	if layer[u] == -1 {
+		maxParentLayer := 0
+		for _, v := range u.Parents() {
+			if computeLayer(v, layer) > maxParentLayer {
+				maxParentLayer = computeLayer(v, layer)
+			}
 		}
+		layer[u] = maxParentLayer + 1
 	}
-	return maxParentLayer + 1
+	return layer[u]
 }
 
+// toLayers divides the provided units into antichains, so that each antichain
+// is maximal depends only on units not in units or on the previous antichains.
 func toLayers(units []gomel.Unit) [][]gomel.Unit {
 	layer := map[gomel.Unit]int{}
 	maxLayer := 0
+	for _, u := range units {
+		layer[u] = -1
+	}
 	for _, u := range units {
 		layer[u] = computeLayer(u, layer)
 		if layer[u] > maxLayer {
@@ -246,24 +257,33 @@ func toLayers(units []gomel.Unit) [][]gomel.Unit {
 }
 
 func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info [][]*unitInfo, requests [][]gomel.Hash) [][]gomel.Unit {
-	toSend := []gomel.Unit{}
+	toSendPid := make([][]gomel.Unit, len(info))
+	var wg sync.WaitGroup
+	wg.Add(len(info))
 	for i := range info {
-		toSendPid := unitsToSendByProcess(info[i], maxUnits[i])
-		unfulfilledRequests := fiterOutKnown(requests[i], hashesFromUnits(toSendPid))
-		toSendPid = append(toSendPid, requestedToSend(poset, info[i], unfulfilledRequests)...)
-		toSend = append(toSend, toSendPid...)
+		go func(id int) {
+			toSendPid[id] = unitsToSendByProcess(info[id], maxUnits[id])
+			unfulfilledRequests := fiterOutKnown(requests[id], hashesFromUnits(toSendPid[id]))
+			toSendPid[id] = append(toSendPid[id], requestedToSend(poset, info[id], unfulfilledRequests)...)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	toSend := []gomel.Unit{}
+	for _, tsp := range toSendPid {
+		toSend = append(toSend, tsp...)
 	}
 	return toLayers(toSend)
 }
 
-func unknownHashes(poset gomel.Poset, info []*unitInfo, alsoKnown [][]gomel.Preunit) ([]gomel.Hash, bool) {
+func unknownHashes(poset gomel.Poset, info []*unitInfo, alsoKnown [][]gomel.Preunit) []gomel.Hash {
 	result := []gomel.Hash{}
-	any := false
 	units := poset.Get(hashesSliceFromInfo(info))
 	for i, u := range units {
 		if u == nil {
 			actuallyKnown := false
 			// TODO: This might be slow and might happen often. Think about optimizing.
+			// Note that this happens in separate goroutines, so might not be a bottleneck.
 			for _, units := range alsoKnown {
 				for _, v := range units {
 					if *v.Hash() == info[i].Hash {
@@ -274,22 +294,22 @@ func unknownHashes(poset gomel.Poset, info []*unitInfo, alsoKnown [][]gomel.Preu
 			}
 			if !actuallyKnown {
 				result = append(result, info[i].Hash)
-				any = true
 			}
 		}
 	}
-	return result, any
+	return result
 }
 
-func requestsToSend(poset gomel.Poset, info [][]*unitInfo, aquiredUnits [][]gomel.Preunit) ([][]gomel.Hash, bool) {
-	result := [][]gomel.Hash{}
-	any := false
+func requestsToSend(poset gomel.Poset, info [][]*unitInfo, aquiredUnits [][]gomel.Preunit) [][]gomel.Hash {
+	result := make([][]gomel.Hash, len(info))
+	var wg sync.WaitGroup
+	wg.Add(len(info))
 	for i := range info {
-		hashes, a := unknownHashes(poset, info[i], aquiredUnits)
-		result = append(result, hashes)
-		if a {
-			any = true
-		}
+		go func(id int) {
+			result[id] = unknownHashes(poset, info[id], aquiredUnits)
+			wg.Done()
+		}(i)
 	}
-	return result, any
+	wg.Wait()
+	return result
 }

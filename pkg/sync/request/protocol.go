@@ -31,7 +31,7 @@ func sendUnits(units [][]gomel.Unit, conn network.Connection) error {
 	return ggob.NewEncoder(conn).EncodeUnits(units)
 }
 
-func getUnits(conn network.Connection) ([][]gomel.Preunit, error) {
+func getPreunits(conn network.Connection) ([][]gomel.Preunit, error) {
 	return ggob.NewDecoder(conn).DecodePreunits()
 }
 
@@ -47,12 +47,13 @@ func getRequests(conn network.Connection) ([][]gomel.Hash, error) {
 	return requests, err
 }
 
-func addAntichain(poset gomel.Poset, units []gomel.Preunit) error {
+func addAntichain(poset gomel.Poset, preunits []gomel.Preunit) error {
 	var wg sync.WaitGroup
+	// TODO: We only report one error, we might want to change it when we deal with Byzantine processes.
 	var problem error
-	for _, unit := range units {
+	for _, preunit := range preunits {
 		wg.Add(1)
-		poset.AddUnit(unit, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		poset.AddUnit(preunit, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
 				if _, ok := err.(*gomel.DuplicateUnit); !ok {
 					// An error occurred that is not just attempting to add the same unit again.
@@ -66,8 +67,9 @@ func addAntichain(poset gomel.Poset, units []gomel.Preunit) error {
 	return problem
 }
 
-func addUnits(poset gomel.Poset, units [][]gomel.Preunit) error {
-	for _, pus := range units {
+// addUnits adds the provided units to the poset, assuming they are divided into antichains as described in toLayers
+func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit) error {
+	for _, pus := range preunits {
 		err := addAntichain(poset, pus)
 		if err != nil {
 			return err
@@ -88,38 +90,44 @@ func nonempty(requests [][]gomel.Hash) bool {
 // Run handles the incoming connection using info from the poset.
 // This version uses 3-exchange "pullpush" protocol: receive heights, send heights, units and requests, receive units and requests.
 // If we receive some requests there is a 4th exchange where we once again send units. This should only happen due to forks.
+//
+// The precise flow of this protocol follows:
+/*		1. Receive a consistent snapshot of the other parties maximal units as a list of (hash, height) pairs.
+		2. Compute a similar info for our poset.
+		3. Send this info.
+		4. Compute and send units that are predecessors of the received info and succesors of ours.
+		5. Compute and send requests, containing hashes in the other party's info not recognized by us.
+		6. Receive units complying with the above restrictions and the ones we requested.
+		7. Receive requests as above. If they were empty proceed to 9.
+		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
+		9. Add the received units to the poset.
+*/
 func (p In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
-	// Receive info.
 	theirPosetInfo, err := getPosetInfo(conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	// Get a consistent snapshot of our maximal units and convert it to info.
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
-	// Send the info.
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	// Compute and send units.
 	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, make([][]gomel.Hash, len(theirPosetInfo)))
 	err = sendUnits(units, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	// Compute and send requests.
-	requests, _ := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
+	requests := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
 	err = sendRequests(requests, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	// Receive units and requests
-	theirUnitsReceived, err := getUnits(conn)
+	theirPreunitsReceived, err := getPreunits(conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -129,7 +137,6 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 		// TOOD: Error handling.
 		return
 	}
-	// If any were requested send more units.
 	if nonempty(theirRequests) {
 		units = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
 		err = sendUnits(units, conn)
@@ -138,7 +145,7 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 			return
 		}
 	}
-	err = addUnits(poset, theirUnitsReceived)
+	err = addUnits(poset, theirPreunitsReceived)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -148,23 +155,33 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 // Run handles the outgoing connection using info from the poset.
 // This version uses 3-exchange "pullpush" protocol: send heights, receive heights, units and requests, send units and requests.
 // If we sent some requests there is a 4th exchange where we once again get units. This should only happen due to forks.
+//
+// The precise flow of this protocol follows:
+/*		1. Get a consistent snapshot of our maximal units and convert it to a list of (hash, height) pairs.
+			2. Send this info.
+			3. Receive a similar info created by the other party.
+			4. Receive units, that are predecessors of the received info and succesors of ours.
+			5. Receive a list of requests, containing hashes in our info not recognized by the other party.
+			6. Compute units to send complying with the above restrictions.
+			7. Add units that are requested and their predecessors down to the first we know they have and send all of the above.
+			8. Compute requests to send as above and send them. Treat the units we received as known.
+			9. If the sent requests were nonempty, wait for more units. All the units are resend.
+		10. Add the received units to the poset.
+*/
 func (p Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
-	// Get a consistent snapshot of our maximal units and convert it to info.
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
-	// Send the info.
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	// Receive info, units, and requests
 	theirPosetInfo, err := getPosetInfo(conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	theirUnitsReceived, err := getUnits(conn)
+	theirPreunitsReceived, err := getPreunits(conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -174,29 +191,26 @@ func (p Out) Run(poset gomel.Poset, conn network.Connection) {
 		// TOOD: Error handling.
 		return
 	}
-	// Compute and send units.
 	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
 	err = sendUnits(units, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	// Compute and send requests.
-	requests, any := requestsToSend(poset, theirPosetInfo, theirUnitsReceived)
+	requests := requestsToSend(poset, theirPosetInfo, theirPreunitsReceived)
 	err = sendRequests(requests, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	// If any were requested wait for more units.
-	if any {
-		theirUnitsReceived, err = getUnits(conn)
+	if nonempty(requests) {
+		theirPreunitsReceived, err = getPreunits(conn)
 		if err != nil {
 			// TOOD: Error handling.
 			return
 		}
 	}
-	err = addUnits(poset, theirUnitsReceived)
+	err = addUnits(poset, theirPreunitsReceived)
 	if err != nil {
 		// TOOD: Error handling.
 		return
