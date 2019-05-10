@@ -10,7 +10,7 @@ import (
 type levelMap struct {
 	content map[int]gomel.SlottedUnits
 	width   int
-	len     int
+	length  int
 	mx      sync.RWMutex
 }
 
@@ -30,7 +30,7 @@ func newLevelMap(width, initialLen int) *levelMap {
 	newMap := &levelMap{
 		content: make(map[int]gomel.SlottedUnits),
 		width:   width,
-		len:     initialLen,
+		length:  initialLen,
 		mx:      sync.RWMutex{},
 	}
 	for i := 0; i < initialLen; i++ {
@@ -52,14 +52,14 @@ func (lm *levelMap) getLevel(level int) (gomel.SlottedUnits, error) {
 func (lm *levelMap) Len() int {
 	lm.mx.RLock()
 	defer lm.mx.RUnlock()
-	return lm.len
+	return lm.length
 }
 
 func (lm *levelMap) extendBy(nLevels int) {
 	lm.mx.Lock()
 	defer lm.mx.Unlock()
-	for i := lm.len; i < lm.len+nLevels; i++ {
+	for i := lm.length; i < lm.length+nLevels; i++ {
 		lm.content[i] = newSlottedUnits(lm.width)
 	}
-	lm.len += nLevels
+	lm.length += nLevels
 }

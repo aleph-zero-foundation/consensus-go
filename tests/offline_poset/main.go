@@ -20,37 +20,14 @@ func main() {
 	pubKeys := make([]signing.PublicKey, nProcesses, nProcesses)
 	privKeys := make([]signing.PrivateKey, nProcesses, nProcesses)
 	posets := make([]gomel.Poset, nProcesses, nProcesses)
-	network := make([]chan gomel.Preunit, nProcesses, nProcesses)
 
 	for pid := 0; pid < nProcesses; pid++ {
 		pubKeys[pid], privKeys[pid], _ = signing.GenerateKeys()
 	}
 
-	var wg sync.WaitGroup
-
 	// start goroutines waiting for a preunit and adding it to its' poset
-	exit := make(chan struct{})
 	for pid := 0; pid < nProcesses; pid++ {
-		poset := growing.NewPoset(pubKeys)
-		net := make(chan gomel.Preunit, nUnits/nProcesses)
-		go func() {
-			for {
-				select {
-				case pu := <-net:
-					wg.Add(1)
-					poset.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
-						wg.Done()
-						if err != nil {
-							fmt.Println(err)
-						}
-					})
-				case <-exit:
-					return
-				}
-			}
-		}()
-		posets[pid] = poset
-		network[pid] = net
+		posets[pid] = growing.NewPoset(pubKeys)
 	}
 
 	for i := 0; i < nUnits; i++ {
@@ -65,31 +42,25 @@ func main() {
 				continue
 			}
 			pu.SetSignature(privKeys[creator].Sign(pu))
-			var wg sync.WaitGroup
-			wg.Add(1)
 
 			// add the unit to creator's poset
 			if i%50 == 0 {
 				fmt.Println("Addning unit no", i, "out of", nUnits)
 			}
-			poset.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
-				wg.Done()
-				if err != nil {
-					fmt.Println(err, pu.Creator())
-				}
-			})
-			wg.Wait()
 
 			// send the unit to other posets
+			var wg sync.WaitGroup
+			wg.Add(nProcesses)
 			for j := 0; j < nProcesses; j++ {
-				if j == creator {
-					continue
-				}
-				network[j] <- pu
+				posets[j].AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
+					defer wg.Done()
+					if err != nil {
+						fmt.Println(err)
+					}
+				})
 			}
+			wg.Wait()
 			break
 		}
 	}
-	close(exit)
-	wg.Wait()
 }
