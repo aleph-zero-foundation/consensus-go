@@ -29,16 +29,7 @@ unit_tests:
 race_detector:
   stage: test
   script:
-    - .gitlab/ci/make_race.sh
-  only:
-    - devel
-
-memory_sanitizer:
-  stage: test
-  script:
-    - .gitlab/ci/make_msan.sh
-  only:
-    - devel
+    - .gitlab/ci/make_race.sh ${PKG}
 
 code_coverage_report:
   stage: test
@@ -56,12 +47,15 @@ lint_code:
   stage: test
   script:
     - .gitlab/ci/make_lint.sh ${PKG} golint.out
-  only:
-    - devel
   artifacts:
     paths:
       - golint.out
     expire_in: 1 week
+
+gofmt:
+  stage: test
+  script:
+    - .gitlab/ci/make_fmt.sh ${PKG}
 
 build:
   stage: build
