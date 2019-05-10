@@ -23,7 +23,7 @@ func countUnits(p gomel.Poset) int {
 		queue = queue[1:]
 		seenUnits[*w.Hash()] = true
 		for _, wParent := range w.Parents() {
-			if _, exists := seenUnits[*wParent.Hash()]; !exists {
+			if !seenUnits[*wParent.Hash()] {
 				queue = append(queue, wParent)
 				seenUnits[*wParent.Hash()] = true
 			}
@@ -58,7 +58,7 @@ func getMinMaxParents(p gomel.Poset) (int, int) {
 		queue = queue[1:]
 		seenUnits[*w.Hash()] = true
 		for _, wParent := range w.Parents() {
-			if _, exists := seenUnits[*wParent.Hash()]; !exists {
+			if !seenUnits[*wParent.Hash()] {
 				queue = append(queue, wParent)
 				seenUnits[*wParent.Hash()] = true
 			}
@@ -80,8 +80,8 @@ var _ = Describe("Generator", func() {
 			})
 			It("Should have number of parents between 2 and 5", func() {
 				minParents, maxParents := getMinMaxParents(p)
-				Expect(minParents >= 2).To(BeTrue())
-				Expect(maxParents <= 5).To(BeTrue())
+				Expect(minParents).To(BeNumerically(">=", 2))
+				Expect(maxParents).To(BeNumerically("<=", 5))
 			})
 		})
 	})

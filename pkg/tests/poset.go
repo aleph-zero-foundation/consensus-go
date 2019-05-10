@@ -66,7 +66,7 @@ func (p *testPoset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel
 		}
 		p.primeUnits[0].Set(u.Creator(), append(p.primeUnits[0].Get(u.Creator()), &u))
 	} else {
-		if u.Level() != u.Parents()[0].Level() {
+		if gomel.Prime(&u) {
 			if len(p.primeUnits) <= u.Level() {
 				p.primeUnits = append(p.primeUnits, newSlottedUnits(p.nProcesses))
 			}

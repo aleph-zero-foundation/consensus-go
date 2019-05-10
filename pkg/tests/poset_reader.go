@@ -9,18 +9,16 @@ import (
 	"strings"
 )
 
-// PosetReader is meant to read a poset from a reader
-type PosetReader interface {
-	ReadPoset(io.Reader, gomel.PosetFactory) (gomel.Poset, error)
-}
-type testPosetReader struct{}
+// TestPosetReader is meant to read test posets
+type TestPosetReader struct{}
 
 // NewTestPosetReader returns instation of a PosetReader
-func NewTestPosetReader() PosetReader {
-	return testPosetReader{}
+func NewTestPosetReader() TestPosetReader {
+	return TestPosetReader{}
 }
 
-func (testPosetReader) ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
+// ReadPoset reads poset from the given reader and creates it using given poset factory
+func (TestPosetReader) ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	text := scanner.Text()

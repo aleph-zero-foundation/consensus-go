@@ -49,7 +49,7 @@ var _ = Describe("Ordering", func() {
 				Expect(ordering.AttemptTimingDecision()).To(Equal(0))
 			})
 		})
-		Context("On the regular1 poset", func() {
+		Context("On a very regular poset with 4 processes and 60 units defined in regular1.txt file", func() {
 			It("should return 5", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/regular1.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())

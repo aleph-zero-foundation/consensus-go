@@ -6,15 +6,12 @@ import (
 	"io"
 )
 
-// PosetWriter is an interface to write given poset into given writer
-type PosetWriter interface {
-	WritePoset(io.Writer, gomel.Poset) error
-}
-type posetWriter struct{}
+// PosetWriter is meant to write posets
+type PosetWriter struct{}
 
 // NewPosetWriter returns instation of PosetWriter
 func NewPosetWriter() PosetWriter {
-	return posetWriter{}
+	return PosetWriter{}
 }
 
 // WritePoset writes the given poset in the following format
@@ -26,7 +23,7 @@ func NewPosetWriter() PosetWriter {
 // (2) H is the Height of a unit,
 // (3) V is the Version of a unit (0 for non-forked units, forks created by the same process on the same height are enumerated with consecutive integers)
 // (4) Parents is the list of units separated by a single space encoded in the same C-H-V format
-func (posetWriter) WritePoset(writer io.Writer, p gomel.Poset) error {
+func (PosetWriter) WritePoset(writer io.Writer, p gomel.Poset) error {
 	fmt.Fprintf(writer, "%d\n", p.GetNProcesses())
 
 	seenUnits := make(map[gomel.Hash]bool)
