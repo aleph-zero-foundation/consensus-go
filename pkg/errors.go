@@ -54,3 +54,17 @@ func (e *ConfigError) Error() string {
 func NewConfigError(msg string) *ConfigError {
 	return &ConfigError{msg}
 }
+
+// OrderingError is returned when an error occurs while ordering units
+type OrderingError struct {
+	msg string
+}
+
+func (e *OrderingError) Error() string {
+	return "OrderingError: " + e.msg
+}
+
+// NewOrderingError constructs a OrderingError from a given msg.
+func NewOrderingError(msg string) *OrderingError {
+	return &OrderingError{msg}
+}

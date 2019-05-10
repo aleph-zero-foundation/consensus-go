@@ -21,3 +21,19 @@ func (h *Hash) LessThan(k *Hash) bool {
 	}
 	return false
 }
+
+// XOR returns xor of two hashes
+func XOR(h *Hash, k *Hash) *Hash {
+	var result Hash
+	for i := range result {
+		result[i] = h[i] ^ k[i]
+	}
+	return &result
+}
+
+// XOREqual updates hash to be a xor with given argument
+func (h *Hash) XOREqual(k *Hash) {
+	for i := range h {
+		h[i] ^= k[i]
+	}
+}
