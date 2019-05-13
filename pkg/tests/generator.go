@@ -16,6 +16,11 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 	p := newPoset(nProcesses)
 	created := 0
 	for created < nUnits {
+		// TODO:
+		// (1) check if the compliance rules are satisfied
+		//		 (currently for this non-forking example expand prime rule might not be satisfied)
+		// (2) add new parameter to the function containing
+		//		 set of compliance rules which should be satisfied
 		pid := r.Intn(nProcesses)
 		if p.maximalHeight[pid] == -1 {
 			pu := newPreunit(pid, []gomel.Hash{})
