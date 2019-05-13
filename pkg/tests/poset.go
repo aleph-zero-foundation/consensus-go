@@ -5,8 +5,8 @@ import (
 	"sync"
 )
 
-// testPoset is a basic implementation of poset for testing
-type testPoset struct {
+// poset is a basic implementation of poset for testing
+type poset struct {
 	sync.RWMutex
 	nProcesses int
 	primeUnits []gomel.SlottedUnits
@@ -16,12 +16,12 @@ type testPoset struct {
 	unitByHash    map[gomel.Hash]gomel.Unit
 }
 
-func newPoset(n int) *testPoset {
+func newPoset(n int) *poset {
 	maxHeight := make([]int, n)
 	for pid := 0; pid < n; pid++ {
 		maxHeight[pid] = -1
 	}
-	newPoset := &testPoset{
+	newPoset := &poset{
 		nProcesses:    n,
 		primeUnits:    []gomel.SlottedUnits{},
 		unitsByHeight: []gomel.SlottedUnits{},
@@ -31,7 +31,7 @@ func newPoset(n int) *testPoset {
 	return newPoset
 }
 
-func (p *testPoset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -91,13 +91,13 @@ func (p *testPoset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel
 	callback(pu, &u, nil)
 }
 
-func (p *testPoset) PrimeUnits(level int) gomel.SlottedUnits {
+func (p *poset) PrimeUnits(level int) gomel.SlottedUnits {
 	p.RLock()
 	defer p.RUnlock()
 	return p.primeUnits[level]
 }
 
-func (p *testPoset) MaximalUnitsPerProcess() gomel.SlottedUnits {
+func (p *poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	p.RLock()
 	defer p.RUnlock()
 	su := newSlottedUnits(p.nProcesses)
@@ -109,19 +109,19 @@ func (p *testPoset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return su
 }
 
-func (p *testPoset) GetNProcesses() int {
+func (p *poset) GetNProcesses() int {
 	p.RLock()
 	defer p.RUnlock()
 	return p.nProcesses
 }
 
-func (p *testPoset) IsQuorum(number int) bool {
+func (p *poset) IsQuorum(number int) bool {
 	p.RLock()
 	defer p.RUnlock()
 	return 3*number > 2*p.nProcesses
 }
 
-func setLevel(u *unit, p *testPoset) {
+func setLevel(u *unit, p *poset) {
 	// This function is only called from AddUnit
 	// so we already have p locked
 	if u.Height() == 0 {
