@@ -56,7 +56,8 @@ func fixMaximal(u gomel.Unit, maxes [][]gomel.Unit) [][]gomel.Unit {
 }
 
 func consistentMaximal(maxes [][]gomel.Unit) [][]gomel.Unit {
-	for _, units := range maxes {
+	for i := range maxes {
+		units := maxes[i]
 		for _, u := range units {
 			maxes = fixMaximal(u, maxes)
 		}
