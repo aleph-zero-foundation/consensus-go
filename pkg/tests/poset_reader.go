@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 // TestPosetReader is meant to read test posets
@@ -56,11 +57,15 @@ func (TestPosetReader) ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel
 		pu := newPreunit(puCreator, parents)
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = *pu.Hash()
 		var addingError error
+		var wg sync.WaitGroup
+		wg.Add(1)
 		p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
 				addingError = err
 			}
+			wg.Done()
 		})
+		wg.Wait()
 		if addingError != nil {
 			return nil, addingError
 		}
