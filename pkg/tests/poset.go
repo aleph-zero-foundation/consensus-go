@@ -2,12 +2,15 @@ package tests
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"sync"
 )
 
 // testPoset is a basic implementation of poset for testing
 type testPoset struct {
-	nProcesses    int
-	primeUnits    []gomel.SlottedUnits
+	sync.RWMutex
+	nProcesses int
+	primeUnits []gomel.SlottedUnits
+	// maximalHeight is the maximalHeight of a unit created per process
 	maximalHeight []int
 	unitsByHeight []gomel.SlottedUnits
 	unitByHash    map[gomel.Hash]gomel.Unit
@@ -29,6 +32,9 @@ func newPoset(n int) *testPoset {
 }
 
 func (p *testPoset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
+	p.Lock()
+	defer p.Unlock()
+
 	var u unit
 	// Dehashing parents
 	u.parents = []gomel.Unit{}
@@ -86,10 +92,14 @@ func (p *testPoset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel
 }
 
 func (p *testPoset) PrimeUnits(level int) gomel.SlottedUnits {
+	p.RLock()
+	defer p.RUnlock()
 	return p.primeUnits[level]
 }
 
 func (p *testPoset) MaximalUnitsPerProcess() gomel.SlottedUnits {
+	p.RLock()
+	defer p.RUnlock()
 	su := newSlottedUnits(p.nProcesses)
 	for pid := 0; pid < p.nProcesses; pid++ {
 		if p.maximalHeight[pid] >= 0 {
@@ -100,14 +110,20 @@ func (p *testPoset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 }
 
 func (p *testPoset) GetNProcesses() int {
+	p.RLock()
+	defer p.RUnlock()
 	return p.nProcesses
 }
 
 func (p *testPoset) IsQuorum(number int) bool {
+	p.RLock()
+	defer p.RUnlock()
 	return 3*number > 2*p.nProcesses
 }
 
 func setLevel(u *unit, p *testPoset) {
+	// This function is only called from AddUnit
+	// so we already have p locked
 	if u.Height() == 0 {
 		u.level = 0
 		return
@@ -137,7 +153,8 @@ func setLevel(u *unit, p *testPoset) {
 			}
 		}
 	}
-	if p.IsQuorum(len(seenProcesses)) {
+	// We cannot use IsQuorum because p is locked
+	if 3*len(seenProcesses) > 2*p.nProcesses {
 		u.level = maxLevelBelow + 1
 	}
 }
