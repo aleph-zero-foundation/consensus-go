@@ -16,7 +16,8 @@ type poset struct {
 	unitByHash    map[gomel.Hash]gomel.Unit
 }
 
-func newPoset(n int) *poset {
+func newPoset(posetConfiguration gomel.PosetConfiguration) *poset {
+	n := posetConfiguration.GetNProcesses()
 	maxHeight := make([]int, n)
 	for pid := 0; pid < n; pid++ {
 		maxHeight[pid] = -1

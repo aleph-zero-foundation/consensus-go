@@ -11,6 +11,6 @@ func NewTestPosetFactory() gomel.PosetFactory {
 	return testPosetFactory{}
 }
 
-func (testPosetFactory) CreatePoset(nProcesses int) gomel.Poset {
-	return newPoset(nProcesses)
+func (testPosetFactory) CreatePoset(posetConfiguration gomel.PosetConfiguration) gomel.Poset {
+	return newPoset(posetConfiguration)
 }
