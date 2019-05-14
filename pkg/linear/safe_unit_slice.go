@@ -24,13 +24,13 @@ func (s *safeUnitSlice) safeAppend(u gomel.Unit) {
 }
 
 func (s *safeUnitSlice) safeLen() int {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 	return len(s.contents)
 }
 
 func (s *safeUnitSlice) safeGet(pos int) gomel.Unit {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 	return s.contents[pos]
 }
