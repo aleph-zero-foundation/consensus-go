@@ -18,6 +18,7 @@ type Orderer struct {
 	orderedUnits        chan<- gomel.Unit
 	statistics          chan<- int
 	currentRound        int
+	exitChan            chan struct{}
 }
 
 // NewOrderer is a constructor of an ordering service
@@ -29,18 +30,24 @@ func NewOrderer(linearOrdering gomel.LinearOrdering, orderingRequests <-chan str
 		orderedUnits:        orderedUnits,
 		statistics:          statistics,
 		currentRound:        0,
+		exitChan:            make(chan struct{}),
 	}
 }
 
 func (o *Orderer) attemptOrdering() {
-	for range o.orderingRequests {
-		round := o.linearOrdering.AttemptTimingDecision()
-		if round > o.currentRound {
-			o.extendOrderRequests <- [2]int{o.currentRound, round}
-			o.currentRound = round
+	for {
+		select {
+		case <-o.orderingRequests:
+			round := o.linearOrdering.AttemptTimingDecision()
+			if round > o.currentRound {
+				o.extendOrderRequests <- [2]int{o.currentRound, round}
+				o.currentRound = round
+			}
+		case <-o.exitChan:
+			close(o.extendOrderRequests)
+			return
 		}
 	}
-	close(o.extendOrderRequests)
 }
 
 func (o *Orderer) extendOrder() {
@@ -66,4 +73,5 @@ func (o *Orderer) Start() error {
 
 // Stop is the function that stops the service
 func (o *Orderer) Stop() {
+	close(o.exitChan)
 }

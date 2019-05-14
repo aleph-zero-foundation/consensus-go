@@ -54,18 +54,24 @@ var _ = Describe("Orderer", func() {
 			orderer.Start()
 			orderingRequests <- struct{}{}
 			resultOrder := []gomel.Unit{}
-
 			var wg sync.WaitGroup
 			wg.Add(1)
+			canStop := make(chan struct{})
 			go func() {
+				firstIt := true
 				for nUnits := range statistics {
+					if firstIt {
+						canStop <- struct{}{}
+						firstIt = false
+					}
 					for i := 0; i < nUnits; i++ {
 						resultOrder = append(resultOrder, <-orderedUnits)
 					}
 				}
 				wg.Done()
 			}()
-			close(orderingRequests)
+			<-canStop
+			orderer.Stop()
 			wg.Wait()
 			Expect(len(resultOrder)).NotTo(Equal(0))
 			for i := 0; i < len(resultOrder); i++ {
