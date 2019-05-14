@@ -42,7 +42,7 @@ var _ = Describe("Orderer", func() {
 	BeforeEach(func() {
 		p, err = tests.CreatePosetFromTestFile("../testdata/random_4p_100u_2par.txt", tests.NewTestPosetFactory())
 		Expect(err).NotTo(HaveOccurred())
-		crp = newCommonRandomPermutation(p.GetNProcesses())
+		crp = newCommonRandomPermutation(p.NProc())
 		ordering = linear.NewOrdering(p, crp)
 		orderingRequests = make(chan struct{})
 		statistics = make(chan int)
