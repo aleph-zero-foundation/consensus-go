@@ -10,16 +10,8 @@ import (
 	"sync"
 )
 
-// TestPosetReader is meant to read test posets
-type TestPosetReader struct{}
-
-// NewTestPosetReader returns instation of a PosetReader
-func NewTestPosetReader() TestPosetReader {
-	return TestPosetReader{}
-}
-
 // ReadPoset reads poset from the given reader and creates it using given poset factory
-func (TestPosetReader) ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
+func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	text := scanner.Text()
@@ -81,5 +73,5 @@ func CreatePosetFromTestFile(filename string, pf gomel.PosetFactory) (gomel.Pose
 		return nil, err
 	}
 	reader := bufio.NewReader(file)
-	return NewTestPosetReader().ReadPoset(reader, pf)
+	return ReadPoset(reader, pf)
 }

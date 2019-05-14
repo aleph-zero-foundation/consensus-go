@@ -14,7 +14,7 @@ func writeToFile(filename string, poset gomel.Poset) error {
 		return err
 	}
 	out := bufio.NewWriter(file)
-	tests.NewPosetWriter().WritePoset(out, poset)
+	tests.WritePoset(out, poset)
 	out.Flush()
 	return nil
 }

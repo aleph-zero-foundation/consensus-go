@@ -36,7 +36,7 @@ var _ = Describe("PosetReader", func() {
 		Context("On some trash", func() {
 			It("Should return an error", func() {
 				trashString := "fdjalskjfdalkjfa"
-				p, err = NewTestPosetReader().ReadPoset(strings.NewReader(trashString), NewTestPosetFactory())
+				p, err = ReadPoset(strings.NewReader(trashString), NewTestPosetFactory())
 				Expect(err).To(HaveOccurred())
 			})
 		})

@@ -72,7 +72,7 @@ var _ = Describe("Generator", func() {
 		var p gomel.Poset
 		Context("Called with nProcesses = 10, minParents = 2, maxParents = 5, nUnits = 50", func() {
 			p = CreateRandomNonForking(10, 2, 5, 50)
-			It("Should retun poset with 10 processes", func() {
+			It("Should return poset with 10 processes", func() {
 				Expect(p.NProc()).To(Equal(10))
 			})
 			It("Should have 50 units", func() {
