@@ -13,15 +13,15 @@ import (
 // - currentRound is the round up to which we have chosen timing units
 type Orderer struct {
 	linearOrdering      gomel.LinearOrdering
-	orderingRequests    chan struct{}
+	orderingRequests    <-chan struct{}
 	extendOrderRequests chan [2]int
-	orderedUnits        chan gomel.Unit
-	statistics          chan int
+	orderedUnits        chan<- gomel.Unit
+	statistics          chan<- int
 	currentRound        int
 }
 
 // NewOrderer is a constructor of an ordering service
-func NewOrderer(linearOrdering gomel.LinearOrdering, orderingRequests chan struct{}, orderedUnits chan gomel.Unit, statistics chan int) *Orderer {
+func NewOrderer(linearOrdering gomel.LinearOrdering, orderingRequests <-chan struct{}, orderedUnits chan<- gomel.Unit, statistics chan<- int) *Orderer {
 	return &Orderer{
 		linearOrdering:      linearOrdering,
 		orderingRequests:    orderingRequests,
@@ -66,5 +66,4 @@ func (o *Orderer) Start() error {
 
 // Stop is the function that stops the service
 func (o *Orderer) Stop() {
-	close(o.orderingRequests)
 }

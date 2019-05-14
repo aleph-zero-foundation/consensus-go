@@ -65,7 +65,7 @@ var _ = Describe("Orderer", func() {
 				}
 				wg.Done()
 			}()
-			orderer.Stop()
+			close(orderingRequests)
 			wg.Wait()
 			Expect(len(resultOrder)).NotTo(Equal(0))
 			for i := 0; i < len(resultOrder); i++ {
