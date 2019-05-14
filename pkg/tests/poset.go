@@ -111,20 +111,16 @@ func (p *poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 }
 
 func (p *poset) GetNProcesses() int {
-	p.RLock()
-	defer p.RUnlock()
+	// nProcesses doesn't change so no lock needed
 	return p.nProcesses
 }
 
 func (p *poset) IsQuorum(number int) bool {
-	p.RLock()
-	defer p.RUnlock()
+	// nProcesses doesn't change so no lock needed
 	return 3*number > 2*p.nProcesses
 }
 
 func setLevel(u *unit, p *poset) {
-	// This function is only called from AddUnit
-	// so we already have p locked
 	if u.Height() == 0 {
 		u.level = 0
 		return
@@ -154,8 +150,7 @@ func setLevel(u *unit, p *poset) {
 			}
 		}
 	}
-	// We cannot use IsQuorum because p is locked
-	if 3*len(seenProcesses) > 2*p.nProcesses {
+	if p.IsQuorum(len(seenProcesses)) {
 		u.level = maxLevelBelow + 1
 	}
 }
