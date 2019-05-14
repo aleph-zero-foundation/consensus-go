@@ -11,6 +11,6 @@ type Poset interface {
 	MaximalUnitsPerProcess() SlottedUnits
 	// IsQuorum checks if the given number of processes is enough to form a quroum.
 	IsQuorum(number int) bool
-	// GetNProcesses returns the number of processes that shares this poset.
-	GetNProcesses() int
+	// NProc returns the number of processes that shares this poset.
+	NProc() int
 }

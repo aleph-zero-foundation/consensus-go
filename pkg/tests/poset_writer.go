@@ -24,7 +24,7 @@ func NewPosetWriter() PosetWriter {
 // (3) V is the Version of a unit (0 for non-forked units, forks created by the same process on the same height are enumerated with consecutive integers)
 // (4) Parents is the list of units separated by a single space encoded in the same C-H-V format
 func (PosetWriter) WritePoset(writer io.Writer, p gomel.Poset) error {
-	fmt.Fprintf(writer, "%d\n", p.GetNProcesses())
+	fmt.Fprintf(writer, "%d\n", p.NProc())
 
 	seenUnits := make(map[gomel.Hash]bool)
 	unitToVersion := make(map[gomel.Hash]int)

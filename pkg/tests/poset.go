@@ -16,8 +16,8 @@ type poset struct {
 	unitByHash    map[gomel.Hash]gomel.Unit
 }
 
-func newPoset(posetConfiguration gomel.PosetConfiguration) *poset {
-	n := posetConfiguration.GetNProcesses()
+func newPoset(posetConfiguration gomel.PosetConfig) *poset {
+	n := posetConfiguration.NProc()
 	maxHeight := make([]int, n)
 	for pid := 0; pid < n; pid++ {
 		maxHeight[pid] = -1
@@ -110,7 +110,7 @@ func (p *poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return su
 }
 
-func (p *poset) GetNProcesses() int {
+func (p *poset) NProc() int {
 	// nProcesses doesn't change so no lock needed
 	return p.nProcesses
 }

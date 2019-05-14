@@ -19,7 +19,7 @@ var _ = Describe("PosetReader", func() {
 			})
 			It("Should return poset with 10 parents and 100 units", func() {
 				Expect(err).NotTo(HaveOccurred())
-				Expect(p.GetNProcesses()).To(Equal(10))
+				Expect(p.NProc()).To(Equal(10))
 				Expect(countUnits(p)).To(Equal(100))
 			})
 		})

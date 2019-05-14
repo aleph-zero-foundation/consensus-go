@@ -51,8 +51,8 @@ func (p *Poset) IsQuorum(number int) bool {
 	return IsQuorum(p.nProcesses, number)
 }
 
-// GetNProcesses returns number of processes which uses the poset
-func (p *Poset) GetNProcesses() int {
+// NProc returns number of processes which uses the poset
+func (p *Poset) NProc() int {
 	return p.nProcesses
 }
 

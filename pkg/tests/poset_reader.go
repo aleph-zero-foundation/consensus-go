@@ -30,7 +30,7 @@ func (TestPosetReader) ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel
 		return nil, err
 	}
 
-	p := pf.CreatePoset(gomel.NewPosetConfiguration(n))
+	p := pf.CreatePoset(gomel.NewPosetConfig(n))
 	preunitHashes := make(map[[3]int]gomel.Hash)
 
 	for scanner.Scan() {

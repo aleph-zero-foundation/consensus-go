@@ -13,7 +13,7 @@ import (
 // nUnits     - number of units to include in the poset
 func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gomel.Poset {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	p := newPoset(gomel.NewPosetConfiguration(nProcesses))
+	p := newPoset(gomel.NewPosetConfig(nProcesses))
 	created := 0
 	for created < nUnits {
 		// TODO:

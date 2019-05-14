@@ -36,7 +36,7 @@ var _ = Describe("Ordering", func() {
 			It("should return 0", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/empty.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				crp = newCommonRandomPermutation(p.GetNProcesses())
+				crp = newCommonRandomPermutation(p.NProc())
 				ordering = NewOrdering(p, crp)
 				Expect(ordering.AttemptTimingDecision()).To(Equal(0))
 			})
@@ -53,7 +53,7 @@ var _ = Describe("Ordering", func() {
 			It("should return 5", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/regular1.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				crp = newCommonRandomPermutation(p.GetNProcesses())
+				crp = newCommonRandomPermutation(p.NProc())
 				ordering = NewOrdering(p, crp)
 				Expect(ordering.AttemptTimingDecision()).To(Equal(5))
 			})
