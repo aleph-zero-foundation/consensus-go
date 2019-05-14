@@ -58,9 +58,10 @@ func (o *Orderer) extendOrder() {
 }
 
 // Start is a function which starts the service
-func (o *Orderer) Start() {
+func (o *Orderer) Start() error {
 	go o.attemptOrdering()
 	go o.extendOrder()
+	return nil
 }
 
 // Stop is the function that stops the service
