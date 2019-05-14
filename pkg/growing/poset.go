@@ -51,6 +51,11 @@ func (p *Poset) IsQuorum(number int) bool {
 	return IsQuorum(p.nProcesses, number)
 }
 
+// NProc returns number of processes which uses the poset
+func (p *Poset) NProc() int {
+	return p.nProcesses
+}
+
 // PrimeUnits returns the prime units at the requested level, indexed by their creator ids.
 func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 	res, err := p.primeUnits.getLevel(level)

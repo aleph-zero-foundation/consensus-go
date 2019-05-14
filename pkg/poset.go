@@ -9,5 +9,8 @@ type Poset interface {
 	PrimeUnits(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
+	// IsQuorum checks if the given number of processes is enough to form a quroum.
 	IsQuorum(number int) bool
+	// NProc returns the number of processes that shares this poset.
+	NProc() int
 }
