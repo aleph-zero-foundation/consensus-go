@@ -1,12 +1,13 @@
 package tests
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"sync"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
-// poset is a basic implementation of poset for testing
-type poset struct {
+// Poset is a basic implementation of poset for testing
+type Poset struct {
 	sync.RWMutex
 	nProcesses int
 	primeUnits []gomel.SlottedUnits
@@ -16,13 +17,13 @@ type poset struct {
 	unitByHash    map[gomel.Hash]gomel.Unit
 }
 
-func newPoset(posetConfiguration gomel.PosetConfig) *poset {
+func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
 	n := posetConfiguration.NProc()
 	maxHeight := make([]int, n)
 	for pid := 0; pid < n; pid++ {
 		maxHeight[pid] = -1
 	}
-	newPoset := &poset{
+	newPoset := &Poset{
 		nProcesses:    n,
 		primeUnits:    []gomel.SlottedUnits{},
 		unitsByHeight: []gomel.SlottedUnits{},
@@ -32,7 +33,8 @@ func newPoset(posetConfiguration gomel.PosetConfig) *poset {
 	return newPoset
 }
 
-func (p *poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
+// AddUnit adds a unit in a thread safe manner without trying to be clever.
+func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -92,13 +94,15 @@ func (p *poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	callback(pu, &u, nil)
 }
 
-func (p *poset) PrimeUnits(level int) gomel.SlottedUnits {
+// PrimeUnits returns the prime units at the given level.
+func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 	p.RLock()
 	defer p.RUnlock()
 	return p.primeUnits[level]
 }
 
-func (p *poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
+// MaximalUnitsPerProcess returns the maximal units for all processes.
+func (p *Poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	p.RLock()
 	defer p.RUnlock()
 	su := newSlottedUnits(p.nProcesses)
@@ -110,17 +114,30 @@ func (p *poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return su
 }
 
-func (p *poset) NProc() int {
+// Get retunrs the units with the given hashes or nil, when it doesn't find them.
+func (p *Poset) Get(hashes []gomel.Hash) []gomel.Unit {
+	p.RLock()
+	defer p.RUnlock()
+	result := make([]gomel.Unit, len(hashes))
+	for i, h := range hashes {
+		result[i] = p.unitByHash[h]
+	}
+	return result
+}
+
+// NProc returns the number of processes in this poset.
+func (p *Poset) NProc() int {
 	// nProcesses doesn't change so no lock needed
 	return p.nProcesses
 }
 
-func (p *poset) IsQuorum(number int) bool {
+// IsQuorum checks whether the provided number of processes constitutes a quorum.
+func (p *Poset) IsQuorum(number int) bool {
 	// nProcesses doesn't change so no lock needed
 	return 3*number > 2*p.nProcesses
 }
 
-func setLevel(u *unit, p *poset) {
+func setLevel(u *unit, p *Poset) {
 	if u.Height() == 0 {
 		u.level = 0
 		return
