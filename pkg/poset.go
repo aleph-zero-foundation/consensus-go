@@ -9,6 +9,9 @@ type Poset interface {
 	PrimeUnits(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
+	// Get returns the units associated with the given hashes, in the same order.
+	// If no unit with a hash exists in the poset, the result will contain a nil at the position of the hash.
+	Get([]Hash) []Unit
 	// IsQuorum checks if the given number of processes is enough to form a quroum.
 	IsQuorum(number int) bool
 	// NProc returns the number of processes that shares this poset.
