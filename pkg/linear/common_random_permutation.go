@@ -21,6 +21,7 @@ func (crp *commonRandomPermutation) Get(level int) []int {
 	return permutation
 }
 
+// NewCommonRandomPermutation returns the crp for a given poset
 func NewCommonRandomPermutation(p gomel.Poset) CommonRandomPermutation {
 	return &commonRandomPermutation{
 		n: p.NProc(),
