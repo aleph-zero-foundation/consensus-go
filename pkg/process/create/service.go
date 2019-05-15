@@ -9,8 +9,11 @@ type service struct {
 	creator *adjustingCreator
 }
 
-func makeFinal(maxLevel, maxHeight int, finished chan<- struct{}) func(gomel.Unit) bool {
+func makeFinal(maxLevel, maxHeight int, finished chan<- struct{}, primeUnitCreated chan<- struct{}) func(gomel.Unit) bool {
 	return func(created gomel.Unit) bool {
+		if gomel.Prime(created) {
+			primeUnitCreated <- struct{}{}
+		}
 		if created.Level() >= maxLevel || created.Height() >= maxHeight {
 			close(finished)
 			return true
@@ -21,9 +24,9 @@ func makeFinal(maxLevel, maxHeight int, finished chan<- struct{}) func(gomel.Uni
 
 // NewService creates a new creating service for the given poset, with the given configuration.
 // The service will close done when it stops.
-func NewService(poset gomel.Poset, config *process.Create, done chan<- struct{}) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Create, done chan<- struct{}, primeUnitCreated chan<- struct{}) (process.Service, error) {
 	return &service{
-		creator: newAdjustingCreator(poset, config.ID, config.MaxParents, config.PrivateKey, config.InitialDelay, makeFinal(config.MaxLevel, config.MaxHeight, done)),
+		creator: newAdjustingCreator(poset, config.ID, config.MaxParents, config.PrivateKey, config.InitialDelay, makeFinal(config.MaxLevel, config.MaxHeight, done, primeUnitCreated)),
 	}, nil
 }
 
