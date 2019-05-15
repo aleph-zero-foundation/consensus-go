@@ -44,7 +44,7 @@ func posetMaxLevel(p gomel.Poset) int {
 func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	// If we have already decided we can read the answer from memory
 	if o.timingUnits.length() > level {
-		return o.timingUnits.safeGet(level)
+		return o.timingUnits.get(level)
 	}
 
 	if posetMaxLevel(o.poset) < level+votingLevel {
@@ -74,13 +74,13 @@ func (o *ordering) TimingRound(r int) []gomel.Unit {
 	if o.timingUnits.length() <= r {
 		return nil
 	}
-	timingUnit := o.timingUnits.safeGet(r)
+	timingUnit := o.timingUnits.get(r)
 
 	// If we already ordered this unit we can read the answer from orderedUnits
 	if roundEnds, alreadyOrdered := o.unitPositionInOrder[*timingUnit.Hash()]; alreadyOrdered {
 		roundBegins := 0
 		if r != 0 {
-			roundBegins = o.unitPositionInOrder[*o.timingUnits.safeGet(r - 1).Hash()] + 1
+			roundBegins = o.unitPositionInOrder[*o.timingUnits.get(r - 1).Hash()] + 1
 		}
 		return o.orderedUnits[roundBegins:(roundEnds + 1)]
 	}

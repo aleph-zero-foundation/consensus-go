@@ -29,7 +29,7 @@ func (s *safeUnitSlice) length() int {
 	return len(s.contents)
 }
 
-func (s *safeUnitSlice) safeGet(pos int) gomel.Unit {
+func (s *safeUnitSlice) get(pos int) gomel.Unit {
 	s.RLock()
 	defer s.RUnlock()
 	return s.contents[pos]
