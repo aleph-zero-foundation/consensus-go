@@ -13,6 +13,11 @@ type preunit struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	parents   []gomel.Hash
+	txs       []gomel.Tx
+}
+
+func (pu *preunit) Txs() []gomel.Tx {
+	return pu.txs
 }
 
 func (pu *preunit) Creator() int {

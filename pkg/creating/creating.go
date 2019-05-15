@@ -24,7 +24,7 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
 func newDealingUnit(creator int) gomel.Preunit {
-	return NewPreunit(creator, []gomel.Hash{})
+	return NewPreunit(creator, []gomel.Hash{}, []gomel.Tx{})
 }
 
 // maxLevel returns the maximal level from units present in mu.
@@ -207,5 +207,5 @@ func NewUnit(poset gomel.Poset, creator int, maximumParents int) (gomel.Preunit,
 	if len(parents) < 2 {
 		return nil, &noAvailableParents{}
 	}
-	return NewPreunit(creator, hashes(parents)), nil
+	return NewPreunit(creator, hashes(parents), []gomel.Tx{}), nil
 }

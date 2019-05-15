@@ -13,16 +13,23 @@ type preunit struct {
 	parents   []gomel.Hash
 	signature gomel.Signature
 	hash      gomel.Hash
+	txs       []gomel.Tx
 }
 
-func newPreunit(creator int, parents []gomel.Hash) gomel.Preunit {
+func newPreunit(creator int, parents []gomel.Hash, txs []gomel.Tx) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
 		parents: parents,
+		txs:     txs,
 	}
 	pu.computeHash()
 
 	return pu
+}
+
+// Txs returns transactions embedded in this preunit.
+func (pu *preunit) Txs() []gomel.Tx {
+	return pu.txs
 }
 
 // Creator of the preunit.

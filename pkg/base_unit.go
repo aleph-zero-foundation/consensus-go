@@ -8,6 +8,8 @@ type BaseUnit interface {
 	Signature() Signature
 	// Hash value of this unit
 	Hash() *Hash
+	// Txs is the slice of transactions embedded by this unit
+	Txs() []Tx
 }
 
 // Nickname of a unit is a short name, for the purpose of quick identification by a human.
