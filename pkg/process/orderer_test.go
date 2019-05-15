@@ -31,38 +31,43 @@ func newCommonRandomPermutation(n int) *commonRandomPermutation {
 
 var _ = Describe("Orderer", func() {
 	var (
-		p                gomel.Poset
-		err              error
-		crp              linear.CommonRandomPermutation
-		ordering         gomel.LinearOrdering
-		orderingRequests chan struct{}
-		statistics       chan int
-		orderedUnits     chan gomel.Unit
+		orderer               *Orderer
+		p                     gomel.Poset
+		err                   error
+		crp                   linear.CommonRandomPermutation
+		ordering              gomel.LinearOrdering
+		attemptTimingRequests chan struct{}
+		statistics            chan int
+		orderedUnits          chan gomel.Unit
 	)
-	BeforeEach(func() {
-		p, err = tests.CreatePosetFromTestFile("../testdata/random_4p_100u_2par.txt", tests.NewTestPosetFactory())
-		Expect(err).NotTo(HaveOccurred())
-		crp = newCommonRandomPermutation(p.NProc())
-		ordering = linear.NewOrdering(p, crp)
-		orderingRequests = make(chan struct{})
-		statistics = make(chan int)
-		orderedUnits = make(chan gomel.Unit)
-	})
-	Context("On a fixed random poset with 4 processes and 100 units. After receving orderingRequest", func() {
-		It("should write some units to result channel in order compatible with the poset order", func() {
-			orderer := NewOrderer(ordering, orderingRequests, orderedUnits, statistics)
+	Context("On a fixed random poset with 4 processes and 100 units. After receving attemptTimingRequest", func() {
+		BeforeEach(func() {
+			p, err = tests.CreatePosetFromTestFile("../testdata/random_4p_100u_2par.txt", tests.NewTestPosetFactory())
+			Expect(err).NotTo(HaveOccurred())
+			crp = newCommonRandomPermutation(p.NProc())
+			ordering = linear.NewOrdering(p, crp)
+			attemptTimingRequests = make(chan struct{})
+			statistics = make(chan int)
+			orderedUnits = make(chan gomel.Unit, 100)
+			orderer = NewOrderer(ordering, attemptTimingRequests, orderedUnits, statistics)
 			orderer.Start()
-			orderingRequests <- struct{}{}
+			attemptTimingRequests <- struct{}{}
+		})
+		It("should write some units to the result channel in order compatible with the poset order", func() {
 			resultOrder := []gomel.Unit{}
+			// We want to wait until we consume all the ordered units
+			// before we check if the result is compatible with the poset order
 			var wg sync.WaitGroup
 			wg.Add(1)
+			// We don't want to stop the orderer before we actually order something
 			canStop := make(chan struct{})
+			// This goroutine is reading ordered units from the orderedUnits channel
 			go func() {
-				firstIt := true
+				firstIteration := true
 				for nUnits := range statistics {
-					if firstIt {
+					if firstIteration {
 						canStop <- struct{}{}
-						firstIt = false
+						firstIteration = false
 					}
 					for i := 0; i < nUnits; i++ {
 						resultOrder = append(resultOrder, <-orderedUnits)

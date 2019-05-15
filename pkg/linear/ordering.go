@@ -44,10 +44,7 @@ func posetMaxLevel(p gomel.Poset) int {
 func (o *ordering) AttemptTimingDecision() int {
 	maxLevel := posetMaxLevel(o.poset)
 	for level := o.timingUnits.safeLen(); level <= maxLevel; level++ {
-		u := o.DecideTimingOnLevel(level)
-		if u != nil {
-			o.timingUnits.safeAppend(u)
-		} else {
+		if o.DecideTimingOnLevel(level) == nil {
 			return level
 		}
 	}
@@ -56,6 +53,11 @@ func (o *ordering) AttemptTimingDecision() int {
 
 // DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
 func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
+	// If we have already decided we can read the answer from memory
+	if o.timingUnits.safeLen() > level {
+		return o.timingUnits.safeGet(level)
+	}
+
 	if posetMaxLevel(o.poset) < level+votingLevel {
 		return nil
 	}
@@ -67,6 +69,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		for _, uc := range primeUnitsByCurrProcess {
 			decision := decideUnitIsPopular(o.poset, uc)
 			if decision == popular {
+				o.timingUnits.safeAppend(uc)
 				return uc
 			}
 			if decision == undecided {
