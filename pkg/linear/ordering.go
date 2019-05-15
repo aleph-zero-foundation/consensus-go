@@ -40,21 +40,10 @@ func posetMaxLevel(p gomel.Poset) int {
 	return maxLevel
 }
 
-// AttemptTimingDecision chooses as many new timing units as possible and returns the level of the highest timing unit chosen so far.
-func (o *ordering) AttemptTimingDecision() int {
-	maxLevel := posetMaxLevel(o.poset)
-	for level := o.timingUnits.safeLen(); level <= maxLevel; level++ {
-		if o.DecideTimingOnLevel(level) == nil {
-			return level
-		}
-	}
-	return o.timingUnits.safeLen()
-}
-
 // DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
 func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	// If we have already decided we can read the answer from memory
-	if o.timingUnits.safeLen() > level {
+	if o.timingUnits.length() > level {
 		return o.timingUnits.safeGet(level)
 	}
 
@@ -69,7 +58,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		for _, uc := range primeUnitsByCurrProcess {
 			decision := decideUnitIsPopular(o.poset, uc)
 			if decision == popular {
-				o.timingUnits.safeAppend(uc)
+				o.timingUnits.pushBack(uc)
 				return uc
 			}
 			if decision == undecided {
@@ -80,10 +69,10 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	return nil
 }
 
-// TimingRound returns all the units in timing round r. If the timing decision has not yet been taken it returns an error.
-func (o *ordering) TimingRound(r int) ([]gomel.Unit, error) {
-	if o.timingUnits.safeLen() <= r {
-		return nil, gomel.NewOrderingError("Timing decision has not yet been taken on this level")
+// TimingRound returns all the units in timing round r. If the timing decision has not yet been taken it returns nil.
+func (o *ordering) TimingRound(r int) []gomel.Unit {
+	if o.timingUnits.length() <= r {
+		return nil
 	}
 	timingUnit := o.timingUnits.safeGet(r)
 
@@ -93,7 +82,7 @@ func (o *ordering) TimingRound(r int) ([]gomel.Unit, error) {
 		if r != 0 {
 			roundBegins = o.unitPositionInOrder[*o.timingUnits.safeGet(r - 1).Hash()] + 1
 		}
-		return o.orderedUnits[roundBegins:(roundEnds + 1)], nil
+		return o.orderedUnits[roundBegins:(roundEnds + 1)]
 	}
 
 	var totalXOR gomel.Hash
@@ -120,7 +109,7 @@ func (o *ordering) TimingRound(r int) ([]gomel.Unit, error) {
 			if _, ok := o.unitPositionInOrder[*uParent.Hash()]; ok {
 				continue
 			}
-			if _, ok := seenUnits[*uParent.Hash()]; !ok {
+			if !seenUnits[*uParent.Hash()] {
 				dfs(uParent)
 			}
 			if dependencyHeight[*uParent.Hash()] > minDependencyHeightBelow {
@@ -157,5 +146,5 @@ func (o *ordering) TimingRound(r int) ([]gomel.Unit, error) {
 		o.unitPositionInOrder[*u.Hash()] = nAlreadyOrdered + i
 	}
 
-	return unitsToOrder, nil
+	return unitsToOrder
 }

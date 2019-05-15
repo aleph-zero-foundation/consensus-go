@@ -17,13 +17,13 @@ func newSafeUnitSlice() *safeUnitSlice {
 	}
 }
 
-func (s *safeUnitSlice) safeAppend(u gomel.Unit) {
+func (s *safeUnitSlice) pushBack(u gomel.Unit) {
 	s.Lock()
 	defer s.Unlock()
 	s.contents = append(s.contents, u)
 }
 
-func (s *safeUnitSlice) safeLen() int {
+func (s *safeUnitSlice) length() int {
 	s.RLock()
 	defer s.RUnlock()
 	return len(s.contents)

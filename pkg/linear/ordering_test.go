@@ -31,31 +31,34 @@ var _ = Describe("Ordering", func() {
 		crp      CommonRandomPermutation
 		ordering gomel.LinearOrdering
 	)
-	Describe("AttemptTimingDecision", func() {
-		Context("On empty poset", func() {
-			It("should return 0", func() {
+	Describe("DecideTimingOnLevel", func() {
+		Context("On empty poset on level 0", func() {
+			It("should return nil", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/empty.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
 				crp = newCommonRandomPermutation(p.NProc())
 				ordering = NewOrdering(p, crp)
-				Expect(ordering.AttemptTimingDecision()).To(Equal(0))
+				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
-		Context("On a poset with only dealing units", func() {
-			It("should return 0", func() {
+		Context("On a poset with only dealing units on level 0", func() {
+			It("should return nil", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/only_dealing.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
 				ordering = NewOrdering(p, crp)
-				Expect(ordering.AttemptTimingDecision()).To(Equal(0))
+				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
 		Context("On a very regular poset with 4 processes and 60 units defined in regular1.txt file", func() {
-			It("should return 5", func() {
+			It("should decide up to 5th level", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/regular1.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
 				crp = newCommonRandomPermutation(p.NProc())
 				ordering = NewOrdering(p, crp)
-				Expect(ordering.AttemptTimingDecision()).To(Equal(5))
+				for level := 0; level < 5; level++ {
+					Expect(ordering.DecideTimingOnLevel(level)).NotTo(BeNil())
+				}
+				Expect(ordering.DecideTimingOnLevel(5)).To(BeNil())
 			})
 		})
 	})
