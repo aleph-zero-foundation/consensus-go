@@ -1,9 +1,10 @@
 package tests
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"math/rand"
 	"time"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 // CreateRandomNonForking creates a random test poset when given
@@ -13,7 +14,7 @@ import (
 // nUnits     - number of units to include in the poset
 func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gomel.Poset {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	p := newPoset(gomel.NewPosetConfig(nProcesses))
+	p := newPoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
 	created := 0
 	for created < nUnits {
 		// TODO:

@@ -18,7 +18,7 @@ var _ = Describe("Encoding/Decoding", func() {
 		encoder Encoder
 		decoder Decoder
 		network *bytes.Buffer
-		privKey signing.PrivateKey
+		privKey gomel.PrivateKey
 	)
 	BeforeEach(func() {
 		layers = make([][]gomel.Unit, 0)

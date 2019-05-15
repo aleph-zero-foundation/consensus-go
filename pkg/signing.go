@@ -1,15 +1,23 @@
-package signing
+package gomel
 
-import gomel "gitlab.com/alephledger/consensus-go/pkg"
+import "bytes"
+
+// Signature of a unit.
+type Signature []byte
+
+// SigEq checks signatures' equality
+func SigEq(s, r Signature) bool {
+	return bytes.Equal(s, r)
+}
 
 // PublicKey used for signature checking.
 type PublicKey interface {
 	// Verify checks if a preunit has a correct signature.
-	Verify(gomel.Preunit) bool
+	Verify(Preunit) bool
 }
 
 // PrivateKey used for signing units.
 type PrivateKey interface {
 	// Sign computes and returns a signature of a preunit.
-	Sign(gomel.Preunit) gomel.Signature
+	Sign(Preunit) Signature
 }

@@ -31,7 +31,7 @@ func startAll(services []process.Service) error {
 func Process(config process.Config) error {
 	var done chan struct{}
 	var services []process.Service
-	poset := growing.NewPoset(config.Keys)
+	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()
 	service, err := create.NewService(poset, config.Create, done)
 	if err != nil {

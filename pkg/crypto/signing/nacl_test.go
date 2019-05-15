@@ -39,8 +39,8 @@ var _ = Describe("Signatures", func() {
 
 	var (
 		pu   *preunit
-		pub  PublicKey
-		priv PrivateKey
+		pub  gomel.PublicKey
+		priv gomel.PrivateKey
 	)
 
 	Describe("small", func() {

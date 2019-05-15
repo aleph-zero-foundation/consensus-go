@@ -32,7 +32,7 @@ func (priv *privateKey) Sign(pu gomel.Preunit) gomel.Signature {
 }
 
 // GenerateKeys produces a public and private key pair for signing units.
-func GenerateKeys() (PublicKey, PrivateKey, error) {
+func GenerateKeys() (gomel.PublicKey, gomel.PrivateKey, error) {
 	pubData, privData, err := sign.GenerateKey(nil)
 	if err != nil {
 		return nil, nil, err

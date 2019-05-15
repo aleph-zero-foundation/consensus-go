@@ -1,10 +1,10 @@
 package process
 
-import sign "gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+import gomel "gitlab.com/alephledger/consensus-go/pkg"
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	Keys     []sign.PublicKey
+	Poset    *gomel.PosetConfig
 	Sync     *Sync
 	Create   *Create
 	Order    *Order
