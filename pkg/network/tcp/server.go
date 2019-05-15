@@ -6,23 +6,18 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-const (
-	listQueueLen = 10 // todo: pull from config
-	syncQueueLen = 10 // todo: pull from config
-)
-
 type connServer struct {
 	localAddr   *net.TCPAddr
 	remoteAddrs []*net.TCPAddr
 	listenChan  chan network.Connection
 	dialChan    chan network.Connection
-	dialPolicy  func() int
+	dialSource  <-chan int
 	inUse       map[net.Addr]*mutex
 	exitChan    chan struct{}
 }
 
-// NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs and dialPolicy.
-func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int) (network.ConnectionServer, error) {
+// NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs, dialSource, and queue lengths for listens and syncs.
+func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listQueueLen, syncQueueLen int) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err
@@ -43,16 +38,24 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialPolicy func() int
 		remoteAddrs: remoteTCPs,
 		listenChan:  make(chan network.Connection, listQueueLen),
 		dialChan:    make(chan network.Connection, syncQueueLen),
-		dialPolicy:  dialPolicy,
+		dialSource:  dialSource,
 		inUse:       inUse,
 		exitChan:    make(chan struct{}),
 	}, nil
 }
 
-func (cs *connServer) Listen() (chan network.Connection, error) {
+func (cs *connServer) ListenChannel() <-chan network.Connection {
+	return cs.listenChan
+}
+
+func (cs *connServer) DialChannel() <-chan network.Connection {
+	return cs.dialChan
+}
+
+func (cs *connServer) Listen() error {
 	ln, err := net.ListenTCP("tcp", cs.localAddr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	go func() {
 		for {
@@ -78,18 +81,17 @@ func (cs *connServer) Listen() (chan network.Connection, error) {
 		}
 	}()
 
-	return cs.listenChan, nil
+	return nil
 }
 
-func (cs *connServer) Dial() chan network.Connection {
+func (cs *connServer) Dial() {
 	go func() {
 		for {
 			select {
 			case <-cs.exitChan:
 				close(cs.dialChan)
 				return
-			default:
-				remotePid := cs.dialPolicy()
+			case remotePid := <-cs.dialSource:
 				// check if we are already syncing with remotePeer
 				m := cs.inUse[cs.remoteAddrs[remotePid]]
 				if !m.tryAcquire() {
@@ -106,7 +108,6 @@ func (cs *connServer) Dial() chan network.Connection {
 		}
 	}()
 
-	return cs.dialChan
 }
 
 func (cs *connServer) Stop() {
