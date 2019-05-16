@@ -121,37 +121,32 @@ func (o *ordering) getAntichainLayers(tu gomel.Unit) [][]gomel.Unit {
 	return result
 }
 
-// sortTimingRound is sorting units in a timing round
-func sortTimingRound(units []gomel.Unit, layers [][]gomel.Unit) {
+func mergeLayers(layers [][]gomel.Unit) []gomel.Unit {
 	var totalXOR gomel.Hash
-	for _, u := range units {
-		totalXOR.XOREqual(u.Hash())
+	for i := range layers {
+		for _, u := range layers[i] {
+			totalXOR.XOREqual(u.Hash())
+		}
 	}
 	// tiebreaker is a map from units to its tiebreaker value
 	tiebreaker := make(map[gomel.Hash]*gomel.Hash)
-	for _, u := range units {
-		tiebreaker[*u.Hash()] = gomel.XOR(&totalXOR, u.Hash())
-	}
-
-	unitLayer := make(map[gomel.Hash]int)
-	for i := range layers {
-		for _, u := range layers[i] {
-			unitLayer[*u.Hash()] = i
+	for l := range layers {
+		for _, u := range layers[l] {
+			tiebreaker[*u.Hash()] = gomel.XOR(&totalXOR, u.Hash())
 		}
 	}
 
-	// break_ties from paper is equivalent to lexicographic sort by
-	// (unitLayer[u], tiebreaker[u])
-	sort.Slice(units, func(i, j int) bool {
-		dhi := unitLayer[*units[i].Hash()]
-		dhj := unitLayer[*units[j].Hash()]
-		if dhi != dhj {
-			return dhi < dhj
-		}
-		tbi := tiebreaker[*units[i].Hash()]
-		tbj := tiebreaker[*units[j].Hash()]
-		return tbi.LessThan(tbj)
-	})
+	sortedUnits := []gomel.Unit{}
+
+	for l := range layers {
+		sort.Slice(layers[l], func(i, j int) bool {
+			tbi := tiebreaker[*layers[l][i].Hash()]
+			tbj := tiebreaker[*layers[l][j].Hash()]
+			return tbi.LessThan(tbj)
+		})
+		sortedUnits = append(sortedUnits, layers[l]...)
+	}
+	return sortedUnits
 }
 
 // TimingRound returns all the units in timing round r. If the timing decision has not yet been taken it returns nil.
@@ -171,18 +166,14 @@ func (o *ordering) TimingRound(r int) []gomel.Unit {
 	}
 
 	layers := o.getAntichainLayers(timingUnit)
-	unitsToOrder := []gomel.Unit{}
-	for i := range layers {
-		unitsToOrder = append(unitsToOrder, layers[i]...)
-	}
-	sortTimingRound(unitsToOrder, layers)
+	sortedUnits := mergeLayers(layers)
 
 	// updating orderedUnits, unitPositionInOrder
 	nAlreadyOrdered := len(o.unitPositionInOrder)
-	for i, u := range unitsToOrder {
+	for i, u := range sortedUnits {
 		o.orderedUnits = append(o.orderedUnits, u)
 		o.unitPositionInOrder[*u.Hash()] = nAlreadyOrdered + i
 	}
 
-	return unitsToOrder
+	return sortedUnits
 }
