@@ -8,27 +8,13 @@ import (
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type commonRandomPermutation struct {
-	n int
-}
-
-func (crp *commonRandomPermutation) Get(level int) []int {
-	permutation := make([]int, crp.n, crp.n)
-	for i := 0; i < crp.n; i++ {
-		permutation[i] = (i + level) % crp.n
-	}
-	return permutation
-}
-
-func newCommonRandomPermutation(n int) *commonRandomPermutation {
-	return &commonRandomPermutation{
-		n: n,
-	}
-}
+const (
+	votingLevel  = 3
+	piDeltaLevel = 12
+)
 
 var _ = Describe("Ordering", func() {
 	var (
-		crp      CommonRandomPermutation
 		ordering gomel.LinearOrdering
 	)
 	Describe("DecideTimingOnLevel", func() {
@@ -36,8 +22,7 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/empty.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				crp = newCommonRandomPermutation(p.NProc())
-				ordering = NewOrdering(p, crp)
+				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -45,7 +30,7 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/only_dealing.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				ordering = NewOrdering(p, crp)
+				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -53,8 +38,7 @@ var _ = Describe("Ordering", func() {
 			It("should decide up to 5th level", func() {
 				p, err := tests.CreatePosetFromTestFile("../testdata/regular1.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				crp = newCommonRandomPermutation(p.NProc())
-				ordering = NewOrdering(p, crp)
+				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
 				for level := 0; level < 5; level++ {
 					Expect(ordering.DecideTimingOnLevel(level)).NotTo(BeNil())
 				}

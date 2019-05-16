@@ -13,16 +13,30 @@ type ordering struct {
 	crp                 CommonRandomPermutation
 	unitPositionInOrder map[gomel.Hash]int
 	orderedUnits        []gomel.Unit
+	votingLevel         int
+	piDeltaLevel        int
+	proofMemo           map[[2]gomel.Hash]bool
+	voteMemo            map[[2]gomel.Hash]vote
+	piMemo              map[[2]gomel.Hash]vote
+	deltaMemo           map[[2]gomel.Hash]vote
+	decisionMemo        map[gomel.Hash]vote
 }
 
 // NewOrdering creates an Ordering wrapper around a given poset.
-func NewOrdering(poset gomel.Poset, crp CommonRandomPermutation) gomel.LinearOrdering {
+func NewOrdering(poset gomel.Poset, votingLevel int, PiDeltaLevel int) gomel.LinearOrdering {
 	return &ordering{
 		poset:               poset,
 		timingUnits:         newSafeUnitSlice(),
-		crp:                 crp,
+		crp:                 NewCommonRandomPermutation(poset),
 		unitPositionInOrder: make(map[gomel.Hash]int),
 		orderedUnits:        []gomel.Unit{},
+		votingLevel:         votingLevel,
+		piDeltaLevel:        PiDeltaLevel,
+		proofMemo:           make(map[[2]gomel.Hash]bool),
+		voteMemo:            make(map[[2]gomel.Hash]vote),
+		piMemo:              make(map[[2]gomel.Hash]vote),
+		deltaMemo:           make(map[[2]gomel.Hash]vote),
+		decisionMemo:        make(map[gomel.Hash]vote),
 	}
 }
 
@@ -47,7 +61,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		return o.timingUnits.get(level)
 	}
 
-	if posetMaxLevel(o.poset) < level+votingLevel {
+	if posetMaxLevel(o.poset) < level+o.votingLevel {
 		return nil
 	}
 	for _, pid := range o.crp.Get(level) {
@@ -56,7 +70,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 			return primeUnitsByCurrProcess[i].Hash().LessThan(primeUnitsByCurrProcess[j].Hash())
 		})
 		for _, uc := range primeUnitsByCurrProcess {
-			decision := decideUnitIsPopular(o.poset, uc)
+			decision := o.decideUnitIsPopular(uc)
 			if decision == popular {
 				o.timingUnits.pushBack(uc)
 				return uc
