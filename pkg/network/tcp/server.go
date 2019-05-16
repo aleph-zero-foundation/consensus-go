@@ -84,7 +84,7 @@ func (cs *connServer) Listen() error {
 	return nil
 }
 
-func (cs *connServer) Dial() {
+func (cs *connServer) StartDialing() {
 	go func() {
 		for {
 			select {

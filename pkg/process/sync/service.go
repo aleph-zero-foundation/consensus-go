@@ -36,7 +36,7 @@ func (s *service) Start() error {
 		return err
 	}
 	s.syncServer.Start()
-	s.connServer.Dial()
+	s.connServer.StartDialing()
 	s.dialer.start()
 	return nil
 }
