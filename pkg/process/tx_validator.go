@@ -6,33 +6,31 @@ import (
 
 // TxValidator is a service for validating transactions
 // unitSource is a channel from which the validator is consuming units
+// for now it is only counting transactions
 type TxValidator struct {
-	unitSource  <-chan gomel.Unit
-	exitChan    chan struct{}
-	userBalance map[string]int
+	unitSource <-chan gomel.Unit
+	exitChan   chan struct{}
+	txCount    int
 }
 
 // NewTxValidator is a constructor of tx_validator service
 func NewTxValidator(unitSource chan gomel.Unit) *TxValidator {
 	return &TxValidator{
-		unitSource:  unitSource,
-		exitChan:    make(chan struct{}),
-		userBalance: make(map[string]int),
+		unitSource: unitSource,
+		exitChan:   make(chan struct{}),
+		txCount:    0,
 	}
 }
 
-func validate(t gomel.Tx) {
-	if userBalance[t.Issuer] >= t.Amount {
-		userBalance[t.Issuer] -= t.Amount
-		userBalance[t.Receiver] += t.Amont
-	}
+func (tv *TxValidator) validate(t gomel.Tx) {
+	tv.txCount++
 }
 
 func (tv *TxValidator) main() {
 	for {
 		select {
 		case u := <-tv.unitSource:
-			for t := range u.Txs() {
+			for _, t := range u.Txs() {
 				tv.validate(t)
 			}
 		case <-tv.exitChan:
