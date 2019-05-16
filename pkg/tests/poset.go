@@ -171,3 +171,11 @@ func setLevel(u *unit, p *Poset) {
 		u.level = maxLevelBelow + 1
 	}
 }
+
+func (p *Poset) getPrimeUnitsOnLevel(level int) []gomel.Unit {
+	result := []gomel.Unit{}
+	for pid := 0; pid < p.NProc(); pid++ {
+		result = append(result, p.primeUnits[level].Get(pid)...)
+	}
+	return result
+}
