@@ -83,6 +83,77 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	return nil
 }
 
+// getAntichainLayers for a given timing unit tu, returns all the units in its timing round
+// divided into layers.
+// 0-th layer is formed by minimal units in this timing round
+// 1-st layer is formed by minimal units when the 0th layer is removed
+// etc.
+func (o *ordering) getAntichainLayers(tu gomel.Unit) [][]gomel.Unit {
+	unitToLayer := make(map[gomel.Hash]int)
+	seenUnits := make(map[gomel.Hash]bool)
+	result := [][]gomel.Unit{}
+
+	var dfs func(u gomel.Unit)
+	dfs = func(u gomel.Unit) {
+		seenUnits[*u.Hash()] = true
+		minLayerBelow := -1
+		for _, uParent := range u.Parents() {
+			if _, ok := o.unitPositionInOrder[*uParent.Hash()]; ok {
+				// uParent was already ordered and doesn't belong to this timing round
+				continue
+			}
+			if !seenUnits[*uParent.Hash()] {
+				dfs(uParent)
+			}
+			if unitToLayer[*uParent.Hash()] > minLayerBelow {
+				minLayerBelow = unitToLayer[*uParent.Hash()]
+			}
+		}
+		uLayer := minLayerBelow + 1
+		unitToLayer[*u.Hash()] = uLayer
+		if len(result) <= uLayer {
+			result = append(result, []gomel.Unit{u})
+		} else {
+			result[uLayer] = append(result[uLayer], u)
+		}
+	}
+	dfs(tu)
+	return result
+}
+
+// sortTimingRound is sorting units in a timing round
+func sortTimingRound(units []gomel.Unit, layers [][]gomel.Unit) {
+	var totalXOR gomel.Hash
+	for _, u := range units {
+		totalXOR.XOREqual(u.Hash())
+	}
+	// tiebreaker is a map from units to its tiebreaker value
+	tiebreaker := make(map[gomel.Hash]*gomel.Hash)
+	for _, u := range units {
+		tiebreaker[*u.Hash()] = gomel.XOR(&totalXOR, u.Hash())
+	}
+
+	unitLayer := make(map[gomel.Hash]int)
+	for i := range layers {
+		for _, u := range layers[i] {
+			unitLayer[*u.Hash()] = i
+		}
+	}
+
+	// break_ties from paper is equivalent to lexicographic sort by
+	// (unitLayer[u], tiebreaker[u])
+	sort.Slice(units, func(i, j int) bool {
+		dhi := unitLayer[*units[i].Hash()]
+		dhj := unitLayer[*units[j].Hash()]
+		if dhi != dhj {
+			return dhi < dhj
+		}
+		tbi := tiebreaker[*units[i].Hash()]
+		tbj := tiebreaker[*units[j].Hash()]
+		return tbi.LessThan(tbj)
+	})
+}
+
 // TimingRound returns all the units in timing round r. If the timing decision has not yet been taken it returns nil.
 func (o *ordering) TimingRound(r int) []gomel.Unit {
 	if o.timingUnits.length() <= r {
@@ -99,59 +170,12 @@ func (o *ordering) TimingRound(r int) []gomel.Unit {
 		return o.orderedUnits[roundBegins:(roundEnds + 1)]
 	}
 
-	var totalXOR gomel.Hash
-
-	// dependencyHeight of a unit u in a given set of units is
-	// 0 --- when u is minimal
-	// max(dependencyHeight(u.Parents)) + 1 --- otherwise
-	dependencyHeight := make(map[gomel.Hash]int)
-
-	// the following dfs
-	// (1) collects all units for this timing round
-	// (2) calculates dependencyHeight for those units
-	// (3) calculates totalXOR
-	seenUnits := make(map[gomel.Hash]bool)
+	layers := o.getAntichainLayers(timingUnit)
 	unitsToOrder := []gomel.Unit{}
-
-	var dfs func(u gomel.Unit)
-	dfs = func(u gomel.Unit) {
-		totalXOR.XOREqual(u.Hash())
-		seenUnits[*u.Hash()] = true
-		unitsToOrder = append(unitsToOrder, u)
-		minDependencyHeightBelow := -1
-		for _, uParent := range u.Parents() {
-			if _, ok := o.unitPositionInOrder[*uParent.Hash()]; ok {
-				continue
-			}
-			if !seenUnits[*uParent.Hash()] {
-				dfs(uParent)
-			}
-			if dependencyHeight[*uParent.Hash()] > minDependencyHeightBelow {
-				minDependencyHeightBelow = dependencyHeight[*uParent.Hash()]
-			}
-		}
-		dependencyHeight[*u.Hash()] = minDependencyHeightBelow + 1
+	for i := range layers {
+		unitsToOrder = append(unitsToOrder, layers[i]...)
 	}
-	dfs(timingUnit)
-
-	// tiebreaker is a map from units to its tiebreaker value
-	tiebreaker := make(map[gomel.Hash]*gomel.Hash)
-	for _, u := range unitsToOrder {
-		tiebreaker[*u.Hash()] = gomel.XOR(&totalXOR, u.Hash())
-	}
-
-	// break_ties from paper is equivalent to lexicographic sort by
-	// (dependencyHeight[u], tiebreaker[u])
-	sort.Slice(unitsToOrder, func(i, j int) bool {
-		dhi := dependencyHeight[*unitsToOrder[i].Hash()]
-		dhj := dependencyHeight[*unitsToOrder[j].Hash()]
-		if dhi != dhj {
-			return dhi < dhj
-		}
-		tbi := tiebreaker[*unitsToOrder[i].Hash()]
-		tbj := tiebreaker[*unitsToOrder[j].Hash()]
-		return tbi.LessThan(tbj)
-	})
+	sortTimingRound(unitsToOrder, layers)
 
 	// updating orderedUnits, unitPositionInOrder
 	nAlreadyOrdered := len(o.unitPositionInOrder)
