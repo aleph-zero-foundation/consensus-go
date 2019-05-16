@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	sign "gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 )
 
 // Poset that is intended to be used during poset creation.
@@ -15,11 +14,12 @@ type Poset struct {
 	maxUnits   gomel.SlottedUnits
 	adders     []chan *unitBuilt
 	tasks      sync.WaitGroup
-	pubKeys    []sign.PublicKey
+	pubKeys    []gomel.PublicKey
 }
 
 // NewPoset constructs a poset using given public keys of processes.
-func NewPoset(pubKeys []sign.PublicKey) *Poset {
+func NewPoset(config *gomel.PosetConfig) *Poset {
+	pubKeys := config.Keys
 	n := len(pubKeys)
 	adders := make([]chan *unitBuilt, n, n)
 	for k := range adders {

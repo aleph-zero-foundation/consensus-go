@@ -1,20 +1,13 @@
 package gomel
 
 // PosetConfig contains required information to create a poset
-// TODO: Think about what should be contained in a posetConfigration, and if we want to move it
-// to the config package and separate the process config and the poset config
 type PosetConfig struct {
-	nProcesses int
+	Keys []PublicKey
 }
 
 // NProc returns the number of processes in a given posetConfiguration
 func (pc PosetConfig) NProc() int {
-	return pc.nProcesses
-}
-
-// NewPosetConfig returns the PosetConfig with a given number of processes
-func NewPosetConfig(nProcesses int) PosetConfig {
-	return PosetConfig{nProcesses: nProcesses}
+	return len(pc.Keys)
 }
 
 // PosetFactory is an interface to create posets

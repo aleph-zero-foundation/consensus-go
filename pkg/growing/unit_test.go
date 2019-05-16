@@ -19,8 +19,8 @@ var _ = Describe("Units", func() {
 		addFirst   [][]*preunitMock
 		units      map[int]map[int][]gomel.Unit
 		wg         sync.WaitGroup
-		pubKeys    []signing.PublicKey
-		privKeys   []signing.PrivateKey
+		pubKeys    []gomel.PublicKey
+		privKeys   []gomel.PrivateKey
 	)
 
 	AwaitAddUnit := func(pu gomel.Preunit, wg *sync.WaitGroup) {
@@ -59,12 +59,12 @@ var _ = Describe("Units", func() {
 
 		BeforeEach(func() {
 			nProcesses = 4
-			pubKeys = make([]signing.PublicKey, nProcesses, nProcesses)
-			privKeys = make([]signing.PrivateKey, nProcesses, nProcesses)
+			pubKeys = make([]gomel.PublicKey, nProcesses, nProcesses)
+			privKeys = make([]gomel.PrivateKey, nProcesses, nProcesses)
 			for i := 0; i < nProcesses; i++ {
 				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			}
-			poset = NewPoset(pubKeys)
+			poset = NewPoset(&gomel.PosetConfig{Keys: pubKeys})
 		})
 
 		AfterEach(func() {

@@ -3,11 +3,12 @@ package tests
 import (
 	"bufio"
 	"fmt"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 // ReadPoset reads poset from the given reader and creates it using given poset factory
@@ -22,7 +23,7 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 		return nil, err
 	}
 
-	p := pf.CreatePoset(gomel.NewPosetConfig(n))
+	p := pf.CreatePoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, n)})
 	preunitHashes := make(map[[3]int]gomel.Hash)
 
 	for scanner.Scan() {

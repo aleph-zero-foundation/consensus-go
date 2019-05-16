@@ -5,40 +5,40 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-const (
-	nInitSync = 10 // todo: pull from config
-	nRecvSync = 10 // todo: pull from config
-)
-
 // Server retrieves ready-to-use connections and dispatches workers that use
 // the connections for running in/out synchronizations according to a sync-protocol
 type Server struct {
 	poset        gomel.Poset
-	inConnChan   chan network.Connection
-	outConnChan  chan network.Connection
+	inConnChan   <-chan network.Connection
+	outConnChan  <-chan network.Connection
 	inSyncProto  Protocol
 	outSyncProto Protocol
+	nInitSync    int
+	nRecvSync    int
 	exitChan     chan struct{}
 }
 
-// NewServer needs a local poset and sources of in/out connections.
-func NewServer(poset gomel.Poset, inConnChan, outConnChan chan network.Connection, inSyncProto Protocol, outSyncProto Protocol) *Server {
+// NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,
+// and maximal numbers of syncs to initialize and receive.
+func NewServer(poset gomel.Poset, inConnChan, outConnChan <-chan network.Connection, inSyncProto, outSyncProto Protocol, nInitSync, nRecvSync int) *Server {
 	return &Server{
 		poset:        poset,
 		inConnChan:   inConnChan,
 		outConnChan:  outConnChan,
 		inSyncProto:  inSyncProto,
 		outSyncProto: outSyncProto,
+		nInitSync:    nInitSync,
+		nRecvSync:    nRecvSync,
 		exitChan:     make(chan struct{}),
 	}
 }
 
 // Start starts server
 func (s *Server) Start() {
-	for i := 0; i < nInitSync; i++ {
+	for i := 0; i < s.nInitSync; i++ {
 		go s.syncDispatcher(s.inConnChan, s.inSyncProto.Run)
 	}
-	for i := 0; i < nRecvSync; i++ {
+	for i := 0; i < s.nRecvSync; i++ {
 		go s.syncDispatcher(s.outConnChan, s.outSyncProto.Run)
 	}
 }
@@ -48,7 +48,7 @@ func (s *Server) Stop() {
 	close(s.exitChan)
 }
 
-func (s *Server) syncDispatcher(connChan chan network.Connection, syncProto func(poset gomel.Poset, conn network.Connection)) {
+func (s *Server) syncDispatcher(connChan <-chan network.Connection, syncProto func(poset gomel.Poset, conn network.Connection)) {
 	for {
 		select {
 		case <-s.exitChan:
