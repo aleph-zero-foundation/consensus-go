@@ -42,7 +42,8 @@ func (s *service) attemptOrdering() {
 	for {
 		select {
 		case <-s.attemptTimingRequests:
-			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
+			for tu := s.linearOrdering.DecideTimingOnLevel(s.currentRound); tu != nil; tu = s.linearOrdering.DecideTimingOnLevel(s.currentRound) {
+				s.log.Info().Int("r", s.currentRound).Msg(logging.NewTimingUnit)
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}
@@ -59,6 +60,7 @@ func (s *service) extendOrder() {
 		for _, u := range units {
 			s.orderedUnits <- u
 		}
+		s.log.Info().Int("n", len(units)).Msg(logging.LinearOrderExtended)
 	}
 	close(s.orderedUnits)
 }
