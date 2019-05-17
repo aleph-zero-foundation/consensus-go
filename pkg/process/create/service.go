@@ -25,7 +25,7 @@ type service struct {
 	maxHeight        int
 	privKey          gomel.PrivateKey
 	adjustFactor     float64
-	previousPrime    bool
+	previousSuccess  bool
 	delay            time.Duration
 	ticker           *time.Ticker
 	dataSource       <-chan []byte
@@ -33,6 +33,7 @@ type service struct {
 	posetFinished    chan<- struct{}
 	done             chan struct{}
 	log              zerolog.Logger
+	wg               sync.WaitGroup
 }
 
 // NewService constructs a creating service for the given poset with the given configuration.
@@ -54,7 +55,7 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 		maxHeight:        config.MaxHeight,
 		privKey:          config.PrivateKey,
 		adjustFactor:     config.AdjustFactor,
-		previousPrime:    false,
+		previousSuccess:  false,
 		delay:            initialDelay,
 		ticker:           time.NewTicker(initialDelay),
 		dataSource:       dataSource,
@@ -66,10 +67,13 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 }
 
 func (s *service) Start() error {
+	s.wg.Add(1)
 	go func() {
 		for {
 			select {
 			case <-s.done:
+				s.ticker.Stop()
+				s.wg.Done()
 				return
 			case <-s.ticker.C:
 				s.createUnit()
@@ -81,24 +85,26 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
-	s.ticker.Stop()
 	close(s.done)
+	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 
 }
 
 func (s *service) slower() {
-	if !s.previousPrime {
+	if !s.previousSuccess {
 		s.adjustFactor *= positiveJerk
 	}
+	s.previousSuccess = false
 	s.delay = time.Duration(float64(s.delay) * (1 + s.adjustFactor))
 	s.updateTicker()
 }
 
 func (s *service) quicker() {
-	if !s.previousPrime {
+	if !s.previousSuccess {
 		s.adjustFactor *= negativeJerk
 	}
+	s.previousSuccess = true
 	s.delay = time.Duration(float64(s.delay) / (1 + s.adjustFactor))
 	s.updateTicker()
 }
@@ -138,12 +144,10 @@ func (s *service) createUnit() {
 		if gomel.Prime(added) {
 			s.log.Info().Msg(logging.PrimeUnitCreated)
 			s.quicker()
-			s.previousPrime = true
 			s.primeUnitCreated <- added.Level()
 		} else {
 			s.log.Info().Msg(logging.UnitCreated)
 			s.slower()
-			s.previousPrime = false
 		}
 
 		if added.Level() >= s.maxLevel || added.Height() >= s.maxHeight {

@@ -2,6 +2,7 @@ package order
 
 import (
 	"github.com/rs/zerolog"
+	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
@@ -22,6 +23,7 @@ type service struct {
 	orderedUnits          chan<- gomel.Unit
 	currentRound          int
 	exitChan              chan struct{}
+	wg                    sync.WaitGroup
 	log                   zerolog.Logger
 }
 
@@ -49,6 +51,7 @@ func (s *service) attemptOrdering() {
 			}
 		case <-s.exitChan:
 			close(s.extendOrderRequests)
+			s.wg.Done()
 			return
 		}
 	}
@@ -63,10 +66,12 @@ func (s *service) extendOrder() {
 		s.log.Info().Int("n", len(units)).Msg(logging.LinearOrderExtended)
 	}
 	close(s.orderedUnits)
+	s.wg.Done()
 }
 
 // Start is a function which starts the service
 func (s *service) Start() error {
+	s.wg.Add(2)
 	go s.attemptOrdering()
 	go s.extendOrder()
 	s.log.Info().Msg(logging.ServiceStarted)
@@ -76,5 +81,6 @@ func (s *service) Start() error {
 // Stop is the function that stops the service
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }
