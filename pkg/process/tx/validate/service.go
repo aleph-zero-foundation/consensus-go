@@ -1,6 +1,8 @@
 package validate
 
 import (
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
@@ -9,10 +11,11 @@ type service struct {
 	validator  *validator
 	unitSource <-chan gomel.Unit
 	exitChan   chan struct{}
+	log zerolog.Logger
 }
 
 // NewService creates a new transaction validation service for the given poset, with the given configuration.
-func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan gomel.Unit) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	validator, err := newValidator(config.UserDb)
 	if err != nil {
 		return nil, err
@@ -20,7 +23,7 @@ func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),
-		validator:  validator,
+		validator:  newValidator(),
 	}, nil
 }
 

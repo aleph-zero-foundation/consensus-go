@@ -1,9 +1,11 @@
 package order
 
 import (
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	linear "gitlab.com/alephledger/consensus-go/pkg/linear"
-	process "gitlab.com/alephledger/consensus-go/pkg/process"
+	"gitlab.com/alephledger/consensus-go/pkg/linear"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 // Order service is sorting units in linear order
@@ -19,10 +21,11 @@ type service struct {
 	orderedUnits          chan<- gomel.Unit
 	currentRound          int
 	exitChan              chan struct{}
+	log                   zerolog.Logger
 }
 
 // NewService is a constructor of an ordering service
-func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests <-chan struct{}, orderedUnits chan<- gomel.Unit) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests <-chan struct{}, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		linearOrdering:        linear.NewOrdering(poset, config.VotingLevel, config.PiDeltaLevel),
 		attemptTimingRequests: attemptTimingRequests,
@@ -30,6 +33,7 @@ func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests 
 		extendOrderRequests:   make(chan int, 10),
 		exitChan:              make(chan struct{}),
 		currentRound:          0,
+		log:                   log,
 	}, nil
 }
 

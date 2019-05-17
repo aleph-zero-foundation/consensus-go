@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
@@ -13,10 +15,11 @@ type service struct {
 	syncServer *s.Server
 	connServer network.ConnectionServer
 	dialer     *dialer
+	log        zerolog.Logger
 }
 
 // NewService creates a new syncing service for the given poset, with the given config.
-func NewService(poset gomel.Poset, config *process.Sync) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (process.Service, error) {
 	dial := newDialer(poset.NProc(), config.SyncInitDelay)
 	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), config.ListenQueueLength, config.SyncQueueLength)
 	if err != nil {
@@ -27,6 +30,7 @@ func NewService(poset gomel.Poset, config *process.Sync) (process.Service, error
 		syncServer: syncServ,
 		connServer: connServ,
 		dialer:     dial,
+		log:        log,
 	}, nil
 }
 

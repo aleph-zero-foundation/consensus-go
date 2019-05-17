@@ -1,12 +1,15 @@
 package create
 
 import (
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 type service struct {
 	creator *adjustingCreator
+	log     zerolog.Logger
 }
 
 // makeFinal binds some constants into a function that should be called after adding a unit to the poset.
@@ -26,9 +29,10 @@ func makeFinal(maxLevel, maxHeight int, finished chan<- struct{}, primeUnitCreat
 
 // NewService creates a new creating service for the given poset, with the given configuration.
 // The service will close posetFinished when it stops.
-func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- struct{}, txSource <-chan *gomel.Tx) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- struct{}, txSource <-chan *gomel.Tx, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		creator: newAdjustingCreator(poset, config.Pid, config.MaxParents, config.PrivateKey, config.InitialDelay, config.AdjustFactor, makeFinal(config.MaxLevel, config.MaxHeight, posetFinished, primeUnitCreated), config.Txpu, txSource),
+		log:     log,
 	}, nil
 }
 
