@@ -51,7 +51,7 @@ func (o *ordering) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
 	return result
 }
 
-// Vote of u on popularity of uc as described in fast consenssus algorithm
+// Vote of u on popularity of uc as described in fast consensus algorithm
 func (o *ordering) defaultVote(u gomel.Unit, uc gomel.Unit) vote {
 	r := u.Level() - uc.Level() + o.votingLevel
 	if r <= 0 {

@@ -149,7 +149,8 @@ func mergeLayers(layers [][]gomel.Unit) []gomel.Unit {
 	return sortedUnits
 }
 
-// TimingRound returns all the units in timing round r. If the timing decision has not yet been taken it returns nil.
+// TimingRound establishes the linear ordering on the units in timing round r and returns them.
+// If the timing decision has not yet been taken it returns nil.
 func (o *ordering) TimingRound(r int) []gomel.Unit {
 	if o.timingUnits.length() <= r {
 		return nil
