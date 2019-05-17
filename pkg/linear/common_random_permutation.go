@@ -14,7 +14,7 @@ type commonRandomPermutation struct {
 }
 
 func (crp *commonRandomPermutation) Get(level int) []int {
-	permutation := make([]int, crp.n, crp.n)
+	permutation := make([]int, crp.n)
 	for i := 0; i < crp.n; i++ {
 		permutation[i] = (i + level) % crp.n
 	}
