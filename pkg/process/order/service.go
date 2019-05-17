@@ -41,6 +41,8 @@ func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests 
 func (s *service) attemptOrdering() {
 	for {
 		select {
+		// TODO: it would be nice to send the level of newly created prime unit instead of empty struct.
+		// That would allow to keep track of (and log) how well are we doing wrt to timing decisions from this place (instead of going deep into ordering struct)
 		case <-s.attemptTimingRequests:
 			for tu := s.linearOrdering.DecideTimingOnLevel(s.currentRound); tu != nil; tu = s.linearOrdering.DecideTimingOnLevel(s.currentRound) {
 				s.log.Info().Int("r", s.currentRound).Msg(logging.NewTimingUnit)
