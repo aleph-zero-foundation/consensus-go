@@ -16,7 +16,8 @@ type preunit struct {
 	txs       []gomel.Tx
 }
 
-func newPreunit(creator int, parents []gomel.Hash, txs []gomel.Tx) gomel.Preunit {
+// NewPreunit returns preunit
+func NewPreunit(creator int, parents []gomel.Hash, txs []gomel.Tx) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
 		parents: parents,

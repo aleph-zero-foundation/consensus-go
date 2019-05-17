@@ -47,7 +47,7 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 				parents = append(parents, preunitHashes[[3]int{creator, height, version}])
 			}
 		}
-		pu := newPreunit(puCreator, parents, []gomel.Tx{})
+		pu := NewPreunit(puCreator, parents, []gomel.Tx{})
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = *pu.Hash()
 		var addingError error
 		var wg sync.WaitGroup
