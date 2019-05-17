@@ -31,19 +31,18 @@ func startAll(services []process.Service) error {
 // It blocks until all of them are done.
 func Process(config process.Config) error {
 	var done chan struct{}
-	primeUnitCreated := make(chan struct{}, 10)
 	var services []process.Service
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
 	// creator/syncer should send a notification to the channel when a new prime unit is added to the poset
 	// orderer attempts timing decision after receiving the notification
-	var attemptTimingRequests chan struct{}
+	attemptTimingRequests := make(chan struct{}, 10)
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered units to the channel
 	// validator reads the units from the channel and validates transactions contained in the unit
-	var orderedUnits chan gomel.Unit
+	orderedUnits := make(chan gomel.Unit, 2*config.Poset.NProc())
 	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()
-	service, err := create.NewService(poset, config.Create, done, primeUnitCreated)
+	service, err := create.NewService(poset, config.Create, done, attemptTimingRequests)
 	if err != nil {
 		return err
 	}
