@@ -4,6 +4,7 @@ import (
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
@@ -35,6 +36,7 @@ func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (pr
 }
 
 func (s *service) Start() error {
+	s.log.Info().Msg(logging.ServiceStarted)
 	err := s.connServer.Listen()
 	if err != nil {
 		return err
@@ -49,4 +51,5 @@ func (s *service) Stop() {
 	s.dialer.stop()
 	s.connServer.Stop()
 	s.syncServer.Stop()
+	s.log.Info().Msg(logging.ServiceStopped)
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
@@ -41,10 +42,12 @@ func (s *service) main() {
 }
 
 func (s *service) Start() error {
+	s.log.Info().Msg(logging.ServiceStarted)
 	go s.main()
 	return nil
 }
 
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.log.Info().Msg(logging.ServiceStopped)
 }

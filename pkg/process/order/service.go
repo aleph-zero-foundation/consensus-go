@@ -5,6 +5,7 @@ import (
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
@@ -64,6 +65,7 @@ func (s *service) extendOrder() {
 
 // Start is a function which starts the service
 func (s *service) Start() error {
+	s.log.Info().Msg(logging.ServiceStarted)
 	go s.attemptOrdering()
 	go s.extendOrder()
 	return nil
@@ -72,4 +74,5 @@ func (s *service) Start() error {
 // Stop is the function that stops the service
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.log.Info().Msg(logging.ServiceStopped)
 }
