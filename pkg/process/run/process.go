@@ -40,7 +40,6 @@ func Process(config process.Config) error {
 	// orderer sends ordered units to the channel
 	// validator reads the units from the channel and validates transactions contained in the unit
 	var orderedUnits chan gomel.Unit
-	var unitSource chan gomel.Unit
 	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()
 	service, err := create.NewService(poset, config.Create, done)
@@ -58,7 +57,7 @@ func Process(config process.Config) error {
 		return err
 	}
 	services = append(services, service)
-	service, err = validate.NewService(poset, config.Validate, unitSource)
+	service, err = validate.NewService(poset, config.Validate, orderedUnits)
 	if err != nil {
 		return err
 	}
