@@ -28,6 +28,8 @@ type Create struct {
 
 // Order represents a complete configuration needed for an ordering service to start.
 type Order struct {
+	VotingLevel  int
+	PiDeltaLevel int
 }
 
 // Validate represents a complete configuration needed for a transaction validation service to start.
