@@ -1,6 +1,7 @@
 package run
 
 import (
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
@@ -31,6 +32,14 @@ func startAll(services []process.Service) error {
 func Process(config process.Config) error {
 	var done chan struct{}
 	var services []process.Service
+	// attemptTimingRequests is a channel shared between orderer and creator/syncer
+	// creator/syncer should send a notification to the channel when a new prime unit is added to the poset
+	// orderer attempts timing decision after receiving the notification
+	var attemptTimingRequests chan struct{}
+	// orderedUnits is a channel shared between orderer and validator
+	// orderer sends ordered units to the channel
+	// validator reads the units from the channel and validates transactions contained in the unit
+	var orderedUnits chan gomel.Unit
 	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()
 	service, err := create.NewService(poset, config.Create, done)
@@ -43,7 +52,7 @@ func Process(config process.Config) error {
 		return err
 	}
 	services = append(services, service)
-	service, err = order.NewService(poset, config.Order)
+	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits)
 	if err != nil {
 		return err
 	}
