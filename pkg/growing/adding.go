@@ -33,7 +33,7 @@ func (p *Poset) verifySignature(pu gomel.Preunit) error {
 }
 
 func (p *Poset) addPrime(u gomel.Unit) {
-	if u.Level() > p.primeUnits.getHeight() {
+	if u.Level() >= p.primeUnits.Len() {
 		p.primeUnits.extendBy(10)
 	}
 	su, _ := p.primeUnits.getLevel(u.Level())
@@ -94,8 +94,8 @@ func (p *Poset) addUnit(ub *unitBuilt) {
 		p.addPrime(ub.result)
 	}
 	p.units.add(ub.result)
-	ub.done(ub.preunit, ub.result, nil)
 	p.updateMaximal(ub.result)
+	ub.done(ub.preunit, ub.result, nil)
 }
 
 func (p *Poset) adder(incoming chan *unitBuilt) {
