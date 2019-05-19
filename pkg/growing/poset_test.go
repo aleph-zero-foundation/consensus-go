@@ -16,6 +16,11 @@ type preunitMock struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	parents   []gomel.Hash
+	txs       []gomel.Tx
+}
+
+func (pu *preunitMock) Txs() []gomel.Tx {
+	return pu.txs
 }
 
 func (pu *preunitMock) Creator() int {

@@ -14,6 +14,7 @@ type netunit struct {
 	Creator   int
 	Signature gomel.Signature
 	Parents   []gomel.Hash
+	Txs       []gomel.Tx
 }
 
 type encoder struct {
@@ -36,7 +37,7 @@ func (e *encoder) EncodeUnits(units [][]gomel.Unit) error {
 			for j, parent := range unit.Parents() {
 				parentHashes[j] = *parent.Hash()
 			}
-			netunits[i][j] = netunit{unit.Creator(), unit.Signature(), parentHashes}
+			netunits[i][j] = netunit{unit.Creator(), unit.Signature(), parentHashes, unit.Txs()}
 		}
 	}
 	return e.engine.Encode(netunits)
@@ -62,7 +63,7 @@ func (d *decoder) DecodePreunits() ([][]gomel.Preunit, error) {
 	for i, layer := range netunits {
 		preunits[i] = make([]gomel.Preunit, len(layer))
 		for j, netunit := range layer {
-			preunits[i][j] = creating.NewPreunit(netunit.Creator, netunit.Parents)
+			preunits[i][j] = creating.NewPreunit(netunit.Creator, netunit.Parents, netunit.Txs)
 			preunits[i][j].SetSignature(netunit.Signature)
 		}
 	}

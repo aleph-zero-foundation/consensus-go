@@ -12,6 +12,11 @@ type unit struct {
 	hash      gomel.Hash
 	parents   []gomel.Unit
 	signature gomel.Signature
+	txs       []gomel.Tx
+}
+
+func (u *unit) Txs() []gomel.Tx {
+	return u.txs
 }
 
 func (u *unit) Creator() int {

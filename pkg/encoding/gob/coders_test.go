@@ -139,6 +139,11 @@ type preunit struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	parents   []gomel.Hash
+	txs       []gomel.Tx
+}
+
+func (pu *preunit) Txs() []gomel.Tx {
+	return pu.txs
 }
 
 func (pu *preunit) Creator() int {
@@ -167,6 +172,7 @@ type unit struct {
 	hash      gomel.Hash
 	signature gomel.Signature
 	parents   []gomel.Unit
+	txs       []gomel.Tx
 }
 
 func newUnit(creator int, id int) *unit {
@@ -177,7 +183,12 @@ func newUnit(creator int, id int) *unit {
 		level:   0,
 		hash:    h,
 		parents: []gomel.Unit{},
+		txs:     []gomel.Tx{},
 	}
+}
+
+func (u *unit) Txs() []gomel.Tx {
+	return u.txs
 }
 
 func (u *unit) Creator() int {
