@@ -6,37 +6,28 @@ import (
 
 func checkExpandPrimes(p *Poset, pu gomel.Preunit) bool {
 	parents := p.Get(pu.Parents())
-	lastLevel := 0
+	lastLevel := -1
 	primesSeen := make(map[gomel.Hash]bool)
-	for i, u := range parents {
-		if i == 0 {
-			lastLevel := u.Level()
+	for _, u := range parents {
+		if u.Level() < lastLevel {
+			return false
+		} else if u.Level() == lastLevel {
+			ok := false
 			for _, prime := range p.getPrimeUnitsOnLevel(lastLevel) {
-				if prime.Below(u) {
+				if !primesSeen[*prime.Hash()] && prime.Below(u) {
+					ok = true
 					primesSeen[*prime.Hash()] = true
 				}
 			}
-		} else {
-			if u.Level() < lastLevel {
+			if !ok {
 				return false
-			} else if u.Level() == lastLevel {
-				ok := false
-				for _, prime := range p.getPrimeUnitsOnLevel(lastLevel) {
-					if !primesSeen[*prime.Hash()] && prime.Below(u) {
-						ok = true
-						primesSeen[*prime.Hash()] = true
-					}
-				}
-				if !ok {
-					return false
-				}
-			} else {
-				lastLevel = u.Level()
-				primesSeen = make(map[gomel.Hash]bool)
-				for _, prime := range p.getPrimeUnitsOnLevel(lastLevel) {
-					if prime.Below(u) {
-						primesSeen[*prime.Hash()] = true
-					}
+			}
+		} else {
+			lastLevel = u.Level()
+			primesSeen = make(map[gomel.Hash]bool)
+			for _, prime := range p.getPrimeUnitsOnLevel(lastLevel) {
+				if prime.Below(u) {
+					primesSeen[*prime.Hash()] = true
 				}
 			}
 		}

@@ -16,18 +16,21 @@ func (posetFactory) CreatePoset(pc gomel.PosetConfig) gomel.Poset {
 }
 
 // collectUnits runs dfs from maximal units in the given poset and returns a map
-// (creator, height) => slice of units by this creator on this height
-func collectUnits(p gomel.Poset) map[[2]int][]gomel.Unit {
+// creator => (height => slice of units by this creator on this height)
+func collectUnits(p gomel.Poset) map[int]map[int][]gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
-	result := make(map[[2]int][]gomel.Unit)
+	result := make(map[int]map[int][]gomel.Unit)
+	for pid := 0; pid < p.NProc(); pid++ {
+		result[pid] = make(map[int][]gomel.Unit)
+	}
 
 	var dfs func(u gomel.Unit)
 	dfs = func(u gomel.Unit) {
 		seenUnits[*u.Hash()] = true
-		if _, ok := result[[2]int{u.Creator(), u.Height()}]; !ok {
-			result[[2]int{u.Creator(), u.Height()}] = []gomel.Unit{}
+		if _, ok := result[u.Creator()][u.Height()]; !ok {
+			result[u.Creator()][u.Height()] = []gomel.Unit{}
 		}
-		result[[2]int{u.Creator(), u.Height()}] = append(result[[2]int{u.Creator(), u.Height()}], u)
+		result[u.Creator()][u.Height()] = append(result[u.Creator()][u.Height()], u)
 		for _, uParent := range u.Parents() {
 			if !seenUnits[*uParent.Hash()] {
 				dfs(uParent)
@@ -48,7 +51,7 @@ var _ = Describe("Units", func() {
 		poset      gomel.Poset
 		readingErr error
 		pf         posetFactory
-		units      map[[2]int][]gomel.Unit
+		units      map[int]map[int][]gomel.Unit
 	)
 
 	Describe("small", func() {
@@ -64,7 +67,7 @@ var _ = Describe("Units", func() {
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should return true", func() {
-				u := units[[2]int{0, 0}][0]
+				u := units[0][0][0]
 				Expect(u.Below(u)).To(BeTrue())
 			})
 		})
@@ -74,9 +77,9 @@ var _ = Describe("Units", func() {
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should be true in one direction and false in the other", func() {
-				u0 := units[[2]int{0, 0}][0]
-				u1 := units[[2]int{1, 0}][0]
-				u01 := units[[2]int{0, 1}][0]
+				u0 := units[0][0][0]
+				u1 := units[1][0][0]
+				u01 := units[0][1][0]
 				Expect(u0.Below(u01)).To(BeTrue())
 				Expect(u1.Below(u01)).To(BeTrue())
 				Expect(u01.Below(u0)).To(BeFalse())
@@ -89,10 +92,10 @@ var _ = Describe("Units", func() {
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should be true if two relations are true", func() {
-				u0 := units[[2]int{0, 0}][0]
-				u01 := units[[2]int{0, 1}][0]
-				u02 := units[[2]int{0, 2}][0]
-				u21 := units[[2]int{2, 1}][0]
+				u0 := units[0][0][0]
+				u01 := units[0][1][0]
+				u02 := units[0][2][0]
+				u21 := units[2][1][0]
 
 				Expect(u0.Below(u01)).To(BeTrue())
 				Expect(u01.Below(u02)).To(BeTrue())
@@ -107,8 +110,8 @@ var _ = Describe("Units", func() {
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should return false for both below queries.", func() {
-				u0 := units[[2]int{0, 0}][0]
-				u1 := units[[2]int{0, 0}][1]
+				u0 := units[0][0][0]
+				u1 := units[0][0][1]
 				Expect(u0.Below(u1)).To(BeFalse())
 				Expect(u1.Below(u0)).To(BeFalse())
 			})
@@ -119,9 +122,9 @@ var _ = Describe("Units", func() {
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should correctly answer all pairs of below queries.", func() {
-				uBase := units[[2]int{0, 0}][0]
-				u1 := units[[2]int{0, 1}][0]
-				u2 := units[[2]int{0, 1}][1]
+				uBase := units[0][0][0]
+				u1 := units[0][1][0]
+				u2 := units[0][1][1]
 
 				Expect(uBase.Below(u1)).To(BeTrue())
 				Expect(uBase.Below(u2)).To(BeTrue())
