@@ -67,7 +67,8 @@ func (ac *adjustingCreator) updateTicker() {
 }
 
 func (ac *adjustingCreator) createUnit() {
-	created, err := creating.NewUnit(ac.poset, ac.id, ac.maxParents)
+	// TODO: actually get transactions from somewhere
+	created, err := creating.NewUnit(ac.poset, ac.id, ac.maxParents, []gomel.Tx{})
 	if err != nil {
 		ac.slower()
 		return
