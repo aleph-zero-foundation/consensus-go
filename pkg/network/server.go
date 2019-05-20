@@ -1,6 +1,6 @@
 package network
 
-// ConnectionServer is a central for both handling incomming requests for connections and
+// ConnectionServer is a central for both handling incoming requests for connections and
 // establishing outgoing connections
 type ConnectionServer interface {
 

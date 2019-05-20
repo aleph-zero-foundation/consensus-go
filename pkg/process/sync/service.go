@@ -8,12 +8,12 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
-	s "gitlab.com/alephledger/consensus-go/pkg/sync"
+	ssync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/request"
 )
 
 type service struct {
-	syncServer *s.Server
+	syncServer *ssync.Server
 	connServer network.ConnectionServer
 	dialer     *dialer
 	log        zerolog.Logger
@@ -26,7 +26,7 @@ func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (pr
 	if err != nil {
 		return nil, err
 	}
-	syncServ := s.NewServer(poset, connServ.ListenChannel(), connServ.DialChannel(), request.In{}, request.Out{}, config.InitializedSyncLimit, config.ReceivedSyncLimit)
+	syncServ := ssync.NewServer(poset, connServ.ListenChannel(), connServ.DialChannel(), request.In{}, request.Out{}, config.InitializedSyncLimit, config.ReceivedSyncLimit)
 	return &service{
 		syncServer: syncServ,
 		connServer: connServ,

@@ -95,7 +95,7 @@ func nonempty(requests [][]gomel.Hash) bool {
 /*		1. Receive a consistent snapshot of the other parties maximal units as a list of (hash, height) pairs.
 		2. Compute a similar info for our poset.
 		3. Send this info.
-		4. Compute and send units that are predecessors of the received info and succesors of ours.
+		4. Compute and send units that are predecessors of the received info and successors of ours.
 		5. Compute and send requests, containing hashes in the other party's info not recognized by us.
 		6. Receive units complying with the above restrictions and the ones we requested.
 		7. Receive requests as above. If they were empty proceed to 9.
