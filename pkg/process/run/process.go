@@ -39,6 +39,8 @@ func Process(config process.Config) error {
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered units to the channel
 	// validator reads the units from the channel and validates transactions contained in the unit
+	// We expect to order about one level of units at once, which should be around the size of the committee.
+	// The buffer has size taking that into account with some leeway.
 	orderedUnits := make(chan gomel.Unit, 2*config.Poset.NProc())
 	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()

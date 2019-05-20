@@ -26,7 +26,7 @@ func makeFinal(maxLevel, maxHeight int, finished chan<- struct{}, primeUnitCreat
 // The service will close done when it stops.
 func NewService(poset gomel.Poset, config *process.Create, done chan<- struct{}, primeUnitCreated chan<- struct{}) (process.Service, error) {
 	return &service{
-		creator: newAdjustingCreator(poset, config.ID, config.MaxParents, config.PrivateKey, config.InitialDelay, makeFinal(config.MaxLevel, config.MaxHeight, done, primeUnitCreated)),
+		creator: newAdjustingCreator(poset, config.ID, config.MaxParents, config.PrivateKey, config.InitialDelay, config.AdjustFactor, makeFinal(config.MaxLevel, config.MaxHeight, done, primeUnitCreated)),
 	}, nil
 }
 

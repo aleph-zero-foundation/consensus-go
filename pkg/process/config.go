@@ -28,6 +28,7 @@ type Create struct {
 	MaxParents   int
 	PrivateKey   gomel.PrivateKey
 	InitialDelay int
+	AdjustFactor float64
 	MaxLevel     int
 	MaxHeight    int
 }

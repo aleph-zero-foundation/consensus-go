@@ -15,55 +15,55 @@ import (
 // Whenever it creates a non-prime unit after creating a non-prime unit it increases the delay adjustment factor before increasing the delay.
 // The deacreasing of the adjustment factor is intentionally stronger than the increasing, to encourage convergence.
 type adjustingCreator struct {
-	currentDelay time.Duration
-	adjustFactor float64
-	ticker       *time.Ticker
-	poset        gomel.Poset
-	id           int
-	maxParents   int
-	privKey      gomel.PrivateKey
-	final        func(gomel.Unit) bool
-	lastAttempt  int
-	done         chan struct{}
+	delay           time.Duration
+	adjustFactor    float64
+	ticker          *time.Ticker
+	poset           gomel.Poset
+	id              int
+	maxParents      int
+	privKey         gomel.PrivateKey
+	final           func(gomel.Unit) bool
+	previousSuccess bool
+	done            chan struct{}
 }
 
-func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.PrivateKey, delay int, final func(gomel.Unit) bool) *adjustingCreator {
+func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.PrivateKey, delay int, adjustFactor float64, final func(gomel.Unit) bool) *adjustingCreator {
 	initialDelay := time.Duration(delay) * time.Millisecond
 	return &adjustingCreator{
-		currentDelay: initialDelay,
-		adjustFactor: 0.14,
-		ticker:       time.NewTicker(initialDelay),
-		poset:        poset,
-		id:           id,
-		maxParents:   maxParents,
-		privKey:      privKey,
-		final:        final,
-		lastAttempt:  0,
-		done:         make(chan struct{}),
+		delay:           initialDelay,
+		adjustFactor:    adjustFactor,
+		ticker:          time.NewTicker(initialDelay),
+		poset:           poset,
+		id:              id,
+		maxParents:      maxParents,
+		privKey:         privKey,
+		final:           final,
+		previousSuccess: false,
+		done:            make(chan struct{}),
 	}
 }
 
 func (ac *adjustingCreator) slower() {
-	if ac.lastAttempt == 0 {
+	if !ac.previousSuccess {
 		ac.adjustFactor *= 1.01
 	}
-	ac.lastAttempt = 0
-	ac.currentDelay = time.Duration(float64(ac.currentDelay) * (1 + ac.adjustFactor))
+	ac.previousSuccess = false
+	ac.delay = time.Duration(float64(ac.delay) * (1 + ac.adjustFactor))
 	ac.updateTicker()
 }
 
 func (ac *adjustingCreator) quicker() {
-	if ac.lastAttempt == 0 {
+	if !ac.previousSuccess {
 		ac.adjustFactor *= 0.9
 	}
-	ac.lastAttempt = 1
-	ac.currentDelay = time.Duration(float64(ac.currentDelay) / (1 + ac.adjustFactor))
+	ac.previousSuccess = true
+	ac.delay = time.Duration(float64(ac.delay) / (1 + ac.adjustFactor))
 	ac.updateTicker()
 }
 
 func (ac *adjustingCreator) updateTicker() {
 	ac.ticker.Stop()
-	ac.ticker = time.NewTicker(ac.currentDelay)
+	ac.ticker = time.NewTicker(ac.delay)
 }
 
 func (ac *adjustingCreator) createUnit() {
