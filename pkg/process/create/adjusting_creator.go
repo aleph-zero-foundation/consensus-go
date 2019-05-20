@@ -8,6 +8,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 )
 
+const (
+	positiveJerk = 1.01
+	negativeJerk = 0.90
+)
+
 // adjustingCreator creates units with a self-adjusting delay. It aims to create units as quickly as possible, while creating only prime units.
 // Whenever it creates a prime unit it lowers the delay by multiplying it by an adjustment factor.
 // Whenever it creates a non-prime unit it increases the delay by dividing it by the adjustment factor.
@@ -45,7 +50,7 @@ func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.Pr
 
 func (ac *adjustingCreator) slower() {
 	if !ac.previousSuccess {
-		ac.adjustFactor *= 1.01
+		ac.adjustFactor *= positiveJerk
 	}
 	ac.previousSuccess = false
 	ac.delay = time.Duration(float64(ac.delay) * (1 + ac.adjustFactor))
@@ -54,7 +59,7 @@ func (ac *adjustingCreator) slower() {
 
 func (ac *adjustingCreator) quicker() {
 	if !ac.previousSuccess {
-		ac.adjustFactor *= 0.9
+		ac.adjustFactor *= negativeJerk
 	}
 	ac.previousSuccess = true
 	ac.delay = time.Duration(float64(ac.delay) / (1 + ac.adjustFactor))

@@ -24,7 +24,7 @@ type Sync struct {
 
 // Create represents a complete configuration needed for a creating service to start.
 type Create struct {
-	ID           int
+	Pid          int
 	MaxParents   int
 	PrivateKey   gomel.PrivateKey
 	InitialDelay int
