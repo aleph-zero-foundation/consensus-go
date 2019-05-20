@@ -12,7 +12,7 @@ type service struct {
 	validator  *validator
 	unitSource <-chan gomel.Unit
 	exitChan   chan struct{}
-	log zerolog.Logger
+	log        zerolog.Logger
 }
 
 // NewService creates a new transaction validation service for the given poset, with the given configuration.
@@ -35,6 +35,7 @@ func (s *service) main() {
 			for _, t := range u.Txs() {
 				s.validator.validate(t)
 			}
+			s.log.Info().Int("n", s.validator.txCount).Msg(logging.TXsValidated)
 		case <-s.exitChan:
 			return
 		}
