@@ -6,13 +6,16 @@ import (
 
 // for now validator only counts the transactions
 type validator struct {
-	txCount int
+	userBalance map[string]uint32
 }
 
-func newValidator() *validator {
-	return &validator{txCount: 0}
+func newValidator(userBalance map[string]uint32) *validator {
+	return &validator{userBalance: userBalance}
 }
 
 func (v *validator) validate(tx gomel.Tx) {
-	v.txCount++
+	if v.userBalance[tx.Issuer] >= tx.Amount {
+		v.userBalance[tx.Issuer] -= tx.Amount
+		v.userBalance[tx.Receiver] += tx.Amount
+	}
 }

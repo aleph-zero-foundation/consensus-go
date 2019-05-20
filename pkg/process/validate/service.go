@@ -16,7 +16,7 @@ func NewService(poset gomel.Poset, config *process.Validate, unitSource <-chan g
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),
-		validator:  newValidator(),
+		validator:  newValidator(config.StartUserBalance),
 	}, nil
 }
 
@@ -32,6 +32,7 @@ func (s *service) main() {
 		}
 	}
 }
+
 func (s *service) Start() error {
 	go s.main()
 	return nil

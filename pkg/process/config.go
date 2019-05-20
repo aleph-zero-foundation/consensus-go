@@ -41,4 +41,11 @@ type Order struct {
 
 // Validate represents a complete configuration needed for a transaction validation service to start.
 type Validate struct {
+	StartUserBalance map[string]uint32
+}
+
+// Genrate represents a complete configuration needed for a tx generation service to start.
+type Generate struct {
+	Users     []string
+	Frequency int
 }
