@@ -101,11 +101,7 @@ var _ = Describe("Units", func() {
 				Expect(u0.Below(u21)).To(BeTrue())
 			})
 		})
-		// The following tests existed in the previous version
-		// Without transactions we cannot fork a dealing unit as the unit and its fork will have the same hash
-		// as a result duplicate unit error will be returned while adding the fork
-		// We can uncomment this test when we will be able to add different transactions to each unit
-		/*Describe("Checking Below works properly for forked dealing units.", func() {
+		Describe("Checking Below works properly for forked dealing units.", func() {
 			BeforeEach(func() {
 				poset, readingErr = tests.CreatePosetFromTestFile("../testdata/forked_dealing.txt", pf)
 				Expect(readingErr).NotTo(HaveOccurred())
@@ -113,7 +109,6 @@ var _ = Describe("Units", func() {
 			It("Should return false for both below queries.", func() {
 				u0 := units[[2]int{0, 0}][0]
 				u1 := units[[2]int{0, 0}][1]
-
 				Expect(u0.Below(u1)).To(BeFalse())
 				Expect(u1.Below(u0)).To(BeFalse())
 			})
@@ -123,7 +118,6 @@ var _ = Describe("Units", func() {
 				poset, readingErr = tests.CreatePosetFromTestFile("../testdata/fork_4u.txt", pf)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
-
 			It("Should correctly answer all pairs of below queries.", func() {
 				uBase := units[[2]int{0, 0}][0]
 				u1 := units[[2]int{0, 1}][0]
@@ -136,6 +130,6 @@ var _ = Describe("Units", func() {
 				Expect(u1.Below(u2)).To(BeFalse())
 				Expect(u2.Below(u1)).To(BeFalse())
 			})
-		})*/
+		})
 	})
 })

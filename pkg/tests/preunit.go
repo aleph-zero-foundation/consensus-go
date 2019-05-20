@@ -70,5 +70,6 @@ func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	data.Write(toBytes(int32(pu.creator)))
 	data.Write(toBytes(pu.parents))
+	data.Write(toBytes(pu.txs))
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }
