@@ -29,7 +29,7 @@ type service struct {
 	previousPrime    bool
 	delay            time.Duration
 	ticker           *time.Ticker
-	txSource         <-chan *gomel.Tx
+	dataSource       <-chan []byte
 	primeUnitCreated chan<- int
 	posetFinished    chan<- struct{}
 	done             chan struct{}
@@ -44,7 +44,7 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close posetFinished channel when it stops.
-func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- int, txSource <-chan *gomel.Tx, log zerolog.Logger) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
 	initialDelay := time.Duration(config.InitialDelay) * time.Millisecond
 
 	return &service{
@@ -54,12 +54,11 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 		maxLevel:         config.MaxLevel,
 		maxHeight:        config.MaxHeight,
 		privKey:          config.PrivateKey,
-		txpu:             config.Txpu,
 		adjustFactor:     config.AdjustFactor,
 		previousPrime:    false,
 		delay:            initialDelay,
 		ticker:           time.NewTicker(initialDelay),
-		txSource:         txSource,
+		dataSource:       dataSource,
 		primeUnitCreated: primeUnitCreated,
 		posetFinished:    posetFinished,
 		done:             make(chan struct{}),
@@ -109,22 +108,17 @@ func (s *service) updateTicker() {
 	s.ticker = time.NewTicker(s.delay)
 }
 
-func (s *service) getTransactions() []gomel.Tx {
-	result := []gomel.Tx{}
-	for uint(len(result)) < s.txpu {
-		select {
-		case tx := <-s.txSource:
-			result = append(result, *tx)
-		default:
-			return result
-		}
+func (s *service) getData() []byte {
+	select {
+	case data := <-s.dataSource:
+		return data
+	default:
+		return []byte{}
 	}
-	return result
 }
 
 func (s *service) createUnit() {
-	txs := s.getTransactions()
-	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, txs)
+	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, s.getData())
 	if err != nil {
 		s.slower()
 		s.log.Info().Msg(logging.NotEnoughParents)
@@ -142,12 +136,12 @@ func (s *service) createUnit() {
 		}
 
 		if gomel.Prime(added) {
-			s.log.Info().Int("X", len(txs)).Msg(logging.PrimeUnitCreated)
+			s.log.Info().Msg(logging.PrimeUnitCreated)
 			s.quicker()
 			s.previousPrime = true
 			s.primeUnitCreated <- added.Level()
 		} else {
-			s.log.Info().Int("X", len(txs)).Msg(logging.UnitCreated)
+			s.log.Info().Msg(logging.UnitCreated)
 			s.slower()
 			s.previousPrime = false
 		}

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
 // ReadPoset reads poset from the given reader and creates it using given poset factory
@@ -49,7 +50,7 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 				parents = append(parents, preunitHashes[[3]int{creator, height, version}])
 			}
 		}
-		pu := NewPreunit(puCreator, parents, gomel.EncodeTxs([]gomel.Tx{}))
+		pu := NewPreunit(puCreator, parents, transactions.Encode([]transactions.Tx{transactions.Tx{ID: txID}}))
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = *pu.Hash()
 		var addingError error

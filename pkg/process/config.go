@@ -37,7 +37,6 @@ type Create struct {
 	AdjustFactor float64
 	MaxLevel     int
 	MaxHeight    int
-	Txpu         uint
 }
 
 // Order represents a complete configuration needed for an ordering service to start.
@@ -58,4 +57,5 @@ type TxValidate struct {
 // Db handler
 type TxGenerate struct {
 	UserDb string
+	Txpu   uint32
 }

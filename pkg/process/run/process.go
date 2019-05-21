@@ -47,7 +47,7 @@ func Process(config process.Config) error {
 	// The buffer has size taking that into account with some leeway.
 	orderedUnits := make(chan gomel.Unit, 2*config.Poset.NProc())
 	// txChan is a channel shared between tx_generator and creator
-	txChan := make(chan *gomel.Tx, 2*config.Create.Txpu)
+	txChan := make(chan []byte, 10)
 	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()
 
