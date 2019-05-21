@@ -23,8 +23,8 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 }
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
-func newDealingUnit(creator int, txs []gomel.Tx) gomel.Preunit {
-	return NewPreunit(creator, []gomel.Hash{}, txs)
+func newDealingUnit(creator int, data []byte) gomel.Preunit {
+	return NewPreunit(creator, []gomel.Hash{}, data)
 }
 
 // maxLevel returns the maximal level from units present in mu.
@@ -188,12 +188,12 @@ func hashes(units []gomel.Unit) []gomel.Hash {
 // NewUnit creates a preunit for a given process with at most maximumParents parents.
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
-func NewUnit(poset gomel.Poset, creator int, maximumParents int, txs []gomel.Tx) (gomel.Preunit, error) {
+func NewUnit(poset gomel.Poset, creator int, maximumParents int, data []byte) (gomel.Preunit, error) {
 	mu := poset.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
 	if predecessor == nil {
-		return newDealingUnit(creator, txs), nil
+		return newDealingUnit(creator, data), nil
 	}
 	parents := []gomel.Unit{predecessor}
 	posetLevel := maxLevel(mu)
@@ -207,5 +207,5 @@ func NewUnit(poset gomel.Poset, creator int, maximumParents int, txs []gomel.Tx)
 	if len(parents) < 2 {
 		return nil, &noAvailableParents{}
 	}
-	return NewPreunit(creator, hashes(parents), txs), nil
+	return NewPreunit(creator, hashes(parents), data), nil
 }

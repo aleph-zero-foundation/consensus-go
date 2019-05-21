@@ -16,19 +16,19 @@ type unit struct {
 	hash          gomel.Hash
 	parents       []gomel.Unit
 	floor         [][]*unit
-	txs           []gomel.Tx
+	data          []byte
 }
 
 func newUnit(pu gomel.Preunit) *unit {
 	return &unit{
 		creator: pu.Creator(),
 		hash:    *pu.Hash(),
-		txs:     pu.Txs(),
+		data:    pu.Data(),
 	}
 }
 
-func (u *unit) Txs() []gomel.Tx {
-	return u.txs
+func (u *unit) Data() []byte {
+	return u.data
 }
 
 // Returns the creator id of the unit.

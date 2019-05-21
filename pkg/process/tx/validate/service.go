@@ -32,7 +32,7 @@ func (s *service) main() {
 	for {
 		select {
 		case u := <-s.unitSource:
-			for _, t := range u.Txs() {
+			for _, t := range gomel.DecodeTxs(u.Data()) {
 				s.validator.validate(t)
 			}
 		case <-s.exitChan:
