@@ -8,7 +8,6 @@ const (
 	ServiceStopped      = "stopped"
 	NewTimingUnit       = "T"
 	LinearOrderExtended = "L"
-	TXsValidated        = "X"
 )
 
 // eventTypeDict maps single char event names to human readable names
@@ -16,7 +15,6 @@ const (
 var eventTypeDict = map[string]string{
 	"T": "new timing unit",
 	"L": "linear order extended",
-	"X": "TXs total count",
 }
 
 // Service types

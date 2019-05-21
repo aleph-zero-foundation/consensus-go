@@ -24,7 +24,7 @@ func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),
-		validator:  newValidator(),
+		validator:  validator,
 	}, nil
 }
 
@@ -35,7 +35,6 @@ func (s *service) main() {
 			for _, t := range u.Txs() {
 				s.validator.validate(t)
 			}
-			s.log.Info().Int("n", s.validator.txCount).Msg(logging.TXsValidated)
 		case <-s.exitChan:
 			return
 		}
