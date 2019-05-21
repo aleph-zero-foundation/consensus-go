@@ -9,6 +9,7 @@ type Config struct {
 	Create   *Create
 	Order    *Order
 	Validate *Validate
+	Generate *Generate
 }
 
 // Sync represents a complete configuration needed for a syncing service to start.
@@ -31,6 +32,7 @@ type Create struct {
 	AdjustFactor float64
 	MaxLevel     int
 	MaxHeight    int
+	Txpu         uint
 }
 
 // Order represents a complete configuration needed for an ordering service to start.
@@ -44,8 +46,7 @@ type Validate struct {
 	StartUserBalance map[string]uint32
 }
 
-// Genrate represents a complete configuration needed for a tx generation service to start.
+// Generate represents a complete configuration needed for a tx generation service to start.
 type Generate struct {
-	Users     []string
-	Frequency int
+	Users []string
 }

@@ -5,6 +5,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
+	"gitlab.com/alephledger/consensus-go/pkg/process/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/process/validate"
@@ -42,9 +43,11 @@ func Process(config process.Config) error {
 	// We expect to order about one level of units at once, which should be around the size of the committee.
 	// The buffer has size taking that into account with some leeway.
 	orderedUnits := make(chan gomel.Unit, 2*config.Poset.NProc())
+	// txChan is a channel shared between tx_generator and creator
+	txChan := make(chan *gomel.Tx, 2*config.Create.Txpu)
 	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()
-	service, err := create.NewService(poset, config.Create, posetFinished, attemptTimingRequests)
+	service, err := create.NewService(poset, config.Create, posetFinished, attemptTimingRequests, txChan)
 	if err != nil {
 		return err
 	}
@@ -60,6 +63,11 @@ func Process(config process.Config) error {
 	}
 	services = append(services, service)
 	service, err = validate.NewService(poset, config.Validate, orderedUnits)
+	if err != nil {
+		return err
+	}
+	services = append(services, service)
+	service, err = generate.NewService(poset, config.Generate, txChan)
 	if err != nil {
 		return err
 	}
