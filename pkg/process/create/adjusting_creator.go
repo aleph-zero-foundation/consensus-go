@@ -29,10 +29,12 @@ type adjustingCreator struct {
 	privKey         gomel.PrivateKey
 	final           func(gomel.Unit) bool
 	previousSuccess bool
+	txpu            uint
+	txSource        <-chan *gomel.Tx
 	done            chan struct{}
 }
 
-func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.PrivateKey, delay int, adjustFactor float64, final func(gomel.Unit) bool) *adjustingCreator {
+func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.PrivateKey, delay int, adjustFactor float64, final func(gomel.Unit) bool, txpu uint, txSource <-chan *gomel.Tx) *adjustingCreator {
 	initialDelay := time.Duration(delay) * time.Millisecond
 	return &adjustingCreator{
 		delay:           initialDelay,
@@ -44,6 +46,8 @@ func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.Pr
 		privKey:         privKey,
 		final:           final,
 		previousSuccess: false,
+		txpu:            txpu,
+		txSource:        txSource,
 		done:            make(chan struct{}),
 	}
 }
@@ -71,9 +75,21 @@ func (ac *adjustingCreator) updateTicker() {
 	ac.ticker = time.NewTicker(ac.delay)
 }
 
+func (ac *adjustingCreator) getTransactions() []gomel.Tx {
+	result := []gomel.Tx{}
+	for uint(len(result)) < ac.txpu {
+		select {
+		case tx := <-ac.txSource:
+			result = append(result, *tx)
+		default:
+			return result
+		}
+	}
+	return result
+}
+
 func (ac *adjustingCreator) createUnit() {
-	// TODO: actually get transactions from somewhere
-	created, err := creating.NewUnit(ac.poset, ac.id, ac.maxParents, []gomel.Tx{})
+	created, err := creating.NewUnit(ac.poset, ac.id, ac.maxParents, ac.getTransactions())
 	if err != nil {
 		ac.slower()
 		return

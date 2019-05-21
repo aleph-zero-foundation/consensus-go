@@ -4,11 +4,12 @@ import gomel "gitlab.com/alephledger/consensus-go/pkg"
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	Poset    *gomel.PosetConfig
-	Sync     *Sync
-	Create   *Create
-	Order    *Order
-	Validate *Validate
+	Poset      *gomel.PosetConfig
+	Sync       *Sync
+	Create     *Create
+	Order      *Order
+	TxValidate *TxValidate
+	TxGenerate *TxGenerate
 }
 
 // Sync represents a complete configuration needed for a syncing service to start.
@@ -31,6 +32,7 @@ type Create struct {
 	AdjustFactor float64
 	MaxLevel     int
 	MaxHeight    int
+	Txpu         uint
 }
 
 // Order represents a complete configuration needed for an ordering service to start.
@@ -39,6 +41,16 @@ type Order struct {
 	PiDeltaLevel int
 }
 
-// Validate represents a complete configuration needed for a transaction validation service to start.
-type Validate struct {
+// TxValidate represents a complete configuration needed for a transaction validation service to start.
+// For now UserDb is a filename with list of users (we can use ../testdata/users.txt),
+// it should be replaced with some actual Db handler
+type TxValidate struct {
+	UserDb string
+}
+
+// TxGenerate represents a complete configuration needed for a tx generation service to start.
+// For now UserDb is a filename with list of users, it should be replaced with some actual
+// Db handler
+type TxGenerate struct {
+	UserDb string
 }
