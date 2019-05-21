@@ -7,12 +7,14 @@ import (
 )
 
 type connServer struct {
+	pid         int
 	localAddr   *net.TCPAddr
 	remoteAddrs []*net.TCPAddr
 	listenChan  chan network.Connection
 	dialChan    chan network.Connection
 	dialSource  <-chan int
-	inUse       map[net.Addr]*mutex
+	inUse       []*mutex
+	syncIds     []uint32
 	exitChan    chan struct{}
 }
 
@@ -23,23 +25,29 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 		return nil, err
 	}
 	remoteTCPs := make([]*net.TCPAddr, len(remoteAddrs))
-	inUse := make(map[net.Addr]*mutex)
+	inUse := make([]*mutex, len(remoteAddrs))
+	pid := -1
 	for i, remoteAddr := range remoteAddrs {
 		remoteTCP, err := net.ResolveTCPAddr("tcp", remoteAddr)
 		if err != nil {
 			return nil, err
 		}
 		remoteTCPs[i] = remoteTCP
-		inUse[remoteTCP] = newMutex()
+		inUse[i] = newMutex()
+		if remoteTCP == localTCP {
+			pid = i
+		}
 	}
 
 	return &connServer{
+		pid:         pid,
 		localAddr:   localTCP,
 		remoteAddrs: remoteTCPs,
 		listenChan:  make(chan network.Connection, listQueueLen),
 		dialChan:    make(chan network.Connection, syncQueueLen),
 		dialSource:  dialSource,
 		inUse:       inUse,
+		syncIds:     make([]uint32, len(remoteAddrs)),
 		exitChan:    make(chan struct{}),
 	}, nil
 }
@@ -68,12 +76,18 @@ func (cs *connServer) Listen() error {
 				if err != nil {
 					// TODO log the error
 				}
-				// check if we are already syncing with remotePeer
-				m, ok := cs.inUse[link.RemoteAddr()]
-				if !ok {
+				g, err := getGreeting(link)
+				if err != nil {
+					// TODO log the error
+					continue
+				}
+				remotePid := int(g.pid)
+				if remotePid < 0 || remotePid >= len(cs.inUse) {
 					// TODO log that a stranger called us
 					continue
 				}
+				// check if we are already syncing with remotePeer
+				m := cs.inUse[remotePid]
 				if m.tryAcquire() {
 					cs.listenChan <- newConn(link, m)
 				}
@@ -93,7 +107,7 @@ func (cs *connServer) StartDialing() {
 				return
 			case remotePid := <-cs.dialSource:
 				// check if we are already syncing with remotePeer
-				m := cs.inUse[cs.remoteAddrs[remotePid]]
+				m := cs.inUse[remotePid]
 				if !m.tryAcquire() {
 					continue
 				}
@@ -102,6 +116,17 @@ func (cs *connServer) StartDialing() {
 				if err != nil {
 					// TODO log the error
 					m.release()
+				}
+				g := &greeting{
+					pid: uint32(remotePid),
+					sid: cs.syncIds[remotePid],
+				}
+				cs.syncIds[remotePid]++
+				err = g.send(link)
+				if err != nil {
+					// TODO log the error
+					m.release()
+					continue
 				}
 				cs.dialChan <- newConn(link, m)
 			}
