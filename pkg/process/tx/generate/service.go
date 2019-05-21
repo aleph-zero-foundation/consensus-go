@@ -66,8 +66,8 @@ func (s *service) main() {
 }
 
 func (s *service) Start() error {
-	s.log.Info().Msg(logging.ServiceStarted)
 	go s.main()
+	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 

@@ -36,7 +36,6 @@ func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (pr
 }
 
 func (s *service) Start() error {
-	s.log.Info().Msg(logging.ServiceStarted)
 	err := s.connServer.Listen()
 	if err != nil {
 		return err
@@ -44,6 +43,7 @@ func (s *service) Start() error {
 	s.syncServer.Start()
 	s.connServer.StartDialing()
 	s.dialer.start()
+	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 

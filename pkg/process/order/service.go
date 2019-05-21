@@ -67,9 +67,9 @@ func (s *service) extendOrder() {
 
 // Start is a function which starts the service
 func (s *service) Start() error {
-	s.log.Info().Msg(logging.ServiceStarted)
 	go s.attemptOrdering()
 	go s.extendOrder()
+	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 

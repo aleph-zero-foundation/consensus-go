@@ -38,8 +38,8 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 }
 
 func (s *service) Start() error {
-	s.log.Info().Msg(logging.ServiceStarted)
 	s.creator.start()
+	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
