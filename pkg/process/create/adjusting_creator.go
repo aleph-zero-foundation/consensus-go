@@ -4,8 +4,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 const (
@@ -32,9 +35,10 @@ type adjustingCreator struct {
 	txpu            uint
 	txSource        <-chan *gomel.Tx
 	done            chan struct{}
+	log             zerolog.Logger
 }
 
-func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.PrivateKey, delay int, adjustFactor float64, final func(gomel.Unit) bool, txpu uint, txSource <-chan *gomel.Tx) *adjustingCreator {
+func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.PrivateKey, delay int, adjustFactor float64, final func(gomel.Unit) bool, txpu uint, txSource <-chan *gomel.Tx, log zerolog.Logger) *adjustingCreator {
 	initialDelay := time.Duration(delay) * time.Millisecond
 	return &adjustingCreator{
 		delay:           initialDelay,
@@ -49,6 +53,7 @@ func newAdjustingCreator(poset gomel.Poset, id, maxParents int, privKey gomel.Pr
 		txpu:            txpu,
 		txSource:        txSource,
 		done:            make(chan struct{}),
+		log:             log,
 	}
 }
 
@@ -89,9 +94,11 @@ func (ac *adjustingCreator) getTransactions() []gomel.Tx {
 }
 
 func (ac *adjustingCreator) createUnit() {
-	created, err := creating.NewUnit(ac.poset, ac.id, ac.maxParents, ac.getTransactions())
+	txs := ac.getTransactions()
+	created, err := creating.NewUnit(ac.poset, ac.id, ac.maxParents, txs)
 	if err != nil {
 		ac.slower()
+		ac.log.Info().Msg(logging.NotEnoughParents)
 		return
 	}
 	created.SetSignature(ac.privKey.Sign(created))
@@ -100,12 +107,14 @@ func (ac *adjustingCreator) createUnit() {
 	ac.poset.AddUnit(created, func(_ gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
-			// TODO: error handling
+			ac.log.Error().Msg(err.Error())
 			return
 		}
 		if gomel.Prime(added) {
+			ac.log.Info().Int("X", len(txs)).Msg(logging.PrimeUnitCreated)
 			ac.quicker()
 		} else {
+			ac.log.Info().Int("X", len(txs)).Msg(logging.UnitCreated)
 			ac.slower()
 		}
 		if ac.final(added) {
