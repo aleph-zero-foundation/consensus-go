@@ -62,12 +62,12 @@ func Process(config process.Config) error {
 		return err
 	}
 	services = append(services, service)
-	service, err = validate.NewService(poset, config.Validate, orderedUnits)
+	service, err = validate.NewService(poset, config.TxValidate, orderedUnits)
 	if err != nil {
 		return err
 	}
 	services = append(services, service)
-	service, err = generate.NewService(poset, config.Generate, txChan)
+	service, err = generate.NewService(poset, config.TxGenerate, txChan)
 	if err != nil {
 		return err
 	}

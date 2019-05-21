@@ -12,11 +12,15 @@ type service struct {
 }
 
 // NewService creates a new transaction validation service for the given poset, with the given configuration.
-func NewService(poset gomel.Poset, config *process.Validate, unitSource <-chan gomel.Unit) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan gomel.Unit) (process.Service, error) {
+	validator, err := newValidator(config.UserDb)
+	if err != nil {
+		return nil, err
+	}
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),
-		validator:  newValidator(config.StartUserBalance),
+		validator:  validator,
 	}, nil
 }
 
