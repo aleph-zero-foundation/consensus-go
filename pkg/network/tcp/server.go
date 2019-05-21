@@ -34,7 +34,7 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 		}
 		remoteTCPs[i] = remoteTCP
 		inUse[i] = newMutex()
-		if remoteTCP == localTCP {
+		if remoteAddr == localAddr {
 			pid = i
 		}
 	}
@@ -118,7 +118,7 @@ func (cs *connServer) StartDialing() {
 					m.release()
 				}
 				g := &greeting{
-					pid: uint32(remotePid),
+					pid: uint32(cs.pid),
 					sid: cs.syncIds[remotePid],
 				}
 				cs.syncIds[remotePid]++
