@@ -17,7 +17,7 @@ import (
 // - currentRound is the round up to which we have chosen timing units
 type service struct {
 	linearOrdering        gomel.LinearOrdering
-	attemptTimingRequests <-chan struct{}
+	attemptTimingRequests <-chan int
 	extendOrderRequests   chan int
 	orderedUnits          chan<- gomel.Unit
 	currentRound          int
@@ -26,7 +26,7 @@ type service struct {
 }
 
 // NewService is a constructor of an ordering service
-func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests <-chan struct{}, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		linearOrdering:        linear.NewOrdering(poset, config.VotingLevel, config.PiDeltaLevel),
 		attemptTimingRequests: attemptTimingRequests,
@@ -41,11 +41,9 @@ func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests 
 func (s *service) attemptOrdering() {
 	for {
 		select {
-		// TODO: it would be nice to send the level of newly created prime unit instead of empty struct.
-		// That would allow to keep track of (and log) how well are we doing wrt to timing decisions from this place (instead of going deep into ordering struct)
-		case <-s.attemptTimingRequests:
-			for tu := s.linearOrdering.DecideTimingOnLevel(s.currentRound); tu != nil; tu = s.linearOrdering.DecideTimingOnLevel(s.currentRound) {
-				s.log.Info().Int("r", s.currentRound).Msg(logging.NewTimingUnit)
+		case highest := <-s.attemptTimingRequests: // level of the most recent prime unit
+			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
+				s.log.Info().Int("h", highest).Int("r", s.currentRound).Msg(logging.NewTimingUnit)
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}

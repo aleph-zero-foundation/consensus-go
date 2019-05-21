@@ -39,7 +39,7 @@ func Process(config process.Config) error {
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
 	// creator/syncer should send a notification to the channel when a new prime unit is added to the poset
 	// orderer attempts timing decision after receiving the notification
-	attemptTimingRequests := make(chan struct{}, 10)
+	attemptTimingRequests := make(chan int, 10)
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered units to the channel
 	// validator reads the units from the channel and validates transactions contained in the unit
