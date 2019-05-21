@@ -75,7 +75,7 @@ func Process(config process.Config) error {
 	}
 	services = append(services, service)
 
-	service, err = generate.NewService(poset, config.TxGenerate, txChan)
+	service, err = generate.NewService(poset, config.TxGenerate, txChan, log.With().Int("S", logging.GenerateService).Logger())
 	if err != nil {
 		return err
 	}

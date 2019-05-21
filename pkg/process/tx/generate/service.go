@@ -2,16 +2,21 @@ package generate
 
 import (
 	"bufio"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"math/rand"
 	"os"
+
+	"github.com/rs/zerolog"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 type service struct {
 	users    []string
 	txChan   chan<- *gomel.Tx
 	exitChan chan struct{}
+	log      zerolog.Logger
 }
 
 func readUsers(filename string) ([]string, error) {
@@ -29,7 +34,7 @@ func readUsers(filename string) ([]string, error) {
 }
 
 // NewService creates a new service generating transactions
-func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- *gomel.Tx) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- *gomel.Tx, log zerolog.Logger) (process.Service, error) {
 	users, err := readUsers(config.UserDb)
 	if err != nil {
 		return nil, err
@@ -38,6 +43,7 @@ func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- *go
 		users:    users,
 		txChan:   txChan,
 		exitChan: make(chan struct{}),
+		log:      log,
 	}, nil
 }
 
@@ -60,10 +66,12 @@ func (s *service) main() {
 }
 
 func (s *service) Start() error {
+	s.log.Info().Msg(logging.ServiceStarted)
 	go s.main()
 	return nil
 }
 
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.log.Info().Msg(logging.ServiceStopped)
 }

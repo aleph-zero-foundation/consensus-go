@@ -23,6 +23,7 @@ const (
 	OrderService
 	SyncService
 	ValidateService
+	GenerateService
 )
 
 // serviceTypeDict maps integer service types to human readable names
@@ -32,4 +33,5 @@ var serviceTypeDict = map[int]string{
 	1: "order",
 	2: "sync",
 	3: "validate",
+	4: "generate",
 }
