@@ -58,7 +58,7 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-// toBytes returns a byte representation of any object.
+// toBytes returns a byte representation of any object of fixed size values).
 func toBytes(data interface{}) []byte {
 	var newData bytes.Buffer
 	binary.Write(&newData, binary.LittleEndian, data)
@@ -70,6 +70,12 @@ func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	data.Write(toBytes(int32(pu.creator)))
 	data.Write(toBytes(pu.parents))
-	data.Write(toBytes(pu.txs))
+	// toBytes doesn't work with strings, so we convert them into slice of bytes
+	for _, tx := range pu.txs {
+		data.Write(toBytes(tx.ID))
+		data.Write([]byte(tx.Issuer))
+		data.Write([]byte(tx.Receiver))
+		data.Write(toBytes(tx.Amount))
+	}
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }
