@@ -5,10 +5,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
-	"gitlab.com/alephledger/consensus-go/pkg/process/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/process/validate"
+	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
+	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
 )
 
 func stopAll(services []process.Service) {
