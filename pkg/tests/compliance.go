@@ -7,7 +7,7 @@ import (
 func checkExpandPrimes(p *Poset, pu gomel.Preunit) bool {
 	parents := p.Get(pu.Parents())
 	lastLevel := -1
-	primesSeen := make(map[gomel.Hash]bool)
+	var primesSeen map[gomel.Hash]bool
 	for _, u := range parents {
 		if u.Level() < lastLevel {
 			return false
