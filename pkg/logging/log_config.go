@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -67,12 +68,17 @@ func InitLogger(lc LogConfig) error {
 
 	// log the beginning of time
 	genesis := time.Now()
-	log.Info().Msg("genesis")
+	log.Log().Msg("genesis")
 
 	// time logged as integer starting at 0, with the chosen unit
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.TimestampFunc = func() time.Time {
 		return time.Unix(int64(time.Since(genesis)/lc.TimeUnit), 0)
+	}
+
+	// make level names single character
+	zerolog.LevelFieldMarshalFunc = func(l zerolog.Level) string {
+		return strconv.Itoa(int(l))
 	}
 
 	return nil
