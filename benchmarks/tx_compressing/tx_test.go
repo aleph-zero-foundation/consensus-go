@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-var _ = Describe("Tx", func() {
+var _ = Describe("Tx Compression", func() {
 	var (
 		data         []byte
 		encoded      []byte
@@ -25,7 +25,7 @@ var _ = Describe("Tx", func() {
 	BeforeEach(func() {
 		txs = generateRandom(10000)
 	})
-	Measure("Encoding/Decoding/Compression per level", func(b Benchmarker) {
+	Measure("Encoding/Decoding/Compression Rate per compression level 10k transactions", func(b Benchmarker) {
 		for level = 0; level < 10; level++ {
 			data = Encode(txs)
 			b.Time("level "+strconv.Itoa(level)+" compression time", func() {
@@ -33,7 +33,7 @@ var _ = Describe("Tx", func() {
 			})
 			Expect(eErr).NotTo(HaveOccurred())
 
-			b.RecordValue("level "+strconv.Itoa(level)+" compression", float64(len(encoded))/float64(len(data)))
+			b.RecordValue("level "+strconv.Itoa(level)+" compression rate", float64(len(encoded))/float64(len(data)))
 
 			b.Time("level "+strconv.Itoa(level)+" decompression time", func() {
 				decompressed, dErr = Decompress(encoded)
@@ -43,7 +43,7 @@ var _ = Describe("Tx", func() {
 			txsDecoded, dErr = Decode(decompressed)
 			Expect(txsDecoded).To(Equal(txs))
 		}
-	}, 5)
+	}, 10)
 
 })
 

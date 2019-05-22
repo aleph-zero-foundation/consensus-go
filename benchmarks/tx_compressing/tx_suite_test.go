@@ -9,5 +9,5 @@ import (
 
 func TestLinear(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Tx Benchmark Suite")
+	RunSpecs(t, "Benchmark Tx Compression")
 }
