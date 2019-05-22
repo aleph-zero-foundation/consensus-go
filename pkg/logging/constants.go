@@ -1,7 +1,6 @@
 package logging
 
-// Shortcuts for log messages.
-// This is not very elegant, but helps to save lots of space for frequently occurring messages.
+// Shortcuts for event types.
 // Any event that happens multiple times should have a single character representation
 const (
 	ServiceStarted      = "start"
@@ -13,14 +12,37 @@ const (
 	NotEnoughParents    = "Z"
 )
 
-// eventTypeDict maps single char event names to human readable names
-// this will be used in future by JSONlog -> log4humans translator
+// eventTypeDict maps short event names to human readable form
 var eventTypeDict = map[string]string{
-	"U": "new regular unit created",
-	"P": "new prime unit created",
-	"T": "new timing unit",
-	"L": "linear order extended",
-	"Z": "creating.NewUnit failed (not enough parents)",
+	UnitCreated:         "new regular unit created",
+	PrimeUnitCreated:    "new prime unit created",
+	NewTimingUnit:       "new timing unit",
+	LinearOrderExtended: "linear order extended",
+	NotEnoughParents:    "creating.NewUnit failed (not enough parents)",
+}
+
+// Field names
+const (
+	Time    = "T"
+	Level   = "L"
+	Event   = "E"
+	Service = "S"
+	Size    = "N"
+	Txs     = "X"
+	Height  = "H"
+	Round   = "R"
+)
+
+// fieldNameDict maps short field names to human readable form
+var fieldNameDict = map[string]string{
+	Time:    "time",
+	Level:   "level",
+	Event:   "event",
+	Service: "service",
+	Size:    "size",
+	Txs:     "txs",
+	Height:  "height",
+	Round:   "round",
 }
 
 // Service types
@@ -33,11 +55,13 @@ const (
 )
 
 // serviceTypeDict maps integer service types to human readable names
-// this will be used in future by JSONlog -> log4humans translator
 var serviceTypeDict = map[int]string{
-	0: "create",
-	1: "order",
-	2: "sync",
-	3: "validate",
-	4: "generate",
+	CreateService:   "create",
+	OrderService:    "order",
+	SyncService:     "sync",
+	ValidateService: "validate",
+	GenerateService: "generate",
 }
+
+// Genesis was better with Phil Collins
+const Genesis = "genesis"

@@ -62,13 +62,13 @@ func InitLogger(lc LogConfig) error {
 	zerolog.SetGlobalLevel(zerolog.Level(lc.Level))
 
 	// short names of compulsory fields to save some space
-	zerolog.TimestampFieldName = "T"
-	zerolog.LevelFieldName = "L"
-	zerolog.MessageFieldName = "E"
+	zerolog.TimestampFieldName = Time
+	zerolog.LevelFieldName = Level
+	zerolog.MessageFieldName = Event
 
 	// log the beginning of time
 	genesis := time.Now()
-	log.Log().Msg("genesis")
+	log.Log().Msg(Genesis)
 
 	// time logged as integer starting at 0, with the chosen unit
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
