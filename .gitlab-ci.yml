@@ -12,6 +12,7 @@ variables:
   VENDOR_NAME: 'alephledger'
   MAIN_FOLDER: 'gitlab.com/alephledger'
   PKG: '${MAIN_FOLDER}/consensus-go'
+  TOTEST: '${MAIN_FOLDER}/consensus-go/pkg'
 
 stages:
   - test
@@ -24,17 +25,17 @@ before_script:
 unit_tests:
   stage: test
   script:
-    - .gitlab/ci/make_test.sh ${PKG}
+    - .gitlab/ci/make_test.sh ${TOTEST}
 
 race_detector:
   stage: test
   script:
-    - .gitlab/ci/make_race.sh ${PKG}
+    - .gitlab/ci/make_race.sh ${TOTEST}
 
 code_coverage_report:
   stage: test
   script:
-    - .gitlab/ci/make_coverage.sh ${PKG} coverage.output coverage.html
+    - .gitlab/ci/make_coverage.sh ${TOTEST} coverage.output coverage.html
   only:
     - devel
   artifacts:

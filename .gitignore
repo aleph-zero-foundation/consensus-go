@@ -2,3 +2,5 @@
 # benchmark's output
 *.test
 *.out
+# logs
+*.log

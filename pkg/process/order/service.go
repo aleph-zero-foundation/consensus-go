@@ -1,9 +1,12 @@
 package order
 
 import (
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	linear "gitlab.com/alephledger/consensus-go/pkg/linear"
-	process "gitlab.com/alephledger/consensus-go/pkg/process"
+	"gitlab.com/alephledger/consensus-go/pkg/linear"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 // Order service is sorting units in linear order
@@ -14,15 +17,16 @@ import (
 // - currentRound is the round up to which we have chosen timing units
 type service struct {
 	linearOrdering        gomel.LinearOrdering
-	attemptTimingRequests <-chan struct{}
+	attemptTimingRequests <-chan int
 	extendOrderRequests   chan int
 	orderedUnits          chan<- gomel.Unit
 	currentRound          int
 	exitChan              chan struct{}
+	log                   zerolog.Logger
 }
 
 // NewService is a constructor of an ordering service
-func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests <-chan struct{}, orderedUnits chan<- gomel.Unit) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		linearOrdering:        linear.NewOrdering(poset, config.VotingLevel, config.PiDeltaLevel),
 		attemptTimingRequests: attemptTimingRequests,
@@ -30,14 +34,16 @@ func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests 
 		extendOrderRequests:   make(chan int, 10),
 		exitChan:              make(chan struct{}),
 		currentRound:          0,
+		log:                   log,
 	}, nil
 }
 
 func (s *service) attemptOrdering() {
 	for {
 		select {
-		case <-s.attemptTimingRequests:
+		case highest := <-s.attemptTimingRequests: // level of the most recent prime unit
 			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
+				s.log.Info().Int("h", highest).Int("r", s.currentRound).Msg(logging.NewTimingUnit)
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}
@@ -54,6 +60,7 @@ func (s *service) extendOrder() {
 		for _, u := range units {
 			s.orderedUnits <- u
 		}
+		s.log.Info().Int("n", len(units)).Msg(logging.LinearOrderExtended)
 	}
 	close(s.orderedUnits)
 }
@@ -62,10 +69,12 @@ func (s *service) extendOrder() {
 func (s *service) Start() error {
 	go s.attemptOrdering()
 	go s.extendOrder()
+	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 // Stop is the function that stops the service
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.log.Info().Msg(logging.ServiceStopped)
 }

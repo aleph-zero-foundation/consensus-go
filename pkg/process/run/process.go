@@ -1,8 +1,11 @@
 package run
 
 import (
+	"github.com/rs/zerolog/log"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
@@ -36,7 +39,7 @@ func Process(config process.Config) error {
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
 	// creator/syncer should send a notification to the channel when a new prime unit is added to the poset
 	// orderer attempts timing decision after receiving the notification
-	attemptTimingRequests := make(chan struct{}, 10)
+	attemptTimingRequests := make(chan int, 10)
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered units to the channel
 	// validator reads the units from the channel and validates transactions contained in the unit
@@ -47,31 +50,37 @@ func Process(config process.Config) error {
 	txChan := make(chan *gomel.Tx, 2*config.Create.Txpu)
 	poset := growing.NewPoset(config.Poset)
 	defer poset.Stop()
-	service, err := create.NewService(poset, config.Create, posetFinished, attemptTimingRequests, txChan)
+
+	service, err := create.NewService(poset, config.Create, posetFinished, attemptTimingRequests, txChan, log.With().Int("S", logging.CreateService).Logger())
 	if err != nil {
 		return err
 	}
 	services = append(services, service)
-	service, err = sync.NewService(poset, config.Sync)
+
+	service, err = sync.NewService(poset, config.Sync, log.With().Int("S", logging.SyncService).Logger())
 	if err != nil {
 		return err
 	}
 	services = append(services, service)
-	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits)
+
+	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits, log.With().Int("S", logging.OrderService).Logger())
 	if err != nil {
 		return err
 	}
 	services = append(services, service)
-	service, err = validate.NewService(poset, config.TxValidate, orderedUnits)
+
+	service, err = validate.NewService(poset, config.TxValidate, orderedUnits, log.With().Int("S", logging.ValidateService).Logger())
 	if err != nil {
 		return err
 	}
 	services = append(services, service)
-	service, err = generate.NewService(poset, config.TxGenerate, txChan)
+
+	service, err = generate.NewService(poset, config.TxGenerate, txChan, log.With().Int("S", logging.GenerateService).Logger())
 	if err != nil {
 		return err
 	}
 	services = append(services, service)
+
 	err = startAll(services)
 	if err != nil {
 		return err
