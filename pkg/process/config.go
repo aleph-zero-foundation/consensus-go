@@ -56,6 +56,7 @@ type TxValidate struct {
 // For now UserDb is a filename with list of users, it should be replaced with some actual
 // Db handler
 type TxGenerate struct {
-	UserDb string
-	Txpu   uint32
+	CompressionLevel int
+	UserDb           string
+	Txpu             uint32
 }

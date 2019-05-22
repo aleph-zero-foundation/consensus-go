@@ -10,16 +10,16 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
-	"math/rand"
-	"os"
+	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
 type service struct {
-	users    []string
-	txpu     uint32
-	txChan   chan<- []byte
-	exitChan chan struct{}
-	log      zerolog.Logger
+	users            []string
+	txpu             uint32
+	txChan           chan<- []byte
+	exitChan         chan struct{}
+	compressionLevel int
+	log              zerolog.Logger
 }
 
 func readUsers(filename string) ([]string, error) {
@@ -43,11 +43,12 @@ func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- []b
 		return nil, err
 	}
 	return &service{
-		users:    users,
-		txpu:     config.Txpu,
-		txChan:   txChan,
-		exitChan: make(chan struct{}),
-		log:      log,
+		users:            users,
+		txpu:             config.Txpu,
+		txChan:           txChan,
+		exitChan:         make(chan struct{}),
+		compressionLevel: config.CompressionLevel,
+		log:              log,
 	}, nil
 }
 
@@ -69,8 +70,10 @@ func (s *service) main() {
 	var txID uint32
 	for {
 		txs := s.generateRandom(txID)
+		encodedTxs := transactions.Encode(txs)
+		compressedTxs, _ := transactions.Compress(encodedTxs, s.compressionLevel)
 		select {
-		case s.txChan <- transactions.Encode(txs):
+		case s.txChan <- compressedTxs:
 			txID += uint32(len(txs))
 		case <-s.exitChan:
 			close(s.txChan)
@@ -81,9 +84,11 @@ func (s *service) main() {
 
 func (s *service) Start() error {
 	go s.main()
+	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.log.Info().Msg(logging.ServiceStopped)
 }

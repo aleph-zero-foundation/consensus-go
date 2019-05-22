@@ -24,7 +24,6 @@ type service struct {
 	maxLevel         int
 	maxHeight        int
 	privKey          gomel.PrivateKey
-	txpu             uint
 	adjustFactor     float64
 	previousPrime    bool
 	delay            time.Duration
@@ -85,6 +84,7 @@ func (s *service) Stop() {
 	s.ticker.Stop()
 	close(s.done)
 	s.log.Info().Msg(logging.ServiceStopped)
+
 }
 
 func (s *service) slower() {

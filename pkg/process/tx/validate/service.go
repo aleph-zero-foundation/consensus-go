@@ -33,8 +33,12 @@ func (s *service) main() {
 	for {
 		select {
 		case u := <-s.unitSource:
-			for _, t := range transactions.Decode(u.Data()) {
-				s.validator.validate(t)
+			txsEncoded, cErr := transactions.Decompress(u.Data())
+			txs, dErr := transactions.Decode(txsEncoded)
+			if cErr != nil && dErr != nil {
+				for _, t := range txs {
+					s.validator.validate(t)
+				}
 			}
 		case <-s.exitChan:
 			return
