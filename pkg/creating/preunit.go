@@ -70,6 +70,12 @@ func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	data.Write(toBytes(int32(pu.creator)))
 	data.Write(toBytes(pu.parents))
-	data.Write(toBytes(pu.txs))
+	// toBytes doesn't work with strings, so we convert them into slice of bytes
+	for _, tx := range pu.txs {
+		data.Write(toBytes(tx.ID))
+		data.Write([]byte(tx.Issuer))
+		data.Write([]byte(tx.Receiver))
+		data.Write(toBytes(tx.Amount))
+	}
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }

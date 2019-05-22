@@ -1,107 +1,81 @@
 package growing_test
 
 import (
-	"sync"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/growing"
+	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-var _ = Describe("Units", func() {
+type posetFactory struct{}
 
-	var (
-		nProcesses int
-		poset      gomel.Poset
-		addFirst   [][]*preunitMock
-		units      map[int]map[int][]gomel.Unit
-		wg         sync.WaitGroup
-		pubKeys    []gomel.PublicKey
-		privKeys   []gomel.PrivateKey
-	)
+func (posetFactory) CreatePoset(pc gomel.PosetConfig) gomel.Poset {
+	return NewPoset(&pc)
+}
 
-	AwaitAddUnit := func(pu gomel.Preunit, wg *sync.WaitGroup) {
-		wg.Add(1)
-		poset.AddUnit(pu, func(_ gomel.Preunit, result gomel.Unit, err error) {
-			defer GinkgoRecover()
-			defer wg.Done()
-			Expect(err).NotTo(HaveOccurred())
-			units[result.Creator()][result.Height()] = append(units[result.Creator()][result.Height()], result)
-		})
+// collectUnits runs dfs from maximal units in the given poset and returns a map
+// creator => (height => slice of units by this creator on this height)
+func collectUnits(p gomel.Poset) map[int]map[int][]gomel.Unit {
+	seenUnits := make(map[gomel.Hash]bool)
+	result := make(map[int]map[int][]gomel.Unit)
+	for pid := 0; pid < p.NProc(); pid++ {
+		result[pid] = make(map[int][]gomel.Unit)
 	}
 
-	BeforeEach(func() {
-		nProcesses = 0
-		poset = nil
-		addFirst = nil
-		units = make(map[int]map[int][]gomel.Unit)
-		wg = sync.WaitGroup{}
-	})
-
-	JustBeforeEach(func() {
-		for pid := 0; pid < nProcesses; pid++ {
-			units[pid] = make(map[int][]gomel.Unit)
+	var dfs func(u gomel.Unit)
+	dfs = func(u gomel.Unit) {
+		seenUnits[*u.Hash()] = true
+		if _, ok := result[u.Creator()][u.Height()]; !ok {
+			result[u.Creator()][u.Height()] = []gomel.Unit{}
 		}
-		wg = sync.WaitGroup{}
-		for _, pus := range addFirst {
-			for _, pu := range pus {
-				pu.SetSignature(privKeys[pu.creator].Sign(pu))
-				AwaitAddUnit(pu, &wg)
+		result[u.Creator()][u.Height()] = append(result[u.Creator()][u.Height()], u)
+		for _, uParent := range u.Parents() {
+			if !seenUnits[*uParent.Hash()] {
+				dfs(uParent)
 			}
-			wg.Wait()
 		}
+	}
+	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+		for _, u := range units {
+			dfs(u)
+		}
+		return true
 	})
+	return result
+}
+
+var _ = Describe("Units", func() {
+	var (
+		poset      gomel.Poset
+		readingErr error
+		pf         posetFactory
+		units      map[int]map[int][]gomel.Unit
+	)
 
 	Describe("small", func() {
-
-		BeforeEach(func() {
-			nProcesses = 4
-			pubKeys = make([]gomel.PublicKey, nProcesses, nProcesses)
-			privKeys = make([]gomel.PrivateKey, nProcesses, nProcesses)
-			for i := 0; i < nProcesses; i++ {
-				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
-			}
-			poset = NewPoset(&gomel.PosetConfig{Keys: pubKeys})
+		JustBeforeEach(func() {
+			units = collectUnits(poset)
 		})
-
 		AfterEach(func() {
 			poset.(*Poset).Stop()
 		})
-
 		Describe("Checking reflexivity of Below", func() {
-
 			BeforeEach(func() {
-				pu := &preunitMock{}
-				pu.hash[0] = 1
-				addFirst = [][]*preunitMock{[]*preunitMock{pu}}
+				poset, readingErr = tests.CreatePosetFromTestFile("../testdata/one_unit.txt", pf)
+				Expect(readingErr).NotTo(HaveOccurred())
 			})
-
 			It("Should return true", func() {
-				Expect(len(units)).To(Equal(nProcesses))
-				Expect(len(units[0])).To(Equal(1))
-				Expect(len(units[0][0])).To(Equal(1))
 				u := units[0][0][0]
 				Expect(u.Below(u)).To(BeTrue())
 			})
-
 		})
 		Describe("Checking lack of symmetry of Below", func() {
-
 			BeforeEach(func() {
-				pu0 := &preunitMock{}
-				pu0.hash[0] = 1
-				pu1 := &preunitMock{}
-				pu1.hash[1] = 2
-				pu1.creator = 1
-				pu01 := &preunitMock{}
-				pu01.hash[0] = 12
-				pu01.parents = []gomel.Hash{pu0.hash, pu1.hash}
-				addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1}, []*preunitMock{pu01}}
+				poset, readingErr = tests.CreatePosetFromTestFile("../testdata/single_unit_with_two_parents.txt", pf)
+				Expect(readingErr).NotTo(HaveOccurred())
 			})
-
 			It("Should be true in one direction and false in the other", func() {
 				u0 := units[0][0][0]
 				u1 := units[1][0][0]
@@ -111,33 +85,12 @@ var _ = Describe("Units", func() {
 				Expect(u01.Below(u0)).To(BeFalse())
 				Expect(u01.Below(u1)).To(BeFalse())
 			})
-
 		})
 		Describe("Checking transitivity of Below", func() {
-
 			BeforeEach(func() {
-				pu0 := &preunitMock{}
-				pu0.hash[0] = 1
-				pu1 := &preunitMock{}
-				pu1.hash[1] = 2
-				pu1.creator = 1
-				pu2 := &preunitMock{}
-				pu2.hash[2] = 3
-				pu2.creator = 2
-				pu01 := &preunitMock{}
-				pu01.hash[0] = 12
-				pu01.parents = []gomel.Hash{pu0.hash, pu1.hash}
-				pu02 := &preunitMock{}
-				pu02.hash[0] = 13
-				pu02.parents = []gomel.Hash{pu01.hash, pu2.hash}
-				pu21 := &preunitMock{}
-				pu21.hash[2] = 32
-				pu21.creator = 2
-				pu21.parents = []gomel.Hash{pu2.hash, pu01.hash}
-				addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1, pu2}, []*preunitMock{pu01},
-					[]*preunitMock{pu02, pu21}}
+				poset, readingErr = tests.CreatePosetFromTestFile("../testdata/six_units.txt", pf)
+				Expect(readingErr).NotTo(HaveOccurred())
 			})
-
 			It("Should be true if two relations are true", func() {
 				u0 := units[0][0][0]
 				u01 := units[0][1][0]
@@ -150,55 +103,24 @@ var _ = Describe("Units", func() {
 				Expect(u01.Below(u21)).To(BeTrue())
 				Expect(u0.Below(u21)).To(BeTrue())
 			})
-
 		})
-
 		Describe("Checking Below works properly for forked dealing units.", func() {
-
 			BeforeEach(func() {
-				pu0 := &preunitMock{}
-				pu0.hash[0] = 1
-				pu0.creator = 0
-				pu1 := &preunitMock{}
-				pu1.hash[0] = 2
-				pu1.creator = 0
-
-				addFirst = [][]*preunitMock{[]*preunitMock{pu0}, []*preunitMock{pu1}}
-
+				poset, readingErr = tests.CreatePosetFromTestFile("../testdata/forked_dealing.txt", pf)
+				Expect(readingErr).NotTo(HaveOccurred())
 			})
-
 			It("Should return false for both below queries.", func() {
 				u0 := units[0][0][0]
 				u1 := units[0][0][1]
-
 				Expect(u0.Below(u1)).To(BeFalse())
 				Expect(u1.Below(u0)).To(BeFalse())
 			})
-
 		})
-
 		Describe("Checking Below works properly for two forks going out of one unit.", func() {
-
 			BeforeEach(func() {
-				puBase0 := &preunitMock{}
-				puBase0.hash[0] = 0
-				puBase0.creator = 0
-				puBase1 := &preunitMock{}
-				puBase1.hash[0] = 1
-				puBase1.creator = 1
-				pu1 := &preunitMock{}
-				pu1.hash[0] = 10
-				pu1.creator = 0
-				pu1.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
-				pu2 := &preunitMock{}
-				pu2.hash[0] = 20
-				pu2.creator = 0
-				pu2.parents = []gomel.Hash{puBase0.hash, puBase1.hash}
-
-				addFirst = [][]*preunitMock{[]*preunitMock{puBase0, puBase1}, []*preunitMock{pu1}, []*preunitMock{pu2}}
-
+				poset, readingErr = tests.CreatePosetFromTestFile("../testdata/fork_4u.txt", pf)
+				Expect(readingErr).NotTo(HaveOccurred())
 			})
-
 			It("Should correctly answer all pairs of below queries.", func() {
 				uBase := units[0][0][0]
 				u1 := units[0][1][0]
@@ -211,8 +133,6 @@ var _ = Describe("Units", func() {
 				Expect(u1.Below(u2)).To(BeFalse())
 				Expect(u2.Below(u1)).To(BeFalse())
 			})
-
 		})
 	})
-
 })

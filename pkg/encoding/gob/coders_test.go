@@ -10,17 +10,22 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding/gob"
+	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 var _ = Describe("Encoding/Decoding", func() {
 	var (
-		layers  [][]gomel.Unit
-		encoder Encoder
-		decoder Decoder
-		network *bytes.Buffer
-		privKey gomel.PrivateKey
+		p          gomel.Poset
+		readingErr error
+		layers     [][]gomel.Unit
+		encoder    Encoder
+		decoder    Decoder
+		network    *bytes.Buffer
+		privKey    gomel.PrivateKey
 	)
 	BeforeEach(func() {
+		p, readingErr = tests.CreatePosetFromTestFile("../../testdata/empty100.txt", tests.NewTestPosetFactory())
+		Expect(readingErr).NotTo(HaveOccurred())
 		layers = make([][]gomel.Unit, 0)
 		network = &bytes.Buffer{}
 		encoder = NewEncoder(network)
@@ -38,13 +43,11 @@ var _ = Describe("Encoding/Decoding", func() {
 	})
 	Context("One layer with one unit", func() {
 		BeforeEach(func() {
-			pu := &preunit{}
+			pu := tests.NewPreunit(0, []gomel.Hash{}, []gomel.Tx{})
 			pu.SetSignature(privKey.Sign(pu))
-			u := unit{}
-			u.hash = pu.hash
-			u.signature = pu.signature
-			layers = append(layers, []gomel.Unit{&u})
-
+			p.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, _ error) {
+				layers = append(layers, []gomel.Unit{u})
+			})
 		})
 		It("should be encoded/decoded to one layer with one preunit corresponding to a given unit", func() {
 			eerr := encoder.EncodeUnits(layers)
@@ -62,16 +65,13 @@ var _ = Describe("Encoding/Decoding", func() {
 		BeforeEach(func() {
 			layer := make([]gomel.Unit, 10)
 			for i := 0; i < 10; i++ {
-				pu := &preunit{}
-				pu.hash[0] = byte(i)
+				pu := tests.NewPreunit(i, []gomel.Hash{}, []gomel.Tx{})
 				pu.SetSignature(privKey.Sign(pu))
-				u := unit{}
-				u.hash = pu.hash
-				u.signature = pu.signature
-				layer[i] = &u
+				p.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, _ error) {
+					layer[i] = u
+				})
 			}
 			layers = append(layers, layer)
-
 		})
 		It("should be encoded/decoded to one layer with 10 preunits corresponding to given units", func() {
 			eerr := encoder.EncodeUnits(layers)
@@ -92,17 +92,14 @@ var _ = Describe("Encoding/Decoding", func() {
 				nUnits := rand.Intn(10)
 				layer := make([]gomel.Unit, nUnits)
 				for j := 0; j < nUnits; j++ {
-					pu := &preunit{}
-					pu.hash[i] = byte(j)
+					pu := tests.NewPreunit(10*i+j, []gomel.Hash{}, []gomel.Tx{})
 					pu.SetSignature(privKey.Sign(pu))
-					u := unit{}
-					u.hash = pu.hash
-					u.signature = pu.signature
-					layer[j] = &u
+					p.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, _ error) {
+						layer[j] = u
+					})
 				}
 				layers = append(layers, layer)
 			}
-
 		})
 		It("should be encoded/decoded to 10 layers with preunits corresponding to given units", func() {
 			eerr := encoder.EncodeUnits(layers)
@@ -132,108 +129,4 @@ func eq(pu gomel.Preunit, u gomel.Unit) bool {
 		}
 	}
 	return true
-}
-
-type preunit struct {
-	creator   int
-	signature gomel.Signature
-	hash      gomel.Hash
-	parents   []gomel.Hash
-	txs       []gomel.Tx
-}
-
-func (pu *preunit) Txs() []gomel.Tx {
-	return pu.txs
-}
-
-func (pu *preunit) Creator() int {
-	return pu.creator
-}
-
-func (pu *preunit) Signature() gomel.Signature {
-	return pu.signature
-}
-
-func (pu *preunit) Hash() *gomel.Hash {
-	return &pu.hash
-}
-
-func (pu *preunit) SetSignature(sig gomel.Signature) {
-	pu.signature = sig
-}
-
-func (pu *preunit) Parents() []gomel.Hash {
-	return pu.parents
-}
-
-type unit struct {
-	creator   int
-	level     int
-	hash      gomel.Hash
-	signature gomel.Signature
-	parents   []gomel.Unit
-	txs       []gomel.Tx
-}
-
-func newUnit(creator int, id int) *unit {
-	var h gomel.Hash
-	h[0] = byte(id)
-	return &unit{
-		creator: creator,
-		level:   0,
-		hash:    h,
-		parents: []gomel.Unit{},
-		txs:     []gomel.Tx{},
-	}
-}
-
-func (u *unit) Txs() []gomel.Tx {
-	return u.txs
-}
-
-func (u *unit) Creator() int {
-	return u.creator
-}
-
-func (u *unit) Signature() gomel.Signature {
-	return u.signature
-}
-
-func (u *unit) Hash() *gomel.Hash {
-	return &u.hash
-}
-
-func (u *unit) Height() int {
-	if len(u.Parents()) == 0 {
-		return 0
-	}
-	return 1 + u.Parents()[0].Height()
-}
-
-func (u *unit) Parents() []gomel.Unit {
-	return u.parents
-}
-
-func (u *unit) Level() int {
-	return u.level
-}
-
-func (u *unit) HasForkingEvidence(creator int) bool {
-	return false
-}
-
-func (u *unit) Below(v gomel.Unit) bool {
-	if *u.Hash() == *v.Hash() {
-		return true
-	}
-	for _, w := range v.Parents() {
-		if u.Below(w) {
-			return true
-		}
-	}
-	return false
-}
-
-func (u *unit) Above(v gomel.Unit) bool {
-	return v.Below(u)
 }

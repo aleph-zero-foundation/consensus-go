@@ -6,46 +6,16 @@ import (
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	. "gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
-
-type preunit struct {
-	creator   int
-	signature gomel.Signature
-	hash      gomel.Hash
-	parents   []gomel.Hash
-	txs       []gomel.Tx
-}
-
-func (pu *preunit) Txs() []gomel.Tx {
-	return pu.txs
-}
-
-func (pu *preunit) Creator() int {
-	return pu.creator
-}
-
-func (pu *preunit) Signature() gomel.Signature {
-	return pu.signature
-}
-
-func (pu *preunit) Hash() *gomel.Hash {
-	return &pu.hash
-}
-
-func (pu *preunit) SetSignature(sig gomel.Signature) {
-	pu.signature = sig
-}
-
-func (pu *preunit) Parents() []gomel.Hash {
-	return pu.parents
-}
 
 var _ = Describe("Signatures", func() {
 
 	var (
-		pu   *preunit
+		pu   gomel.Preunit
 		pub  gomel.PublicKey
 		priv gomel.PrivateKey
+		sig  gomel.Signature
 	)
 
 	Describe("small", func() {
@@ -57,9 +27,9 @@ var _ = Describe("Signatures", func() {
 		Describe("Checking signatures of preunits", func() {
 
 			BeforeEach(func() {
-				pu = &preunit{}
-				pu.hash[0] = 1
-				pu.signature = priv.Sign(pu)
+				pu = tests.NewPreunit(0, []gomel.Hash{}, []gomel.Tx{})
+				sig = priv.Sign(pu)
+				pu.SetSignature(sig)
 			})
 
 			It("Should return true when checking by hand", func() {
@@ -67,7 +37,8 @@ var _ = Describe("Signatures", func() {
 			})
 
 			It("Should return false for forged signature", func() {
-				pu.signature[0]++
+				sig[0]++
+				pu.SetSignature(sig)
 				Expect(pub.Verify(pu)).To(BeFalse())
 			})
 		})

@@ -26,6 +26,8 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 	p := pf.CreatePoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, n)})
 	preunitHashes := make(map[[3]int]gomel.Hash)
 
+	var txID uint32
+
 	for scanner.Scan() {
 		text := scanner.Text()
 		var puCreator, puHeight, puVersion int
@@ -47,7 +49,8 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 				parents = append(parents, preunitHashes[[3]int{creator, height, version}])
 			}
 		}
-		pu := newPreunit(puCreator, parents, []gomel.Tx{})
+		pu := NewPreunit(puCreator, parents, []gomel.Tx{gomel.Tx{ID: txID}})
+		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = *pu.Hash()
 		var addingError error
 		var wg sync.WaitGroup

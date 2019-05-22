@@ -17,14 +17,9 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 	p := newPoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
 	created := 0
 	for created < nUnits {
-		// TODO:
-		// (1) check if the compliance rules are satisfied
-		//		 (currently for this non-forking example expand prime rule might not be satisfied)
-		// (2) add new parameter to the function containing
-		//		 set of compliance rules which should be satisfied
 		pid := r.Intn(nProcesses)
 		if p.maximalHeight[pid] == -1 {
-			pu := newPreunit(pid, []gomel.Hash{}, []gomel.Tx{})
+			pu := NewPreunit(pid, []gomel.Hash{}, []gomel.Tx{})
 			p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
 			created++
 		} else {
@@ -41,11 +36,17 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 				if p.maximalHeight[parentID] != -1 {
 					parents = append(parents, *p.MaximalUnitsPerProcess().Get(parentID)[0].Hash())
 				}
+				pu := NewPreunit(pid, parents, []gomel.Tx{})
+				if !checkExpandPrimes(p, pu) {
+					break
+				}
 			}
 			if len(parents) >= minParents {
-				pu := newPreunit(pid, parents, []gomel.Tx{})
-				p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
-				created++
+				pu := NewPreunit(pid, parents, []gomel.Tx{})
+				if checkExpandPrimes(p, pu) {
+					p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
+					created++
+				}
 			}
 		}
 	}
