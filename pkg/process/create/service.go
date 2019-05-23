@@ -45,8 +45,6 @@ type service struct {
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close posetFinished channel when it stops.
 func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
-	initialDelay := time.Duration(config.InitialDelay) * time.Millisecond
-
 	return &service{
 		poset:            poset,
 		pid:              config.Pid,
@@ -56,8 +54,8 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 		privKey:          config.PrivateKey,
 		adjustFactor:     config.AdjustFactor,
 		previousSuccess:  false,
-		delay:            initialDelay,
-		ticker:           time.NewTicker(initialDelay),
+		delay:            config.InitialDelay,
+		ticker:           time.NewTicker(config.InitialDelay),
 		dataSource:       dataSource,
 		primeUnitCreated: primeUnitCreated,
 		posetFinished:    posetFinished,
@@ -88,7 +86,6 @@ func (s *service) Stop() {
 	close(s.done)
 	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
-
 }
 
 func (s *service) slower() {

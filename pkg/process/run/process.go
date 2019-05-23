@@ -57,12 +57,6 @@ func Process(config process.Config) error {
 	}
 	services = append(services, service)
 
-	service, err = sync.NewService(poset, config.Sync, log.With().Int("S", logging.SyncService).Logger())
-	if err != nil {
-		return err
-	}
-	services = append(services, service)
-
 	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits, log.With().Int("S", logging.OrderService).Logger())
 	if err != nil {
 		return err
@@ -76,6 +70,12 @@ func Process(config process.Config) error {
 	services = append(services, service)
 
 	service, err = generate.NewService(poset, config.TxGenerate, txChan, log.With().Int("S", logging.GenerateService).Logger())
+	if err != nil {
+		return err
+	}
+	services = append(services, service)
+
+	service, err = sync.NewService(poset, config.Sync, log.With().Int("S", logging.SyncService).Logger())
 	if err != nil {
 		return err
 	}

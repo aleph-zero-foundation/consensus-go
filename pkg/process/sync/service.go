@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"time"
+
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -49,6 +51,8 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	s.dialer.stop()
+	// let other processes sync with us some more
+	time.Sleep(10 * time.Second)
 	s.connServer.Stop()
 	s.syncServer.Stop()
 	s.log.Info().Msg(logging.ServiceStopped)

@@ -11,6 +11,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/run"
 )
@@ -22,6 +23,7 @@ func generatePosetConfig(publicKeys []gomel.PublicKey) *gomel.PosetConfig {
 }
 
 func generateSyncConfig(conf *config.Configuration, id int, remoteAddresses []string, address string) *process.Sync {
+	// TODO: Timeout should also be read from config.
 	return &process.Sync{
 		Pid:                  id,
 		LocalAddress:         address,
@@ -31,6 +33,7 @@ func generateSyncConfig(conf *config.Configuration, id int, remoteAddresses []st
 		InitializedSyncLimit: conf.NInitSync,
 		ReceivedSyncLimit:    conf.NRecvSync,
 		SyncInitDelay:        time.Duration(conf.SyncInitDelay * float32(time.Second)),
+		Timeout:              2 * time.Second,
 	}
 }
 
@@ -153,28 +156,45 @@ func getConfiguration(filename string) (*config.Configuration, error) {
 	return &result, nil
 }
 
-func getOptions() (string, string, string) {
-	var keyFilename, configFilename, dbFilename string
-	flag.StringVar(&keyFilename, "keys", "", "a file with keys and associated addresses")
-	flag.StringVar(&configFilename, "config", "", "a configuration file")
-	flag.StringVar(&dbFilename, "db", "", "a mock database file")
+type cliOptions struct {
+	keyFilename    string
+	configFilename string
+	dbFilename     string
+	logFilename    string
+}
+
+func getOptions() cliOptions {
+	var result cliOptions
+	flag.StringVar(&result.keyFilename, "keys", "", "a file with keys and associated addresses")
+	flag.StringVar(&result.configFilename, "config", "", "a configuration file")
+	flag.StringVar(&result.dbFilename, "db", "", "a mock database file")
+	flag.StringVar(&result.logFilename, "log", "", "the name of the file with logs")
 	flag.Parse()
-	return keyFilename, configFilename, dbFilename
+	return result
 }
 
 func main() {
-	keyFilename, configFilename, dbFilename := getOptions()
-	publicKeys, remoteAddresses, privateKey, address, err := getKeys(keyFilename)
+	options := getOptions()
+	if options.logFilename == "" {
+		options.logFilename = "aleph.log"
+	}
+	logging.InitLogger(logging.LogConfig{
+		Level:    1,
+		Path:     options.logFilename,
+		DiodeBuf: 10000,
+		TimeUnit: time.Millisecond,
+	})
+	publicKeys, remoteAddresses, privateKey, address, err := getKeys(options.keyFilename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", keyFilename, err.Error())
+		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keyFilename, err.Error())
 		return
 	}
-	conf, err := getConfiguration(configFilename)
+	conf, err := getConfiguration(options.configFilename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid configuration file \"%s\", because: %s.\n", configFilename, err.Error())
+		fmt.Fprintf(os.Stderr, "Invalid configuration file \"%s\", because: %s.\n", options.configFilename, err.Error())
 		return
 	}
-	processConfig := generateConfig(conf, publicKeys, remoteAddresses, privateKey, address, dbFilename)
+	processConfig := generateConfig(conf, publicKeys, remoteAddresses, privateKey, address, options.dbFilename)
 	err = run.Process(processConfig)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())

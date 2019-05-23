@@ -1,6 +1,8 @@
 package validate
 
 import (
+	"sync"
+
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -14,6 +16,7 @@ type service struct {
 	unitSource <-chan gomel.Unit
 	exitChan   chan struct{}
 	log        zerolog.Logger
+	wg         sync.WaitGroup
 }
 
 // NewService creates a new transaction validation service for the given poset, with the given configuration.
@@ -32,7 +35,10 @@ func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan
 func (s *service) main() {
 	for {
 		select {
-		case u := <-s.unitSource:
+		case u, ok := <-s.unitSource:
+			if !ok {
+				continue
+			}
 			txsEncoded, cErr := transactions.Decompress(u.Data())
 			txs, dErr := transactions.Decode(txsEncoded)
 			if cErr != nil && dErr != nil {
@@ -41,12 +47,14 @@ func (s *service) main() {
 				}
 			}
 		case <-s.exitChan:
+			s.wg.Done()
 			return
 		}
 	}
 }
 
 func (s *service) Start() error {
+	s.wg.Add(1)
 	go s.main()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
@@ -54,5 +62,6 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }
