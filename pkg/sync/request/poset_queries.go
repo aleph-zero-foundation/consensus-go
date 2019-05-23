@@ -8,18 +8,26 @@ import (
 )
 
 type unitInfo struct {
-	Hash   gomel.Hash
-	Height int
+	hash   gomel.Hash
+	height uint32
 }
+
+type processInfo []*unitInfo
+
+type posetInfo []processInfo
+
+type processRequests []gomel.Hash
+
+type requests []processRequests
 
 func toInfo(unit gomel.Unit) *unitInfo {
-	return &unitInfo{*unit.Hash(), unit.Height()}
+	return &unitInfo{*unit.Hash(), uint32(unit.Height())}
 }
 
-func toPosetInfo(maxSnapshot [][]gomel.Unit) [][]*unitInfo {
-	result := make([][]*unitInfo, len(maxSnapshot))
+func toPosetInfo(maxSnapshot [][]gomel.Unit) posetInfo {
+	result := make(posetInfo, len(maxSnapshot))
 	for i, units := range maxSnapshot {
-		infoHere := make([]*unitInfo, len(units))
+		infoHere := make(processInfo, len(units))
 		for j, u := range units {
 			infoHere[j] = toInfo(u)
 		}
@@ -77,11 +85,11 @@ func posetMaxSnapshot(poset gomel.Poset) [][]gomel.Unit {
 	return consistentMaximal(maxUnits)
 }
 
-func minimalHeight(info []*unitInfo) int {
+func minimalHeight(info processInfo) int {
 	result := -1
 	for _, i := range info {
-		if i.Height < result || result == -1 {
-			result = i.Height
+		if int(i.height) < result || result == -1 {
+			result = int(i.height)
 		}
 	}
 	return result
@@ -97,18 +105,18 @@ func maximalHeight(units []gomel.Unit) int {
 	return result
 }
 
-func hashesSetFromInfo(info []*unitInfo) map[gomel.Hash]bool {
+func hashesSetFromInfo(info processInfo) map[gomel.Hash]bool {
 	result := map[gomel.Hash]bool{}
 	for _, i := range info {
-		result[i.Hash] = true
+		result[i.hash] = true
 	}
 	return result
 }
 
-func hashesSliceFromInfo(info []*unitInfo) []gomel.Hash {
+func hashesSliceFromInfo(info processInfo) []gomel.Hash {
 	result := make([]gomel.Hash, len(info))
 	for i, in := range info {
-		result[i] = in.Hash
+		result[i] = in.hash
 	}
 	return result
 }
@@ -125,7 +133,7 @@ func hashesFromUnits(units []gomel.Unit) map[gomel.Hash]bool {
 // A special case occurs when there are no tops, but maxes exist --
 // then simply all predecessors of maxes are returned.
 // This is to avoid the fourth round of the protocol in initial exchanges in cases with no forks.
-func unitsToSendByProcess(tops []*unitInfo, maxes []gomel.Unit) []gomel.Unit {
+func unitsToSendByProcess(tops processInfo, maxes []gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
 	sort.Slice(maxes, func(i, j int) bool {
 		return maxes[i].Height() < maxes[j].Height()
@@ -161,7 +169,7 @@ func fiterOutKnown(hashes []gomel.Hash, known map[gomel.Hash]bool) []gomel.Hash 
 	return result
 }
 
-func knownUnits(poset gomel.Poset, info []*unitInfo) map[gomel.Unit]bool {
+func knownUnits(poset gomel.Poset, info processInfo) map[gomel.Unit]bool {
 	allUnits := poset.Get(hashesSliceFromInfo(info))
 	result := map[gomel.Unit]bool{}
 	for _, u := range allUnits {
@@ -198,12 +206,12 @@ func splitOffHeight(units []gomel.Unit, height int) ([]gomel.Unit, []gomel.Unit)
 	return atHeight, rest
 }
 
-func requestedToSend(poset gomel.Poset, info []*unitInfo, requests []gomel.Hash) []gomel.Unit {
+func requestedToSend(poset gomel.Poset, info processInfo, req processRequests) []gomel.Unit {
 	result := []gomel.Unit{}
-	if len(requests) == 0 {
+	if len(req) == 0 {
 		return result
 	}
-	units := poset.Get(requests)
+	units := poset.Get(req)
 	operationHeight := maximalHeight(units)
 	knownRemotes := knownUnits(poset, info)
 	knownRemotes = dropToHeight(knownRemotes, operationHeight)
@@ -257,14 +265,14 @@ func toLayers(units []gomel.Unit) [][]gomel.Unit {
 	return result
 }
 
-func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info [][]*unitInfo, requests [][]gomel.Hash) [][]gomel.Unit {
+func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req requests) [][]gomel.Unit {
 	toSendPid := make([][]gomel.Unit, len(info))
 	var wg sync.WaitGroup
 	wg.Add(len(info))
 	for i := range info {
 		go func(id int) {
 			toSendPid[id] = unitsToSendByProcess(info[id], maxUnits[id])
-			unfulfilledRequests := fiterOutKnown(requests[id], hashesFromUnits(toSendPid[id]))
+			unfulfilledRequests := fiterOutKnown(req[id], hashesFromUnits(toSendPid[id]))
 			toSendPid[id] = append(toSendPid[id], requestedToSend(poset, info[id], unfulfilledRequests)...)
 			wg.Done()
 		}(i)
@@ -277,8 +285,8 @@ func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info [][]*unitInfo,
 	return toLayers(toSend)
 }
 
-func unknownHashes(poset gomel.Poset, info []*unitInfo, alsoKnown [][]gomel.Preunit) []gomel.Hash {
-	result := []gomel.Hash{}
+func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown [][]gomel.Preunit) processRequests {
+	result := processRequests{}
 	units := poset.Get(hashesSliceFromInfo(info))
 	for i, u := range units {
 		if u == nil {
@@ -287,22 +295,22 @@ func unknownHashes(poset gomel.Poset, info []*unitInfo, alsoKnown [][]gomel.Preu
 			// Note that this happens in separate goroutines, so might not be a bottleneck.
 			for _, units := range alsoKnown {
 				for _, v := range units {
-					if *v.Hash() == info[i].Hash {
+					if *v.Hash() == info[i].hash {
 						actuallyKnown = true
 						break
 					}
 				}
 			}
 			if !actuallyKnown {
-				result = append(result, info[i].Hash)
+				result = append(result, info[i].hash)
 			}
 		}
 	}
 	return result
 }
 
-func requestsToSend(poset gomel.Poset, info [][]*unitInfo, aquiredUnits [][]gomel.Preunit) [][]gomel.Hash {
-	result := make([][]gomel.Hash, len(info))
+func requestsToSend(poset gomel.Poset, info posetInfo, aquiredUnits [][]gomel.Preunit) requests {
+	result := make(requests, len(info))
 	var wg sync.WaitGroup
 	wg.Add(len(info))
 	for i := range info {

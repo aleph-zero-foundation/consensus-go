@@ -1,7 +1,7 @@
 package request
 
 import (
-	"encoding/gob"
+	"encoding/binary"
 	"sync"
 	"time"
 
@@ -20,16 +20,59 @@ type Out struct {
 	Timeout time.Duration
 }
 
-func sendPosetInfo(info [][]*unitInfo, conn network.Connection) error {
-	// TODO: We probably want a proper format, so one can write clients in other languages.
-	return gob.NewEncoder(conn).Encode(info)
+func sendProcessInfo(pi processInfo, conn network.Connection) error {
+	data, err := pi.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(data)
+	return err
 }
 
-func getPosetInfo(conn network.Connection) ([][]*unitInfo, error) {
-	info := [][]*unitInfo{}
-	// TODO: We probably want a proper format, so one can write clients in other languages.
-	err := gob.NewDecoder(conn).Decode(&info)
-	return info, err
+func getProcessInfo(conn network.Connection) (processInfo, error) {
+	data := make([]byte, 4)
+	alreadyRead := 0
+	for alreadyRead < len(data) {
+		read, err := conn.Read(data[alreadyRead:])
+		alreadyRead += read
+		if err != nil {
+			return nil, err
+		}
+	}
+	k := binary.LittleEndian.Uint32(data[0:])
+	data = append(data, make([]byte, k*68)...)
+	for alreadyRead < len(data) {
+		read, err := conn.Read(data[alreadyRead:])
+		alreadyRead += read
+		if err != nil {
+			return nil, err
+		}
+	}
+	result := processInfo{}
+	err := result.UnmarshalBinary(data)
+	return result, err
+}
+
+func sendPosetInfo(info posetInfo, conn network.Connection) error {
+	for _, pi := range info {
+		err := sendProcessInfo(pi, conn)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getPosetInfo(nProc int, conn network.Connection) (posetInfo, error) {
+	info := posetInfo{}
+	for i := 0; i < nProc; i++ {
+		pi, err := getProcessInfo(conn)
+		if err != nil {
+			return nil, err
+		}
+		info = append(info, pi)
+	}
+	return info, nil
 }
 
 func sendUnits(units [][]gomel.Unit, conn network.Connection) error {
@@ -40,16 +83,37 @@ func getPreunits(conn network.Connection) ([][]gomel.Preunit, error) {
 	return ggob.NewDecoder(conn).DecodePreunits()
 }
 
-func sendRequests(requests [][]gomel.Hash, conn network.Connection) error {
-	// TODO: We probably want a proper format, so one can write clients in other languages.
-	return gob.NewEncoder(conn).Encode(requests)
+func sendRequests(req requests, conn network.Connection) error {
+	data, err := req.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(data)
+	return err
 }
 
-func getRequests(conn network.Connection) ([][]gomel.Hash, error) {
-	requests := [][]gomel.Hash{}
-	// TODO: We probably want a proper format, so one can write clients in other languages.
-	err := gob.NewDecoder(conn).Decode(&requests)
-	return requests, err
+func getRequests(nProc int, conn network.Connection) (requests, error) {
+	data := make([]byte, 4)
+	alreadyRead := 0
+	for alreadyRead < len(data) {
+		read, err := conn.Read(data[alreadyRead:])
+		alreadyRead += read
+		if err != nil {
+			return nil, err
+		}
+	}
+	k := binary.LittleEndian.Uint32(data[0:])
+	data = append(data, make([]byte, k*68)...)
+	for alreadyRead < len(data) {
+		read, err := conn.Read(data[alreadyRead:])
+		alreadyRead += read
+		if err != nil {
+			return nil, err
+		}
+	}
+	result := make(requests, nProc)
+	err := result.UnmarshalBinary(data)
+	return result, err
 }
 
 func addAntichain(poset gomel.Poset, preunits []gomel.Preunit) error {
@@ -83,8 +147,8 @@ func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit) error {
 	return nil
 }
 
-func nonempty(requests [][]gomel.Hash) bool {
-	for _, r := range requests {
+func nonempty(req requests) bool {
+	for _, r := range req {
 		if len(r) > 0 {
 			return true
 		}
@@ -110,7 +174,8 @@ func nonempty(requests [][]gomel.Hash) bool {
 func (p In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
-	theirPosetInfo, err := getPosetInfo(conn)
+	nProc := poset.NProc()
+	theirPosetInfo, err := getPosetInfo(nProc, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -121,14 +186,14 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 		// TOOD: Error handling.
 		return
 	}
-	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, make([][]gomel.Hash, len(theirPosetInfo)))
+	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
 	err = sendUnits(units, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	requests := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
-	err = sendRequests(requests, conn)
+	req := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
+	err = sendRequests(req, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -138,7 +203,7 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 		// TOOD: Error handling.
 		return
 	}
-	theirRequests, err := getRequests(conn)
+	theirRequests, err := getRequests(nProc, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -177,13 +242,14 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 func (p Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
+	nProc := poset.NProc()
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	theirPosetInfo, err := getPosetInfo(conn)
+	theirPosetInfo, err := getPosetInfo(nProc, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -193,7 +259,7 @@ func (p Out) Run(poset gomel.Poset, conn network.Connection) {
 		// TOOD: Error handling.
 		return
 	}
-	theirRequests, err := getRequests(conn)
+	theirRequests, err := getRequests(nProc, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
@@ -204,13 +270,13 @@ func (p Out) Run(poset gomel.Poset, conn network.Connection) {
 		// TOOD: Error handling.
 		return
 	}
-	requests := requestsToSend(poset, theirPosetInfo, theirPreunitsReceived)
-	err = sendRequests(requests, conn)
+	req := requestsToSend(poset, theirPosetInfo, theirPreunitsReceived)
+	err = sendRequests(req, conn)
 	if err != nil {
 		// TOOD: Error handling.
 		return
 	}
-	if nonempty(requests) {
+	if nonempty(req) {
 		theirPreunitsReceived, err = getPreunits(conn)
 		if err != nil {
 			// TOOD: Error handling.
