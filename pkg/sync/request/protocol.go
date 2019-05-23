@@ -3,6 +3,7 @@ package request
 import (
 	"encoding/gob"
 	"sync"
+	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	ggob "gitlab.com/alephledger/consensus-go/pkg/encoding/gob"
@@ -104,6 +105,7 @@ func nonempty(requests [][]gomel.Hash) bool {
 */
 func (p In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
+	conn.TimeoutAfter(30 * time.Second)
 	theirPosetInfo, err := getPosetInfo(conn)
 	if err != nil {
 		// TOOD: Error handling.
@@ -170,6 +172,7 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 */
 func (p Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
+	conn.TimeoutAfter(30 * time.Second)
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
