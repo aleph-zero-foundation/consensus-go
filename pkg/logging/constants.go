@@ -56,11 +56,11 @@ const (
 
 // serviceTypeDict maps integer service types to human readable names
 var serviceTypeDict = map[int]string{
-	CreateService:   "create",
-	OrderService:    "order",
-	SyncService:     "sync",
-	ValidateService: "validate",
-	GenerateService: "generate",
+	CreateService:   "CREATE",
+	OrderService:    "ORDER",
+	SyncService:     "SYNC",
+	ValidateService: "VALID",
+	GenerateService: "GENER",
 }
 
 // Genesis was better with Phil Collins

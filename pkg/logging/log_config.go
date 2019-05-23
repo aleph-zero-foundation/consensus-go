@@ -25,6 +25,9 @@ type LogConfig struct {
 
 	// The smallest unit of time (recommended time.Millisecond)
 	TimeUnit time.Duration
+
+	// Print log messages in human readable form.
+	HumanReadable bool
 }
 
 // InitLogger initializes the global zerolog logger based on given LogConfig.
@@ -49,6 +52,11 @@ func InitLogger(lc LogConfig) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	//enable decoder
+	if lc.HumanReadable {
+		output = NewDecoder(output)
 	}
 
 	// enable diode
