@@ -1,49 +1,161 @@
 package create
 
 import (
+	"sync"
+	"time"
+
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
+const (
+	positiveJerk = 1.01
+	negativeJerk = 0.90
+)
+
 type service struct {
-	creator *adjustingCreator
-	log     zerolog.Logger
+	poset            gomel.Poset
+	pid              int
+	maxParents       int
+	maxLevel         int
+	maxHeight        int
+	privKey          gomel.PrivateKey
+	txpu             uint
+	adjustFactor     float64
+	previousPrime    bool
+	delay            time.Duration
+	ticker           *time.Ticker
+	txSource         <-chan *gomel.Tx
+	primeUnitCreated chan<- int
+	posetFinished    chan<- struct{}
+	done             chan struct{}
+	log              zerolog.Logger
 }
 
-// makeFinal binds some constants into a function that should be called after adding a unit to the poset.
-// The resulting function returns true if the added unit is determined to be the final one to be created.
-func makeFinal(maxLevel, maxHeight int, finished chan<- struct{}, primeUnitCreated chan<- int) func(gomel.Unit) bool {
-	return func(created gomel.Unit) bool {
-		if gomel.Prime(created) {
-			primeUnitCreated <- created.Level()
-		}
-		if created.Level() >= maxLevel || created.Height() >= maxHeight {
-			close(finished)
-			return true
-		}
-		return false
-	}
-}
-
-// NewService creates a new creating service for the given poset, with the given configuration.
-// The service will close posetFinished when it stops.
+// NewService constructs a creating service for the given poset with the given configuration.
+// The service creates units with self-adjusting delay. It aims to create units as quickly as possible, while creating only prime units.
+// Whenever a prime unit is created, the delay is decreased (multiplying by an adjustment factor).
+// Whenever a non-prime unit is created, the delay is increased (dividing by an adjustment factor).
+// Whenever two consecutive units are not prime, the adjustment factor is increased (by a constant ratio positiveJerk)
+// Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
+// negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
+// The service will close posetFinished channel when it stops.
 func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- int, txSource <-chan *gomel.Tx, log zerolog.Logger) (process.Service, error) {
+	initialDelay := time.Duration(config.InitialDelay) * time.Millisecond
+
 	return &service{
-		creator: newAdjustingCreator(poset, config.Pid, config.MaxParents, config.PrivateKey, config.InitialDelay, config.AdjustFactor, makeFinal(config.MaxLevel, config.MaxHeight, posetFinished, primeUnitCreated), config.Txpu, txSource),
-		log:     log,
+		poset:            poset,
+		pid:              config.Pid,
+		maxParents:       config.MaxParents,
+		maxLevel:         config.MaxLevel,
+		maxHeight:        config.MaxHeight,
+		privKey:          config.PrivateKey,
+		txpu:             config.Txpu,
+		adjustFactor:     config.AdjustFactor,
+		previousPrime:    false,
+		delay:            initialDelay,
+		ticker:           time.NewTicker(initialDelay),
+		txSource:         txSource,
+		primeUnitCreated: primeUnitCreated,
+		posetFinished:    posetFinished,
+		done:             make(chan struct{}),
+		log:              log,
 	}, nil
 }
 
 func (s *service) Start() error {
-	s.creator.start()
+	go func() {
+		for {
+			select {
+			case <-s.done:
+				return
+			case <-s.ticker.C:
+				s.createUnit()
+			}
+		}
+	}()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 func (s *service) Stop() {
-	s.creator.stop()
+	s.ticker.Stop()
+	close(s.done)
 	s.log.Info().Msg(logging.ServiceStopped)
+}
+
+func (s *service) slower() {
+	if !s.previousPrime {
+		s.adjustFactor *= positiveJerk
+	}
+	s.delay = time.Duration(float64(s.delay) * (1 + s.adjustFactor))
+	s.updateTicker()
+}
+
+func (s *service) quicker() {
+	if !s.previousPrime {
+		s.adjustFactor *= negativeJerk
+	}
+	s.delay = time.Duration(float64(s.delay) / (1 + s.adjustFactor))
+	s.updateTicker()
+}
+
+func (s *service) updateTicker() {
+	s.ticker.Stop()
+	s.ticker = time.NewTicker(s.delay)
+}
+
+func (s *service) getTransactions() []gomel.Tx {
+	result := []gomel.Tx{}
+	for uint(len(result)) < s.txpu {
+		select {
+		case tx := <-s.txSource:
+			result = append(result, *tx)
+		default:
+			return result
+		}
+	}
+	return result
+}
+
+func (s *service) createUnit() {
+	txs := s.getTransactions()
+	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, txs)
+	if err != nil {
+		s.slower()
+		s.log.Info().Msg(logging.NotEnoughParents)
+		return
+	}
+	created.SetSignature(s.privKey.Sign(created))
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	s.poset.AddUnit(created, func(_ gomel.Preunit, added gomel.Unit, err error) {
+		defer wg.Done()
+		if err != nil {
+			s.log.Error().Msg(err.Error())
+			return
+		}
+
+		if gomel.Prime(added) {
+			s.log.Info().Int("X", len(txs)).Msg(logging.PrimeUnitCreated)
+			s.quicker()
+			s.previousPrime = true
+			s.primeUnitCreated <- added.Level()
+		} else {
+			s.log.Info().Int("X", len(txs)).Msg(logging.UnitCreated)
+			s.slower()
+			s.previousPrime = false
+		}
+
+		if added.Level() >= s.maxLevel || added.Height() >= s.maxHeight {
+			s.ticker.Stop()
+			close(s.posetFinished)
+		}
+	})
+	wg.Wait()
 }
