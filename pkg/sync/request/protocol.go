@@ -11,10 +11,14 @@ import (
 )
 
 // In implements the side of the protocol that handles incoming connections.
-type In struct{}
+type In struct {
+	Timeout time.Duration
+}
 
 // Out implements the side of the protocol that handles outgoing connections.
-type Out struct{}
+type Out struct {
+	Timeout time.Duration
+}
 
 func sendPosetInfo(info [][]*unitInfo, conn network.Connection) error {
 	// TODO: We probably want a proper format, so one can write clients in other languages.
@@ -105,7 +109,7 @@ func nonempty(requests [][]gomel.Hash) bool {
 */
 func (p In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
-	conn.TimeoutAfter(30 * time.Second)
+	conn.TimeoutAfter(p.Timeout)
 	theirPosetInfo, err := getPosetInfo(conn)
 	if err != nil {
 		// TOOD: Error handling.
@@ -172,7 +176,7 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 */
 func (p Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
-	conn.TimeoutAfter(30 * time.Second)
+	conn.TimeoutAfter(p.Timeout)
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
