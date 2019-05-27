@@ -3,6 +3,7 @@ package request_test
 import (
 	"io"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -40,6 +41,8 @@ func (c *connection) Write(buf []byte) (int, error) {
 func (c *connection) Close() error {
 	return nil
 }
+
+func (c *connection) TimeoutAfter(time.Duration) {}
 
 func newConnection() (network.Connection, network.Connection) {
 	r1, w1 := io.Pipe()

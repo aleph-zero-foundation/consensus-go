@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"net"
+	"time"
 )
 
 type conn struct {
@@ -27,4 +28,8 @@ func (c *conn) Write(b []byte) (int, error) {
 func (c *conn) Close() error {
 	defer c.inUse.release()
 	return c.link.Close()
+}
+
+func (c *conn) TimeoutAfter(t time.Duration) {
+	c.link.SetDeadline(time.Now().Add(t))
 }
