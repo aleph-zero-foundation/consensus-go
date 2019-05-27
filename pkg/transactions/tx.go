@@ -19,37 +19,38 @@ type Tx struct {
 func Decode(data []byte) ([]Tx, error) {
 	reader := bytes.NewReader(data)
 	result := []Tx{}
+
+	var id, amount uint32
+	var issuerLen, receiverLen uint8
 	for reader.Len() > 0 {
-		var id, amount uint32
-		var issuerLen, receiverLen uint8
 		err := binary.Read(reader, binary.LittleEndian, &id)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 
 		err = binary.Read(reader, binary.LittleEndian, &issuerLen)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		issuer := make([]byte, int(issuerLen))
 		_, err = reader.Read(issuer)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 
 		err = binary.Read(reader, binary.LittleEndian, &receiverLen)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		receiver := make([]byte, int(receiverLen))
 		_, err = reader.Read(receiver)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 
 		err = binary.Read(reader, binary.LittleEndian, &amount)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		result = append(result, Tx{
 			ID:       id,
