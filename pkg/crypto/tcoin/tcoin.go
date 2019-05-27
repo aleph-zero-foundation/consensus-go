@@ -13,7 +13,7 @@ import (
 // In the full version of the protocol secretKeys should be sealed
 type GlobalThresholdCoin struct {
 	threshold int
-	vk        verificationKey
+	globalVK  verificationKey
 	vks       []verificationKey
 	sks       []secretKey
 }
@@ -24,9 +24,9 @@ type GlobalThresholdCoin struct {
 type ThresholdCoin struct {
 	threshold int
 	pid       int
-	sk        secretKey
-	vk        verificationKey
+	globalVK  verificationKey
 	vks       []verificationKey
+	sk        secretKey
 }
 
 // GenerateThresholdCoin generates keys and secrets for ThresholdCoin
@@ -38,7 +38,7 @@ func GenerateThresholdCoin(nProcesses, threshold int) *GlobalThresholdCoin {
 	}
 	secret := coeffs[threshold-1]
 
-	vk := verificationKey{
+	globalVK := verificationKey{
 		key: new(bn256.G2).ScalarBaseMult(secret),
 	}
 
@@ -62,7 +62,7 @@ func GenerateThresholdCoin(nProcesses, threshold int) *GlobalThresholdCoin {
 
 	return &GlobalThresholdCoin{
 		threshold: threshold,
-		vk:        vk,
+		globalVK:  globalVK,
 		vks:       vks,
 		sks:       sks,
 	}
@@ -74,7 +74,7 @@ func NewThresholdCoin(gtc *GlobalThresholdCoin, pid int) *ThresholdCoin {
 	return &ThresholdCoin{
 		threshold: gtc.threshold,
 		pid:       pid,
-		vk:        gtc.vk,
+		globalVK:  gtc.globalVK,
 		vks:       gtc.vks,
 		sk:        gtc.sks[pid],
 	}
@@ -111,7 +111,7 @@ func (tc *ThresholdCoin) VerifyCoinShare(share *CoinShare, nonce int) bool {
 
 // VerifyCoin verifies wheather the given coin is correct
 func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int) bool {
-	return tc.vk.verify(c.sgn, big.NewInt(int64(nonce)))
+	return tc.globalVK.verify(c.sgn, big.NewInt(int64(nonce)))
 }
 
 // CombineCoinShares combines given shares into a Coin
@@ -125,33 +125,37 @@ func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
 		points = append(points, sh.pid)
 	}
 
-	var summands = make([]*bn256.G1, len(points))
+	sum := new(bn256.G1)
+	summands := make(chan *bn256.G1)
 	ok := true
 
 	var wg sync.WaitGroup
 	for i, sh := range shares {
 		wg.Add(1)
-		go func(ch CoinShare, ind int) {
+		go func(ch *CoinShare, ind int) {
 			defer wg.Done()
 			elem, success := new(bn256.G1).Unmarshal(ch.sgn)
 			if !success {
 				ok = false
 				return
 			}
-			summands[ind] = elem.ScalarMult(elem, lagrange(points, ch.pid))
-		}(*sh, i)
+			summands <- elem.ScalarMult(elem, lagrange(points, ch.pid))
+		}(sh, i)
 	}
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(summands)
+	}()
+
+	for elem := range summands {
+		sum.Add(sum, elem)
+	}
 
 	if !ok {
 		return nil, false
 	}
 
-	for i := 1; i < len(summands); i++ {
-		summands[0].Add(summands[0], summands[i])
-	}
-
-	return &Coin{sgn: summands[0].Marshal()}, true
+	return &Coin{sgn: sum.Marshal()}, true
 }
 
 func lagrange(points []int, x int) *big.Int {
