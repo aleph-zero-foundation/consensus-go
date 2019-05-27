@@ -49,13 +49,13 @@ func GenerateThresholdCoin(nProcesses, threshold int) *GlobalThresholdCoin {
 	for i := 0; i < nProcesses; i++ {
 		wg.Add(1)
 		go func(ind int) {
+			defer wg.Done()
 			sks[ind] = secretKey{
 				key: poly(coeffs, big.NewInt(int64(ind+1))),
 			}
 			vks[ind] = verificationKey{
 				key: new(bn256.G2).ScalarBaseMult(sks[ind].key),
 			}
-			wg.Done()
 		}(i)
 	}
 	wg.Wait()
@@ -68,8 +68,8 @@ func GenerateThresholdCoin(nProcesses, threshold int) *GlobalThresholdCoin {
 	}
 }
 
-// NewThresholdCoin returns local version of ThresholdCoin from global version
-// In the full version of the protocol here we should unseal the secretKey of pid
+// NewThresholdCoin returns local version of ThresholdCoin from a global version
+// In the full version of the protocol here we should unseal the secretKey of the owner.
 func NewThresholdCoin(gtc *GlobalThresholdCoin, pid int) *ThresholdCoin {
 	return &ThresholdCoin{
 		threshold: gtc.threshold,
