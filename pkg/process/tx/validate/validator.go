@@ -2,7 +2,7 @@ package validate
 
 import (
 	"bufio"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 	"os"
 )
 
@@ -33,7 +33,7 @@ func newValidator(userDb string) (*validator, error) {
 	return &validator{userBalance: userBalance}, nil
 }
 
-func (v *validator) validate(tx gomel.Tx) {
+func (v *validator) validate(tx transactions.Tx) {
 	if v.userBalance[tx.Issuer] >= tx.Amount {
 		v.userBalance[tx.Issuer] -= tx.Amount
 		v.userBalance[tx.Receiver] += tx.Amount

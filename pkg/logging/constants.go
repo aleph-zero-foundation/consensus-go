@@ -16,8 +16,8 @@ const (
 // eventTypeDict maps single char event names to human readable names
 // this will be used in future by JSONlog -> log4humans translator
 var eventTypeDict = map[string]string{
-	"U": "new regular unit with X txs created",
-	"P": "new prime unit with X txs created",
+	"U": "new regular unit created",
+	"P": "new prime unit created",
 	"T": "new timing unit",
 	"L": "linear order extended",
 	"Z": "creating.NewUnit failed (not enough parents)",

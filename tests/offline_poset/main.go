@@ -41,7 +41,7 @@ func main() {
 			creator := rand.Intn(nProcesses)
 			poset := posets[creator]
 			var err error
-			if pu, err = creating.NewUnit(poset, creator, maxParents, []gomel.Tx{}); err != nil {
+			if pu, err = creating.NewUnit(poset, creator, maxParents, []byte{}); err != nil {
 				continue
 			}
 			pu.SetSignature(privKeys[creator].Sign(pu))

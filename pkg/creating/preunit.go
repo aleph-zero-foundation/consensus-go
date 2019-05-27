@@ -13,24 +13,24 @@ type preunit struct {
 	parents   []gomel.Hash
 	signature gomel.Signature
 	hash      gomel.Hash
-	txs       []gomel.Tx
+	data      []byte
 }
 
 // NewPreunit constructs a a new preunit with given parents and creator id.
-func NewPreunit(creator int, parents []gomel.Hash, txs []gomel.Tx) gomel.Preunit {
+func NewPreunit(creator int, parents []gomel.Hash, data []byte) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
 		parents: parents,
-		txs:     txs,
+		data:    data,
 	}
 	pu.computeHash()
 
 	return pu
 }
 
-// Txs returns transactions embedded in the preunit.
-func (pu *preunit) Txs() []gomel.Tx {
-	return pu.txs
+// Data returns data embedded in the preunit.
+func (pu *preunit) Data() []byte {
+	return pu.data
 }
 
 // Creator of the preunit.
@@ -70,12 +70,6 @@ func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	data.Write(toBytes(int32(pu.creator)))
 	data.Write(toBytes(pu.parents))
-	// toBytes doesn't work with strings, so we convert them into slice of bytes
-	for _, tx := range pu.txs {
-		data.Write(toBytes(tx.ID))
-		data.Write([]byte(tx.Issuer))
-		data.Write([]byte(tx.Receiver))
-		data.Write(toBytes(tx.Amount))
-	}
+	data.Write(pu.Data())
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }

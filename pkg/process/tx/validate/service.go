@@ -6,6 +6,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
+	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
 type service struct {
@@ -32,8 +33,12 @@ func (s *service) main() {
 	for {
 		select {
 		case u := <-s.unitSource:
-			for _, t := range u.Txs() {
-				s.validator.validate(t)
+			txsEncoded, cErr := transactions.Decompress(u.Data())
+			txs, dErr := transactions.Decode(txsEncoded)
+			if cErr != nil && dErr != nil {
+				for _, t := range txs {
+					s.validator.validate(t)
+				}
 			}
 		case <-s.exitChan:
 			return

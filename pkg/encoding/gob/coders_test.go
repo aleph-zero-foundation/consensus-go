@@ -43,7 +43,7 @@ var _ = Describe("Encoding/Decoding", func() {
 	})
 	Context("One layer with one unit", func() {
 		BeforeEach(func() {
-			pu := tests.NewPreunit(0, []gomel.Hash{}, []gomel.Tx{})
+			pu := tests.NewPreunit(0, []gomel.Hash{}, []byte{})
 			pu.SetSignature(privKey.Sign(pu))
 			p.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, _ error) {
 				layers = append(layers, []gomel.Unit{u})
@@ -65,13 +65,14 @@ var _ = Describe("Encoding/Decoding", func() {
 		BeforeEach(func() {
 			layer := make([]gomel.Unit, 10)
 			for i := 0; i < 10; i++ {
-				pu := tests.NewPreunit(i, []gomel.Hash{}, []gomel.Tx{})
+				pu := tests.NewPreunit(i, []gomel.Hash{}, []byte{})
 				pu.SetSignature(privKey.Sign(pu))
 				p.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, _ error) {
 					layer[i] = u
 				})
 			}
 			layers = append(layers, layer)
+
 		})
 		It("should be encoded/decoded to one layer with 10 preunits corresponding to given units", func() {
 			eerr := encoder.EncodeUnits(layers)
@@ -92,7 +93,7 @@ var _ = Describe("Encoding/Decoding", func() {
 				nUnits := rand.Intn(10)
 				layer := make([]gomel.Unit, nUnits)
 				for j := 0; j < nUnits; j++ {
-					pu := tests.NewPreunit(10*i+j, []gomel.Hash{}, []gomel.Tx{})
+					pu := tests.NewPreunit(10*i+j, []gomel.Hash{}, []byte{})
 					pu.SetSignature(privKey.Sign(pu))
 					p.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, _ error) {
 						layer[j] = u
@@ -100,6 +101,7 @@ var _ = Describe("Encoding/Decoding", func() {
 				}
 				layers = append(layers, layer)
 			}
+
 		})
 		It("should be encoded/decoded to 10 layers with preunits corresponding to given units", func() {
 			eerr := encoder.EncodeUnits(layers)

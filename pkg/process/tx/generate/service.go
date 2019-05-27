@@ -10,13 +10,16 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
+	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
 type service struct {
-	users    []string
-	txChan   chan<- *gomel.Tx
-	exitChan chan struct{}
-	log      zerolog.Logger
+	users            []string
+	txpu             uint32
+	txChan           chan<- []byte
+	exitChan         chan struct{}
+	compressionLevel int
+	log              zerolog.Logger
 }
 
 func readUsers(filename string) ([]string, error) {
@@ -34,30 +37,44 @@ func readUsers(filename string) ([]string, error) {
 }
 
 // NewService creates a new service generating transactions
-func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- *gomel.Tx, log zerolog.Logger) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- []byte, log zerolog.Logger) (process.Service, error) {
 	users, err := readUsers(config.UserDb)
 	if err != nil {
 		return nil, err
 	}
 	return &service{
-		users:    users,
-		txChan:   txChan,
-		exitChan: make(chan struct{}),
-		log:      log,
+		users:            users,
+		txpu:             config.Txpu,
+		txChan:           txChan,
+		exitChan:         make(chan struct{}),
+		compressionLevel: config.CompressionLevel,
+		log:              log,
 	}, nil
+}
+
+func (s *service) generateRandom(txID uint32) []transactions.Tx {
+	result := []transactions.Tx{}
+	for uint32(len(result)) < s.txpu {
+		result = append(result, transactions.Tx{
+			ID:       txID,
+			Issuer:   s.users[rand.Intn(len(s.users))],
+			Receiver: s.users[rand.Intn(len(s.users))],
+			Amount:   uint32(rand.Intn(10)),
+		})
+		txID++
+	}
+	return result
 }
 
 func (s *service) main() {
 	var txID uint32
 	for {
+		txs := s.generateRandom(txID)
+		encodedTxs := transactions.Encode(txs)
+		compressedTxs, _ := transactions.Compress(encodedTxs, s.compressionLevel)
 		select {
-		case s.txChan <- &gomel.Tx{
-			ID:       txID,
-			Receiver: s.users[rand.Intn(len(s.users))],
-			Issuer:   s.users[rand.Intn(len(s.users))],
-			Amount:   uint32(rand.Intn(10)),
-		}:
-			txID++
+		case s.txChan <- compressedTxs:
+			txID += uint32(len(txs))
 		case <-s.exitChan:
 			close(s.txChan)
 			return
