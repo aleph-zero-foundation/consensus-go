@@ -10,15 +10,15 @@ import (
 var _ = Describe("Tcoin", func() {
 	var n, t int
 	var nonce int
-	var gtc *GlobalTC
-	var tc []*TC
+	var gtc *GlobalThresholdCoin
+	var tc []*ThresholdCoin
 	var coinShares []*CoinShare
 	Context("Between small number of processes", func() {
 		BeforeEach(func() {
 			n, t = 10, 3
-			gtc = GenerateTC(n, t)
+			gtc = GenerateThresholdCoin(n, t)
 			for i := 0; i < n; i++ {
-				tc = append(tc, NewTC(gtc, i))
+				tc = append(tc, NewThresholdCoin(gtc, i))
 			}
 		})
 		Describe("Coin shares", func() {

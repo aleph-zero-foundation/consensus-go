@@ -15,13 +15,11 @@ type secretKey struct {
 	key *big.Int
 }
 
-// Signature is a signature
-type Signature []byte
+type signature []byte
 
 var gen = new(bn256.G2).ScalarBaseMult(big.NewInt(int64(1)))
 
-// Verify verifies the signature
-func (vk *verificationKey) verify(s Signature, msg *big.Int) bool {
+func (vk *verificationKey) verify(s signature, msg *big.Int) bool {
 	sHash, ok := new(bn256.G1).Unmarshal(s)
 	if !ok {
 		return false
@@ -33,8 +31,7 @@ func (vk *verificationKey) verify(s Signature, msg *big.Int) bool {
 	return subtle.ConstantTimeCompare(p1, p2) == 1
 }
 
-// Sign signs the msg
-func (sk *secretKey) sign(msg *big.Int) Signature {
+func (sk *secretKey) sign(msg *big.Int) signature {
 	msgHash := new(bn256.G1).ScalarBaseMult(msg)
 	sgn := new(bn256.G1).ScalarMult(msgHash, sk.key)
 	return sgn.Marshal()
