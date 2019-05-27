@@ -48,13 +48,14 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 		}
 		u.parents = append(u.parents, p.unitByHash[parentHash])
 	}
-	// Setting height, creator, veresion, hash
+	// Setting height, creator, signature, version, hash
 	u.creator = pu.Creator()
 	if len(u.parents) == 0 {
 		u.height = 0
 	} else {
 		u.height = u.parents[0].Height() + 1
 	}
+	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
 	if len(p.unitsByHeight) <= u.height {
 		u.version = 0

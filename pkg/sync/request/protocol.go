@@ -1,12 +1,10 @@
 package request
 
 import (
-	"encoding/binary"
 	"sync"
 	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	ggob "gitlab.com/alephledger/consensus-go/pkg/encoding/gob"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
@@ -20,42 +18,9 @@ type Out struct {
 	Timeout time.Duration
 }
 
-func sendProcessInfo(pi processInfo, conn network.Connection) error {
-	data, err := pi.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	_, err = conn.Write(data)
-	return err
-}
-
-func getProcessInfo(conn network.Connection) (processInfo, error) {
-	data := make([]byte, 4)
-	alreadyRead := 0
-	for alreadyRead < len(data) {
-		read, err := conn.Read(data[alreadyRead:])
-		alreadyRead += read
-		if err != nil {
-			return nil, err
-		}
-	}
-	k := binary.LittleEndian.Uint32(data[0:])
-	data = append(data, make([]byte, k*68)...)
-	for alreadyRead < len(data) {
-		read, err := conn.Read(data[alreadyRead:])
-		alreadyRead += read
-		if err != nil {
-			return nil, err
-		}
-	}
-	result := processInfo{}
-	err := result.UnmarshalBinary(data)
-	return result, err
-}
-
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
 	for _, pi := range info {
-		err := sendProcessInfo(pi, conn)
+		err := encodeProcessInfo(conn, &pi)
 		if err != nil {
 			return err
 		}
@@ -64,56 +29,32 @@ func sendPosetInfo(info posetInfo, conn network.Connection) error {
 }
 
 func getPosetInfo(nProc int, conn network.Connection) (posetInfo, error) {
-	info := posetInfo{}
-	for i := 0; i < nProc; i++ {
-		pi, err := getProcessInfo(conn)
+	info := make(posetInfo, nProc)
+	for i := range info {
+		pi, err := decodeProcessInfo(conn)
 		if err != nil {
 			return nil, err
 		}
-		info = append(info, pi)
+		info[i] = *pi
 	}
 	return info, nil
 }
 
 func sendUnits(units [][]gomel.Unit, conn network.Connection) error {
-	return ggob.NewEncoder(conn).EncodeUnits(units)
+	return encodeUnits(conn, units)
 }
 
 func getPreunits(conn network.Connection) ([][]gomel.Preunit, error) {
-	return ggob.NewDecoder(conn).DecodePreunits()
+	return decodeUnits(conn)
 }
 
 func sendRequests(req requests, conn network.Connection) error {
-	data, err := req.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	_, err = conn.Write(data)
-	return err
+	return encodeRequests(conn, &req)
 }
 
 func getRequests(nProc int, conn network.Connection) (requests, error) {
-	data := make([]byte, 4)
-	alreadyRead := 0
-	for alreadyRead < len(data) {
-		read, err := conn.Read(data[alreadyRead:])
-		alreadyRead += read
-		if err != nil {
-			return nil, err
-		}
-	}
-	k := binary.LittleEndian.Uint32(data[0:])
-	data = append(data, make([]byte, k*68)...)
-	for alreadyRead < len(data) {
-		read, err := conn.Read(data[alreadyRead:])
-		alreadyRead += read
-		if err != nil {
-			return nil, err
-		}
-	}
-	result := make(requests, nProc)
-	err := result.UnmarshalBinary(data)
-	return result, err
+	result, err := decodeRequests(conn, nProc)
+	return *result, err
 }
 
 func addAntichain(poset gomel.Poset, preunits []gomel.Preunit) error {
