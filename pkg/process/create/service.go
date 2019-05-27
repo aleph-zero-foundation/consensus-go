@@ -139,11 +139,11 @@ func (s *service) createUnit() {
 		}
 
 		if gomel.Prime(added) {
-			s.log.Info().Msg(logging.PrimeUnitCreated)
+			s.log.Info().Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
 			s.quicker()
 			s.primeUnitCreated <- added.Level()
 		} else {
-			s.log.Info().Msg(logging.UnitCreated)
+			s.log.Info().Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
 			s.slower()
 		}
 
