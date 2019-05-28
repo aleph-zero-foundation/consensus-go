@@ -42,13 +42,17 @@ func (e *encoder) EncodeUnit(unit gomel.Unit) error {
 		copy(data[s:s+64], p.Hash()[:])
 		s += 64
 	}
-	// TODO: data size here
+	unitDataLen := uint32(len(unit.Data()))
+	binary.LittleEndian.PutUint32(data[s:s+4], unitDataLen)
+	s += 4
 	_, err := e.writer.Write(data)
 	if err != nil {
 		return err
 	}
-	// TODO: write data here
-	return nil
+	if unitDataLen > 0 {
+		_, err = e.writer.Write(unit.Data())
+	}
+	return err
 }
 
 type decoder struct {
@@ -99,9 +103,13 @@ func (d *decoder) DecodePreunit() (gomel.Preunit, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO: read data size here
-	// TODO: read data here
-	result := creating.NewPreunit(int(creator), parents, []gomel.Tx{})
+	unitDataLen := binary.LittleEndian.Uint32(lenData)
+	unitData := make([]byte, unitDataLen)
+	_, err = io.ReadFull(d.reader, unitData)
+	if err != nil {
+		return nil, err
+	}
+	result := creating.NewPreunit(int(creator), parents, unitData)
 	result.SetSignature(signature)
 	return result, nil
 }
