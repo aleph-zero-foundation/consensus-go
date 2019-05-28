@@ -15,10 +15,10 @@ type ConnectionServer interface {
 	// Listen waits for requests and manages them
 	Listen() error
 
-	// StartDialing starts a service that periodically tries to establish a new connection to
-	// a remote peer
+	// StartDialing starts a service that periodically tries to establish a new
+	// connection to a remote peer
 	StartDialing()
 
-	// Stop halts both Listen and Dial services.
+	// Stop halts both Listen and Dialing services.
 	Stop()
 }

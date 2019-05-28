@@ -134,7 +134,7 @@ func (s *service) createUnit() {
 	s.poset.AddUnit(created, func(_ gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
-			s.log.Error().Msg(err.Error())
+			s.log.Error().Str("where", "poset.AddUnit callback").Msg(err.Error())
 			return
 		}
 
