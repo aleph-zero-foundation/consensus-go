@@ -90,7 +90,7 @@ func (cs *connServer) Listen() error {
 				}
 				g, err := getGreeting(link)
 				if err != nil {
-					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
+					cs.log.Error().Str("where", "connServer.Listen.greeting").Msg(err.Error())
 					link.Close()
 					continue
 				}
@@ -147,8 +147,7 @@ func (cs *connServer) StartDialing() {
 				cs.syncIds[remotePid]++
 				err = g.send(link)
 				if err != nil {
-					cs.log.Error().Str("where", "connServer.Dial").Msg(err.Error())
-					link.Close()
+
 					m.release()
 					continue
 				}
