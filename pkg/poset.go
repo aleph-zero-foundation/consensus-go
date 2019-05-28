@@ -16,4 +16,6 @@ type Poset interface {
 	IsQuorum(number int) bool
 	// NProc returns the number of processes that shares this poset.
 	NProc() int
+	// GetCRP returns common random permutation on a given level
+	GetCRP(int) []int
 }

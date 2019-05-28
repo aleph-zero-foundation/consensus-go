@@ -41,6 +41,15 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 	return newPoset
 }
 
+// GetCRP is a dummy implementation of a common random permutation
+func (p *Poset) GetCRP(level int) []int {
+	permutation := make([]int, p.NProc())
+	for i := 0; i < p.NProc(); i++ {
+		permutation[i] = (i + level) % p.NProc()
+	}
+	return permutation
+}
+
 // IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
 func IsQuorum(nProcesses int, subsetSize int) bool {
 	return 3*subsetSize >= 2*nProcesses

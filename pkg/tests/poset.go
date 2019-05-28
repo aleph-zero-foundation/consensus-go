@@ -33,6 +33,15 @@ func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
 	return newPoset
 }
 
+// GetCRP is a dummy implementation of a common random permutation
+func (p *Poset) GetCRP(level int) []int {
+	permutation := make([]int, p.NProc())
+	for i := 0; i < p.NProc(); i++ {
+		permutation[i] = (i + level) % p.NProc()
+	}
+	return permutation
+}
+
 // AddUnit adds a unit in a thread safe manner without trying to be clever.
 func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
 	p.Lock()
