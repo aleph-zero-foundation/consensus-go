@@ -36,7 +36,6 @@ func decode(data *map[string]interface{}) string {
 	if event, ok := (*data)[Event]; ok && event == Genesis {
 		return fmt.Sprintln("Beginning of time at ", (*data)[Time])
 	}
-
 	ret := ""
 	if val, ok := (*data)[Time]; ok {
 		ret += fmt.Sprintf("%6v|", val)
@@ -52,7 +51,11 @@ func decode(data *map[string]interface{}) string {
 		if k == Time || k == Service || k == Event || k == Level {
 			continue
 		}
-		ret += fmt.Sprintf("%7s = %-6v|", fieldNameDict[k], v)
+		if f, ok := fieldNameDict[k]; ok {
+			ret += fmt.Sprintf("%7s = %-6v|", f, v)
+		} else {
+			ret += fmt.Sprintf("%7s = %-6v|", k, v)
+		}
 	}
 	if val, ok := (*data)[Event]; ok {
 		s := val.(string)
@@ -61,6 +64,5 @@ func decode(data *map[string]interface{}) string {
 		}
 		ret += fmt.Sprintln("  " + s)
 	}
-
 	return ret
 }
