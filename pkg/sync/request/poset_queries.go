@@ -211,7 +211,15 @@ func requestedToSend(poset gomel.Poset, info processInfo, req processRequests) [
 	if len(req) == 0 {
 		return result
 	}
-	units := poset.Get(req)
+	rawUnits := poset.Get(req)
+	units := []gomel.Unit{}
+	for _, u := range rawUnits {
+		if u != nil {
+			units = append(units, u)
+		}
+		// NOTE: We should never get nils here, if we do there is probably some error.
+		// We still try to make our response best-effort.
+	}
 	operationHeight := maximalHeight(units)
 	knownRemotes := knownUnits(poset, info)
 	knownRemotes = dropToHeight(knownRemotes, operationHeight)
