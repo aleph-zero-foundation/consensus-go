@@ -1,8 +1,9 @@
 package order
 
 import (
-	"github.com/rs/zerolog"
 	"sync"
+
+	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
@@ -41,17 +42,21 @@ func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests 
 }
 
 func (s *service) attemptOrdering() {
+	defer close(s.extendOrderRequests)
+	defer s.wg.Done()
 	for {
 		select {
-		case highest := <-s.attemptTimingRequests: // level of the most recent prime unit
+		case highest, ok := <-s.attemptTimingRequests: // level of the most recent prime unit
+			if !ok {
+				<-s.exitChan
+				return
+			}
 			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
 				s.log.Info().Int("h", highest).Int("r", s.currentRound).Msg(logging.NewTimingUnit)
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}
 		case <-s.exitChan:
-			close(s.extendOrderRequests)
-			s.wg.Done()
 			return
 		}
 	}

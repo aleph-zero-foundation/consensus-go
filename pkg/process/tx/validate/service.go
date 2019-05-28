@@ -33,11 +33,13 @@ func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan
 }
 
 func (s *service) main() {
+	defer s.wg.Done()
 	for {
 		select {
 		case u, ok := <-s.unitSource:
 			if !ok {
-				continue
+				<-s.exitChan
+				return
 			}
 			txsEncoded, cErr := transactions.Decompress(u.Data())
 			txs, dErr := transactions.Decode(txsEncoded)
@@ -47,7 +49,6 @@ func (s *service) main() {
 				}
 			}
 		case <-s.exitChan:
-			s.wg.Done()
 			return
 		}
 	}

@@ -111,15 +111,16 @@ func (cs *connServer) Listen() error {
 func (cs *connServer) StartDialing() {
 	cs.wg.Add(1)
 	go func() {
+		defer close(cs.dialChan)
+		defer cs.wg.Done()
 		for {
 			select {
 			case <-cs.exitChan:
-				close(cs.dialChan)
-				cs.wg.Done()
 				return
 			case remotePid, ok := <-cs.dialSource:
 				if !ok {
-					continue
+					<-cs.exitChan
+					return
 				}
 				// check if we are already syncing with remotePeer
 				m := cs.inUse[remotePid]

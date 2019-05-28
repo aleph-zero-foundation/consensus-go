@@ -65,9 +65,7 @@ func DecodePublicKey(enc string) (gomel.PublicKey, error) {
 		return nil, errors.New("bad encoded public key")
 	}
 	result := publicKey{&[32]byte{}}
-	for i, b := range data {
-		result.data[i] = b
-	}
+	copy(result.data[:], data)
 	return &result, nil
 }
 

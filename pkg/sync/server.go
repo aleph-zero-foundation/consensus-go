@@ -55,14 +55,15 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) syncDispatcher(connChan <-chan network.Connection, syncProto func(poset gomel.Poset, conn network.Connection)) {
+	defer s.wg.Done()
 	for {
 		select {
 		case <-s.exitChan:
-			s.wg.Done()
 			return
 		case conn, ok := <-connChan:
 			if !ok {
-				break
+				<-s.exitChan
+				return
 			}
 			syncProto(s.poset, conn)
 		}
