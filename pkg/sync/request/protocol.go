@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
@@ -11,11 +13,13 @@ import (
 // In implements the side of the protocol that handles incoming connections.
 type In struct {
 	Timeout time.Duration
+	Log     zerolog.Logger
 }
 
 // Out implements the side of the protocol that handles outgoing connections.
 type Out struct {
 	Timeout time.Duration
+	Log     zerolog.Logger
 }
 
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
@@ -112,54 +116,54 @@ func nonempty(req requests) bool {
 		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
 		9. Add the received units to the poset.
 */
-func (p In) Run(poset gomel.Poset, conn network.Connection) {
+func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
 	theirPosetInfo, err := getPosetInfo(nProc, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.In.getPosetInfo").Msg(err.Error())
 		return
 	}
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.In.sendPosetInfo").Msg(err.Error())
 		return
 	}
 	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
 	err = sendUnits(units, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.In.sendUnits").Msg(err.Error())
 		return
 	}
 	req := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
 	err = sendRequests(req, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.In.sendRequests").Msg(err.Error())
 		return
 	}
 	theirPreunitsReceived, err := getPreunits(conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.In.getPreunits").Msg(err.Error())
 		return
 	}
 	theirRequests, err := getRequests(nProc, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.In.getRequests").Msg(err.Error())
 		return
 	}
 	if nonempty(theirRequests) {
 		units = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
 		err = sendUnits(units, conn)
 		if err != nil {
-			// TOOD: Error handling.
+			p.Log.Error().Str("where", "proto.In.sendUnits(again)").Msg(err.Error())
 			return
 		}
 	}
 	err = addUnits(poset, theirPreunitsReceived)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
 	}
 }
@@ -180,53 +184,53 @@ func (p In) Run(poset gomel.Poset, conn network.Connection) {
 			9. If the sent requests were nonempty, wait for more units. All the units are resend.
 		10. Add the received units to the poset.
 */
-func (p Out) Run(poset gomel.Poset, conn network.Connection) {
+func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.Out.sendPosetInfo").Msg(err.Error())
 		return
 	}
 	theirPosetInfo, err := getPosetInfo(nProc, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.Out.getPosetInfo").Msg(err.Error())
 		return
 	}
 	theirPreunitsReceived, err := getPreunits(conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.Out.getPreunits").Msg(err.Error())
 		return
 	}
 	theirRequests, err := getRequests(nProc, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.Out.getRequests").Msg(err.Error())
 		return
 	}
 	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
 	err = sendUnits(units, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.Out.sendUnits").Msg(err.Error())
 		return
 	}
 	req := requestsToSend(poset, theirPosetInfo, theirPreunitsReceived)
 	err = sendRequests(req, conn)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.Out.sendRequests").Msg(err.Error())
 		return
 	}
 	if nonempty(req) {
 		theirPreunitsReceived, err = getPreunits(conn)
 		if err != nil {
-			// TOOD: Error handling.
+			p.Log.Error().Str("where", "proto.Out.getPreunits(again)").Msg(err.Error())
 			return
 		}
 	}
 	err = addUnits(poset, theirPreunitsReceived)
 	if err != nil {
-		// TOOD: Error handling.
+		p.Log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return
 	}
 }

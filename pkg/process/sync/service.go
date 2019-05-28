@@ -28,7 +28,9 @@ func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (pr
 	if err != nil {
 		return nil, err
 	}
-	syncServ := ssync.NewServer(poset, connServ.ListenChannel(), connServ.DialChannel(), request.In{Timeout: config.Timeout}, request.Out{Timeout: config.Timeout}, config.InitializedSyncLimit, config.ReceivedSyncLimit)
+	requestIn := &request.In{Timeout: config.Timeout, Log: log}
+	requestOut := &request.Out{Timeout: config.Timeout, Log: log}
+	syncServ := ssync.NewServer(poset, connServ.ListenChannel(), connServ.DialChannel(), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit)
 	return &service{
 		syncServer: syncServ,
 		connServer: connServ,
