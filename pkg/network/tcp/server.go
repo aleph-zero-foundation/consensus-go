@@ -5,6 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
@@ -19,10 +22,11 @@ type connServer struct {
 	syncIds     []uint32
 	exitChan    chan struct{}
 	wg          sync.WaitGroup
+	log         zerolog.Logger
 }
 
 // NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs, dialSource, and queue lengths for listens and syncs.
-func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listQueueLen, syncQueueLen uint) (network.ConnectionServer, error) {
+func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listQueueLen, syncQueueLen uint, log zerolog.Logger) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err
@@ -52,6 +56,7 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 		inUse:       inUse,
 		syncIds:     make([]uint32, len(remoteAddrs)),
 		exitChan:    make(chan struct{}),
+		log:         log,
 	}, nil
 }
 
@@ -80,18 +85,18 @@ func (cs *connServer) Listen() error {
 				ln.SetDeadline(time.Now().Add(time.Second * 2))
 				link, err := ln.AcceptTCP()
 				if err != nil {
-					// TODO log the error
+					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
 					continue
 				}
 				g, err := getGreeting(link)
 				if err != nil {
-					// TODO log the error
+					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
 					link.Close()
 					continue
 				}
 				remotePid := int(g.pid)
 				if remotePid < 0 || remotePid >= len(cs.inUse) {
-					// TODO log that a stranger called us
+					cs.log.Warn().Int(logging.PID, remotePid).Msg("Called by a stranger")
 					link.Close()
 					continue
 				}
@@ -101,6 +106,7 @@ func (cs *connServer) Listen() error {
 					continue
 				}
 				cs.listenChan <- newConn(link, m)
+				cs.log.Info().Int(logging.PID, remotePid).Uint32(logging.SID, g.sid).Msg(logging.ConnectionReceived)
 			}
 		}
 	}()
@@ -130,7 +136,7 @@ func (cs *connServer) StartDialing() {
 
 				link, err := net.DialTCP("tcp", nil, cs.remoteAddrs[remotePid])
 				if err != nil {
-					// TODO log the error
+					cs.log.Error().Str("where", "connServer.Dial").Msg(err.Error())
 					m.release()
 					continue
 				}
@@ -141,12 +147,13 @@ func (cs *connServer) StartDialing() {
 				cs.syncIds[remotePid]++
 				err = g.send(link)
 				if err != nil {
-					// TODO log the error
+					cs.log.Error().Str("where", "connServer.Dial").Msg(err.Error())
 					link.Close()
 					m.release()
 					continue
 				}
 				cs.dialChan <- newConn(link, m)
+				cs.log.Info().Int(logging.PID, remotePid).Uint32(logging.SID, g.sid).Msg(logging.ConnectionEstablished)
 			}
 		}
 	}()
