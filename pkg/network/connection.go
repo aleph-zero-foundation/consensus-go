@@ -8,4 +8,5 @@ type Connection interface {
 	Write([]byte) (int, error)
 	Close() error
 	TimeoutAfter(t time.Duration)
+	Sid() uint32
 }
