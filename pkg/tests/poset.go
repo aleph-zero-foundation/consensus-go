@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 // Poset is a basic implementation of poset for testing
@@ -15,6 +16,7 @@ type Poset struct {
 	maximalHeight []int
 	unitsByHeight []gomel.SlottedUnits
 	unitByHash    map[gomel.Hash]gomel.Unit
+	tcByHash      map[gomel.Hash]*tcoin.ThresholdCoin
 }
 
 func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
@@ -31,6 +33,15 @@ func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
 		unitByHash:    make(map[gomel.Hash]gomel.Unit),
 	}
 	return newPoset
+}
+
+// ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
+// nil for hashes of non-dealing units
+func (p *Poset) ThresholdCoin(h gomel.Hash) *tcoin.ThresholdCoin {
+	if tc, ok := p.tcByHash[h]; ok {
+		return tc
+	}
+	return nil
 }
 
 // GetCRP is a dummy implementation of a common random permutation

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -14,6 +15,8 @@ type preunit struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	data      []byte
+	cs        *tcoin.CoinShare
+	gtc       *tcoin.GlobalThresholdCoin
 }
 
 // NewPreunit returns preunit
@@ -27,6 +30,14 @@ func NewPreunit(creator int, parents []gomel.Hash, data []byte) gomel.Preunit {
 	pu.computeHash()
 
 	return pu
+}
+
+func (pu *preunit) GlobalThresholdCoin() *tcoin.GlobalThresholdCoin {
+	return pu.gtc
+}
+
+func (pu *preunit) CoinShare() *tcoin.CoinShare {
+	return pu.cs
 }
 
 // Data returns data embedded in this preunit.

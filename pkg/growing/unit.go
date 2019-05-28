@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type unit struct {
@@ -17,6 +18,7 @@ type unit struct {
 	parents       []gomel.Unit
 	floor         [][]*unit
 	data          []byte
+	cs            *tcoin.CoinShare
 }
 
 func newUnit(pu gomel.Preunit) *unit {
@@ -25,6 +27,10 @@ func newUnit(pu gomel.Preunit) *unit {
 		hash:    *pu.Hash(),
 		data:    pu.Data(),
 	}
+}
+
+func (u *unit) CoinShare() *tcoin.CoinShare {
+	return u.cs
 }
 
 func (u *unit) Data() []byte {

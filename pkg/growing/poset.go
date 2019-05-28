@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 // Poset that is intended to be used during poset creation.
@@ -15,6 +16,8 @@ type Poset struct {
 	adders     []chan *unitBuilt
 	tasks      sync.WaitGroup
 	pubKeys    []gomel.PublicKey
+	// TODO: create thread safe implementation for this map
+	tcByHash map[gomel.Hash]*tcoin.ThresholdCoin
 }
 
 // NewPoset constructs a poset using given public keys of processes.
@@ -41,7 +44,17 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 	return newPoset
 }
 
+// ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
+// nil for hashes of non-dealing units
+func (p *Poset) ThresholdCoin(h gomel.Hash) *tcoin.ThresholdCoin {
+	if tc, ok := p.tcByHash[h]; ok {
+		return tc
+	}
+	return nil
+}
+
 // GetCRP is a dummy implementation of a common random permutation
+// TODO: implement
 func (p *Poset) GetCRP(level int) []int {
 	permutation := make([]int, p.NProc())
 	for i := 0; i < p.NProc(); i++ {
