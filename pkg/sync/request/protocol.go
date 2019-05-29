@@ -49,7 +49,7 @@ func sendUnits(units [][]gomel.Unit, conn network.Connection) error {
 	return encodeUnits(conn, units)
 }
 
-func getPreunits(conn network.Connection) ([][]gomel.Preunit, error) {
+func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
 	return decodeUnits(conn)
 }
 
@@ -120,10 +120,10 @@ func nonempty(req requests) bool {
 func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
+	nProc := poset.NProc()
 	log := p.Log.With().Uint32(logging.PID, conn.Pid()).Uint32(logging.ISID, conn.Sid()).Logger()
 	log.Info().Msg(logging.SyncStarted)
 
-	nProc := poset.NProc()
 	log.Debug().Msg(logging.GetPosetInfo)
 	theirPosetInfo, err := getPosetInfo(nProc, conn)
 	if err != nil {
@@ -157,12 +157,11 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, err := getPreunits(conn)
+	theirPreunitsReceived, nReceived, err := getPreunits(conn)
 	if err != nil {
 		log.Error().Str("where", "proto.In.getPreunits").Msg(err.Error())
 		return
 	}
-	nReceived := 0 //TODO!!!
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetRequests)
@@ -178,7 +177,7 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 		log.Debug().Msg(logging.SendUnits)
 		err = sendUnits(units, conn)
 		if err != nil {
-			log.Error().Str("where", "proto.In.sendUnits(again)").Msg(err.Error())
+			log.Error().Str("where", "proto.In.sendUnits(extra round)").Msg(err.Error())
 			return
 		}
 		log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
@@ -213,11 +212,11 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
-	maxSnapshot := posetMaxSnapshot(poset)
-	posetInfo := toPosetInfo(maxSnapshot)
 	log := p.Log.With().Uint32(logging.OSID, conn.Sid()).Logger()
 	log.Info().Msg(logging.SyncStarted)
 
+	maxSnapshot := posetMaxSnapshot(poset)
+	posetInfo := toPosetInfo(maxSnapshot)
 	log.Debug().Msg(logging.SendPosetInfo)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
 		log.Error().Str("where", "proto.Out.sendPosetInfo").Msg(err.Error())
@@ -232,12 +231,11 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, err := getPreunits(conn)
+	theirPreunitsReceived, nReceived, err := getPreunits(conn)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.getPreunits").Msg(err.Error())
 		return
 	}
-	nReceived := 0 //TODO!!!
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetRequests)
@@ -267,12 +265,11 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	if nonempty(req) {
 		log.Info().Msg(logging.AdditionalExchange)
 		log.Debug().Msg(logging.GetPreunits)
-		theirPreunitsReceived, err = getPreunits(conn)
+		theirPreunitsReceived, nReceived, err = getPreunits(conn)
 		if err != nil {
-			log.Error().Str("where", "proto.Out.getPreunits(again)").Msg(err.Error())
+			log.Error().Str("where", "proto.Out.getPreunits(extra round)").Msg(err.Error())
 			return
 		}
-		nReceived := 0 //TODO!!!
 		log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 	}
 
