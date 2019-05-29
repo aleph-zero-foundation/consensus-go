@@ -141,7 +141,11 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 		return
 	}
 
-	units, nSent := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
+	units, nSent, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
+	if err != nil {
+		log.Error().Str("where", "proto.In.unitsToSend").Msg(err.Error())
+		return
+	}
 	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(units, conn)
 	if err != nil {
@@ -175,7 +179,11 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 
 	if nonempty(theirRequests) {
 		log.Info().Msg(logging.AdditionalExchange)
-		units, nSent = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+		units, nSent, err = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+		if err != nil {
+			log.Error().Str("where", "proto.In.unitsToSend(extra round)").Msg(err.Error())
+			return
+		}
 		log.Debug().Msg(logging.SendUnits)
 		err = sendUnits(units, conn)
 		if err != nil {
@@ -247,7 +255,11 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 		return
 	}
 
-	units, nSent := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+	units, nSent, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+	if err != nil {
+		log.Error().Str("where", "proto.Out.unitsToSend").Msg(err.Error())
+		return
+	}
 	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(units, conn)
 	if err != nil {
