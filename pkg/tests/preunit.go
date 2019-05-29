@@ -19,9 +19,10 @@ type preunit struct {
 // NewPreunit returns preunit
 func NewPreunit(creator int, parents []gomel.Hash, data []byte) gomel.Preunit {
 	pu := &preunit{
-		creator: creator,
-		parents: parents,
-		data:    data,
+		creator:   creator,
+		parents:   parents,
+		data:      data,
+		signature: make([]byte, 64),
 	}
 	pu.computeHash()
 

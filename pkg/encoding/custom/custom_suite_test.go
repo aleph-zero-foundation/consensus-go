@@ -1,4 +1,4 @@
-package gob_test
+package custom_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGob(t *testing.T) {
+func TestCustom(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gob Encoding Suite")
+	RunSpecs(t, "Custom Suite")
 }
