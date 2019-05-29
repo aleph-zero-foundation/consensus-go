@@ -1,6 +1,9 @@
 package signing
 
 import (
+	"encoding/base64"
+	"errors"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"golang.org/x/crypto/nacl/sign"
 )
@@ -26,9 +29,17 @@ func (pub *publicKey) Verify(pu gomel.Preunit) bool {
 	return v
 }
 
+func (pub *publicKey) Encode() string {
+	return base64.StdEncoding.EncodeToString(pub.data[:])
+}
+
 // Sign takes the hash of a given preunit and returns its signature produced using the private key from the receiver.
 func (priv *privateKey) Sign(pu gomel.Preunit) gomel.Signature {
 	return sign.Sign(nil, pu.Hash()[:], priv.data)[:sign.Overhead]
+}
+
+func (priv *privateKey) Encode() string {
+	return base64.StdEncoding.EncodeToString(priv.data[:])
 }
 
 // GenerateKeys produces a public and private key pair for signing units.
@@ -42,4 +53,34 @@ func GenerateKeys() (gomel.PublicKey, gomel.PrivateKey, error) {
 	priv := &privateKey{privData}
 
 	return pub, priv, nil
+}
+
+// DecodePublicKey decodes a public key encoded as a base64 string.
+func DecodePublicKey(enc string) (gomel.PublicKey, error) {
+	data, err := base64.StdEncoding.DecodeString(enc)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) != 32 {
+		return nil, errors.New("bad encoded public key")
+	}
+	result := publicKey{&[32]byte{}}
+	copy(result.data[:], data)
+	return &result, nil
+}
+
+// DecodePrivateKey decodes a private key encoded as a base64 string.
+func DecodePrivateKey(enc string) (gomel.PrivateKey, error) {
+	data, err := base64.StdEncoding.DecodeString(enc)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) != 64 {
+		return nil, errors.New("bad encoded private key")
+	}
+	result := privateKey{&[64]byte{}}
+	for i, b := range data {
+		result.data[i] = b
+	}
+	return &result, nil
 }

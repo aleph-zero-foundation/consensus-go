@@ -34,7 +34,7 @@ func startAll(services []process.Service) error {
 // Process runs all the services with the configuration provided.
 // It blocks until all of them are done.
 func Process(config process.Config) error {
-	var posetFinished chan struct{}
+	posetFinished := make(chan struct{})
 	var services []process.Service
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
 	// creator/syncer should send a notification to the channel when a new prime unit is added to the poset
@@ -57,12 +57,6 @@ func Process(config process.Config) error {
 	}
 	services = append(services, service)
 
-	service, err = sync.NewService(poset, config.Sync, log.With().Int("S", logging.SyncService).Logger())
-	if err != nil {
-		return err
-	}
-	services = append(services, service)
-
 	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits, log.With().Int("S", logging.OrderService).Logger())
 	if err != nil {
 		return err
@@ -76,6 +70,12 @@ func Process(config process.Config) error {
 	services = append(services, service)
 
 	service, err = generate.NewService(poset, config.TxGenerate, txChan, log.With().Int("S", logging.GenerateService).Logger())
+	if err != nil {
+		return err
+	}
+	services = append(services, service)
+
+	service, err = sync.NewService(poset, config.Sync, log.With().Int("S", logging.SyncService).Logger())
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,8 @@
 package order
 
 import (
+	"sync"
+
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -22,6 +24,7 @@ type service struct {
 	orderedUnits          chan<- gomel.Unit
 	currentRound          int
 	exitChan              chan struct{}
+	wg                    sync.WaitGroup
 	log                   zerolog.Logger
 }
 
@@ -39,16 +42,21 @@ func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests 
 }
 
 func (s *service) attemptOrdering() {
+	defer close(s.extendOrderRequests)
+	defer s.wg.Done()
 	for {
 		select {
-		case highest := <-s.attemptTimingRequests: // level of the most recent prime unit
+		case highest, ok := <-s.attemptTimingRequests: // level of the most recent prime unit
+			if !ok {
+				<-s.exitChan
+				return
+			}
 			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
 				s.log.Info().Int("h", highest).Int("r", s.currentRound).Msg(logging.NewTimingUnit)
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}
 		case <-s.exitChan:
-			close(s.extendOrderRequests)
 			return
 		}
 	}
@@ -63,10 +71,12 @@ func (s *service) extendOrder() {
 		s.log.Info().Int("n", len(units)).Msg(logging.LinearOrderExtended)
 	}
 	close(s.orderedUnits)
+	s.wg.Done()
 }
 
 // Start is a function which starts the service
 func (s *service) Start() error {
+	s.wg.Add(2)
 	go s.attemptOrdering()
 	go s.extendOrder()
 	s.log.Info().Msg(logging.ServiceStarted)
@@ -76,5 +86,6 @@ func (s *service) Start() error {
 // Stop is the function that stops the service
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }

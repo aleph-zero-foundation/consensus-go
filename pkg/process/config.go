@@ -18,13 +18,14 @@ type Config struct {
 
 // Sync represents a complete configuration needed for a syncing service to start.
 type Sync struct {
+	Pid                  int
 	LocalAddress         string
 	RemoteAddresses      []string
-	ListenQueueLength    int
-	SyncQueueLength      int
-	InitializedSyncLimit int
-	ReceivedSyncLimit    int
-	SyncInitDelay        int
+	ListenQueueLength    uint
+	SyncQueueLength      uint
+	InitializedSyncLimit uint
+	ReceivedSyncLimit    uint
+	SyncInitDelay        time.Duration
 	Timeout              time.Duration
 }
 
@@ -33,7 +34,7 @@ type Create struct {
 	Pid          int
 	MaxParents   int
 	PrivateKey   gomel.PrivateKey
-	InitialDelay int
+	InitialDelay time.Duration
 	AdjustFactor float64
 	MaxLevel     int
 	MaxHeight    int

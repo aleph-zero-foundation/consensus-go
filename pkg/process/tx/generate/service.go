@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"math/rand"
 	"os"
+	"sync"
 
 	"github.com/rs/zerolog"
 
@@ -20,6 +21,7 @@ type service struct {
 	exitChan         chan struct{}
 	compressionLevel int
 	log              zerolog.Logger
+	wg               sync.WaitGroup
 }
 
 func readUsers(filename string) ([]string, error) {
@@ -77,12 +79,14 @@ func (s *service) main() {
 			txID += uint32(len(txs))
 		case <-s.exitChan:
 			close(s.txChan)
+			s.wg.Done()
 			return
 		}
 	}
 }
 
 func (s *service) Start() error {
+	s.wg.Add(1)
 	go s.main()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
@@ -90,5 +94,6 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	close(s.exitChan)
+	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }
