@@ -29,7 +29,7 @@ func NewEncoder(w io.Writer) encoding.Encoder {
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
 func (e *encoder) EncodeUnit(unit gomel.Unit) error {
 	nParents := uint32(len(unit.Parents()))
-	data := make([]byte, 64+4+4+nParents*64+4)
+	data := make([]byte, 4+64+4+nParents*64+4)
 	s := 0
 	creator := uint32(unit.Creator())
 	binary.LittleEndian.PutUint32(data[s:s+4], creator)

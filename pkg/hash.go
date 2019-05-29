@@ -6,7 +6,6 @@ import "encoding/base64"
 type Hash [64]byte
 
 // Short returns a shortened version of the hash for easy viewing.
-// For now quite stupid, might contain broken chars.
 func (h *Hash) Short() string {
 	return base64.StdEncoding.EncodeToString(h[:8])
 }
