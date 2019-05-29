@@ -67,7 +67,7 @@ func main() {
 	logging.InitLogger(logging.LogConfig{
 		Level:    1,
 		Path:     options.logFilename,
-		DiodeBuf: 10000,
+		DiodeBuf: 100000,
 		TimeUnit: time.Millisecond,
 	})
 	committee, err := getCommittee(options.keyFilename)

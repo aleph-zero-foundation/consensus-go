@@ -26,6 +26,8 @@ func makeProcess(i int) proc {
 	}
 }
 
+// This program generates files with random keys and local addresses for a committee of the specified size.
+// These files are intended to be used for simple local tests of the gomel binary.
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number>.")

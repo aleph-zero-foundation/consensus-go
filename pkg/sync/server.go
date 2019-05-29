@@ -1,7 +1,7 @@
 package sync
 
 import (
-	s "sync"
+	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -18,7 +18,7 @@ type Server struct {
 	nInitSync    uint
 	nRecvSync    uint
 	exitChan     chan struct{}
-	wg           s.WaitGroup
+	wg           sync.WaitGroup
 }
 
 // NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,

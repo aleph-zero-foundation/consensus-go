@@ -24,19 +24,21 @@ type Committee struct {
 	Addresses []string
 }
 
+const malformedData = "malformed committee data"
+
 // LoadCommittee loads the data from the given reader and creates a committee.
 func LoadCommittee(r io.Reader) (*Committee, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanWords)
 	if !scanner.Scan() {
-		return nil, errors.New("malformed committee data")
+		return nil, errors.New(malformedData)
 	}
 	privateKey, err := signing.DecodePrivateKey(scanner.Text())
 	if err != nil {
 		return nil, err
 	}
 	if !scanner.Scan() {
-		return nil, errors.New("malformed committee data")
+		return nil, errors.New(malformedData)
 	}
 	address := scanner.Text()
 	publicKeys := []gomel.PublicKey{}
@@ -48,7 +50,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		}
 		publicKeys = append(publicKeys, publicKey)
 		if !scanner.Scan() {
-			return nil, errors.New("malformed committee data")
+			return nil, errors.New(malformedData)
 		}
 		remoteAddresses = append(remoteAddresses, scanner.Text())
 	}
@@ -56,7 +58,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		return nil, err
 	}
 	if len(publicKeys) < 4 {
-		return nil, errors.New("malformed committee data")
+		return nil, errors.New(malformedData)
 	}
 	pid := -1
 	for i, a := range remoteAddresses {
@@ -66,7 +68,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		}
 	}
 	if pid == -1 {
-		return nil, errors.New("malformed committee data")
+		return nil, errors.New(malformedData)
 	}
 	return &Committee{
 		Pid:        pid,

@@ -2,7 +2,7 @@ package sync
 
 import (
 	"math/rand"
-	s "sync"
+	"sync"
 	"time"
 )
 
@@ -13,7 +13,7 @@ type dialer struct {
 	source chan int
 	ticker *time.Ticker
 	done   chan struct{}
-	wg     s.WaitGroup
+	wg     sync.WaitGroup
 }
 
 func newDialer(n, id int, syncInitDelay time.Duration) *dialer {
