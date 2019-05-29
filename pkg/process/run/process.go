@@ -57,7 +57,7 @@ func Process(config process.Config) error {
 	}
 	services = append(services, service)
 
-	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service logging.OrderService).Logger())
+	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
 		return err
 	}
