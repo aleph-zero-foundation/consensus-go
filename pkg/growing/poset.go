@@ -36,6 +36,7 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 		maxUnits:   newSlottedUnits(n),
 		adders:     adders,
 		pubKeys:    pubKeys,
+		tcByHash:   make(map[gomel.Hash]*tcoin.ThresholdCoin),
 	}
 	for k := range adders {
 		go newPoset.adder(adders[k])
@@ -46,8 +47,8 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 
 // ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
 // nil for hashes of non-dealing units
-func (p *Poset) ThresholdCoin(h gomel.Hash) *tcoin.ThresholdCoin {
-	if tc, ok := p.tcByHash[h]; ok {
+func (p *Poset) ThresholdCoin(h *gomel.Hash) *tcoin.ThresholdCoin {
+	if tc, ok := p.tcByHash[*h]; ok {
 		return tc
 	}
 	return nil

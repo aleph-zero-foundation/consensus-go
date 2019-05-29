@@ -43,6 +43,15 @@ var _ = Describe("Tcoin", func() {
 				_, ok := tc[0].CombineCoinShares(coinShares[:(t - 1)])
 				Expect(ok).To(BeFalse())
 			})
+			It("Should be marshalled and unmarshalled correctly", func() {
+				for i := 0; i < n; i++ {
+					csMarshalled := coinShares[i].Marshal()
+					var cs = new(CoinShare)
+					err := cs.Unmarshal(csMarshalled)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(tc[0].VerifyCoinShare(cs, nonce)).To(BeTrue())
+				}
+			})
 		})
 	})
 })

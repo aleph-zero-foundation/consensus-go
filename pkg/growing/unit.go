@@ -26,6 +26,7 @@ func newUnit(pu gomel.Preunit) *unit {
 		creator: pu.Creator(),
 		hash:    *pu.Hash(),
 		data:    pu.Data(),
+		cs:      pu.CoinShare(),
 	}
 }
 

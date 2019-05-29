@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
@@ -52,7 +53,13 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 		}
 		txsEncoded := transactions.Encode([]transactions.Tx{transactions.Tx{ID: txID}})
 		txsCompressed, _ := transactions.Compress(txsEncoded, 5)
-		pu := NewPreunit(puCreator, parents, txsCompressed)
+		var gtc *tcoin.GlobalThresholdCoin
+		var cs *tcoin.CoinShare
+		if len(parents) == 0 {
+			gtc = tcoin.GenerateThresholdCoin(n, n/3+1)
+		}
+		// TODO: generate coinshare here
+		pu := NewPreunit(puCreator, parents, txsCompressed, cs, gtc)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = *pu.Hash()
 		var addingError error

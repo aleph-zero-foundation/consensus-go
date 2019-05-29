@@ -2,6 +2,8 @@ package tcoin
 
 import (
 	"crypto/rand"
+	"encoding/binary"
+	"errors"
 	"math/big"
 	"sync"
 
@@ -12,7 +14,7 @@ import (
 // It contains secret keys of all processes
 // In the full version of the protocol secretKeys should be sealed
 type GlobalThresholdCoin struct {
-	threshold int
+	Threshold int
 	globalVK  verificationKey
 	vks       []verificationKey
 	sks       []secretKey
@@ -22,11 +24,100 @@ type GlobalThresholdCoin struct {
 // It contains pid of the owner
 // sk is a secretKey of the owner
 type ThresholdCoin struct {
-	threshold int
+	Threshold int
 	pid       int
 	globalVK  verificationKey
 	vks       []verificationKey
 	sk        secretKey
+}
+
+// Marshal returns byte representation of the given gtc in the following form
+// (1) threshold, 1 byte as uint32
+// (2) length of marshalled globalVK, 1 byte as uint32
+// (3) marshalled globalVK
+// (4) len(vks), 1 byte as uint32
+// (5) Marshalled vks in the form
+//     a) length of marshalled vk
+//     b) marshalled vk
+// (6) Marshalled sks in the form
+//     a) length of marshalled sk
+//     b) marshalled sk
+func (gtc *GlobalThresholdCoin) Marshal() []byte {
+	data := make([]byte, 8)
+	binary.LittleEndian.PutUint32(data[:4], uint32(gtc.Threshold))
+
+	globalVKMarshalled := gtc.globalVK.key.Marshal()
+	binary.LittleEndian.PutUint32(data[4:8], uint32(len(globalVKMarshalled)))
+
+	data = append(data, globalVKMarshalled...)
+
+	dataLen := make([]byte, 4)
+	binary.LittleEndian.PutUint32(dataLen[:], uint32(len(gtc.vks)))
+	data = append(data, dataLen...)
+
+	for _, vk := range gtc.vks {
+		vkMarshalled := vk.key.Marshal()
+		binary.LittleEndian.PutUint32(dataLen, uint32(len(vkMarshalled)))
+		data = append(data, dataLen...)
+		data = append(data, vkMarshalled...)
+	}
+
+	for _, sk := range gtc.sks {
+		skMarshalled := sk.key.Bytes()
+		binary.LittleEndian.PutUint32(dataLen, uint32(len(skMarshalled)))
+		data = append(data, dataLen...)
+		data = append(data, skMarshalled...)
+	}
+	return data
+}
+
+// Unmarshal reads gtc from its byte representation
+func (gtc *GlobalThresholdCoin) Unmarshal(data []byte) error {
+	ind := 0
+	threshold := int(binary.LittleEndian.Uint32(data[:(ind + 4)]))
+	ind += 4
+
+	gvkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
+	ind += 4
+	key, ok := new(bn256.G2).Unmarshal(data[ind:(ind + gvkLen)])
+	if !ok {
+		return errors.New("unmarshal of globalVK failed")
+	}
+	ind += gvkLen
+	globalVK := verificationKey{
+		key: key,
+	}
+
+	nProcesses := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
+	ind += 4
+	vks := make([]verificationKey, nProcesses)
+	for i := range vks {
+		vkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
+		ind += 4
+		key, ok := new(bn256.G2).Unmarshal(data[ind:(ind + vkLen)])
+		if !ok {
+			return errors.New("unmarshal of vk failed")
+		}
+		ind += vkLen
+		vks[i] = verificationKey{
+			key: key,
+		}
+	}
+	sks := make([]secretKey, nProcesses)
+	for i := range sks {
+		skLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
+		ind += 4
+		key := big.NewInt(int64(0)).SetBytes(data[ind:(ind + skLen)])
+		ind += skLen
+		sks[i] = secretKey{
+			key: key,
+		}
+	}
+	gtc.Threshold = threshold
+	gtc.globalVK = globalVK
+	gtc.vks = vks
+	gtc.sks = sks
+	return nil
 }
 
 // GenerateThresholdCoin generates keys and secrets for ThresholdCoin
@@ -61,7 +152,7 @@ func GenerateThresholdCoin(nProcesses, threshold int) *GlobalThresholdCoin {
 	wg.Wait()
 
 	return &GlobalThresholdCoin{
-		threshold: threshold,
+		Threshold: threshold,
 		globalVK:  globalVK,
 		vks:       vks,
 		sks:       sks,
@@ -72,7 +163,7 @@ func GenerateThresholdCoin(nProcesses, threshold int) *GlobalThresholdCoin {
 // In the full version of the protocol here we should unseal the secretKey of the owner.
 func NewThresholdCoin(gtc *GlobalThresholdCoin, pid int) *ThresholdCoin {
 	return &ThresholdCoin{
-		threshold: gtc.threshold,
+		Threshold: gtc.Threshold,
 		pid:       pid,
 		globalVK:  gtc.globalVK,
 		vks:       gtc.vks,
@@ -84,6 +175,28 @@ func NewThresholdCoin(gtc *GlobalThresholdCoin, pid int) *ThresholdCoin {
 type CoinShare struct {
 	pid int
 	sgn signature
+}
+
+// Marshal returns byte representation of the given cs in the following form
+// (1) pid, 1 byte as uint32
+// (2) sgn
+func (cs *CoinShare) Marshal() []byte {
+	data := make([]byte, 4)
+	binary.LittleEndian.PutUint32(data[:4], uint32(cs.pid))
+	data = append(data, cs.sgn...)
+	return data
+}
+
+// Unmarshal reads cs from its byte representation
+func (cs *CoinShare) Unmarshal(data []byte) error {
+	if len(data) < 4 {
+		return errors.New("given data is too short")
+	}
+	pid := int(binary.LittleEndian.Uint32(data[0:4]))
+	sgn := data[4:]
+	cs.pid = pid
+	cs.sgn = sgn
+	return nil
 }
 
 // Coin is a result of merging CoinShares
@@ -117,7 +230,7 @@ func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int) bool {
 // CombineCoinShares combines given shares into a Coin
 // it returns a Coin and a bool value indicating wheather combining was successful or not
 func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
-	if tc.threshold != len(shares) {
+	if tc.Threshold != len(shares) {
 		return nil, false
 	}
 	var points []int

@@ -22,5 +22,5 @@ type Poset interface {
 	GetCRP(int) []int
 	// ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
 	// nil for hashes of non-dealing units
-	ThresholdCoin(Hash) *tcoin.ThresholdCoin
+	ThresholdCoin(*Hash) *tcoin.ThresholdCoin
 }

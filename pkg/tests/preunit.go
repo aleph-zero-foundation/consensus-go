@@ -20,12 +20,14 @@ type preunit struct {
 }
 
 // NewPreunit returns preunit
-func NewPreunit(creator int, parents []gomel.Hash, data []byte) gomel.Preunit {
+func NewPreunit(creator int, parents []gomel.Hash, data []byte, cs *tcoin.CoinShare, gtc *tcoin.GlobalThresholdCoin) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		parents:   parents,
 		data:      data,
 		signature: make([]byte, 64),
+		cs:        cs,
+		gtc:       gtc,
 	}
 	pu.computeHash()
 
@@ -83,5 +85,13 @@ func (pu *preunit) computeHash() {
 	data.Write(toBytes(int32(pu.creator)))
 	data.Write(toBytes(pu.parents))
 	data.Write(pu.Data())
+	if pu.cs != nil {
+		csBytes := pu.cs.Marshal()
+		data.Write(csBytes)
+	}
+	if pu.gtc != nil {
+		gtcBytes := pu.gtc.Marshal()
+		data.Write(gtcBytes)
+	}
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }

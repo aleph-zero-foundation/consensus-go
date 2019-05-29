@@ -5,6 +5,7 @@ import (
 	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type noAvailableParents struct{}
@@ -23,8 +24,9 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 }
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
-func newDealingUnit(creator int, data []byte) gomel.Preunit {
-	return NewPreunit(creator, []gomel.Hash{}, data)
+func newDealingUnit(creator, NProc int, data []byte) gomel.Preunit {
+	tc := tcoin.GenerateThresholdCoin(NProc, NProc/3+1)
+	return NewPreunit(creator, []gomel.Hash{}, data, nil, tc)
 }
 
 // maxLevel returns the maximal level from units present in mu.
@@ -185,6 +187,93 @@ func hashes(units []gomel.Unit) []gomel.Hash {
 	return result
 }
 
+// levelFromParents calculates level of the unit under construction that will have given set parents
+// Expects units in parents to be sorted via ascending level
+// It uses dfs on the maximal level of parents
+func levelFromParents(parents []gomel.Unit, poset gomel.Poset) int {
+	if len(parents) == 0 {
+		return 0
+	}
+
+	level := parents[len(parents)-1].Level()
+	procSeen := make(map[int]bool)
+	unitsSeen := make(map[gomel.Hash]bool)
+	stack := []gomel.Unit{}
+	for _, u := range parents {
+		if u.Level() != level {
+			continue
+		}
+		stack = append(stack, u)
+		unitsSeen[*u.Hash()] = true
+		procSeen[u.Creator()] = true
+		if poset.IsQuorum(len(procSeen)) {
+			return level + 1
+		}
+	}
+	for len(stack) > 0 {
+		w := stack[len(stack)-1]
+		stack = stack[:(len(stack) - 1)]
+
+		for _, v := range w.Parents() {
+			if v.Level() == level && !unitsSeen[*v.Hash()] {
+				stack = append(stack, v)
+				unitsSeen[*v.Hash()] = true
+				procSeen[v.Creator()] = true
+				if poset.IsQuorum(len(procSeen)) {
+					return level + 1
+				}
+			}
+		}
+	}
+	return level
+}
+
+// firstDealingUnitFromParents takes parents of the unit under construction
+// and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
+// that is below the unit under construction
+func firstDealingUnitFromParents(parents []gomel.Unit, poset gomel.Poset) gomel.Unit {
+	level := levelFromParents(parents, poset)
+	dealingUnits := poset.PrimeUnits(0)
+	for _, dealer := range poset.GetCRP(level) {
+		// We are only checking if there are forked dealing units created by the dealer
+		// below the unit under construction.
+		// We could check if we have evidence that the dealer is forking
+		// but this is expensive without access to floors.
+		var result gomel.Unit
+		for _, u := range dealingUnits.Get(dealer) {
+			if belowAny(u, parents) {
+				if result != nil {
+					// we see forked dealing unit
+					result = nil
+					break
+				} else {
+					result = u
+				}
+			}
+		}
+		if result != nil {
+			return result
+		}
+	}
+	return nil
+}
+
+// createCoinShare takes parents of the unit under construction
+// if the unit will be a prime unit it returns coin share to include in the unit
+// otherwise it returns nil
+func createCoinShare(parents []gomel.Unit, poset gomel.Poset) *tcoin.CoinShare {
+	level := levelFromParents(parents, poset)
+	if level == parents[0].Level() {
+		return nil
+	}
+	fdu := firstDealingUnitFromParents(parents, poset)
+	tc := poset.ThresholdCoin(fdu.Hash())
+	if tc == nil {
+		return nil
+	}
+	return tc.CreateCoinShare(level)
+}
+
 // NewUnit creates a preunit for a given process with at most maximumParents parents.
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
@@ -193,7 +282,7 @@ func NewUnit(poset gomel.Poset, creator int, maximumParents int, data []byte) (g
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
 	if predecessor == nil {
-		return newDealingUnit(creator, data), nil
+		return newDealingUnit(creator, poset.NProc(), data), nil
 	}
 	parents := []gomel.Unit{predecessor}
 	posetLevel := maxLevel(mu)
@@ -207,5 +296,6 @@ func NewUnit(poset gomel.Poset, creator int, maximumParents int, data []byte) (g
 	if len(parents) < 2 {
 		return nil, &noAvailableParents{}
 	}
-	return NewPreunit(creator, hashes(parents), data), nil
+	cs := createCoinShare(parents, poset)
+	return NewPreunit(creator, hashes(parents), data, cs, nil), nil
 }
