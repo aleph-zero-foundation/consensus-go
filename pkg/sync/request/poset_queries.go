@@ -244,9 +244,9 @@ func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {
 	return layer[u]
 }
 
-// toLayers divides the provided units into antichains, so that each antichain
-// is maximal depends only on units not in units or on the previous antichains.
-func toLayers(units []gomel.Unit) [][]gomel.Unit {
+// toLayers divides the provided units into antichains, so that each antichain is
+// maximal, and depends only on units from outside or from previous antichains.
+func toLayers(units []gomel.Unit) ([][]gomel.Unit, int) {
 	layer := map[gomel.Unit]int{}
 	maxLayer := 0
 	for _, u := range units {
@@ -262,10 +262,10 @@ func toLayers(units []gomel.Unit) [][]gomel.Unit {
 	for _, u := range units {
 		result[layer[u]-1] = append(result[layer[u]-1], u)
 	}
-	return result
+	return result, len(units)
 }
 
-func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req requests) [][]gomel.Unit {
+func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req requests) ([][]gomel.Unit, int) {
 	toSendPid := make([][]gomel.Unit, len(info))
 	var wg sync.WaitGroup
 	wg.Add(len(info))

@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
@@ -119,53 +120,77 @@ func nonempty(req requests) bool {
 func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
+	log := p.Log.With().Uint32(logging.PID, conn.Pid()).Uint32(logging.ISID, conn.Sid()).Logger()
+	log.Info().Msg(logging.SyncStarted)
+
 	nProc := poset.NProc()
+	log.Debug().Msg(logging.GetPosetInfo)
 	theirPosetInfo, err := getPosetInfo(nProc, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.In.getPosetInfo").Msg(err.Error())
+		log.Error().Str("where", "proto.In.getPosetInfo").Msg(err.Error())
 		return
 	}
+
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
+	log.Debug().Msg(logging.SendPosetInfo)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
-		p.Log.Error().Str("where", "proto.In.sendPosetInfo").Msg(err.Error())
+		log.Error().Str("where", "proto.In.sendPosetInfo").Msg(err.Error())
 		return
 	}
-	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
+
+	units, nSent := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
+	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(units, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.In.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "proto.In.sendUnits").Msg(err.Error())
 		return
 	}
+	log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
+
 	req := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
+	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(req, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.In.sendRequests").Msg(err.Error())
+		log.Error().Str("where", "proto.In.sendRequests").Msg(err.Error())
 		return
 	}
+
+	log.Debug().Msg(logging.GetPreunits)
 	theirPreunitsReceived, err := getPreunits(conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.In.getPreunits").Msg(err.Error())
+		log.Error().Str("where", "proto.In.getPreunits").Msg(err.Error())
 		return
 	}
+	nReceived := 0 //TODO!!!
+	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
+
+	log.Debug().Msg(logging.GetRequests)
 	theirRequests, err := getRequests(nProc, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.In.getRequests").Msg(err.Error())
+		log.Error().Str("where", "proto.In.getRequests").Msg(err.Error())
 		return
 	}
+
 	if nonempty(theirRequests) {
-		units = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+		log.Info().Msg(logging.AdditionalExchange)
+		units, nSent = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+		log.Debug().Msg(logging.SendUnits)
 		err = sendUnits(units, conn)
 		if err != nil {
-			p.Log.Error().Str("where", "proto.In.sendUnits(again)").Msg(err.Error())
+			log.Error().Str("where", "proto.In.sendUnits(again)").Msg(err.Error())
 			return
 		}
+		log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
 	}
+
+	log.Debug().Msg(logging.AddUnits)
 	err = addUnits(poset, theirPreunitsReceived)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
+		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
 	}
+	log.Info().Int(logging.UnitsSent, nSent).Int(logging.UnitsRecv, nReceived).Msg(logging.SyncCompleted)
 }
 
 // Run handles the outgoing connection using info from the poset.
@@ -190,47 +215,72 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	nProc := poset.NProc()
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
+	log := p.Log.With().Uint32(logging.OSID, conn.Sid()).Logger()
+	log.Info().Msg(logging.SyncStarted)
+
+	log.Debug().Msg(logging.SendPosetInfo)
 	if err := sendPosetInfo(posetInfo, conn); err != nil {
-		p.Log.Error().Str("where", "proto.Out.sendPosetInfo").Msg(err.Error())
+		log.Error().Str("where", "proto.Out.sendPosetInfo").Msg(err.Error())
 		return
 	}
+
+	log.Debug().Msg(logging.GetPosetInfo)
 	theirPosetInfo, err := getPosetInfo(nProc, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.Out.getPosetInfo").Msg(err.Error())
+		log.Error().Str("where", "proto.Out.getPosetInfo").Msg(err.Error())
 		return
 	}
+
+	log.Debug().Msg(logging.GetPreunits)
 	theirPreunitsReceived, err := getPreunits(conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.Out.getPreunits").Msg(err.Error())
+		log.Error().Str("where", "proto.Out.getPreunits").Msg(err.Error())
 		return
 	}
+	nReceived := 0 //TODO!!!
+	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
+
+	log.Debug().Msg(logging.GetRequests)
 	theirRequests, err := getRequests(nProc, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.Out.getRequests").Msg(err.Error())
+		log.Error().Str("where", "proto.Out.getRequests").Msg(err.Error())
 		return
 	}
-	units := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+
+	units, nSent := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(units, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.Out.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "proto.Out.sendUnits").Msg(err.Error())
 		return
 	}
+	log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
+
 	req := requestsToSend(poset, theirPosetInfo, theirPreunitsReceived)
+	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(req, conn)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.Out.sendRequests").Msg(err.Error())
+		log.Error().Str("where", "proto.Out.sendRequests").Msg(err.Error())
 		return
 	}
+
 	if nonempty(req) {
+		log.Info().Msg(logging.AdditionalExchange)
+		log.Debug().Msg(logging.GetPreunits)
 		theirPreunitsReceived, err = getPreunits(conn)
 		if err != nil {
-			p.Log.Error().Str("where", "proto.Out.getPreunits(again)").Msg(err.Error())
+			log.Error().Str("where", "proto.Out.getPreunits(again)").Msg(err.Error())
 			return
 		}
+		nReceived := 0 //TODO!!!
+		log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 	}
+
+	log.Debug().Msg(logging.AddUnits)
 	err = addUnits(poset, theirPreunitsReceived)
 	if err != nil {
-		p.Log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
+		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return
 	}
+	log.Info().Int(logging.UnitsSent, nSent).Int(logging.UnitsRecv, nReceived).Msg(logging.SyncCompleted)
 }
