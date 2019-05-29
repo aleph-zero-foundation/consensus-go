@@ -45,7 +45,7 @@ def clone_repo(conn):
     conn.run('rm -rf proof-of-concept')
     # clone using deployment token
     user_token = 'gitlab+deploy-token-70309:G2jUsynd3TQqsvVfn4T7'
-    conn.run(f'git clone http://{user_token}@gitlab.com/alephledger/proof-of-concept.git')
+    conn.run(f'git clone http://{user_token}@gitlab.com/alephledger/consensus-go.git')
     # checkout to devel
     with conn.cd('proof-of-concept'):
         conn.run('git checkout devel')
@@ -191,10 +191,10 @@ def stop_world(conn):
 
 
 @task
-def test(conn):
+def version(conn):
     ''' Always changing task for experimenting with fab.'''
 
-    conn.run(f'echo "Hello {conn.host}!"')
+    conn.run(f'PATH="$PATH:/snap/bin" && go version')
 
 
 @task
@@ -203,26 +203,3 @@ def run_unit_tests(conn):
 
     with conn.cd('proof-of-concept'):
         conn.run('pytest aleph')
-
-
-#======================================================================================
-#                                   ?
-#======================================================================================
-
-
-#======================================================================================
-#                                   new
-#======================================================================================
-
-@task
-def experiment_started(conn):
-    pass
-
-
-@task
-def experiment_stopped(conn):
-    pass
-
-@task
-def latency(conn):
-    pass

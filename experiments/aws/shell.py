@@ -96,7 +96,6 @@ def launch_new_instances_in_region(n_processes=1, region_name=default_region_nam
                                      'DeviceName': '/dev/xvda',
                                      'Ebs': {
                                          'DeleteOnTermination': True,
-                                         'SnapshotId': 'snap-058912e18a460abb5',
                                          'VolumeSize': 8,
                                          'VolumeType': 'gp2'
                                      },
@@ -255,7 +254,7 @@ def installation_finished_in_region(region_name):
 #                              routines for all regions
 #======================================================================================
 
-def exec_for_regions(func, regions='all', parallel=True):
+def exec_for_regions(func, regions='badger regions', parallel=True):
     '''A helper function for running routines in all regions.'''
 
     if regions == 'all':
@@ -316,25 +315,25 @@ def terminate_instances(regions='all', parallel=True):
     return exec_for_regions(terminate_instances_in_region, regions, parallel)
 
 
-def all_instances(regions='all', states=['running','pending'], parallel=True):
+def all_instances(regions='badger regions', states=['running','pending'], parallel=True):
     '''Returns all running or pending instances from given regions.'''
 
     return exec_for_regions(partial(all_instances_in_region, states=states), regions, parallel)
 
 
-def instances_ip(regions='all', parallel=True):
+def instances_ip(regions='badger regions', parallel=True):
     '''Returns ip addresses of all running or pending instances from given regions.'''
 
     return exec_for_regions(instances_ip_in_region, regions, parallel)
 
 
-def instances_state(regions='all', parallel=True):
+def instances_state(regions='badger regions', parallel=True):
     '''Returns states of all instances in given regions.'''
 
     return exec_for_regions(instances_state_in_region, regions, parallel)
 
 
-def run_task(task='test', regions='all', parallel=True, output=False):
+def run_task(task='test', regions='badger regions', parallel=True, output=False):
     '''
     Runs a task from fabfile.py on all instances in all given regions.
     :param string task: name of a task defined in fabfile.py
@@ -346,7 +345,7 @@ def run_task(task='test', regions='all', parallel=True, output=False):
     return exec_for_regions(partial(run_task_in_region, task, parallel=parallel, output=output), regions, parallel)
 
 
-def run_cmd(cmd='ls', regions='all', output=False, parallel=True):
+def run_cmd(cmd='ls', regions='badger regions', output=False, parallel=True):
     '''
     Runs a shell command cmd on all instances in all given regions.
     :param string cmd: a shell command that is run on instances
@@ -358,13 +357,13 @@ def run_cmd(cmd='ls', regions='all', output=False, parallel=True):
     return exec_for_regions(partial(run_cmd_in_region, cmd, output=output), regions, parallel)
 
 
-def wait(target_state, regions='all'):
+def wait(target_state, regions='badger regions'):
     '''Waits until all machines in all given regions reach a given state.'''
 
     exec_for_regions(partial(wait_in_region, target_state), regions)
 
 
-def wait_install(regions='all'):
+def wait_install(regions='badger regions'):
     '''Waits till installation finishes in all given regions.'''
 
     if regions == 'all':
@@ -447,6 +446,66 @@ def run_protocol(n_processes, regions, restricted, instance_type):
     print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
     run_task('run-protocol', regions, parallel)
+
+
+def create_images(regions=badger_regions()):
+    '''Creates images with golang set up for gomel.'''
+
+    print('launching a machine')
+    instance = launch_new_instances_in_region(1, regions[0], 't2.micro')[0]
+
+    print('waiting for transition from pending to running')
+    wait('running', regions[:1])
+
+    print('waiting till ports are open on machines')
+    # this is really slow, and actually machines are ready earlier! refactor
+    #wait('ssh ready', regions)
+    # TODO make it faster
+    sleep(120)
+
+    print('installing dependencies')
+    # install dependencies on hosts
+    run_task_in_region('inst-dep', regions[0])
+
+    print('wait till installation finishes')
+    # wait till installing finishes
+    sleep(60)
+    wait_install(regions[:1])
+
+    print('creating image in region', regions[0])
+    image = instance.create_image( 
+        BlockDeviceMappings=[ 
+            { 
+                'DeviceName': '/dev/sda1', 
+                'Ebs': { 
+                    'DeleteOnTermination': True, 
+                    'VolumeSize': 8, 
+                    'VolumeType': 'gp2', 
+                }, 
+            }, 
+        ], 
+        Description='image for running gomel experiments', 
+        Name='gomel', 
+    )
+
+    print('waiting for image to be available')
+    while image.state != 'available':
+        print('', end='.')
+        sleep(10)
+        image.reload()
+    print()
+
+    print('copying image to remaining regions')
+    for region in regions[1:]:
+        print(region, end=' ')
+        boto3.client('ec2', region).copy_image(
+            Name=image.name, 
+            Description=image.description, 
+            SourceImageId=image.image_id, 
+            SourceRegion=regions[0]
+        )
+
+    print('\ndone')
 
 def get_logs(n_processes, regions, n_parents, use_tcoin, create_freq, sync_init_freq, n_recv_sync, txpu, use_fast_poset):
     '''Retrieves all logs from instances.'''

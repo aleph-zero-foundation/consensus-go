@@ -7,13 +7,10 @@ from subprocess import call
 import boto3
 
 
-def image_id_in_region(region_name, version='bionic'):
+def image_id_in_region(region_name):
     '''Find id of os image we use. The id may differ for different regions'''
 
-    if version == 'bionic':
-    	image_name = 'ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-20190514'
-    elif version == 'cosmic':
-        image_name = 'ubuntu/images/hvm-ssd/ubuntu-cosmic-18.10-amd64-server-20190110'
+    image_name = 'gomel'
 
     ec2 = boto3.resource('ec2', region_name)
     # in the below, there is only one image in the iterator
