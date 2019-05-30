@@ -70,8 +70,10 @@ func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, log zerolog.Logge
 		wg.Add(1)
 		poset.AddUnit(preunit, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
-				if _, ok := err.(*gomel.DuplicateUnit); !ok {
-					// An error occurred that is not just attempting to add the same unit again.
+				switch e := err.(type) {
+				case *gomel.DuplicateUnit:
+					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
+				default:
 					problem = err
 				}
 			}

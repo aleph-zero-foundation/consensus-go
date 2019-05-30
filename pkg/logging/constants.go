@@ -24,6 +24,7 @@ const (
 	AddUnits              = "S"
 	SentUnits             = "T"
 	ReceivedPreunits      = "U"
+	DuplicatedUnit        = "V"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -49,6 +50,7 @@ var eventTypeDict = map[string]string{
 	AddUnits:              "adding received units started",
 	SentUnits:             "successfully sent units",
 	ReceivedPreunits:      "successfully received preunits",
+	DuplicatedUnit:        "attempting to add unit already present in poset",
 }
 
 // Field names
@@ -65,6 +67,7 @@ const (
 	OSID      = "O"
 	UnitsSent = "U"
 	UnitsRecv = "V"
+	Creator   = "C"
 )
 
 // fieldNameDict maps short field names to human readable form
@@ -81,6 +84,7 @@ var fieldNameDict = map[string]string{
 	OSID:      "outSID",
 	UnitsSent: "Us sent",
 	UnitsRecv: "Us recv",
+	Creator:   "creator",
 }
 
 // Service types
