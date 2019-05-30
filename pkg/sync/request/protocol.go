@@ -62,7 +62,7 @@ func getRequests(nProc int, conn network.Connection) (requests, error) {
 	return *result, err
 }
 
-func addAntichain(poset gomel.Poset, preunits []gomel.Preunit) error {
+func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, log zerolog.Logger) error {
 	var wg sync.WaitGroup
 	// TODO: We only report one error, we might want to change it when we deal with Byzantine processes.
 	var problem error
@@ -83,9 +83,9 @@ func addAntichain(poset gomel.Poset, preunits []gomel.Preunit) error {
 }
 
 // addUnits adds the provided units to the poset, assuming they are divided into antichains as described in toLayers
-func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit) error {
+func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		err := addAntichain(poset, pus)
+		err := addAntichain(poset, pus, log)
 		if err != nil {
 			return err
 		}
@@ -184,7 +184,7 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, theirPreunitsReceived)
+	err = addUnits(poset, theirPreunitsReceived, log)
 	if err != nil {
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
@@ -274,7 +274,7 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, theirPreunitsReceived)
+	err = addUnits(poset, theirPreunitsReceived, log)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return
