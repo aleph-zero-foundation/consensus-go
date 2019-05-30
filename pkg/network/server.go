@@ -23,5 +23,5 @@ type ConnectionServer interface {
 	Stop()
 
 	// MyPid returns my pid
-	MyPid()
+	MyPid() int
 }

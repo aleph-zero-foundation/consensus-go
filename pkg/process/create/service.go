@@ -130,9 +130,13 @@ func (s *service) createUnit() {
 	}
 	created.SetSignature(s.privKey.Sign(created))
 
-	if gomel.Dealing(created) {
-		tc := tcoin.Decode(created.ThresholdCoinData(), s.pid)
+	if len(created.Parents()) == 0 {
+		tc, err := tcoin.Decode(created.ThresholdCoinData(), s.pid)
 		s.poset.AddThresholdCoin(created.Hash(), tc)
+		if err != nil {
+			// TODO: handle the error
+			return
+		}
 	}
 	var wg sync.WaitGroup
 	wg.Add(1)
