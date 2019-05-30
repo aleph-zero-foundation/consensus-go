@@ -3,31 +3,33 @@ package logging
 // Shortcuts for event types.
 // Any event that happens multiple times should have a single character representation
 const (
-	ServiceStarted        = "<"
-	ServiceStopped        = ">"
-	UnitCreated           = "U"
-	PrimeUnitCreated      = "P"
-	NewTimingUnit         = "T"
-	LinearOrderExtended   = "L"
-	ConnectionReceived    = "R"
-	ConnectionEstablished = "E"
-	NotEnoughParents      = "Z"
-	SyncStarted           = "s"
-	SyncCompleted         = "S"
-	GetPosetInfo          = "i"
-	SendPosetInfo         = "I"
-	GetPreunits           = "j"
-	SendUnits             = "J"
-	GetRequests           = "k"
-	SendRequests          = "K"
-	AdditionalExchange    = "F"
-	AddUnits              = "A"
-	SentUnits             = "B"
-	ReceivedPreunits      = "C"
+	ServiceStarted        = "A"
+	ServiceStopped        = "B"
+	UnitCreated           = "C"
+	PrimeUnitCreated      = "D"
+	NewTimingUnit         = "E"
+	LinearOrderExtended   = "F"
+	ConnectionReceived    = "G"
+	ConnectionEstablished = "H"
+	NotEnoughParents      = "I"
+	SyncStarted           = "J"
+	SyncCompleted         = "K"
+	GetPosetInfo          = "L"
+	SendPosetInfo         = "M"
+	GetPreunits           = "N"
+	SendUnits             = "O"
+	GetRequests           = "P"
+	SendRequests          = "Q"
+	AdditionalExchange    = "R"
+	AddUnits              = "S"
+	SentUnits             = "T"
+	ReceivedPreunits      = "U"
 )
 
 // eventTypeDict maps short event names to human readable form
 var eventTypeDict = map[string]string{
+	ServiceStarted:        "service started",
+	ServiceStopped:        "service stopped",
 	UnitCreated:           "new regular unit created",
 	PrimeUnitCreated:      "new prime unit created",
 	NewTimingUnit:         "new timing unit",
