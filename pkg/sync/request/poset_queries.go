@@ -290,7 +290,7 @@ func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req
 	}
 	wg.Wait()
 	if err != nil {
-		return nil, 0,  err
+		return nil, 0, err
 	}
 	toSend := []gomel.Unit{}
 	for _, tsp := range toSendPid {
@@ -299,25 +299,12 @@ func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req
 	return toLayers(toSend), len(toSend), nil
 }
 
-func actuallyKnown(h *gomel.Hash, known [][]gomel.Preunit) bool {
-	for _, units := range known {
-		for _, u := range units {
-			if *u.Hash() == *h {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown [][]gomel.Preunit) processRequests {
+func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown map[gomel.Hash]bool) processRequests {
 	result := processRequests{}
 	units := poset.Get(hashesSliceFromInfo(info))
 	for i, u := range units {
 		if u == nil {
-			// TODO: This might be slow and might happen often. Think about optimizing.
-			// Note that this happens in separate goroutines, so might not be a bottleneck.
-			if !actuallyKnown(&info[i].hash, alsoKnown) {
+			if !alsoKnown[info[i].hash] {
 				result = append(result, info[i].hash)
 			}
 		}
@@ -327,11 +314,17 @@ func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown [][]gomel.Preu
 
 func requestsToSend(poset gomel.Poset, info posetInfo, aquiredUnits [][]gomel.Preunit) requests {
 	result := make(requests, len(info))
+	alsoKnown := map[gomel.Hash]bool{}
+	for _, aus := range aquiredUnits {
+		for _, au := range aus {
+			alsoKnown[*au.Hash()] = true
+		}
+	}
 	var wg sync.WaitGroup
 	wg.Add(len(info))
 	for i := range info {
 		go func(id int) {
-			result[id] = unknownHashes(poset, info[id], aquiredUnits)
+			result[id] = unknownHashes(poset, info[id], alsoKnown)
 			wg.Done()
 		}(i)
 	}
