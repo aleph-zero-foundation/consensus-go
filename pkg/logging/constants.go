@@ -77,10 +77,10 @@ var fieldNameDict = map[string]string{
 	Height:    "height",
 	Round:     "round",
 	PID:       "PID",
-	ISID:      "inSyncID",
-	OSID:      "outSyncID",
-	UnitsSent: "units sent",
-	UnitsRecv: "units received",
+	ISID:      "inSID",
+	OSID:      "outSID",
+	UnitsSent: "Us sent",
+	UnitsRecv: "Us recv",
 }
 
 // Service types

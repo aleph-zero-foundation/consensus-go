@@ -14,6 +14,8 @@ type decoder struct {
 }
 
 // NewDecoder creates a decoder that writes to the given writer.
+// Decoder implements io.Writer that takes []bytes with single
+// log event in JSON and writes it in human readable form
 func NewDecoder(writer io.Writer) io.Writer {
 	return &decoder{writer: writer}
 }
@@ -52,9 +54,9 @@ func decode(data *map[string]interface{}) string {
 			continue
 		}
 		if f, ok := fieldNameDict[k]; ok {
-			ret += fmt.Sprintf("%7s = %-6v|", f, v)
+			ret += fmt.Sprintf("%8s = %-6v|", f, v)
 		} else {
-			ret += fmt.Sprintf("%7s = %-6v|", k, v)
+			ret += fmt.Sprintf("%8s = %-6v|", k, v)
 		}
 	}
 	if val, ok := (*data)[Event]; ok {
