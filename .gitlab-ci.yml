@@ -35,7 +35,7 @@ race_detector:
 code_coverage_report:
   stage: test
   script:
-    - .gitlab/ci/make_coverage.sh ${TOTEST} coverage.output coverage.html
+    - .gitlab/ci/make_coverage.sh ${TOTEST} coverage.cov coverage.output coverage.html
   only:
     - devel
   artifacts:
