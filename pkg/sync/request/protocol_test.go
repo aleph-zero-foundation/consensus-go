@@ -28,7 +28,7 @@ func (p *poset) AddUnit(unit gomel.Preunit, callback func(gomel.Preunit, gomel.U
 type connection struct {
 	in  io.Reader
 	out io.Writer
-	pid uint32
+	pid uint16
 	sid uint32
 }
 
@@ -46,7 +46,7 @@ func (c *connection) Close() error {
 
 func (c *connection) TimeoutAfter(time.Duration) {}
 
-func (c *connection) Pid() uint32 {
+func (c *connection) Pid() uint16 {
 	return c.pid
 }
 
