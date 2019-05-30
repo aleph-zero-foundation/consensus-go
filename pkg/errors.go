@@ -34,11 +34,17 @@ func NewComplianceError(msg string) *ComplianceError {
 
 // DuplicateUnit is an error-like object used when encountering a unit that is already known. Usually not a problem.
 type DuplicateUnit struct {
+	Unit Unit
 }
 
 // Error returns a (fixed) string description of a DuplicateUnit.
 func (e *DuplicateUnit) Error() string {
 	return "Unit already in poset."
+}
+
+// NewDuplicateUnit constructs a DuplicateUnit error for the given unit.
+func NewDuplicateUnit(unit Unit) *DuplicateUnit {
+	return &DuplicateUnit{unit}
 }
 
 // ConfigError is returned when a provided configuration can not be parsed.
