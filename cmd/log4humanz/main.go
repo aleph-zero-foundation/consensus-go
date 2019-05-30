@@ -22,12 +22,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s: file not present\n", flag.Args()[0])
 		return
 	case err != nil:
-		fmt.Fprintf(os.Stderr, "%s: cannot open file\n", flag.Args()[0])
+		fmt.Fprintf(os.Stderr, "%s: cannot open file because %s\n", flag.Args()[0], err)
 		return
 	default:
 		file, err = os.Open(flag.Args()[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: cannot open file\n", flag.Args()[0])
+			fmt.Fprintf(os.Stderr, "%s: cannot open file because %s\n", flag.Args()[0], err)
 			return
 		}
 		defer file.Close()
