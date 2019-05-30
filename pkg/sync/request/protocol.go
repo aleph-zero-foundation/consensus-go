@@ -121,7 +121,7 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
-	log := p.Log.With().Uint32(logging.PID, conn.Pid()).Uint32(logging.ISID, conn.Sid()).Logger()
+	log := p.Log.With().Uint16(logging.PID, conn.Pid()).Uint32(logging.ISID, conn.Sid()).Logger()
 	log.Info().Msg(logging.SyncStarted)
 
 	log.Debug().Msg(logging.GetPosetInfo)

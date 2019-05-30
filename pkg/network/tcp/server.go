@@ -94,19 +94,18 @@ func (cs *connServer) Listen() error {
 					link.Close()
 					continue
 				}
-				remotePid := int(g.pid)
-				if remotePid < 0 || remotePid >= len(cs.inUse) {
-					cs.log.Warn().Int(logging.PID, remotePid).Msg("Called by a stranger")
+				if g.pid >= uint16(len(cs.inUse)) {
+					cs.log.Warn().Uint16(logging.PID, g.pid).Msg("Called by a stranger")
 					link.Close()
 					continue
 				}
-				m := cs.inUse[remotePid]
+				m := cs.inUse[g.pid]
 				if !m.tryAcquire() {
 					link.Close()
 					continue
 				}
 				cs.listenChan <- newConn(link, m, g.pid, g.sid)
-				cs.log.Info().Int(logging.PID, remotePid).Uint32(logging.ISID, g.sid).Msg(logging.ConnectionReceived)
+				cs.log.Info().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Msg(logging.ConnectionReceived)
 			}
 		}
 	}()
@@ -141,7 +140,7 @@ func (cs *connServer) StartDialing() {
 					continue
 				}
 				g := &greeting{
-					pid: uint32(cs.pid),
+					pid: uint16(cs.pid),
 					sid: cs.syncIds[remotePid],
 				}
 				cs.syncIds[remotePid]++
@@ -152,7 +151,7 @@ func (cs *connServer) StartDialing() {
 					continue
 				}
 				cs.dialChan <- newConn(link, m, g.pid, g.sid)
-				cs.log.Info().Int(logging.PID, remotePid).Uint32(logging.OSID, g.sid).Msg(logging.ConnectionEstablished)
+				cs.log.Info().Uint16(logging.PID, g.pid).Uint32(logging.OSID, g.sid).Msg(logging.ConnectionEstablished)
 			}
 		}
 	}()

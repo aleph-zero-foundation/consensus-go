@@ -8,6 +8,6 @@ type Connection interface {
 	Write([]byte) (int, error)
 	Close() error
 	TimeoutAfter(t time.Duration)
-	Pid() uint32
+	Pid() uint16
 	Sid() uint32
 }

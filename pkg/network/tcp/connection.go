@@ -8,11 +8,11 @@ import (
 type conn struct {
 	link  *net.TCPConn
 	inUse *mutex
-	pid   uint32
+	pid   uint16
 	sid   uint32
 }
 
-func newConn(link *net.TCPConn, m *mutex, pid, sid uint32) *conn {
+func newConn(link *net.TCPConn, m *mutex, pid uint16, sid uint32) *conn {
 	return &conn{
 		link:  link,
 		inUse: m,
@@ -38,7 +38,7 @@ func (c *conn) TimeoutAfter(t time.Duration) {
 	c.link.SetDeadline(time.Now().Add(t))
 }
 
-func (c *conn) Pid() uint32 {
+func (c *conn) Pid() uint16 {
 	return c.pid
 }
 
