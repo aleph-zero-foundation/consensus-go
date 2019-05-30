@@ -53,13 +53,14 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 		}
 		txsEncoded := transactions.Encode([]transactions.Tx{transactions.Tx{ID: txID}})
 		txsCompressed, _ := transactions.Compress(txsEncoded, 5)
-		var gtc *tcoin.GlobalThresholdCoin
+		tcData := []byte{}
 		var cs *tcoin.CoinShare
 		if len(parents) == 0 {
-			gtc = tcoin.GenerateThresholdCoin(n, n/3+1)
+			// TODO: optionally read tCoin from test file
+			tcData = tcoin.Deal(n, n/3+1)
 		}
 		// TODO: generate coinshare here
-		pu := NewPreunit(puCreator, parents, txsCompressed, cs, gtc)
+		pu := NewPreunit(puCreator, parents, txsCompressed, cs, tcData)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = *pu.Hash()
 		var addingError error

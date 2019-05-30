@@ -20,8 +20,8 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 	for created < nUnits {
 		pid := r.Intn(nProcesses)
 		if p.maximalHeight[pid] == -1 {
-			gtc := tcoin.GenerateThresholdCoin(nProcesses, nProcesses/3+1)
-			pu := NewPreunit(pid, []gomel.Hash{}, []byte{}, nil, gtc)
+			tcData := tcoin.Deal(nProcesses, nProcesses/3+1)
+			pu := NewPreunit(pid, []gomel.Hash{}, []byte{}, nil, tcData)
 			p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
 			created++
 		} else {

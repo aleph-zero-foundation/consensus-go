@@ -16,8 +16,7 @@ type Poset struct {
 	adders     []chan *unitBuilt
 	tasks      sync.WaitGroup
 	pubKeys    []gomel.PublicKey
-	// TODO: create thread safe implementation for this map
-	tcByHash map[gomel.Hash]*tcoin.ThresholdCoin
+	tcByHash   *tcBag
 }
 
 // NewPoset constructs a poset using given public keys of processes.
@@ -36,7 +35,7 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 		maxUnits:   newSlottedUnits(n),
 		adders:     adders,
 		pubKeys:    pubKeys,
-		tcByHash:   make(map[gomel.Hash]*tcoin.ThresholdCoin),
+		tcByHash:   newTcBag(),
 	}
 	for k := range adders {
 		go newPoset.adder(adders[k])
@@ -45,13 +44,20 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 	return newPoset
 }
 
+// AddThresholdCoin adds threshold coin to the poset
+func (p *Poset) AddThresholdCoin(h *gomel.Hash, tc *tcoin.ThresholdCoin) {
+	p.tcByHash.add(h, tc)
+}
+
+// RemoveThresholdCoin removes threshold coin from the poset
+func (p *Poset) RemoveThresholdCoin(h *gomel.Hash) {
+	p.tcByHash.remove(h)
+}
+
 // ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
 // nil for hashes of non-dealing units
 func (p *Poset) ThresholdCoin(h *gomel.Hash) *tcoin.ThresholdCoin {
-	if tc, ok := p.tcByHash[*h]; ok {
-		return tc
-	}
-	return nil
+	return p.tcByHash.get(h)
 }
 
 // GetCRP is a dummy implementation of a common random permutation

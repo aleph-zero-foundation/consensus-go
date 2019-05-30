@@ -60,6 +60,10 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 	}, nil
 }
 
+func (cs *connServer) MyPid() int {
+	return cs.pid
+}
+
 func (cs *connServer) ListenChannel() <-chan network.Connection {
 	return cs.listenChan
 }

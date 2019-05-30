@@ -25,7 +25,7 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
 func newDealingUnit(creator, NProc int, data []byte) gomel.Preunit {
-	tc := tcoin.GenerateThresholdCoin(NProc, NProc/3+1)
+	tc := tcoin.Deal(NProc, NProc/3+1)
 	return NewPreunit(creator, []gomel.Hash{}, data, nil, tc)
 }
 

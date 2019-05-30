@@ -20,7 +20,11 @@ type Poset interface {
 	NProc() int
 	// GetCRP returns common random permutation on a given level
 	GetCRP(int) []int
-	// ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
+	// ThresholdCoin returns threshold coin dealt by dealing unit having given hash
 	// nil for hashes of non-dealing units
 	ThresholdCoin(*Hash) *tcoin.ThresholdCoin
+	// AddThresholdCoin adds thresholdCoin for given unit hash
+	AddThresholdCoin(*Hash, *tcoin.ThresholdCoin)
+	// RemoveThresholdCoin removes thresholdCoin for given unit hash
+	RemoveThresholdCoin(*Hash)
 }

@@ -19,11 +19,11 @@ type preunitMock struct {
 	parents   []gomel.Hash
 	data      []byte
 	cs        *tcoin.CoinShare
-	gtc       *tcoin.GlobalThresholdCoin
+	tcData    []byte
 }
 
-func (pu *preunitMock) GlobalThresholdCoin() *tcoin.GlobalThresholdCoin {
-	return pu.gtc
+func (pu *preunitMock) ThresholdCoinData() []byte {
+	return pu.tcData
 }
 
 func (pu *preunitMock) CoinShare() *tcoin.CoinShare {

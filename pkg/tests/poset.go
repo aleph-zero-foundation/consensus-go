@@ -31,13 +31,30 @@ func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
 		unitsByHeight: []gomel.SlottedUnits{},
 		maximalHeight: maxHeight,
 		unitByHash:    make(map[gomel.Hash]gomel.Unit),
+		tcByHash:      make(map[gomel.Hash]*tcoin.ThresholdCoin),
 	}
 	return newPoset
+}
+
+// AddThresholdCoin adds threshold coin to the poset
+func (p *Poset) AddThresholdCoin(h *gomel.Hash, tc *tcoin.ThresholdCoin) {
+	p.Lock()
+	defer p.Unlock()
+	p.tcByHash[*h] = tc
+}
+
+// RemoveThresholdCoin removes threshold coin from the poset
+func (p *Poset) RemoveThresholdCoin(h *gomel.Hash) {
+	p.Lock()
+	defer p.Unlock()
+	delete(p.tcByHash, *h)
 }
 
 // ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
 // nil for hashes of non-dealing units
 func (p *Poset) ThresholdCoin(h *gomel.Hash) *tcoin.ThresholdCoin {
+	p.Lock()
+	defer p.Unlock()
 	if tc, ok := p.tcByHash[*h]; ok {
 		return tc
 	}
@@ -77,6 +94,7 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	}
 	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
+	u.tcData = pu.ThresholdCoinData()
 	if len(p.unitsByHeight) <= u.height {
 		u.version = 0
 	} else {

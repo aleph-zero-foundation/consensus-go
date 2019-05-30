@@ -21,6 +21,9 @@ type encoder struct {
 //  4. Parent hashes, as many as declared in 3., 64 bytes each.
 //  5. Size of the unit data in bytes, 4 bytes.
 //  6. The unit data, as much as declared in 5.
+//  If the number of parents from 3. is 0 then we send
+//  7. Size of threshold coin data in bytes, 4 bytes.
+//  8. The thereshold coin data.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
 func NewEncoder(w io.Writer) encoding.Encoder {
 	return &encoder{w}
@@ -52,7 +55,23 @@ func (e *encoder) EncodeUnit(unit gomel.Unit) error {
 	if unitDataLen > 0 {
 		_, err = e.writer.Write(unit.Data())
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	if nParents == 0 {
+		tcDataLen := uint32(len(unit.ThresholdCoinData()))
+		buf := make([]byte, 4)
+		binary.LittleEndian.PutUint32(buf[:], tcDataLen)
+		_, err = e.writer.Write(buf)
+		if err != nil {
+			return err
+		}
+		_, err = e.writer.Write(unit.ThresholdCoinData())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type decoder struct {
@@ -67,6 +86,9 @@ type decoder struct {
 //  4. Parent hashes, as many as declared in 3., 64 bytes each.
 //  5. Size of the unit data in bytes, 4 bytes.
 //  6. The unit data, as much as declared in 5.
+//  If the number of parents from 3. is 0 then
+//  7. Size of threshold coin data in bytes, 4 bytes.
+//  8. The thereshold coin data.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
 // It is guaranteed to read only as much data as needed.
 func NewDecoder(r io.Reader) encoding.Decoder {
@@ -110,7 +132,20 @@ func (d *decoder) DecodePreunit() (gomel.Preunit, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := creating.NewPreunit(int(creator), parents, unitData)
+	tcData := []byte{}
+	if nParents == 0 {
+		_, err = io.ReadFull(d.reader, uint32Buf)
+		if err != nil {
+			return nil, err
+		}
+		tcDataLen := binary.LittleEndian.Uint32(uint32Buf)
+		tcData = make([]byte, tcDataLen)
+		_, err = io.ReadFull(d.reader, tcData)
+		if err != nil {
+			return nil, err
+		}
+	}
+	result := creating.NewPreunit(int(creator), parents, unitData, nil, tcData)
 	result.SetSignature(signature)
 	return result, nil
 }

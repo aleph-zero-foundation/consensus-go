@@ -2,7 +2,6 @@ package growing
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type unitBuilt struct {
@@ -85,21 +84,12 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	return p.checkCompliance(ub.result)
 }
 
-func (p *Poset) updateThresholdCoins(pu gomel.Preunit) {
-	if pu.GlobalThresholdCoin() != nil {
-		// TODO: pass somehow my id
-		myID := 0
-		p.tcByHash[*pu.Hash()] = tcoin.NewThresholdCoin(pu.GlobalThresholdCoin(), myID)
-	}
-}
-
 func (p *Poset) addUnit(ub *unitBuilt) {
 	err := p.prepareUnit(ub)
 	if err != nil {
 		ub.done(ub.preunit, nil, err)
 		return
 	}
-	p.updateThresholdCoins(ub.preunit)
 	if gomel.Prime(ub.result) {
 		p.addPrime(ub.result)
 	}

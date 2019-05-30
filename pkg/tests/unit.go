@@ -15,10 +15,15 @@ type unit struct {
 	signature gomel.Signature
 	data      []byte
 	cs        *tcoin.CoinShare
+	tcData    []byte
 }
 
 func (u *unit) CoinShare() *tcoin.CoinShare {
 	return u.cs
+}
+
+func (u *unit) ThresholdCoinData() []byte {
+	return u.tcData
 }
 
 func (u *unit) Data() []byte {

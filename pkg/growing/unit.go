@@ -19,6 +19,7 @@ type unit struct {
 	floor         [][]*unit
 	data          []byte
 	cs            *tcoin.CoinShare
+	tcData        []byte
 }
 
 func newUnit(pu gomel.Preunit) *unit {
@@ -27,11 +28,16 @@ func newUnit(pu gomel.Preunit) *unit {
 		hash:    *pu.Hash(),
 		data:    pu.Data(),
 		cs:      pu.CoinShare(),
+		tcData:  pu.ThresholdCoinData(),
 	}
 }
 
 func (u *unit) CoinShare() *tcoin.CoinShare {
 	return u.cs
+}
+
+func (u *unit) ThresholdCoinData() []byte {
+	return u.tcData
 }
 
 func (u *unit) Data() []byte {

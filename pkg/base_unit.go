@@ -15,6 +15,9 @@ type BaseUnit interface {
 	// CoinShare returns coin share embedded in this unit
 	// it is nil for non-prime units
 	CoinShare() *tcoin.CoinShare
+	// ThresholdCoinData is a byte representation of threshold coin dealt by this unit.
+	// It is non empty only for dealing units
+	ThresholdCoinData() []byte
 }
 
 // Nickname of a unit is a short name, for the purpose of quick identification by a human.

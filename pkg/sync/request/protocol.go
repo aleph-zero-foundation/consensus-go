@@ -7,18 +7,21 @@ import (
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
 // In implements the side of the protocol that handles incoming connections.
 type In struct {
+	MyPid   int
 	Timeout time.Duration
 	Log     zerolog.Logger
 }
 
 // Out implements the side of the protocol that handles outgoing connections.
 type Out struct {
+	MyPid   int
 	Timeout time.Duration
 	Log     zerolog.Logger
 }
@@ -62,14 +65,23 @@ func getRequests(nProc int, conn network.Connection) (requests, error) {
 	return *result, err
 }
 
-func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, log zerolog.Logger) error {
+func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, myPid int, log zerolog.Logger) error {
 	var wg sync.WaitGroup
 	// TODO: We only report one error, we might want to change it when we deal with Byzantine processes.
 	var problem error
 	for _, preunit := range preunits {
-		wg.Add(1)
-		poset.AddUnit(preunit, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		if len(preunit.Parents()) == 0 {
+			tc, err := tcoin.Decode(preunit.ThresholdCoinData(), myPid)
+			poset.AddThresholdCoin(preunit.Hash(), tc)
 			if err != nil {
+				problem = err
+				continue
+			}
+		}
+		wg.Add(1)
+		poset.AddUnit(preunit, func(pu gomel.Preunit, _ gomel.Unit, err error) {
+			if err != nil {
+				poset.RemoveThresholdCoin(pu.Hash())
 				switch e := err.(type) {
 				case *gomel.DuplicateUnit:
 					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
@@ -85,9 +97,9 @@ func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, log zerolog.Logge
 }
 
 // addUnits adds the provided units to the poset, assuming they are divided into antichains as described in toLayers
-func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit, log zerolog.Logger) error {
+func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit, myPid int, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		err := addAntichain(poset, pus, log)
+		err := addAntichain(poset, pus, myPid, log)
 		if err != nil {
 			return err
 		}
@@ -194,7 +206,7 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, theirPreunitsReceived, log)
+	err = addUnits(poset, theirPreunitsReceived, p.MyPid, log)
 	if err != nil {
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
@@ -288,7 +300,7 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, theirPreunitsReceived, log)
+	err = addUnits(poset, theirPreunitsReceived, p.MyPid, log)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return

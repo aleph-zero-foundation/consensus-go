@@ -21,4 +21,7 @@ type ConnectionServer interface {
 
 	// Stop halts both Listen and Dialing services.
 	Stop()
+
+	// MyPid returns my pid
+	MyPid()
 }

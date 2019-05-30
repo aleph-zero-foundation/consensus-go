@@ -16,26 +16,26 @@ type preunit struct {
 	hash      gomel.Hash
 	data      []byte
 	cs        *tcoin.CoinShare
-	gtc       *tcoin.GlobalThresholdCoin
+	tcData    []byte
 }
 
 // NewPreunit returns preunit
-func NewPreunit(creator int, parents []gomel.Hash, data []byte, cs *tcoin.CoinShare, gtc *tcoin.GlobalThresholdCoin) gomel.Preunit {
+func NewPreunit(creator int, parents []gomel.Hash, data []byte, cs *tcoin.CoinShare, tcData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		parents:   parents,
 		data:      data,
 		signature: make([]byte, 64),
 		cs:        cs,
-		gtc:       gtc,
+		tcData:    tcData,
 	}
 	pu.computeHash()
 
 	return pu
 }
 
-func (pu *preunit) GlobalThresholdCoin() *tcoin.GlobalThresholdCoin {
-	return pu.gtc
+func (pu *preunit) ThresholdCoinData() []byte {
+	return pu.tcData
 }
 
 func (pu *preunit) CoinShare() *tcoin.CoinShare {
@@ -89,9 +89,8 @@ func (pu *preunit) computeHash() {
 		csBytes := pu.cs.Marshal()
 		data.Write(csBytes)
 	}
-	if pu.gtc != nil {
-		gtcBytes := pu.gtc.Marshal()
-		data.Write(gtcBytes)
+	if pu.tcData != nil {
+		data.Write(pu.tcData)
 	}
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }
