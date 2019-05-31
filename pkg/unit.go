@@ -15,6 +15,8 @@ type Unit interface {
 	Below(Unit) bool
 	// Above is a counterpart to Below.
 	Above(Unit) bool
+	// HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
+	// i.e. it is above two units created by creator that share a predecessor.
 	HasForkingEvidence(creator int) bool
 }
 
@@ -39,4 +41,14 @@ func Prime(u Unit) bool {
 // Dealing checks if u is a dealing unit.
 func Dealing(u Unit) bool {
 	return len(u.Parents()) == 0
+}
+
+// BelowAny checks whether u is below any of the units in us.
+func BelowAny(u Unit, us []Unit) bool {
+	for _, v := range us {
+		if u.Below(v) {
+			return true
+		}
+	}
+	return false
 }

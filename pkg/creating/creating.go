@@ -41,16 +41,6 @@ func maxLevel(mu gomel.SlottedUnits) int {
 	return result
 }
 
-// belowAny checks if a given unit is below any of the units.
-func belowAny(unit gomel.Unit, units []gomel.Unit) bool {
-	for _, u := range units {
-		if unit.Below(u) {
-			return true
-		}
-	}
-	return false
-}
-
 // aboveAny checks if a given unit is above any of the units.
 func aboveAny(unit gomel.Unit, units []gomel.Unit) bool {
 	for _, u := range units {
@@ -66,7 +56,7 @@ func filterNotBelow(su gomel.SlottedUnits, units []gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
 	su.Iterate(func(primes []gomel.Unit) bool {
 		for _, prime := range primes {
-			if !belowAny(prime, units) {
+			if !gomel.BelowAny(prime, units) {
 				result = append(result, prime)
 			}
 		}
