@@ -39,7 +39,9 @@ func collectUnits(p gomel.Poset) map[int]map[int][]gomel.Unit {
 	}
 	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
-			dfs(u)
+			if !seenUnits[*u.Hash()] {
+				dfs(u)
+			}
 		}
 		return true
 	})

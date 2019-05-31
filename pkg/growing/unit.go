@@ -171,13 +171,8 @@ func (u *unit) computeLevel() {
 	}
 
 	nProcesses := len(u.floor)
-	maxLevelParents := 0
-	for _, w := range u.parents {
-		wLevel := w.Level()
-		if wLevel > maxLevelParents {
-			maxLevelParents = wLevel
-		}
-	}
+	// compliant unit have parents in ascending order of level
+	maxLevelParents := u.parents[len(u.parents)-1].Level()
 
 	level := maxLevelParents
 	nSeen := 0
