@@ -50,14 +50,14 @@ type Configuration struct {
 	// level at which to start adding coin shares to units, it's safe to make it PI_DELTA_LEVEL - 1
 	AddShares uint
 
-	// default ip address of a process
-	HostIP string
+	// log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic
+	LogLevel int
 
-	// default port of incoming syncs
-	HostPort uint
+	// The size of log diode buffer. 0 disables the diode. Recommended at least 100k.
+	LogBuffer int
 
-	// name of our logger and logfile
-	LoggerName string
+	// whether to write log in human readable form or in JSON.
+	LogHuman bool
 }
 
 // NewDefaultConfiguration returns default set of parameters.
@@ -96,11 +96,11 @@ func NewDefaultConfiguration() Configuration {
 
 		AddShares: 0,
 
-		HostIP: "127.0.0.1",
+		LogLevel: 1,
 
-		HostPort: 8888,
+		LogBuffer: 100000,
 
-		LoggerName: "aleph",
+		LogHuman: false,
 	}
 	result.AddShares = result.PiDeltaLevel - 1
 	return result

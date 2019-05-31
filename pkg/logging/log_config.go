@@ -9,79 +9,23 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/diode"
-	"github.com/rs/zerolog/log"
 )
 
-// LogConfig describes configuration of logger
-type LogConfig struct {
-	// Log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic
-	Level int
+var genesis time.Time
 
-	// Path to the logfile. "stdout" or "stderr" are possible too.
-	Path string
-
-	// The size of diode buffer. 0 disables the diode. Recommended big.
-	DiodeBuf int
-
-	// The smallest unit of time (recommended time.Millisecond)
-	TimeUnit time.Duration
-
-	// Print log messages in human readable form.
-	HumanReadable bool
-}
-
-// InitLogger initializes the global zerolog logger based on given LogConfig.
-// This function should be called once at the very beginning.
-// After that all packages can just import "github.com/rs/zerolog/log" and use it:
-// 		log.Info().Int("name", 12).Str("name", "value").Msg("")
-func InitLogger(lc LogConfig) error {
-	var (
-		output io.Writer
-		err    error
-	)
-
-	switch lc.Path {
-	case "stdout":
-		output = os.Stdout
-
-	case "stderr":
-		output = os.Stderr
-
-	default:
-		output, err = os.Create(lc.Path)
-		if err != nil {
-			return err
-		}
-	}
-
-	//enable decoder
-	if lc.HumanReadable {
-		output = NewDecoder(output)
-	}
-
-	// enable diode
-	if lc.DiodeBuf > 0 {
-		output = diode.NewWriter(output, lc.DiodeBuf, 0, func(missed int) {
-			fmt.Fprintf(os.Stderr, "WARNING: Dropped %d log entries\n", missed)
-		})
-	}
-
-	log.Logger = zerolog.New(output).With().Timestamp().Logger()
-	zerolog.SetGlobalLevel(zerolog.Level(lc.Level))
+func init() {
+	// store the beginning of time
+	genesis = time.Now()
 
 	// short names of compulsory fields to save some space
 	zerolog.TimestampFieldName = Time
 	zerolog.LevelFieldName = Level
 	zerolog.MessageFieldName = Event
 
-	// log the beginning of time
-	genesis := time.Now()
-	log.Log().Msg(Genesis)
-
 	// time logged as integer starting at 0, with the chosen unit
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.TimestampFunc = func() time.Time {
-		return time.Unix(int64(time.Since(genesis)/lc.TimeUnit), 0)
+		return time.Unix(int64(time.Since(genesis)/time.Millisecond), 0)
 	}
 
 	// make level names single character
@@ -89,5 +33,43 @@ func InitLogger(lc LogConfig) error {
 		return strconv.Itoa(int(l))
 	}
 
-	return nil
+}
+
+// NewLogger creates a new zerolog logger based on the given configuration values.
+func NewLogger(path string, level, diodeBuf int, humanReadable bool) (zerolog.Logger, error) {
+	var (
+		output io.Writer
+		err    error
+	)
+
+	switch path {
+	case "stdout":
+		output = os.Stdout
+
+	case "stderr":
+		output = os.Stderr
+
+	default:
+		output, err = os.Create(path)
+		if err != nil {
+			return zerolog.Logger{}.Level(zerolog.Disabled), err
+		}
+	}
+
+	//enable decoder
+	if humanReadable {
+		output = NewDecoder(output)
+	}
+
+	// enable diode
+	if diodeBuf > 0 {
+		output = diode.NewWriter(output, diodeBuf, 0, func(missed int) {
+			fmt.Fprintf(os.Stderr, "WARNING: Dropped %d log entries\n", missed)
+		})
+	}
+
+	log := zerolog.New(output).With().Timestamp().Logger().Level(zerolog.Level(level))
+	log.Log().Str("Started on", genesis.Format(time.RFC1123Z)).Msg(Genesis)
+
+	return log, nil
 }

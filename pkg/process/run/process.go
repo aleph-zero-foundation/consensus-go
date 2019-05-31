@@ -1,7 +1,7 @@
 package run
 
 import (
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
@@ -33,7 +33,7 @@ func startAll(services []process.Service) error {
 
 // Process runs all the services with the configuration provided.
 // It blocks until all of them are done.
-func Process(config process.Config) error {
+func Process(config process.Config, log zerolog.Logger) error {
 	posetFinished := make(chan struct{})
 	var services []process.Service
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
