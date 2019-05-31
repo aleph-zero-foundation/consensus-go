@@ -28,6 +28,8 @@ func (p *poset) AddUnit(unit gomel.Preunit, callback func(gomel.Preunit, gomel.U
 type connection struct {
 	in  io.Reader
 	out io.Writer
+	pid uint16
+	sid uint32
 }
 
 func (c *connection) Read(buf []byte) (int, error) {
@@ -44,10 +46,18 @@ func (c *connection) Close() error {
 
 func (c *connection) TimeoutAfter(time.Duration) {}
 
+func (c *connection) Pid() uint16 {
+	return c.pid
+}
+
+func (c *connection) Sid() uint32 {
+	return c.sid
+}
+
 func newConnection() (network.Connection, network.Connection) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
-	return &connection{r1, w2}, &connection{r2, w1}
+	return &connection{r1, w2, 0, 0}, &connection{r2, w1, 0, 0}
 }
 
 var _ = Describe("Protocol", func() {
@@ -62,8 +72,8 @@ var _ = Describe("Protocol", func() {
 	)
 
 	BeforeEach(func() {
-		in = In{}
-		out = Out{}
+		in = &In{}
+		out = &Out{}
 		c1, c2 = newConnection()
 	})
 

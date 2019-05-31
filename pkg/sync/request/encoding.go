@@ -170,18 +170,20 @@ func encodeUnits(w io.Writer, units [][]gomel.Unit) error {
 	return nil
 }
 
-func decodeUnits(r io.Reader) ([][]gomel.Preunit, error) {
+func decodeUnits(r io.Reader) ([][]gomel.Preunit, int, error) {
 	k, err := decodeUint32(r)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	result := make([][]gomel.Preunit, k)
+	nUnits := 0
 	for i := range result {
 		layer, err := decodeLayer(r)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		result[i] = layer
+		nUnits += len(layer)
 	}
-	return result, nil
+	return result, nUnits, nil
 }

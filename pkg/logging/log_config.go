@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -24,6 +25,9 @@ type LogConfig struct {
 
 	// The smallest unit of time (recommended time.Millisecond)
 	TimeUnit time.Duration
+
+	// Print log messages in human readable form.
+	HumanReadable bool
 }
 
 // InitLogger initializes the global zerolog logger based on given LogConfig.
@@ -50,6 +54,11 @@ func InitLogger(lc LogConfig) error {
 		}
 	}
 
+	//enable decoder
+	if lc.HumanReadable {
+		output = NewDecoder(output)
+	}
+
 	// enable diode
 	if lc.DiodeBuf > 0 {
 		output = diode.NewWriter(output, lc.DiodeBuf, 0, func(missed int) {
@@ -61,18 +70,23 @@ func InitLogger(lc LogConfig) error {
 	zerolog.SetGlobalLevel(zerolog.Level(lc.Level))
 
 	// short names of compulsory fields to save some space
-	zerolog.TimestampFieldName = "T"
-	zerolog.LevelFieldName = "L"
-	zerolog.MessageFieldName = "E"
+	zerolog.TimestampFieldName = Time
+	zerolog.LevelFieldName = Level
+	zerolog.MessageFieldName = Event
 
 	// log the beginning of time
 	genesis := time.Now()
-	log.Info().Msg("genesis")
+	log.Log().Msg(Genesis)
 
 	// time logged as integer starting at 0, with the chosen unit
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.TimestampFunc = func() time.Time {
 		return time.Unix(int64(time.Since(genesis)/lc.TimeUnit), 0)
+	}
+
+	// make level names single character
+	zerolog.LevelFieldMarshalFunc = func(l zerolog.Level) string {
+		return strconv.Itoa(int(l))
 	}
 
 	return nil
