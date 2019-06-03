@@ -52,3 +52,13 @@ func BelowAny(u Unit, us []Unit) bool {
 	}
 	return false
 }
+
+// AboveAny checks whether u is above any of the units in us.
+func AboveAny(u Unit, us []Unit) bool {
+	for _, v := range us {
+		if v.Below(u) {
+			return true
+		}
+	}
+	return false
+}
