@@ -33,7 +33,7 @@ type ThresholdCoin struct {
 func GenerateThresholdCoin(nProcesses, threshold int) *GlobalThresholdCoin {
 	var coeffs = make([]*big.Int, threshold)
 	for i := 0; i < threshold; i++ {
-		c, _, _ := bn256.RandomG1(rand.Reader)
+		c, _ := rand.Int(rand.Reader, bn256.Order)
 		coeffs[i] = c
 	}
 	secret := coeffs[threshold-1]
@@ -130,9 +130,9 @@ func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
 	ok := true
 
 	var wg sync.WaitGroup
-	for i, sh := range shares {
+	for _, sh := range shares {
 		wg.Add(1)
-		go func(ch *CoinShare, ind int) {
+		go func(ch *CoinShare) {
 			defer wg.Done()
 			elem, success := new(bn256.G1).Unmarshal(ch.sgn)
 			if !success {
@@ -140,7 +140,7 @@ func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
 				return
 			}
 			summands <- elem.ScalarMult(elem, lagrange(points, ch.pid))
-		}(sh, i)
+		}(sh)
 	}
 	go func() {
 		wg.Wait()
