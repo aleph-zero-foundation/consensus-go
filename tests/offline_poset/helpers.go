@@ -19,11 +19,50 @@ const (
 	maxParents = 2
 )
 
+// UnitCreator is a type of a function that given a list of posets should create a new unit or return an error otherwise
 type UnitCreator func([]*growing.Poset) (gomel.Preunit, error)
 
+// AddingHandler is a type of a function that given a list of posets and a unit is supposed appropriately handle addition of
+// that unit with accordance to used strategy
 type AddingHandler func(posets []*growing.Poset, unit gomel.Preunit) error
 
+// PosetVerifier is a type of a function that is responsible of verifying if a given list of posests is valid after performed
+// test
 type PosetVerifier func([]*growing.Poset) error
+
+// TestingRoutine describes a strategy for performing a test on a given set of posets
+type TestingRoutine interface {
+	CreateUnitCreator() UnitCreator
+	CreateAddingHandler() AddingHandler
+	CreatePosetVerifier() PosetVerifier
+}
+
+type TestingRoutineFactory func([]*growing.Poset) ([]*growing.Poset, TestingRoutine)
+
+type testingRoutineFactory struct {
+	posetInitializer func([]*growing.Poset) []*growing.Poset
+	creator          UnitCreator
+	adder            AddingHandler
+	verifier         PosetVerifier
+}
+
+func (test *testingRoutineFactory) CreateUnitCreator() UnitCreator {
+	return test.creator
+}
+
+func (test *testingRoutineFactory) CreateAddingHandler() AddingHandler {
+	return test.adder
+}
+
+func (test *testingRoutineFactory) CreatePosetVerifier() PosetVerifier {
+	return test.verifier
+}
+
+func NewDefaultTestingRoutineFactory(posetInitializer func([]*growing.Poset) []*growing.Poset, creator UnitCreator, adder AddingHandler, verifier PosetVerifier) TestingRoutineFactory {
+	return func(posets []*growing.Poset) ([]*growing.Poset, TestingRoutine) {
+		return posetInitializer(posets), &testingRoutineFactory{posetInitializer, creator, adder, verifier}
+	}
+}
 
 func NewDefaultAdder() AddingHandler {
 	return func(posets []*growing.Poset, unit gomel.Preunit) error {
@@ -274,9 +313,7 @@ func NewNoOpVerifier() PosetVerifier {
 func Test(
 	pubKeys []gomel.PublicKey,
 	nUnits, maxParents int,
-	UnitCreator UnitCreator,
-	AddingHandler AddingHandler,
-	verifier PosetVerifier,
+	testRoutineFactory TestingRoutineFactory,
 ) error {
 
 	nProcesses := len(pubKeys)
@@ -286,18 +323,25 @@ func Test(
 		posets = append(posets, growing.NewPoset(&gomel.PosetConfig{Keys: pubKeys}))
 	}
 
+	var testingRoutine TestingRoutine
+	posets, testingRoutine = testRoutineFactory(posets)
+	unitCreator, addingHandler, verifier :=
+		testingRoutine.CreateUnitCreator(),
+		testingRoutine.CreateAddingHandler(),
+		testingRoutine.CreatePosetVerifier()
+
 	fmt.Println("Starting a testing routine")
 	for u := 0; u < nUnits; u++ {
 
 		var newUnit gomel.Preunit
 		var err error
-		if newUnit, err = UnitCreator(posets); err != nil {
+		if newUnit, err = unitCreator(posets); err != nil {
 			fmt.Fprintln(os.Stderr, "Unable to create a new unit")
 			return err
 		}
 
 		// send the unit to all posets
-		if err := AddingHandler(posets, newUnit); err != nil {
+		if err := addingHandler(posets, newUnit); err != nil {
 			fmt.Fprintln(os.Stderr, "Error while adding a unit to some poset:", err)
 			return err
 		}

@@ -201,8 +201,14 @@ func testPrimeFloodingScenario() error {
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newPrimeFloodAdder(floodingLevel, forkingPrimes, privKeys, byzantinePosets)
 	verifier := offline_poset.NewDefaultVerifier()
+	testingRoutineFactory := offline_poset.NewDefaultTestingRoutineFactory(
+		func(posets []*growing.Poset) []*growing.Poset { return posets },
+		unitCreator,
+		unitAdder,
+		verifier,
+	)
 
-	return offline_poset.Test(pubKeys, nUnits, maxParents, unitCreator, unitAdder, verifier)
+	return offline_poset.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
 }
 
 func testSimpleScenario() error {
@@ -218,8 +224,14 @@ func testSimpleScenario() error {
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newSimpleForkingAdder(10, privKeys, byzantinePosets)
 	verifier := offline_poset.NewDefaultVerifier()
+	testingRoutineFactory := offline_poset.NewDefaultTestingRoutineFactory(
+		func(posets []*growing.Poset) []*growing.Poset { return posets },
+		unitCreator,
+		unitAdder,
+		verifier,
+	)
 
-	return offline_poset.Test(pubKeys, nUnits, maxParents, unitCreator, unitAdder, verifier)
+	return offline_poset.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
 }
 
 func testRandomForking() error {
@@ -235,8 +247,14 @@ func testRandomForking() error {
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newRandomForkingAdder(byzantinePosets, 50, privKeys)
 	verifier := offline_poset.NewDefaultVerifier()
+	testingRoutineFactory := offline_poset.NewDefaultTestingRoutineFactory(
+		func(posets []*growing.Poset) []*growing.Poset { return posets },
+		unitCreator,
+		unitAdder,
+		verifier,
+	)
 
-	return offline_poset.Test(pubKeys, nUnits, maxParents, unitCreator, unitAdder, verifier)
+	return offline_poset.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
 }
 
 var _ = Describe("Byzantine Poset Test", func() {
