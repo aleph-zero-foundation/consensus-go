@@ -161,7 +161,6 @@ func BenchmarkLevelComputing(b *testing.B) {
 		b.Run("With floors on "+testfile, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				for _, u := range flatten {
-					levelByIteratingPrimes(u, poset)
 					u.(*unit).computeLevel()
 				}
 			}
