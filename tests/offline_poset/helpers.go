@@ -157,8 +157,7 @@ func NewDefaultUnitCreator(privKeys []gomel.PrivateKey) UnitCreator {
 	}
 }
 
-// GetOrderedUnits returns units of a given poset using default implementation of the ordering interface
-func GetOrderedUnits(poset gomel.Poset) (units chan gomel.Unit) {
+func getOrderedUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	units = make(chan gomel.Unit)
 	go func() {
 		config := config.NewDefaultConfiguration()
@@ -178,8 +177,7 @@ func GetOrderedUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	return units
 }
 
-// GetAllTimingUnits returns all timing units of a poset in increasing order of their levels
-func GetAllTimingUnits(poset gomel.Poset) (units chan gomel.Unit) {
+func getAllTimingUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	units = make(chan gomel.Unit)
 	go func() {
 		config := config.NewDefaultConfiguration()
@@ -197,8 +195,7 @@ func GetAllTimingUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	return units
 }
 
-// GetMaximalUnitsSorted returns a list of maximal units of a poset. Forks are sorted using their Hash values
-func GetMaximalUnitsSorted(poset gomel.Poset) (units chan gomel.Unit) {
+func getMaximalUnitsSorted(poset gomel.Poset) (units chan gomel.Unit) {
 	units = make(chan gomel.Unit)
 	go func() {
 		poset.MaximalUnitsPerProcess().Iterate(func(forks []gomel.Unit) bool {
@@ -267,7 +264,7 @@ func VerifyTimingUnits() PosetVerifier {
 	prevLevel := -1
 	return verifyUnitsUsingOrdering(
 
-		GetAllTimingUnits,
+		getAllTimingUnits,
 
 		func(u1, u2 gomel.Unit) error {
 			level := u1.Level()
@@ -291,7 +288,7 @@ func VerifyTimingUnits() PosetVerifier {
 func VerifyOrdering() PosetVerifier {
 	return verifyUnitsUsingOrdering(
 
-		GetOrderedUnits,
+		getOrderedUnits,
 
 		func(u1, u2 gomel.Unit) error {
 			if *u1.Hash() != *u2.Hash() {
@@ -305,7 +302,7 @@ func VerifyOrdering() PosetVerifier {
 // VerifyAllPosetsContainSameMaximalUnits returns a PosetVerifier that checks if all posets provide same set of maximal units
 func VerifyAllPosetsContainSameMaximalUnits() PosetVerifier {
 	return verifyUnitsUsingOrdering(
-		GetMaximalUnitsSorted,
+		getMaximalUnitsSorted,
 
 		func(u1, u2 gomel.Unit) error {
 			if *u1.Hash() != *u2.Hash() {
