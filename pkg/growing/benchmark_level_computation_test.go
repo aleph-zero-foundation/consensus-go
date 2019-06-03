@@ -43,6 +43,62 @@ func levelByIteratingPrimes(u gomel.Unit, p gomel.Poset) int {
 	return level
 }
 
+func levelByDFS(u gomel.Unit, poset gomel.Poset) int {
+	if len(u.Parents()) == 0 {
+		return 0
+	}
+
+	parents := u.Parents()
+	level := parents[len(parents)-1].Level()
+	procSeen := make(map[int]bool)
+	unitsSeen := make(map[gomel.Hash]bool)
+	stack := []gomel.Unit{u}
+	for len(stack) > 0 {
+		w := stack[len(stack)-1]
+		stack = stack[:(len(stack) - 1)]
+
+		for _, v := range w.Parents() {
+			if v.Level() == level && !unitsSeen[*v.Hash()] {
+				stack = append(stack, v)
+				unitsSeen[*v.Hash()] = true
+				procSeen[v.Creator()] = true
+				if poset.IsQuorum(len(procSeen)) {
+					return level + 1
+				}
+			}
+		}
+	}
+	return level
+}
+
+func levelByBFS(u gomel.Unit, poset gomel.Poset) int {
+	if len(u.Parents()) == 0 {
+		return 0
+	}
+
+	parents := u.Parents()
+	level := parents[len(parents)-1].Level()
+	procSeen := make(map[int]bool)
+	unitsSeen := make(map[gomel.Hash]bool)
+	queue := []gomel.Unit{u}
+	for len(queue) > 0 {
+		w := queue[0]
+		queue = queue[1:]
+
+		for _, v := range w.Parents() {
+			if v.Level() == level && !unitsSeen[*v.Hash()] {
+				queue = append(queue, v)
+				unitsSeen[*v.Hash()] = true
+				procSeen[v.Creator()] = true
+				if poset.IsQuorum(len(procSeen)) {
+					return level + 1
+				}
+			}
+		}
+	}
+	return level
+}
+
 // collectUnits runs dfs from maximal units in the given poset and returns a map
 // creator => (height => slice of units by this creator on this height)
 func collectUnits(p gomel.Poset) map[int]map[int][]gomel.Unit {
@@ -114,6 +170,20 @@ func BenchmarkLevelComputing(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				for _, u := range flatten {
 					levelByIteratingPrimes(u, poset)
+				}
+			}
+		})
+		b.Run("By simple dfs on "+testfile, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				for _, u := range flatten {
+					levelByDFS(u, poset)
+				}
+			}
+		})
+		b.Run("By simple bfs on "+testfile, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				for _, u := range flatten {
+					levelByBFS(u, poset)
 				}
 			}
 		})
