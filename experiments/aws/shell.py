@@ -401,15 +401,10 @@ def run_protocol(n_processes, regions, restricted, instance_type):
     print('waiting for transition from pending to running')
     wait('running', regions)
 
-    # print('generating keys')
-    # generate signing and keys
-    # generate_signing_keys(n_processes)
-
-    print('generating addresses file')
+    print('generating keys&addresses files')
     # prepare address file
     ip_list = instances_ip(regions)
-    with open('ip_addresses', 'w') as f:
-        f.writelines([ip+'\n' for ip in ip_list])
+    generate_keys(ip_list)
 
     print('waiting till ports are open on machines')
     # this is really slow, and actually machines are ready earlier! refactor

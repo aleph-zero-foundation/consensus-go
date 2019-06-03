@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 from subprocess import call
+from glob import glob
 
 import boto3
 
@@ -204,20 +205,37 @@ def read_aws_keys():
         return access_key_id, secret_access_key
 
 
-def generate_signing_keys(n_processes):
+def generate_keys(ip_list, port):
     ''' Generate signing keys for the committee.'''
+    n_processes = len(ip_list)
+    
+    keys_path = glob('data/*.keys')
 
-    # if file exists check if it is of appropriate size
-    if os.path.exists('signing_keys'):
-        with open('signing_keys', 'r') as f:
-            if n_processes == sum(1 for line in f):
-                return
+    os.chdir('data/')
+    pubs = None
+    if len(keys_path) == n_processes:
+        # there are enough keys, we need only to update ips
+        for i, ip in enumerate(ip_list):
+            with open(f'{i}.keys', 'r') as f:
+                priv, _ = f.readline().split()
+                if pubs is None:
+                    pubs = []
+                    for line in f:
+                        pub, _ = line.split()
+                        pubs.append(pub)
+            with open(f'{i}.keys', 'w') as f:
+                f.write(f'{priv} {ip}:{port}\n')
+                for pub, ip in zip(pubs, ip_list):
+                    f.write(f'{pub} {ip}:{port}\n')
+    else:
+        # we need to generate a new set of keys
+        with open('addresses', 'w') as f:
+            for ip in ip_list:
+                f.write(f'{ip}:{port}\n')
 
-    #priv_keys = [SigningKey() for _ in range(n_processes)]
-    with open('signing_keys', 'w') as f:
-        for _ in range(n_processes):
-            f.write(SigningKey().to_hex().decode()+'\n')
+        cmd = f'go run ../../../cmd/gomel-keys/main.go {n_processes} addresses'
 
+    os.chdir('..')
 
 def available_regions():
     ''' Returns a list of all currently available regions.'''

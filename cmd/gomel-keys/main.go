@@ -1,6 +1,7 @@
 package main
 
 import (
+"bufio"
 	"fmt"
 	"os"
 	"strconv"
@@ -16,35 +17,59 @@ type proc struct {
 	address    string
 }
 
-func makeProcess(i int) proc {
+func makeProcess(i int, address string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
-	port := 21037 + i
 	return proc{
 		publicKey:  pubKey,
 		privateKey: privKey,
-		address:    "127.0.0.1:" + strconv.Itoa(port),
+		address:    address,
 	}
 }
 
 // This program generates files with random keys and local addresses for a committee of the specified size.
 // These files are intended to be used for simple local tests of the gomel binary.
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number>.")
+	if len(os.Args) != 2 && len(os.Args) != 3 {
+		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number> [<addresses_file>].")
 		return
 	}
 	num, err := strconv.Atoi(os.Args[1])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number>.")
+		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number> [<addresses_file>].")
 		return
 	}
 	if num < 4 {
 		fmt.Fprintln(os.Stderr, "Cannot have less than 4 processes.")
 		return
 	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number> [<addresses_file>].")
+		return
+	}
+    addresses := []string{}
+    if len(os.Args) == 2 {
+        for i:=0; i<num; i++ {
+            addresses = append(addresses, "127.0.0.1:" + strconv.Itoa(8888+i))
+        }
+    } else {
+        f, err := os.Open(os.Args[2])
+        if err != nil {
+		    fmt.Fprintln(os.Stderr, "Cannot open file ", os.Args[2])
+		    return
+        }
+        defer f.Close()
+        scanner := bufio.NewScanner(f)
+        for scanner.Scan() {
+            addresses = append(addresses, scanner.Text())
+        }
+        if len(addresses) < num {
+		    fmt.Fprintln(os.Stderr, "Too few addresses in ", os.Args[2])
+		    return
+        }
+    }
 	processes := []proc{}
 	for i := 0; i < num; i++ {
-		processes = append(processes, makeProcess(i))
+		processes = append(processes, makeProcess(i, addresses[i]))
 	}
 	committee := &config.Committee{}
 	for _, p := range processes {
