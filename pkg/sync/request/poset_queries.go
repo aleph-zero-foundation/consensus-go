@@ -37,19 +37,10 @@ func toPosetInfo(maxSnapshot [][]gomel.Unit) posetInfo {
 	return result
 }
 
-func belowAny(u gomel.Unit, units []gomel.Unit) bool {
-	for _, v := range units {
-		if u.Below(v) {
-			return true
-		}
-	}
-	return false
-}
-
 func fixMaximal(u gomel.Unit, maxes [][]gomel.Unit) [][]gomel.Unit {
 	for _, p := range u.Parents() {
 		creator := p.Creator()
-		if !belowAny(p, maxes[creator]) {
+		if !gomel.BelowAny(p, maxes[creator]) {
 			newMaxes := []gomel.Unit{}
 			for _, m := range maxes[creator] {
 				if !m.Below(p) {
