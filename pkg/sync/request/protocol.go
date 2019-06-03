@@ -72,20 +72,22 @@ func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, myPid int, log ze
 	for _, preunit := range preunits {
 		if len(preunit.Parents()) == 0 {
 			tc, err := tcoin.Decode(preunit.ThresholdCoinData(), myPid)
-			poset.AddThresholdCoin(preunit.Hash(), tc)
 			if err != nil {
 				problem = err
-				continue
+				break
 			}
+			poset.AddThresholdCoin(preunit.Hash(), tc)
 		}
 		wg.Add(1)
 		poset.AddUnit(preunit, func(pu gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
-				poset.RemoveThresholdCoin(pu.Hash())
 				switch e := err.(type) {
 				case *gomel.DuplicateUnit:
 					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
 				default:
+					if len(pu.Parents()) == 0 {
+						poset.RemoveThresholdCoin(pu.Hash())
+					}
 					problem = err
 				}
 			}
