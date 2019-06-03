@@ -231,8 +231,7 @@ func levelFromParents(parents []gomel.Unit, poset gomel.Poset) int {
 // firstDealingUnitFromParents takes parents of the unit under construction
 // and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
 // that is below the unit under construction
-func firstDealingUnitFromParents(parents []gomel.Unit, poset gomel.Poset) gomel.Unit {
-	level := levelFromParents(parents, poset)
+func firstDealingUnitFromParents(parents []gomel.Unit, level int, poset gomel.Poset) gomel.Unit {
 	dealingUnits := poset.PrimeUnits(0)
 	for _, dealer := range poset.GetCRP(level) {
 		// We are only checking if there are forked dealing units created by the dealer
@@ -266,7 +265,7 @@ func createCoinShare(parents []gomel.Unit, poset gomel.Poset) *tcoin.CoinShare {
 	if level == parents[0].Level() {
 		return nil
 	}
-	fdu := firstDealingUnitFromParents(parents, poset)
+	fdu := firstDealingUnitFromParents(parents, level, poset)
 	tc := poset.ThresholdCoin(fdu.Hash())
 	if tc == nil {
 		return nil
