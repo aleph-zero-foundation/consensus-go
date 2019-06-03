@@ -37,6 +37,7 @@ type TestingRoutine interface {
 	CreatePosetVerifier() PosetVerifier
 }
 
+// TestingRoutineFactory represent a particular test executed on a given list of posets
 type TestingRoutineFactory func([]*growing.Poset) ([]*growing.Poset, TestingRoutine)
 
 type testingRoutineFactory struct {
@@ -58,12 +59,14 @@ func (test *testingRoutineFactory) CreatePosetVerifier() PosetVerifier {
 	return test.verifier
 }
 
+// NewDefaultTestingRoutineFactory creates an instance of TestingRoutine
 func NewDefaultTestingRoutineFactory(posetInitializer func([]*growing.Poset) []*growing.Poset, creator UnitCreator, adder AddingHandler, verifier PosetVerifier) TestingRoutineFactory {
 	return func(posets []*growing.Poset) ([]*growing.Poset, TestingRoutine) {
 		return posetInitializer(posets), &testingRoutineFactory{posetInitializer, creator, adder, verifier}
 	}
 }
 
+// NewDefaultAdder creates an instance of AddingHandler that simply ads a given unit to all posets under test
 func NewDefaultAdder() AddingHandler {
 	return func(posets []*growing.Poset, unit gomel.Preunit) error {
 		_, err := AddToPosets(unit, posets)
@@ -71,6 +74,7 @@ func NewDefaultAdder() AddingHandler {
 	}
 }
 
+// AddToPoset is a helper method for synchronous addition of a unit to a given poset
 func AddToPoset(poset gomel.Poset, pu gomel.Preunit) (gomel.Unit, error) {
 	var result gomel.Unit
 	var caughtError error
@@ -85,6 +89,7 @@ func AddToPoset(poset gomel.Poset, pu gomel.Preunit) (gomel.Unit, error) {
 	return result, caughtError
 }
 
+// AddToPosets is a helper function that adds a given unit to all provided posets
 func AddToPosets(unit gomel.Preunit, posets []*growing.Poset) (resultUnit gomel.Unit, err error) {
 	for ix, poset := range posets {
 		result, errTmp := AddToPoset(poset, unit)
@@ -99,6 +104,7 @@ func AddToPosets(unit gomel.Preunit, posets []*growing.Poset) (resultUnit gomel.
 	return
 }
 
+// AddUnitsToPosetsInRandomOrder adds a set of units in random order (per each poset) to all provided posets
 func AddUnitsToPosetsInRandomOrder(units []gomel.Preunit, posets []*growing.Poset) error {
 	for _, poset := range posets {
 		rand.Shuffle(len(units), func(i, j int) {
@@ -114,6 +120,7 @@ func AddUnitsToPosetsInRandomOrder(units []gomel.Preunit, posets []*growing.Pose
 	return nil
 }
 
+// GenerateKeys is a helper function creating a set of pairs of public-private keys
 func GenerateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
 	pubKeys = make([]gomel.PublicKey, 0, nProcesses)
 	privKeys = make([]gomel.PrivateKey, 0, nProcesses)
@@ -125,6 +132,8 @@ func GenerateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.P
 	return pubKeys, privKeys
 }
 
+// NewDefaultUnitCreator returns an implementation of the UnitCreator type that tries to build a unit using a randomly selected
+// poset
 func NewDefaultUnitCreator(privKeys []gomel.PrivateKey) UnitCreator {
 	return func(posets []*growing.Poset) (gomel.Preunit, error) {
 		attempts := 0
@@ -148,6 +157,7 @@ func NewDefaultUnitCreator(privKeys []gomel.PrivateKey) UnitCreator {
 	}
 }
 
+// GetOrderedUnits returns units of a given poset using default implementation of the ordering interface
 func GetOrderedUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	units = make(chan gomel.Unit)
 	go func() {
@@ -168,6 +178,7 @@ func GetOrderedUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	return units
 }
 
+// GetAllTimingUnits returns all timing units of a poset in increasing order of their levels
 func GetAllTimingUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	units = make(chan gomel.Unit)
 	go func() {
@@ -186,6 +197,7 @@ func GetAllTimingUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	return units
 }
 
+// GetMaximalUnitsSorted returns a list of maximal units of a poset. Forks are sorted using their Hash values
 func GetMaximalUnitsSorted(poset gomel.Poset) (units chan gomel.Unit) {
 	units = make(chan gomel.Unit)
 	go func() {
@@ -206,6 +218,8 @@ func GetMaximalUnitsSorted(poset gomel.Poset) (units chan gomel.Unit) {
 	return units
 }
 
+// ComposeVerifiers composes provided verifiers into a single one. It fails immediately after it discovers a failure of one of
+// the verifiers
 func ComposeVerifiers(verifiers ...PosetVerifier) PosetVerifier {
 	return func(posets []*growing.Poset) error {
 		for _, verifier := range verifiers {
@@ -217,31 +231,7 @@ func ComposeVerifiers(verifiers ...PosetVerifier) PosetVerifier {
 	}
 }
 
-func VerifyTimingUnits() PosetVerifier {
-	prevLevel := -1
-	return VerifyUnitsUsingOrdering(
-
-		GetAllTimingUnits,
-
-		func(u1, u2 gomel.Unit) error {
-			level := u1.Level()
-			if level != prevLevel+1 {
-				// TODO
-				return gomel.NewDataError(
-					fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
-				)
-			}
-			prevLevel = level
-
-			if *u1.Hash() != *u2.Hash() {
-				return gomel.NewDataError("Posets selected different timing units")
-			}
-			return nil
-		},
-	)
-}
-
-func VerifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) PosetVerifier {
+func verifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) PosetVerifier {
 	return func(posets []*growing.Poset) error {
 		if len(posets) < 2 {
 			return nil
@@ -272,8 +262,34 @@ func VerifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checke
 	}
 }
 
+// VerifyTimingUnits returns a poset verifier that checks if all posets returns same set of timing units
+func VerifyTimingUnits() PosetVerifier {
+	prevLevel := -1
+	return verifyUnitsUsingOrdering(
+
+		GetAllTimingUnits,
+
+		func(u1, u2 gomel.Unit) error {
+			level := u1.Level()
+			if level != prevLevel+1 {
+				// TODO
+				return gomel.NewDataError(
+					fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
+				)
+			}
+			prevLevel = level
+
+			if *u1.Hash() != *u2.Hash() {
+				return gomel.NewDataError("Posets selected different timing units")
+			}
+			return nil
+		},
+	)
+}
+
+// VerifyOrdering returns a PosetVerifier that compares if all posets orders their underlying units in the same way
 func VerifyOrdering() PosetVerifier {
-	return VerifyUnitsUsingOrdering(
+	return verifyUnitsUsingOrdering(
 
 		GetOrderedUnits,
 
@@ -286,8 +302,9 @@ func VerifyOrdering() PosetVerifier {
 	)
 }
 
+// VerifyAllPosetsContainSameMaximalUnits returns a PosetVerifier that checks if all posets provide same set of maximal units
 func VerifyAllPosetsContainSameMaximalUnits() PosetVerifier {
-	return VerifyUnitsUsingOrdering(
+	return verifyUnitsUsingOrdering(
 		GetMaximalUnitsSorted,
 
 		func(u1, u2 gomel.Unit) error {
@@ -299,10 +316,13 @@ func VerifyAllPosetsContainSameMaximalUnits() PosetVerifier {
 	)
 }
 
+// NewDefaultVerifier returns default PosetVerifier composed from VerifyAllPosetsContainSameMaximalUnits, VerifyTimingUnits and
+// VerifyOrdering verifiers
 func NewDefaultVerifier() PosetVerifier {
 	return ComposeVerifiers(VerifyAllPosetsContainSameMaximalUnits(), VerifyTimingUnits(), VerifyOrdering())
 }
 
+// NewNoOpVerifier returns a PosetVerifier that does not check provided posets and simply answer that they are correct
 func NewNoOpVerifier() PosetVerifier {
 	return func([]*growing.Poset) error {
 		fmt.Println("No verification step")
@@ -310,6 +330,7 @@ func NewNoOpVerifier() PosetVerifier {
 	}
 }
 
+// Test is a helper function that performs a test using provided TestingRoutineFactory
 func Test(
 	pubKeys []gomel.PublicKey,
 	nUnits, maxParents int,
