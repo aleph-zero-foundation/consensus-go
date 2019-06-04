@@ -47,7 +47,7 @@ func provesPopularityWithFloors(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) 
 		nNotSeen--
 		for _, w := range myFloor {
 			var reachedBottom error
-			for w.Above(uc) && ((w.Level() > level-2) || (w.Level() == level-1 && !gomel.Prime(w))) {
+			for w.Above(uc) && ((w.Level() > level-2) && (w.Level() != level-1 || !gomel.Prime(w))) {
 				var wPre gomel.Unit
 				wPre, reachedBottom = gomel.Predecessor(w)
 				if reachedBottom != nil {
@@ -55,16 +55,16 @@ func provesPopularityWithFloors(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) 
 				}
 				w = wPre.(*unit)
 			}
-			if reachedBottom == nil && w.Above(uc) {
+			if reachedBottom == nil && w.Above(uc) && ((w.Level() == level-2) || ((w.Level() == level-1) && gomel.Prime(w))) {
 				nSeen++
 				if poset.IsQuorum(nSeen) {
 					return true
 				}
 				break
 			}
-			if !poset.IsQuorum(nSeen + nNotSeen) {
-				return false
-			}
+		}
+		if !poset.IsQuorum(nSeen + nNotSeen) {
+			return false
 		}
 	}
 	return poset.IsQuorum(nSeen)
