@@ -46,8 +46,9 @@ func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 	}
 }
 
-func generateOrderConfig(conf *Configuration) *process.Order {
+func generateOrderConfig(conf *Configuration, c *Committee) *process.Order {
 	return &process.Order{
+		Pid:          c.Pid,
 		VotingLevel:  int(conf.VotingLevel),
 		PiDeltaLevel: int(conf.PiDeltaLevel),
 	}
@@ -71,7 +72,7 @@ func (conf *Configuration) GenerateConfig(c *Committee, dbFilename string) proce
 		Poset:      generatePosetConfig(c),
 		Sync:       generateSyncConfig(conf, c),
 		Create:     generateCreateConfig(conf, c),
-		Order:      generateOrderConfig(conf),
+		Order:      generateOrderConfig(conf, c),
 		TxValidate: generateTxValidateConfig(dbFilename),
 		TxGenerate: generateTxGenerateConfig(dbFilename),
 	}
