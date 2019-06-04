@@ -235,7 +235,6 @@ func verifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checke
 			return nil
 		}
 		for ix := range posets[:len(posets)-1] {
-			fmt.Println("verifying poset no", ix)
 			units1 := ordering(posets[ix])
 			units2 := ordering(posets[ix+1])
 
