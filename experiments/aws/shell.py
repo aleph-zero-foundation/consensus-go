@@ -13,7 +13,10 @@ import numpy as np
 import zipfile
 
 from fabfile import zip_repo
-from utils import image_id_in_region, default_region_name, init_key_pair, security_group_id_by_region, available_regions, badger_regions, generate_signing_keys, n_processes_per_regions, eu_regions, translate_region_codes
+from utils import image_id_in_region, default_region_name, init_key_pair, security_group_id_by_region, available_regions, badger_regions, generate_keys, n_processes_per_regions, eu_regions, translate_region_codes
+
+import warning 
+warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 
 N_JOBS = 4
 
@@ -34,7 +37,7 @@ def run_task_for_ip(task='test', ip_list=[], parallel=False, output=False):
 
     if parallel:
         hosts = " ".join(["ubuntu@"+ip for ip in ip_list])
-        cmd = 'parallel fab -i key_pairs/aleph.pem -H {} '+task+' ::: '+hosts
+        cmd = 'parallel --citation fab -i key_pairs/aleph.pem -H {} '+task+' ::: '+hosts
     else:
         hosts = ",".join(["ubuntu@"+ip for ip in ip_list])
         cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task}'
@@ -151,7 +154,7 @@ def instances_state_in_region(region_name=default_region_name()):
     return states
 
 
-def run_task_in_region(task='test', region_name=default_region_name(), parallel=False, output=False):
+def run_task_in_region(task='test', region_name=default_region_name(), parallel=False, output=False, pids=None):
     '''
     Runs a task from fabfile.py on all instances in a given region.
     :param string task: name of a task defined in fabfile.py
@@ -165,7 +168,11 @@ def run_task_in_region(task='test', region_name=default_region_name(), parallel=
     ip_list = instances_ip_in_region(region_name)
     if parallel:
         hosts = " ".join(["ubuntu@"+ip for ip in ip_list])
-        cmd = 'parallel fab -i key_pairs/aleph.pem -H {} '+task+' ::: '+hosts
+        if pids is None:
+            cmd = 'parallel --citation fab -i key_pairs/aleph.pem -H {} ' + task + ' ::: ' + hosts
+        else:
+            cmd = 'parallel --citation fab -i key_pairs/aleph.pem -H {1} ' + task + ' --pid={2} ::: ' + hosts + ' :::+ ' + ' '.join(pids)
+            print(cmd)
     else:
         hosts = ",".join(["ubuntu@"+ip for ip in ip_list])
         cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task}'
@@ -237,7 +244,7 @@ def wait_in_region(target_state, region_name):
         print()
 
 
-def installation_finished_in_region(region_name):
+def installation_finished_in_region(region_name=default_region_name()):
     '''Checks if installation has finished on all instances in a given region.'''
 
     results = []
@@ -254,7 +261,7 @@ def installation_finished_in_region(region_name):
 #                              routines for all regions
 #======================================================================================
 
-def exec_for_regions(func, regions='badger regions', parallel=True):
+def exec_for_regions(func, regions='badger regions', parallel=True, pids=None):
     '''A helper function for running routines in all regions.'''
 
     if regions == 'all':
@@ -265,7 +272,11 @@ def exec_for_regions(func, regions='badger regions', parallel=True):
     results = []
     if parallel:
         try:
-            results = Parallel(n_jobs=N_JOBS)(delayed(func)(region_name) for region_name in regions)
+            if pids is None:
+                results = Parallel(n_jobs=N_JOBS)(delayed(func)(region_name) for region_name in regions)
+            else:
+                results = Parallel(n_jobs=N_JOBS)(delayed(func)(region_name, pids=pids[region_name]) for region_name in regions)
+
         except Exception as e:
             print('error during collecting results', type(e), e)
     else:
@@ -333,7 +344,7 @@ def instances_state(regions='badger regions', parallel=True):
     return exec_for_regions(instances_state_in_region, regions, parallel)
 
 
-def run_task(task='test', regions='badger regions', parallel=True, output=False):
+def run_task(task='test', regions='badger regions', parallel=True, output=False, pids=None):
     '''
     Runs a task from fabfile.py on all instances in all given regions.
     :param string task: name of a task defined in fabfile.py
@@ -342,7 +353,7 @@ def run_task(task='test', regions='badger regions', parallel=True, output=False)
     :param bool output: indicates whether output of task is needed
     '''
 
-    return exec_for_regions(partial(run_task_in_region, task, parallel=parallel, output=output), regions, parallel)
+    return exec_for_regions(partial(run_task_in_region, task, parallel=parallel, output=output), regions, parallel, pids)
 
 
 def run_cmd(cmd='ls', regions='badger regions', output=False, parallel=True):
@@ -402,45 +413,36 @@ def run_protocol(n_processes, regions, restricted, instance_type):
     wait('running', regions)
 
     print('generating keys&addresses files')
-    # prepare address file
-    ip_list = instances_ip(regions)
-    generate_keys(ip_list)
+    pids, ip_list, c = {}, [], 0
+    for r in regions:
+        ipl = instances_ip_in_region(r)
+        pids[r] = [str(pid) for pid in range(c,c+len(ipl))]
+        c += len(ipl)
+        ip_list.extend(ipl)
+        
+    generate_keys(ip_list, 8888)
 
     print('waiting till ports are open on machines')
     # this is really slow, and actually machines are ready earlier! refactor
     #wait('ssh ready', regions)
-    sleep(120)
-
-    print('installing dependencies')
-    # install dependencies on hosts
-    run_task('inst-dep', regions, parallel)
-
-    # TODO check if it works of more than 1 machine per region
-    print('wait till installation finishes')
-    # wait till installing finishes
     sleep(60)
+
+    print('cloning repo')
+    run_task('clone-repo', regions, parallel)
+
+    print('installing missing deps')
+    run_task('inst-deps', regions, parallel)
+
+    print('wait till installation finishes')
+    sleep(20)
     wait_install(regions)
 
-    print('packing local repo')
-    # pack testing repo
-    with Connection('localhost') as c:
-        zip_repo(c)
-
-    print('sending testing repo')
-    # send testing repo
-    run_task('send-testing-repo', regions, parallel)
-
-    print('syncing files')
-    # send files: addresses, signing_keys, light_nodes_public_keys
-    run_task('sync-files', regions, parallel)
-
-    print('sending parameters')
-    # send parameters
-    run_task('send-params', regions, parallel)
+    print('send data: keys, addresses, parameters')
+    run_task('send-data', regions, parallel, False, pids)
 
     print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
-    run_task('run-protocol', regions, parallel)
+    #run_task('run-protocol', regions, parallel)
 
 
 def create_images(regions=badger_regions()):
@@ -460,7 +462,7 @@ def create_images(regions=badger_regions()):
 
     print('installing dependencies')
     # install dependencies on hosts
-    run_task_in_region('inst-dep', regions[0])
+    run_task_in_region('setup', regions[0])
 
     print('wait till installation finishes')
     # wait till installing finishes

@@ -234,6 +234,7 @@ def generate_keys(ip_list, port):
                 f.write(f'{ip}:{port}\n')
 
         cmd = f'go run ../../../cmd/gomel-keys/main.go {n_processes} addresses'
+        call(cmd.split())
 
     os.chdir('..')
 
