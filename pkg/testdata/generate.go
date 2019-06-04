@@ -2,9 +2,15 @@ package main
 
 import (
 	"bufio"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
+	"math/rand"
 	"os"
+	"sync"
+	"time"
+
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/growing"
+	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 func writeToFile(filename string, poset gomel.Poset) error {
@@ -19,8 +25,32 @@ func writeToFile(filename string, poset gomel.Poset) error {
 	return nil
 }
 
+// CreateRandomNonForkingUsingCreating creates a random test poset when given
+// nProcesses - number of processes
+// maxParents - maximal number of unit parents (valid for non-dealing units)
+// nUnits     - number of units to include in the poset
+func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gomel.Poset {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	p := growing.NewPoset(&gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
+	created := 0
+	for created < nUnits {
+		pid := r.Intn(nProcesses)
+		pu, err := creating.NewUnit(p, pid, maxParents, []byte{})
+		if err != nil {
+			continue
+		}
+		var wg sync.WaitGroup
+		wg.Add(1)
+		p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
+			wg.Done()
+		})
+		wg.Wait()
+		created++
+	}
+	return p
+}
+
 // Use this to generate more test files
 func main() {
-	writeToFile("empty.txt", tests.CreateRandomNonForking(10, 2, 2, 0))
-	writeToFile("random_10p_100u_2par.txt", tests.CreateRandomNonForking(10, 2, 2, 100))
+	writeToFile("random_100p_5000u.txt", CreateRandomNonForkingUsingCreating(100, 100, 5000))
 }

@@ -129,7 +129,6 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 		p.maximalHeight[u.Creator()] = u.Height()
 	}
 	p.unitByHash[*u.Hash()] = &u
-
 	callback(pu, &u, nil)
 }
 
@@ -173,7 +172,7 @@ func (p *Poset) NProc() int {
 // IsQuorum checks whether the provided number of processes constitutes a quorum.
 func (p *Poset) IsQuorum(number int) bool {
 	// nProcesses doesn't change so no lock needed
-	return 3*number > 2*p.nProcesses
+	return 3*number >= 2*p.nProcesses
 }
 
 func setLevel(u *unit, p *Poset) {
@@ -191,7 +190,8 @@ func setLevel(u *unit, p *Poset) {
 	seenProcesses := make(map[int]bool)
 	seenUnits := make(map[gomel.Hash]bool)
 	seenUnits[*u.Hash()] = true
-	queue := []gomel.Unit{u}
+	queue := []gomel.Unit{}
+	queue = append(queue, u.Parents()...)
 	for len(queue) > 0 {
 		w := queue[0]
 		queue = queue[1:]
