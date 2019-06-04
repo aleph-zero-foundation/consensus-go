@@ -8,6 +8,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process/run"
 )
 
@@ -24,12 +25,11 @@ func generateKeys(nProcesses uint64) (pubKeys []gomel.PublicKey, privKeys []gome
 
 func generateLocalhostAdresses(localhostAddress string, nProcesses uint64) []string {
 	const (
-		numberOfReservedPorts = 2
-		magicPort             = 21037
+		magicPort = 21037
 	)
 	result := make([]string, 0, nProcesses)
 	for id := uint64(0); id < nProcesses; id++ {
-		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+(id*numberOfReservedPorts)))
+		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+id))
 	}
 	return result
 }
@@ -43,7 +43,7 @@ func createAndStartProcess(
 	maxLevel,
 	maxHeight uint64,
 	callback func(id int, err error),
-) {
+) error {
 	committee := config.Committee{
 		Pid:        id,
 		PrivateKey: privKey,
@@ -56,11 +56,20 @@ func createAndStartProcess(
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
 	config.Create.MaxHeight = int(maxHeight)
+	log, err := logging.NewLogger("stdout", 0, 100000, false)
+	if err != nil {
+		return err
+	}
+	log = log.With().Int("process_id", id).Logger()
 
 	go func() {
-		err := run.Process(config)
+		err := run.Process(config, log)
+		if err != nil {
+			log.Err(err).Msg("failed to initialize a process")
+		}
 		callback(id, err)
 	}()
+	return nil
 }
 
 func main() {
@@ -74,35 +83,20 @@ func main() {
 	addresses := generateLocalhostAdresses("localhost", *testSize)
 	pubKeys, privKeys := generateKeys(*testSize)
 
-	errChan := make(chan string)
-	var errDone sync.WaitGroup
-	errDone.Add(1)
-	// since all processes are operating in different goroutines, this prevents them to interleave their outputs
-	go func() {
-		for msg := range errChan {
-			fmt.Println(msg)
-		}
-		errDone.Done()
-	}()
-
 	var allDone sync.WaitGroup
 	allDone.Add(int(*testSize))
 	doneCallback := func(id int, err error) {
-		if err != nil {
-			errChan <- fmt.Sprintf("Process %d failed: %s", id, err.Error())
-		}
 		allDone.Done()
 	}
 
 	for id := range addresses {
-		createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, *maxHeight, doneCallback)
+		err := createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, *maxHeight, doneCallback)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// wait for all processes to finish
 	allDone.Wait()
-
-	// gracefully close goroutine handling error messages
-	close(errChan)
-	errDone.Wait()
 	// TODO add some poset verification after all processes finished
 }
