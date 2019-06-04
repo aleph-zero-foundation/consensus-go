@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -54,22 +53,13 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.keyFilename, "keys", "", "a file with keys and associated addresses")
 	flag.StringVar(&result.configFilename, "config", "", "a configuration file")
 	flag.StringVar(&result.dbFilename, "db", "", "a mock database file")
-	flag.StringVar(&result.logFilename, "log", "", "the name of the file with logs")
+	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.Parse()
 	return result
 }
 
 func main() {
 	options := getOptions()
-	if options.logFilename == "" {
-		options.logFilename = "aleph.log"
-	}
-	logging.InitLogger(logging.LogConfig{
-		Level:    1,
-		Path:     options.logFilename,
-		DiodeBuf: 100000,
-		TimeUnit: time.Millisecond,
-	})
 	committee, err := getCommittee(options.keyFilename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keyFilename, err.Error())
@@ -80,8 +70,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid configuration file \"%s\", because: %s.\n", options.configFilename, err.Error())
 		return
 	}
+	log, err := logging.NewLogger(options.logFilename, conf.LogLevel, conf.LogBuffer, conf.LogHuman)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Creating log file \"%s\" failed because: %s.\n", options.logFilename, err.Error())
+		return
+	}
 	processConfig := conf.GenerateConfig(committee, options.dbFilename)
-	err = run.Process(processConfig)
+	err = run.Process(processConfig, log)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
