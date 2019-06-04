@@ -146,8 +146,8 @@ func (cs *connServer) StartDialing() {
 					m.release()
 					continue
 				}
-				cs.dialChan <- newConn(link, m, g.pid, g.sid)
-				cs.log.Info().Uint16(logging.PID, g.pid).Uint32(logging.OSID, g.sid).Msg(logging.ConnectionEstablished)
+				cs.dialChan <- newConn(link, m, uint16(remotePid), g.sid)
+				cs.log.Info().Int(logging.PID, remotePid).Uint32(logging.OSID, g.sid).Msg(logging.ConnectionEstablished)
 			}
 		}
 	}()

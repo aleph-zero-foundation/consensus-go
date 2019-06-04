@@ -236,7 +236,7 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
-	log := p.Log.With().Uint32(logging.OSID, conn.Sid()).Logger()
+	log := p.Log.With().Uint16(logging.PID, conn.Pid()).Uint32(logging.OSID, conn.Sid()).Logger()
 	log.Info().Msg(logging.SyncStarted)
 
 	maxSnapshot := posetMaxSnapshot(poset)
