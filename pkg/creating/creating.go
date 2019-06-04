@@ -225,7 +225,7 @@ func firstDealingUnitFromParents(parents []gomel.Unit, level int, poset gomel.Po
 			return dealersDealingUnits[i].Hash().LessThan(dealersDealingUnits[j].Hash())
 		})
 		for _, u := range dealersDealingUnits {
-			if belowAny(u, parents) {
+			if gomel.BelowAny(u, parents) {
 				if result != nil {
 					// we see forked dealing unit
 					result = nil
