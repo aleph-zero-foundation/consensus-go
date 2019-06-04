@@ -6,8 +6,14 @@ import os
 import sys
 
 from driver import Driver
+from plugins import *
 
 driver = Driver()
+
+driver.add_pipeline('Create service', [Filter(Service, CreateService), CreateCounter(), Filter(Event, [UnitCreated, PrimeUnitCreated]), Timer('unit creation intervals')])
+driver.add_pipeline('Timing units', [Filter(Event, NewTimingUnit), TimingUnitCounter(), Timer('timing unit decision intervals')])
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
