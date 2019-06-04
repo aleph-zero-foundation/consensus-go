@@ -14,7 +14,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
-	"gitlab.com/alephledger/consensus-go/tests/offline_poset"
+	"gitlab.com/alephledger/consensus-go/tests/offline_poset/helpers"
 )
 
 const (
@@ -44,7 +44,7 @@ func (pu *preunitWithNonce) computeHash() {
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }
 
-func NewPreunitWithNounce(preunit gomel.Preunit, nounce uint64) *preunitWithNonce {
+func newPreunitWithNounce(preunit gomel.Preunit, nounce uint64) *preunitWithNonce {
 	pu := creating.NewPreunit(preunit.Creator(), preunit.Parents(), nil)
 
 	result := preunitWithNonce{Preunit: pu, nounce: nounce}
@@ -60,7 +60,7 @@ func createForks(preunit gomel.Preunit, privKey gomel.PrivateKey, count int) []g
 	result := make([]gomel.Preunit, 0, count)
 	created := map[gomel.Hash]bool{}
 	for nounce := uint64(0); len(result) < count; nounce++ {
-		fork := NewPreunitWithNounce(preunit, nounce)
+		fork := newPreunitWithNounce(preunit, nounce)
 		if created[*fork.Hash()] {
 			continue
 		}
@@ -85,10 +85,10 @@ func getRandomListOfByzantinePosets(n int) []int {
 	return rand.Perm(byzProcesses)[:byzProcesses]
 }
 
-func newTriggeredAdder(triggerCondition func(unit gomel.Unit) bool, wrappedHandler offline_poset.AddingHandler) offline_poset.AddingHandler {
+func newTriggeredAdder(triggerCondition func(unit gomel.Unit) bool, wrappedHandler helpers.AddingHandler) helpers.AddingHandler {
 
 	return func(posets []*growing.Poset, unit gomel.Preunit) error {
-		newUnit, err := offline_poset.AddToPosets(unit, posets)
+		newUnit, err := helpers.AddToPosets(unit, posets)
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ func newTriggeredAdder(triggerCondition func(unit gomel.Unit) bool, wrappedHandl
 	}
 }
 
-func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzantinePosets []int) offline_poset.AddingHandler {
+func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzantinePosets []int) helpers.AddingHandler {
 	alreadyForked := make(map[int]bool, len(byzantinePosets))
 	for _, posetID := range byzantinePosets {
 		alreadyForked[posetID] = false
@@ -118,7 +118,7 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 		func(posets []*growing.Poset, unit gomel.Preunit) error {
 			fmt.Println("simple forking behavior triggered")
 			units := createForks(unit, privKeys[unit.Creator()], 2)
-			err := offline_poset.AddUnitsToPosetsInRandomOrder(units, posets)
+			err := helpers.AddUnitsToPosetsInRandomOrder(units, posets)
 			if err != nil {
 				return err
 			}
@@ -129,7 +129,7 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 	)
 }
 
-func newPrimeFloodAdder(floodingLevel int, numberOfPrimes int, privKeys []gomel.PrivateKey, byzantinePosets []int) offline_poset.AddingHandler {
+func newPrimeFloodAdder(floodingLevel int, numberOfPrimes int, privKeys []gomel.PrivateKey, byzantinePosets []int) helpers.AddingHandler {
 	alreadyFlooded := make(map[int]bool, len(byzantinePosets))
 	for _, posetID := range byzantinePosets {
 		alreadyFlooded[posetID] = false
@@ -147,7 +147,7 @@ func newPrimeFloodAdder(floodingLevel int, numberOfPrimes int, privKeys []gomel.
 		func(posets []*growing.Poset, unit gomel.Preunit) error {
 			fmt.Println("Prime flooding started")
 			for _, unit := range createForks(unit, privKeys[unit.Creator()], numberOfPrimes) {
-				if _, err := offline_poset.AddToPosets(unit, posets); err != nil {
+				if _, err := helpers.AddToPosets(unit, posets); err != nil {
 					return err
 				}
 			}
@@ -158,7 +158,7 @@ func newPrimeFloodAdder(floodingLevel int, numberOfPrimes int, privKeys []gomel.
 	)
 }
 
-func newRandomForkingAdder(byzantinePosets []int, forkProbability int, privKeys []gomel.PrivateKey) offline_poset.AddingHandler {
+func newRandomForkingAdder(byzantinePosets []int, forkProbability int, privKeys []gomel.PrivateKey) helpers.AddingHandler {
 	forkers := make(map[int]bool, len(byzantinePosets))
 	for _, creator := range byzantinePosets {
 		forkers[creator] = true
@@ -178,7 +178,7 @@ func newRandomForkingAdder(byzantinePosets []int, forkProbability int, privKeys 
 			fmt.Println("random forking")
 			const forkSize = 2
 			for _, unit := range createForks(unit, privKeys[unit.Creator()], forkSize) {
-				if _, err := offline_poset.AddToPosets(unit, posets); err != nil {
+				if _, err := helpers.AddToPosets(unit, posets); err != nil {
 					return err
 				}
 			}
@@ -195,43 +195,43 @@ func testPrimeFloodingScenario() error {
 		maxParents = 2
 	)
 
-	pubKeys, privKeys := offline_poset.GenerateKeys(nProcesses)
+	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	unitCreator := offline_poset.NewDefaultUnitCreator(privKeys)
+	unitCreator := helpers.NewDefaultUnitCreator(privKeys)
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newPrimeFloodAdder(floodingLevel, forkingPrimes, privKeys, byzantinePosets)
-	verifier := offline_poset.NewDefaultVerifier()
-	testingRoutineFactory := offline_poset.NewDefaultTestingRoutineFactory(
+	verifier := helpers.NewDefaultVerifier()
+	testingRoutineFactory := helpers.NewDefaultTestingRoutineFactory(
 		func(posets []*growing.Poset) []*growing.Poset { return posets },
 		unitCreator,
 		unitAdder,
 		verifier,
 	)
 
-	return offline_poset.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
+	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
 }
 
-func testSimpleScenario() error {
+func testSimpleForkingScenario() error {
 	const (
 		nProcesses = 21
 		nUnits     = 1000
 		maxParents = 2
 	)
 
-	pubKeys, privKeys := offline_poset.GenerateKeys(nProcesses)
+	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	unitCreator := offline_poset.NewDefaultUnitCreator(privKeys)
+	unitCreator := helpers.NewDefaultUnitCreator(privKeys)
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newSimpleForkingAdder(10, privKeys, byzantinePosets)
-	verifier := offline_poset.NewDefaultVerifier()
-	testingRoutineFactory := offline_poset.NewDefaultTestingRoutineFactory(
+	verifier := helpers.NewDefaultVerifier()
+	testingRoutineFactory := helpers.NewDefaultTestingRoutineFactory(
 		func(posets []*growing.Poset) []*growing.Poset { return posets },
 		unitCreator,
 		unitAdder,
 		verifier,
 	)
 
-	return offline_poset.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
+	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
 }
 
 func testRandomForking() error {
@@ -241,26 +241,26 @@ func testRandomForking() error {
 		maxParents = 2
 	)
 
-	pubKeys, privKeys := offline_poset.GenerateKeys(nProcesses)
+	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	unitCreator := offline_poset.NewDefaultUnitCreator(privKeys)
+	unitCreator := helpers.NewDefaultUnitCreator(privKeys)
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newRandomForkingAdder(byzantinePosets, 50, privKeys)
-	verifier := offline_poset.NewDefaultVerifier()
-	testingRoutineFactory := offline_poset.NewDefaultTestingRoutineFactory(
+	verifier := helpers.NewDefaultVerifier()
+	testingRoutineFactory := helpers.NewDefaultTestingRoutineFactory(
 		func(posets []*growing.Poset) []*growing.Poset { return posets },
 		unitCreator,
 		unitAdder,
 		verifier,
 	)
 
-	return offline_poset.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
+	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
 }
 
 var _ = Describe("Byzantine Poset Test", func() {
 	Describe("simple scenario", func() {
 		It("should finish without errors", func() {
-			err := testSimpleScenario()
+			err := testSimpleForkingScenario()
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

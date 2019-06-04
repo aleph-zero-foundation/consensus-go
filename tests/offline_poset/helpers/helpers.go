@@ -1,4 +1,4 @@
-package offline_poset
+package helpers
 
 import (
 	"fmt"
