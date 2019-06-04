@@ -10,7 +10,6 @@ import (
 type ordering struct {
 	poset               gomel.Poset
 	timingUnits         *safeUnitSlice
-	crp                 CommonRandomPermutation
 	unitPositionInOrder map[gomel.Hash]int
 	orderedUnits        []gomel.Unit
 	votingLevel         int
@@ -27,7 +26,6 @@ func NewOrdering(poset gomel.Poset, votingLevel int, PiDeltaLevel int) gomel.Lin
 	return &ordering{
 		poset:               poset,
 		timingUnits:         newSafeUnitSlice(),
-		crp:                 NewCommonRandomPermutation(poset),
 		unitPositionInOrder: make(map[gomel.Hash]int),
 		orderedUnits:        []gomel.Unit{},
 		votingLevel:         votingLevel,
@@ -64,7 +62,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	if posetMaxLevel(o.poset) < level+o.votingLevel {
 		return nil
 	}
-	for _, pid := range o.crp.Get(level) {
+	for _, pid := range o.poset.GetCRP(level) {
 		primeUnitsByCurrProcess := o.poset.PrimeUnits(level).Get(pid)
 		sort.Slice(primeUnitsByCurrProcess, func(i, j int) bool {
 			return primeUnitsByCurrProcess[i].Hash().LessThan(primeUnitsByCurrProcess[j].Hash())

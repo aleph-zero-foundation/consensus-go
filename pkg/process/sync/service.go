@@ -24,12 +24,12 @@ type service struct {
 // NewService creates a new syncing service for the given poset, with the given config.
 func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (process.Service, error) {
 	dial := newDialer(poset.NProc(), config.Pid, config.SyncInitDelay)
-	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), config.ListenQueueLength, config.SyncQueueLength, log)
+	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), config.ListenQueueLength, config.SyncQueueLength, uint16(config.Pid), log)
 	if err != nil {
 		return nil, err
 	}
-	requestIn := &request.In{Timeout: config.Timeout, Log: log}
-	requestOut := &request.Out{Timeout: config.Timeout, Log: log}
+	requestIn := &request.In{Timeout: config.Timeout, Log: log, MyPid: config.Pid}
+	requestOut := &request.Out{Timeout: config.Timeout, Log: log, MyPid: config.Pid}
 	syncServ := ssync.NewServer(poset, connServ.ListenChannel(), connServ.DialChannel(), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit)
 	return &service{
 		syncServer: syncServ,

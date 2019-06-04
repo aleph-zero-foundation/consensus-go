@@ -12,7 +12,7 @@ import (
 )
 
 type connServer struct {
-	pid         int
+	pid         uint16
 	localAddr   *net.TCPAddr
 	remoteAddrs []*net.TCPAddr
 	listenChan  chan network.Connection
@@ -26,14 +26,13 @@ type connServer struct {
 }
 
 // NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs, dialSource, and queue lengths for listens and syncs.
-func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listQueueLen, syncQueueLen uint, log zerolog.Logger) (network.ConnectionServer, error) {
+func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listQueueLen, syncQueueLen uint, myPid uint16, log zerolog.Logger) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err
 	}
 	remoteTCPs := make([]*net.TCPAddr, len(remoteAddrs))
 	inUse := make([]*mutex, len(remoteAddrs))
-	pid := -1
 	for i, remoteAddr := range remoteAddrs {
 		remoteTCP, err := net.ResolveTCPAddr("tcp", remoteAddr)
 		if err != nil {
@@ -41,13 +40,10 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 		}
 		remoteTCPs[i] = remoteTCP
 		inUse[i] = newMutex()
-		if remoteAddr == localAddr {
-			pid = i
-		}
 	}
 
 	return &connServer{
-		pid:         pid,
+		pid:         myPid,
 		localAddr:   localTCP,
 		remoteAddrs: remoteTCPs,
 		listenChan:  make(chan network.Connection, listQueueLen),

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -14,19 +15,31 @@ type preunit struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	data      []byte
+	cs        *tcoin.CoinShare
+	tcData    []byte
 }
 
 // NewPreunit returns preunit
-func NewPreunit(creator int, parents []gomel.Hash, data []byte) gomel.Preunit {
+func NewPreunit(creator int, parents []gomel.Hash, data []byte, cs *tcoin.CoinShare, tcData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		parents:   parents,
 		data:      data,
 		signature: make([]byte, 64),
+		cs:        cs,
+		tcData:    tcData,
 	}
 	pu.computeHash()
 
 	return pu
+}
+
+func (pu *preunit) ThresholdCoinData() []byte {
+	return pu.tcData
+}
+
+func (pu *preunit) CoinShare() *tcoin.CoinShare {
+	return pu.cs
 }
 
 // Data returns data embedded in this preunit.
@@ -72,5 +85,12 @@ func (pu *preunit) computeHash() {
 	data.Write(toBytes(int32(pu.creator)))
 	data.Write(toBytes(pu.parents))
 	data.Write(pu.Data())
+	if pu.cs != nil {
+		csBytes := pu.cs.Marshal()
+		data.Write(csBytes)
+	}
+	if pu.tcData != nil {
+		data.Write(pu.tcData)
+	}
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }

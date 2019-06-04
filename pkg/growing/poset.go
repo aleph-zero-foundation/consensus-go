@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 // Poset that is intended to be used during poset creation.
@@ -15,6 +16,7 @@ type Poset struct {
 	adders     []chan *unitBuilt
 	tasks      sync.WaitGroup
 	pubKeys    []gomel.PublicKey
+	tcByHash   *tcBag
 }
 
 // NewPoset constructs a poset using given public keys of processes.
@@ -33,12 +35,39 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 		maxUnits:   newSlottedUnits(n),
 		adders:     adders,
 		pubKeys:    pubKeys,
+		tcByHash:   newTcBag(),
 	}
 	for k := range adders {
 		go newPoset.adder(adders[k])
 		newPoset.tasks.Add(1)
 	}
 	return newPoset
+}
+
+// AddThresholdCoin adds threshold coin to the poset
+func (p *Poset) AddThresholdCoin(h *gomel.Hash, tc *tcoin.ThresholdCoin) {
+	p.tcByHash.add(h, tc)
+}
+
+// RemoveThresholdCoin removes threshold coin from the poset
+func (p *Poset) RemoveThresholdCoin(h *gomel.Hash) {
+	p.tcByHash.remove(h)
+}
+
+// ThresholdCoin returns local threshold coin dealt by dealing unit having given hash
+// nil for hashes of non-dealing units
+func (p *Poset) ThresholdCoin(h *gomel.Hash) *tcoin.ThresholdCoin {
+	return p.tcByHash.get(h)
+}
+
+// GetCRP is a dummy implementation of a common random permutation
+// TODO: implement
+func (p *Poset) GetCRP(level int) []int {
+	permutation := make([]int, p.NProc())
+	for i := 0; i < p.NProc(); i++ {
+		permutation[i] = (i + level) % p.NProc()
+	}
+	return permutation
 }
 
 // IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.

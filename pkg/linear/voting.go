@@ -1,7 +1,10 @@
 package linear
 
 import (
+	"sort"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type vote int
@@ -142,9 +145,86 @@ func superMajority(p gomel.Poset, votes []vote) vote {
 	return undecided
 }
 
-func coinToss(p gomel.Poset, uc gomel.Unit, u gomel.Unit) int {
-	// TODO: implement using threshold coin
-	return 0
+func firstDealingUnit(u gomel.Unit, poset gomel.Poset) gomel.Unit {
+	dealingUnits := poset.PrimeUnits(0)
+	for _, dealer := range poset.GetCRP(u.Level()) {
+		var result gomel.Unit
+		var dealersDealingUnits = dealingUnits.Get(dealer)
+		sort.Slice(dealersDealingUnits, func(i, j int) bool {
+			return dealersDealingUnits[i].Hash().LessThan(dealersDealingUnits[j].Hash())
+		})
+		// We are only checking if there are forked dealing units created by the dealer below u.
+		// We can change it to hasForkingEvidence, but we would have to also implement
+		// this in creating.
+		for _, v := range dealersDealingUnits {
+			if v.Below(u) {
+				if result != nil {
+					// we see forked dealing unit
+					result = nil
+					break
+				} else {
+					result = u
+				}
+			}
+		}
+		if result != nil {
+			return result
+		}
+	}
+	return nil
+}
+
+// coinToss at unit uTossing (necessarily at level >= ADD_SHARES + 1)
+// With low probability the toss may fail -- typically because of adversarial behavior of some process(es).
+// uc - the unit whose popularity decision is being considered by tossing a coin
+//      this param is used only in case when the simpleCoin is used, otherwise
+//      the result of coin toss is meant to be a function of uTossing.level() only
+// uTossing - the unit that is cossing a toin
+// returns: 0 or 1 -- a (pseudo)random bit, impossible to predict before (uTossing.level - 1) was reached
+
+func (o *ordering) coinToss(uc gomel.Unit, uTossing gomel.Unit) int {
+	level := uTossing.Level() - 1
+	var dealer gomel.Unit
+	shares := []*tcoin.CoinShare{}
+	shareCollected := make(map[int]bool)
+
+	o.poset.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
+		sort.Slice(units, func(i, j int) bool {
+			return units[i].Hash().LessThan(units[j].Hash())
+		})
+		for _, v := range units {
+			if !v.Below(uTossing) {
+				continue
+			}
+			if shareCollected[v.Creator()] {
+				continue
+			}
+			fduV := firstDealingUnit(v, o.poset)
+			if dealer == nil {
+				dealer = fduV
+			}
+			if dealer != fduV {
+				continue
+			}
+			cs := v.CoinShare()
+			if cs != nil {
+				if o.poset.ThresholdCoin(dealer.Hash()).VerifyCoinShare(cs, level) {
+					shares = append(shares, cs)
+					shareCollected[v.Creator()] = true
+					if len(shares) == o.poset.ThresholdCoin(dealer.Hash()).Threshold {
+						return false
+					}
+					return true
+				}
+			}
+		}
+		return true
+	})
+	coin, ok := o.poset.ThresholdCoin(dealer.Hash()).CombineCoinShares(shares)
+	if ok && o.poset.ThresholdCoin(dealer.Hash()).VerifyCoin(coin, level) {
+		return coin.Toss()
+	}
+	return simpleCoin(uc, level)
 }
 
 // Computes the exists function from the whitepaper, including the coin toss if necessary.
@@ -161,7 +241,7 @@ func (o *ordering) existsTC(votes []vote, uc gomel.Unit, u gomel.Unit) vote {
 		}
 	}
 
-	if coinToss(o.poset, uc, u) == 1 {
+	if o.coinToss(uc, u) == 1 {
 		return popular
 	}
 	return unpopular

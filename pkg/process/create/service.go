@@ -8,6 +8,7 @@ import (
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
@@ -129,11 +130,20 @@ func (s *service) createUnit() {
 	}
 	created.SetSignature(s.privKey.Sign(created))
 
+	if len(created.Parents()) == 0 {
+		tc, err := tcoin.Decode(created.ThresholdCoinData(), s.pid)
+		if err != nil {
+			// TODO: handle the error
+			return
+		}
+		s.poset.AddThresholdCoin(created.Hash(), tc)
+	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	s.poset.AddUnit(created, func(_ gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
+			s.poset.RemoveThresholdCoin(added.Hash())
 			s.log.Error().Str("where", "poset.AddUnit callback").Msg(err.Error())
 			return
 		}

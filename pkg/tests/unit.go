@@ -2,6 +2,7 @@ package tests
 
 import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type unit struct {
@@ -13,6 +14,16 @@ type unit struct {
 	parents   []gomel.Unit
 	signature gomel.Signature
 	data      []byte
+	cs        *tcoin.CoinShare
+	tcData    []byte
+}
+
+func (u *unit) CoinShare() *tcoin.CoinShare {
+	return u.cs
+}
+
+func (u *unit) ThresholdCoinData() []byte {
+	return u.tcData
 }
 
 func (u *unit) Data() []byte {

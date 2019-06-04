@@ -236,7 +236,7 @@ var _ = Describe("Protocol", func() {
 					Poset:        tp1.(*tests.Poset),
 					attemptedAdd: nil,
 				}
-				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/only_dealing.txt", tests.NewTestPosetFactory())
+				tp2 := tp1
 				p2 = &poset{
 					Poset:        tp2.(*tests.Poset),
 					attemptedAdd: nil,
