@@ -53,7 +53,7 @@ type Configuration struct {
 	// log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic
 	LogLevel int
 
-	// The size of log diode buffer. 0 disables the diode. Recommended at least 100k.
+	// The size of log diode buffer in bytes. 0 disables the diode. Recommended at least 100k.
 	LogBuffer int
 
 	// whether to write log in human readable form or in JSON.
