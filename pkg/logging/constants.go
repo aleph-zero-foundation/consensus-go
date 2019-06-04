@@ -25,6 +25,7 @@ const (
 	SentUnits             = "T"
 	ReceivedPreunits      = "U"
 	DuplicatedUnit        = "V"
+	OwnUnitOrdered        = "W"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -51,6 +52,7 @@ var eventTypeDict = map[string]string{
 	SentUnits:             "successfully sent units",
 	ReceivedPreunits:      "successfully received preunits",
 	DuplicatedUnit:        "attempting to add unit already present in poset",
+	OwnUnitOrdered:        "unit created by this process has been ordered",
 }
 
 // Field names

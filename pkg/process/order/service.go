@@ -69,6 +69,9 @@ func (s *service) extendOrder() {
 		units := s.linearOrdering.TimingRound(round)
 		for _, u := range units {
 			s.orderedUnits <- u
+			if u.Creator() == s.pid {
+				s.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
+			}
 		}
 		s.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
 	}
