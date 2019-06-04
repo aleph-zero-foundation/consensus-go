@@ -14,7 +14,6 @@ class Filter(Plugin):
     """Plugin filtering out entries. Only entries that have field *key* equal to
     one of *values* pass through. *values* can be a single item (int or str), list of
     items or None (in that case every value is accepted, as long as *key* is present."""
-
     def __init__(self, key, values=None):
         self.key = key
         self.values = values if (values is None or isinstance(values, list)) else [values]
@@ -38,7 +37,6 @@ class Timer(Plugin):
 
     def finalize(self):
         self.times.sort()
-        print(self.times)
         self.avg = self.times[-1] / len(self.times)
         for i in range(len(self.times)-1, 1, -1):
             self.times[i] -= self.times[i-1]
@@ -46,7 +44,7 @@ class Timer(Plugin):
     def report(self):
         ret =  '    Min: %10d ms\n'%min(self.times)
         ret += '    Max: %10d ms\n'%max(self.times)
-        ret += '    Avg: %10d ms\n'%self.avg
+        ret += '    Avg: %10.2f ms\n'%self.avg
         return 'Timer: '+self.name, ret
 
 
@@ -109,9 +107,7 @@ class TimingUnitCounter(Plugin):
         for k,v in self.dif.items():
             num += k*v
             den += v
-        print (num, den)
         self.avg = num/den
-
 
     def report(self):
         ret =  '    Difference        Units\n'
@@ -119,6 +115,86 @@ class TimingUnitCounter(Plugin):
             ret += '     %3d             %5d\n'%i
         ret += '    Average:  %5f\n'%self.avg
         return 'Timing unit choice delay', ret
+
+
+class SyncStats(Plugin):
+    """Plugin gathering statistics for syncs."""
+    def __init__(self, ignore_empty=False):
+        self.ig = ignore_empty
+        self.inc = {}
+        self.out = {}
+
+    def process(self, entry):
+        if PID not in entry:
+            return entry
+        if OSID in entry:
+            d = self.out
+            key = (entry[PID], entry[OSID])
+        elif ISID in entry:
+            d = self.inc
+            key = (entry[PID], entry[ISID])
+        else:
+            return entry
+
+        if key not in d:
+            d[key] = {'addexc':False, 'fail':False, 'dupl':0}
+
+        if entry[Event] == SyncStarted:
+            d[key]['start'] = entry[Time]
+        elif entry[Event] == SyncCompleted:
+            if self.ig and entry[UnitsSent] == 0 and entry[UnitsRecv] == 0: #empty sync, remove
+                del d[key]
+                return entry
+            d[key]['end'] = entry[Time]
+            d[key]['sent'] = entry[UnitsSent]
+            d[key]['recv'] = entry[UnitsRecv]
+        elif entry[Event] == AdditionalExchange:
+            d[key]['addexc'] = True
+        elif entry[Event] == DuplicatedUnit:
+            d[key]['dupl'] += 1
+        elif entry[Level] == '3':
+            d[key]['fail'] = True
+        return entry
+
+
+    def finalize(self):
+        values = list(self.inc.values()) + list(self.out.values())
+        self.stats = []
+        self.addexc, self.failed, self.unfinished, self.totaltime = 0,0,0,0
+        for d in values:
+            if d['fail']:
+                self.failed += 1
+            elif 'end' not in d:
+                self.unfinished += 1
+                continue
+            elif 'start' in d:
+                self.stats.append((d['end']-d['start'], d['sent'], d['recv'], d['dupl']))
+                self.totaltime += d['end']-d['start']
+            if d['addexc']:
+                self.addexc += 1
+        self.times = sorted([i[0] for i in self.stats])
+        self.sent = sorted([i[1] for i in self.stats])
+        self.recv = sorted([i[2] for i in self.stats])
+        #self.dupl = sorted([(i[3], i[3]/i[2]) for i in self.stats])
+
+    def report(self):
+        ret  =  '    Syncs in total:           %5d\n'%(len(self.inc)+len(self.out))
+        ret +=  '    Incoming:                 %5d\n'%len(self.inc)
+        ret +=  '    Outgoing:                 %5d\n'%len(self.out)
+        ret +=  '    Failed:                   %5d\n'%self.failed
+        ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
+        ret +=  '    Min time:         %10d ms\n'%self.times[0]
+        ret +=  '    Max time:         %10d ms\n'%self.times[-1]
+        ret +=  '    Avg time:         %10.2f ms\n\n'%(sum(self.times)/len(self.times))
+        ret +=  '    Min sent:            %10d\n'%self.sent[0]
+        ret +=  '    Max sent:            %10d\n'%self.sent[-1]
+        ret +=  '    Avg sent:            %10.4f\n\n'%(sum(self.sent)/len(self.sent))
+        ret +=  '    Min received:        %10d\n'%self.recv[0]
+        ret +=  '    Max received:        %10d\n'%self.recv[-1]
+        ret +=  '    Avg received:        %10.4f\n\n'%(sum(self.recv)/len(self.recv))
+        #print(self.stats)
+        #ret +=  '    Min time:      %5d\n\n'%self.addexc
+        return 'Sync stats', ret
 
 
 

@@ -12,6 +12,8 @@ driver = Driver()
 
 driver.add_pipeline('Create service', [Filter(Service, CreateService), CreateCounter(), Filter(Event, [UnitCreated, PrimeUnitCreated]), Timer('unit creation intervals')])
 driver.add_pipeline('Timing units', [Filter(Event, NewTimingUnit), TimingUnitCounter(), Timer('timing unit decision intervals')])
+driver.add_pipeline('Sync stats', [Filter(Service, SyncService), SyncStats()])
+driver.add_pipeline('Latency', [Filter(Event, [UnitCreated, PrimeUnitCreated, ]), SyncStats()])
 
 
 
