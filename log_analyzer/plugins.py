@@ -11,9 +11,11 @@ class Plugin:
 
 
 class Filter(Plugin):
-    """Plugin filtering out entries. Only entries that have field *key* equal to
+    """
+    Plugin filtering out entries. Only entries that have field *key* equal to
     one of *values* pass through. *values* can be a single item (int or str), list of
-    items or None (in that case every value is accepted, as long as *key* is present."""
+    items or None (in that case every value is accepted, as long as *key* is present.
+    """
     def __init__(self, key, values=None):
         self.key = key
         self.values = values if (values is None or isinstance(values, list)) else [values]
@@ -49,7 +51,8 @@ class Timer(Plugin):
 
 
 class CreateCounter(Plugin):
-    """Plugin counting basis statistics of create service:
+    """
+    Plugin counting basis statistics of create service:
     * number of prime units
     * number of non-prime units
     * number of times create unit failed due to not enough parents
@@ -118,7 +121,7 @@ class TimingUnitCounter(Plugin):
 
 
 class SyncStats(Plugin):
-    """Plugin gathering statistics for syncs."""
+    """Plugin gathering statistics of syncs."""
     def __init__(self, ignore_empty=False):
         self.ig = ignore_empty
         self.inc = {}
@@ -156,7 +159,6 @@ class SyncStats(Plugin):
             d[key]['fail'] = True
         return entry
 
-
     def finalize(self):
         values = list(self.inc.values()) + list(self.out.values())
         self.stats = []
@@ -175,7 +177,6 @@ class SyncStats(Plugin):
         self.times = sorted([i[0] for i in self.stats])
         self.sent = sorted([i[1] for i in self.stats])
         self.recv = sorted([i[2] for i in self.stats])
-        #self.dupl = sorted([(i[3], i[3]/i[2]) for i in self.stats])
 
     def report(self):
         ret  =  '    Syncs in total:           %5d\n'%(len(self.inc)+len(self.out))
@@ -192,9 +193,29 @@ class SyncStats(Plugin):
         ret +=  '    Min received:        %10d\n'%self.recv[0]
         ret +=  '    Max received:        %10d\n'%self.recv[-1]
         ret +=  '    Avg received:        %10.4f\n\n'%(sum(self.recv)/len(self.recv))
-        #print(self.stats)
-        #ret +=  '    Min time:      %5d\n\n'%self.addexc
         return 'Sync stats', ret
 
 
+class LatencyMeter(Plugin):
+    """Plugin measuring the time between creating a unit and ordering it."""
+    def __init__(self):
+        self.units = {}
+
+    def process(self, entry):
+        if entry[Height] not in self.units:
+            self.units[entry[Height]] = [None, None]
+        if entry[Event] in [UnitCreated, PrimeUnitCreated]:
+            self.units[entry[Height]][0] = entry[Time]
+        elif entry[Event] == OwnUnitOrdered:
+            self.units[entry[Height]][1] = entry[Time]
+        return entry
+
+    def finalize(self):
+        self.latencies = sorted([end-beg for beg,end in self.units.values() if beg and end])
+
+    def report(self):
+        ret =  '    Min: %10d ms\n'%self.latencies[0]
+        ret += '    Max: %10d ms\n'%self.latencies[-1]
+        ret += '    Avg: %10.2f ms\n'%(sum(self.latencies)/len(self.latencies))
+        return 'Latency: ', ret
 

@@ -2,7 +2,12 @@ from collections import OrderedDict
 from copy import deepcopy
 
 class Driver:
-    """Driver is used to store all the plugins (for each service separately) and dispatch log events to them."""
+    """
+    Driver stores a list of pipelines that analyze log entries. Each pipeline consists of name and list of plugins.
+    Every plugin has a process() method that takes a log entry and returns either a log entry (the same, or changed) or None.
+    Each log entry is pushed through each pipeline by executing, in order, each plugin's process() method
+    (next plugin's process() is fed with what the previous plugin returned).
+    """
     def __init__(self):
         self.pipelines = OrderedDict()
 

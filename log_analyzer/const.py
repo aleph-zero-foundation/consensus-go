@@ -22,6 +22,7 @@ AddUnits              = "S"
 SentUnits             = "T"
 ReceivedPreunits      = "U"
 DuplicatedUnit        = "V"
+OwnUnitOrdered        = "W"
 
 Time      = "T"
 Level     = "L"
