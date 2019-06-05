@@ -133,7 +133,7 @@ func (s *service) createUnit() {
 	if len(created.Parents()) == 0 {
 		tc, err := tcoin.Decode(created.ThresholdCoinData(), s.pid)
 		if err != nil {
-			// TODO: handle the error
+			s.log.Error().Str("where", "poset.createUnit.tcoin.Decode").Msg(err.Error())
 			return
 		}
 		s.poset.AddThresholdCoin(created.Hash(), tc)
