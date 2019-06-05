@@ -33,19 +33,25 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gom
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	p := growing.NewPoset(&gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
 	created := 0
+	pus := make([]gomel.Preunit, nProcesses)
 	for created < nUnits {
 		pid := r.Intn(nProcesses)
-		pu, err := creating.NewUnit(p, pid, maxParents, []byte{})
-		if err != nil {
-			continue
+		if pus[pid] != nil {
+			var wg sync.WaitGroup
+			wg.Add(1)
+			p.AddUnit(pus[pid], func(_ gomel.Preunit, _ gomel.Unit, _ error) {
+				wg.Done()
+			})
+			wg.Wait()
+			created++
+			pus[pid] = nil
+		} else {
+			pu, err := creating.NewUnit(p, pid, maxParents, []byte{})
+			if err != nil {
+				continue
+			}
+			pus[pid] = pu
 		}
-		var wg sync.WaitGroup
-		wg.Add(1)
-		p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
-			wg.Done()
-		})
-		wg.Wait()
-		created++
 	}
 	return p
 }
