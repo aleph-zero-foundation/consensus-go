@@ -12,10 +12,9 @@ import boto3
 import numpy as np
 import zipfile
 
-from fabfile import zip_repo
 from utils import image_id_in_region, default_region_name, init_key_pair, security_group_id_by_region, available_regions, badger_regions, generate_keys, n_processes_per_regions, eu_regions, translate_region_codes
 
-import warning 
+import warnings
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 
 N_JOBS = 4
@@ -37,7 +36,7 @@ def run_task_for_ip(task='test', ip_list=[], parallel=False, output=False):
 
     if parallel:
         hosts = " ".join(["ubuntu@"+ip for ip in ip_list])
-        cmd = 'parallel --citation fab -i key_pairs/aleph.pem -H {} '+task+' ::: '+hosts
+        cmd = 'parallel fab -i key_pairs/aleph.pem -H {} '+task+' ::: '+hosts
     else:
         hosts = ",".join(["ubuntu@"+ip for ip in ip_list])
         cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task}'
@@ -169,10 +168,9 @@ def run_task_in_region(task='test', region_name=default_region_name(), parallel=
     if parallel:
         hosts = " ".join(["ubuntu@"+ip for ip in ip_list])
         if pids is None:
-            cmd = 'parallel --citation fab -i key_pairs/aleph.pem -H {} ' + task + ' ::: ' + hosts
+            cmd = 'parallel fab -i key_pairs/aleph.pem -H {} ' + task + ' ::: ' + hosts
         else:
-            cmd = 'parallel --citation fab -i key_pairs/aleph.pem -H {1} ' + task + ' --pid={2} ::: ' + hosts + ' :::+ ' + ' '.join(pids)
-            print(cmd)
+            cmd = 'parallel fab -i key_pairs/aleph.pem -H {1} ' + task + ' --pid={2} ::: ' + hosts + ' :::+ ' + ' '.join(pids)
     else:
         hosts = ",".join(["ubuntu@"+ip for ip in ip_list])
         cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task}'
@@ -183,6 +181,19 @@ def run_task_in_region(task='test', region_name=default_region_name(), parallel=
         return call(cmd.split())
     except Exception as e:
         print('paramiko troubles')
+
+def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region_name()):
+    local = '../../' + path
+    remote = 'go/src/gitlab.com/alephledger/consensus-go/' + path
+    
+    ip_list = instances_ip_in_region(region_name)
+    hosts = " ".join(["ubuntu@"+ip for ip in ip_list])
+    scp = 'scp -o StrictHostKeyChecking=no -i key_pairs/aleph.pem'
+    cmd = 'parallel ' + scp + ' ' + local + ' {}:' + remote + ' ::: ' + hosts
+    try:
+        return call(cmd.split())
+    except Exception as e:
+        print(e)
 
 
 def run_cmd_in_region(cmd='tail -f proof-of-concept/experiments/aleph.log', region_name=default_region_name(), output=False):
@@ -343,6 +354,10 @@ def instances_state(regions='badger regions', parallel=True):
 
     return exec_for_regions(instances_state_in_region, regions, parallel)
 
+def send_file(path='cmd/gomel/main.go', regions='badger regions'):
+    '''Sends file from specified path to all hosts in given regions.'''
+
+    return exec_for_regions(partial(send_file_in_region, path), regions, True)
 
 def run_task(task='test', regions='badger regions', parallel=True, output=False, pids=None):
     '''
@@ -442,7 +457,7 @@ def run_protocol(n_processes, regions, restricted, instance_type):
 
     print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
-    #run_task('run-protocol', regions, parallel)
+    run_task('run-protocol', regions, parallel, False, pids)
 
 
 def create_images(regions=badger_regions()):

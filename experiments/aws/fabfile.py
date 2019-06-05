@@ -33,9 +33,6 @@ def clone_repo(conn):
     # clone using deployment token
     user_token = 'gitlab+deploy-token-70309:G2jUsynd3TQqsvVfn4T7'
     conn.run(f'git clone http://{user_token}@gitlab.com/alephledger/consensus-go.git {repo_path}')
-    # checkout to devel
-    with conn.cd(repo_path):
-        conn.run('git checkout devel')
 
 @task
 def build_gomel(conn):
@@ -44,7 +41,7 @@ def build_gomel(conn):
 @task
 def inst_deps(conn):
     conn.put('deps.sh', '.')
-    conn.run('dtach -n `mktemp -u /tmp/dtach.XXXX` bash deps.sh', hide='both')
+    conn.run('PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` bash deps.sh', hide='both')
 
 #======================================================================================
 #                                   syncing local version
@@ -58,48 +55,6 @@ def send_data(conn, pid):
 
     # TODO send parameters
 
-@task
-def zip_repo(conn):
-    ''' Zips local version of the repo for sending it to a host.'''
-
-    # clears __pycache__
-    conn.local("find ../../../proof-of-concept -name '*.pyc' -delete")
-    # remove logs
-    conn.local("find ../../../proof-of-concept -name '*.log' -delete")
-    # remove arxives
-    conn.local("find ../../../proof-of-concept -name '*.zip' -delete")
-
-    with conn.cd('../../..'):
-        conn.local('zip -rq poc.zip proof-of-concept -x "*/.*"')
-
-
-@task
-def send_testing_repo(conn):
-    ''' Sends zipped local version of the repo to a host.'''
-
-    # remove current version
-    conn.run('rm -rf proof-of-concept')
-    # send local repo upstream
-    conn.put('../../../poc.zip', '.')
-    # unpack
-    conn.run('unzip -q poc.zip')
-    # install new version
-    install_repo(conn)
-
-
-@task
-def send_file_simple(conn):
-    '''Sends current version of the simple test. It does not need installing as it is called diractly.'''
-
-    conn.put('../simple_ec2_test.py', 'proof-of-concept/experiments/')
-
-
-@task
-def send_file_main(conn):
-    '''Sends current version of the main. It does not need installing as it is called diractly.'''
-
-    conn.put('../../aleph/main.py', 'proof-of-concept/aleph/')
-
 #======================================================================================
 #                                   run experiments
 #======================================================================================
@@ -110,7 +65,7 @@ def run_protocol(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        cmd = f'--keys {pid}.keys --db ../../pkg/testdata/users.txt --log {pid}.log'
+        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --db pkg/testdata/users.txt --log {pid}.log'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
