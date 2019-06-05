@@ -53,7 +53,7 @@ def send_data(conn, pid):
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     conn.put(f'data/{pid}.keys', repo_path)
 
-    # TODO send parameters
+    conn.put('data/config.json', repo_path)
 
 #======================================================================================
 #                                   run experiments
@@ -65,7 +65,7 @@ def run_protocol(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --db pkg/testdata/users.txt --log {pid}.log'
+        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --log {pid}.log --config config.json --db pkg/testdata/users.txt'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
