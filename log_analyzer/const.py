@@ -38,6 +38,7 @@ Sent      = "U"
 Recv      = "V"
 Creator   = "C"
 NParents  = "A"
+Memory    = "M"
 
 CreateService   = 0
 OrderService    = 1

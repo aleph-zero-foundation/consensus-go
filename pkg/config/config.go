@@ -56,6 +56,9 @@ type Configuration struct {
 	// The size of log diode buffer in bytes. 0 disables the diode. Recommended at least 100k.
 	LogBuffer int
 
+	// How often (in seconds) log the memory usage. 0 to disable.
+	LogMemInterval int
+
 	// whether to write log in human readable form or in JSON.
 	LogHuman bool
 }
@@ -99,6 +102,8 @@ func NewDefaultConfiguration() Configuration {
 		LogLevel: 1,
 
 		LogBuffer: 100000,
+
+		LogMemInterval: 0,
 
 		LogHuman: false,
 	}

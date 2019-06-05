@@ -27,6 +27,7 @@ const (
 	DuplicatedUnit        = "V"
 	OwnUnitOrdered        = "W"
 	ConnectionClosed      = "X"
+	MemoryUsage           = "Y"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -55,6 +56,7 @@ var eventTypeDict = map[string]string{
 	DuplicatedUnit:        "attempting to add unit already present in poset",
 	OwnUnitOrdered:        "unit created by this process has been ordered",
 	ConnectionClosed:      "connection closed after sync (stats = bytes)",
+	MemoryUsage:           "memory usage statistics",
 }
 
 // Field names
@@ -73,6 +75,7 @@ const (
 	Recv     = "V"
 	Creator  = "C"
 	NParents = "A"
+	Memory   = "M"
 )
 
 // fieldNameDict maps short field names to human readable form
@@ -91,6 +94,7 @@ var fieldNameDict = map[string]string{
 	Recv:     "received",
 	Creator:  "creator",
 	NParents: "parents",
+	Memory:   "bytes",
 }
 
 // Service types
@@ -100,6 +104,7 @@ const (
 	SyncService
 	ValidateService
 	GenerateService
+	MemLogService
 )
 
 // serviceTypeDict maps integer service types to human readable names
@@ -109,6 +114,7 @@ var serviceTypeDict = map[int]string{
 	SyncService:     "SYNC",
 	ValidateService: "VALID",
 	GenerateService: "GENER",
+	MemLogService:   "MEMLOG",
 }
 
 // Genesis was better with Phil Collins

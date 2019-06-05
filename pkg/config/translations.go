@@ -75,5 +75,6 @@ func (conf *Configuration) GenerateConfig(c *Committee, dbFilename string) proce
 		Order:      generateOrderConfig(conf, c),
 		TxValidate: generateTxValidateConfig(dbFilename),
 		TxGenerate: generateTxGenerateConfig(dbFilename),
+		MemLog:     conf.LogMemInterval,
 	}
 }
