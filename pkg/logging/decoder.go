@@ -36,7 +36,7 @@ func (d *decoder) Write(p []byte) (n int, err error) {
 
 func decode(data *map[string]interface{}) string {
 	if event, ok := (*data)[Event]; ok && event == Genesis {
-		return fmt.Sprintln("Beginning of time at ", (*data)[Time])
+		return fmt.Sprintln("Beginning of time at ", (*data)[Genesis])
 	}
 	ret := ""
 	if val, ok := (*data)[Time]; ok {
