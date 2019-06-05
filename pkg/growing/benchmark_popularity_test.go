@@ -12,7 +12,8 @@ func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) bool {
 		return false
 	}
 	// simple BFS from v
-	seenProcesses := make(map[int]bool)
+	seenProcesses := make([]bool, poset.NProc())
+	nSeenProcesses := 0
 	seenUnits := make(map[gomel.Hash]bool)
 	seenUnits[*v.Hash()] = true
 	queue := []gomel.Unit{v}
@@ -20,9 +21,12 @@ func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) bool {
 		w := queue[0]
 		queue = queue[1:]
 		if w.Level() <= v.Level()-2 || (w.Level() == v.Level()-1 && gomel.Prime(w)) {
-			seenProcesses[w.Creator()] = true
-			if poset.IsQuorum(len(seenProcesses)) {
-				return true
+			if !seenProcesses[w.Creator()] {
+				seenProcesses[w.Creator()] = true
+				nSeenProcesses++
+				if poset.IsQuorum(nSeenProcesses) {
+					return true
+				}
 			}
 		}
 		for _, wParent := range w.Parents() {
@@ -32,7 +36,7 @@ func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) bool {
 			}
 		}
 	}
-	result := poset.IsQuorum(len(seenProcesses))
+	result := poset.IsQuorum(nSeenProcesses)
 	return result
 }
 
@@ -98,11 +102,7 @@ func BenchmarkPopularity(b *testing.B) {
 					if level > maxLevel {
 						maxLevel = level
 					}
-					if _, ok := unitsByLevel[level]; ok {
-						unitsByLevel[level] = append(unitsByLevel[level], u)
-					} else {
-						unitsByLevel[level] = []gomel.Unit{u}
-					}
+					unitsByLevel[level] = append(unitsByLevel[level], u)
 				}
 			}
 		}
@@ -111,7 +111,7 @@ func BenchmarkPopularity(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				for level := maxLevel - 3; level <= maxLevel; level++ {
 					units := unitsByLevel[level]
-					for l := level - 3; l >= level-5; l-- {
+					for l := level - 2; l >= level-4; l-- {
 						for _, uc := range unitsByLevel[l] {
 							for _, u := range units {
 								provesPopularityBFS(uc, u, poset)
@@ -125,7 +125,7 @@ func BenchmarkPopularity(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				for level := maxLevel - 3; level <= maxLevel; level++ {
 					units := unitsByLevel[level]
-					for l := level - 3; l >= level-5; l-- {
+					for l := level - 2; l >= level-4; l-- {
 						for _, uc := range unitsByLevel[l] {
 							for _, u := range units {
 								provesPopularityWithFloors(uc, u, poset)
