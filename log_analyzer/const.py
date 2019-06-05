@@ -37,6 +37,7 @@ OSID      = "O"
 UnitsSent = "U"
 UnitsRecv = "V"
 Creator   = "C"
+NParents  = "A"
 
 CreateService   = 0
 OrderService    = 1

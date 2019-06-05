@@ -70,6 +70,7 @@ const (
 	UnitsSent = "U"
 	UnitsRecv = "V"
 	Creator   = "C"
+	NParents  = "A"
 )
 
 // fieldNameDict maps short field names to human readable form
@@ -87,6 +88,7 @@ var fieldNameDict = map[string]string{
 	UnitsSent: "Us sent",
 	UnitsRecv: "Us recv",
 	Creator:   "creator",
+	NParents:  "parents",
 }
 
 // Service types
