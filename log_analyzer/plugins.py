@@ -183,12 +183,12 @@ class SyncStats(Plugin):
         if entry[Event] == SyncStarted:
             d[key]['start'] = entry[Time]
         elif entry[Event] == SyncCompleted:
-            if self.ig and entry[UnitsSent] == 0 and entry[UnitsRecv] == 0: #empty sync, remove
+            if self.ig and entry[Sent] == 0 and entry[Recv] == 0: #empty sync, remove
                 del d[key]
                 return entry
             d[key]['end'] = entry[Time]
-            d[key]['sent'] = entry[UnitsSent]
-            d[key]['recv'] = entry[UnitsRecv]
+            d[key]['sent'] = entry[Sent]
+            d[key]['recv'] = entry[Recv]
         elif entry[Event] == AdditionalExchange:
             d[key]['addexc'] = True
         elif entry[Event] == DuplicatedUnit:

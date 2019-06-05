@@ -26,6 +26,7 @@ const (
 	ReceivedPreunits      = "U"
 	DuplicatedUnit        = "V"
 	OwnUnitOrdered        = "W"
+	ConnectionClosed      = "X"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -40,7 +41,7 @@ var eventTypeDict = map[string]string{
 	ConnectionEstablished: "dialer established a TCP connection",
 	NotEnoughParents:      "creating.NewUnit failed (not enough parents)",
 	SyncStarted:           "new sync started",
-	SyncCompleted:         "sync completed",
+	SyncCompleted:         "sync completed (stats = units)",
 	GetPosetInfo:          "receiving poset info started",
 	SendPosetInfo:         "sending poset info started",
 	GetPreunits:           "receiving preunits started",
@@ -53,42 +54,43 @@ var eventTypeDict = map[string]string{
 	ReceivedPreunits:      "successfully received preunits",
 	DuplicatedUnit:        "attempting to add unit already present in poset",
 	OwnUnitOrdered:        "unit created by this process has been ordered",
+	ConnectionClosed:      "connection closed after sync (stats = bytes)",
 }
 
 // Field names
 const (
-	Time      = "T"
-	Level     = "L"
-	Event     = "E"
-	Service   = "S"
-	Size      = "N"
-	Height    = "H"
-	Round     = "R"
-	PID       = "P"
-	ISID      = "I"
-	OSID      = "O"
-	UnitsSent = "U"
-	UnitsRecv = "V"
-	Creator   = "C"
-	NParents  = "A"
+	Time     = "T"
+	Level    = "L"
+	Event    = "E"
+	Service  = "S"
+	Size     = "N"
+	Height   = "H"
+	Round    = "R"
+	PID      = "P"
+	ISID     = "I"
+	OSID     = "O"
+	Sent     = "U"
+	Recv     = "V"
+	Creator  = "C"
+	NParents = "A"
 )
 
 // fieldNameDict maps short field names to human readable form
 var fieldNameDict = map[string]string{
-	Time:      "time",
-	Level:     "level",
-	Event:     "event",
-	Service:   "service",
-	Size:      "size",
-	Height:    "height",
-	Round:     "round",
-	PID:       "PID",
-	ISID:      "inSID",
-	OSID:      "outSID",
-	UnitsSent: "Us sent",
-	UnitsRecv: "Us recv",
-	Creator:   "creator",
-	NParents:  "parents",
+	Time:     "time",
+	Level:    "level",
+	Event:    "event",
+	Service:  "service",
+	Size:     "size",
+	Height:   "height",
+	Round:    "round",
+	PID:      "PID",
+	ISID:     "inSID",
+	OSID:     "outSID",
+	Sent:     "sent",
+	Recv:     "received",
+	Creator:  "creator",
+	NParents: "parents",
 }
 
 // Service types

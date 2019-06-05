@@ -100,7 +100,7 @@ func (cs *connServer) Listen() error {
 					link.Close()
 					continue
 				}
-				cs.listenChan <- newConn(link, m, g.pid, g.sid)
+				cs.listenChan <- newConn(link, m, g.pid, g.sid, 0, 6) // greeting has 6 bytes
 				cs.log.Info().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Msg(logging.ConnectionReceived)
 			}
 		}
@@ -146,7 +146,7 @@ func (cs *connServer) StartDialing() {
 					m.release()
 					continue
 				}
-				cs.dialChan <- newConn(link, m, uint16(remotePid), g.sid)
+				cs.dialChan <- newConn(link, m, uint16(remotePid), g.sid, 6, 0) // greeting has 6 bytes
 				cs.log.Info().Int(logging.PID, remotePid).Uint32(logging.OSID, g.sid).Msg(logging.ConnectionEstablished)
 			}
 		}

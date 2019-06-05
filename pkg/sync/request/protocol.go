@@ -134,11 +134,11 @@ func nonempty(req requests) bool {
 		9. Add the received units to the poset.
 */
 func (p *In) Run(poset gomel.Poset, conn network.Connection) {
-	defer conn.Close()
-	conn.TimeoutAfter(p.Timeout)
-	nProc := poset.NProc()
 	log := p.Log.With().Uint16(logging.PID, conn.Pid()).Uint32(logging.ISID, conn.Sid()).Logger()
 	log.Info().Msg(logging.SyncStarted)
+	defer conn.Close(log)
+	conn.TimeoutAfter(p.Timeout)
+	nProc := poset.NProc()
 
 	log.Debug().Msg(logging.GetPosetInfo)
 	theirPosetInfo, err := getPosetInfo(nProc, conn)
@@ -213,7 +213,7 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.UnitsSent, nSent).Int(logging.UnitsRecv, nReceived).Msg(logging.SyncCompleted)
+	log.Info().Int(logging.Sent, nSent).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }
 
 // Run handles the outgoing connection using info from the poset.
@@ -233,11 +233,11 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 		10. Add the received units to the poset.
 */
 func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
-	defer conn.Close()
-	conn.TimeoutAfter(p.Timeout)
-	nProc := poset.NProc()
 	log := p.Log.With().Uint16(logging.PID, conn.Pid()).Uint32(logging.OSID, conn.Sid()).Logger()
 	log.Info().Msg(logging.SyncStarted)
+	defer conn.Close(log)
+	conn.TimeoutAfter(p.Timeout)
+	nProc := poset.NProc()
 
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
@@ -307,5 +307,5 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.UnitsSent, nSent).Int(logging.UnitsRecv, nReceived).Msg(logging.SyncCompleted)
+	log.Info().Int(logging.Sent, nSent).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }

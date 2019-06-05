@@ -3,6 +3,10 @@ package tcp
 import (
 	"net"
 	"time"
+
+	"github.com/rs/zerolog"
+
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 type conn struct {
@@ -10,28 +14,38 @@ type conn struct {
 	inUse *mutex
 	pid   uint16
 	sid   uint32
+	sent  uint32
+	recv  uint32
 }
 
-func newConn(link *net.TCPConn, m *mutex, pid uint16, sid uint32) *conn {
+func newConn(link *net.TCPConn, m *mutex, pid uint16, sid, sent, recv uint32) *conn {
 	return &conn{
 		link:  link,
 		inUse: m,
 		pid:   pid,
 		sid:   sid,
+		sent:  sent,
+		recv:  recv,
 	}
 }
 
 func (c *conn) Read(b []byte) (int, error) {
-	return c.link.Read(b)
+	n, err := c.link.Read(b)
+	c.recv += uint32(n)
+	return n, err
 }
 
 func (c *conn) Write(b []byte) (int, error) {
-	return c.link.Write(b)
+	n, err := c.link.Write(b)
+	c.sent += uint32(n)
+	return n, err
 }
 
-func (c *conn) Close() error {
+func (c *conn) Close(log zerolog.Logger) error {
 	defer c.inUse.release()
-	return c.link.Close()
+	err := c.link.Close()
+	log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Msg(logging.ConnectionClosed)
+	return err
 }
 
 func (c *conn) TimeoutAfter(t time.Duration) {
