@@ -69,22 +69,21 @@ def run_protocol(conn, pid):
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
-def get_logs(conn):
+def get_log(conn, pid):
     ''' Retrieves aleph.log from the server.'''
 
-    ip = conn.host.replace('.', '-')
 
-    with conn.cd('proof-of-concept/aleph/'):
-        conn.run(f'zip -q {ip}-aleph.log.zip aleph.log')
-    conn.get(f'proof-of-concept/aleph/{ip}-aleph.log.zip', f'../results/{ip}-aleph.log.zip')
-
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    with conn.cd(repo_path):
+        conn.run(f'zip -q {pid}.log.zip {pid}.log')
+    conn.get(f'{repo_path}/{pid}.log.zip', f'../results/{pid}.log.zip')
 
 @task
 def stop_world(conn):
     ''' Kills the committee member.'''
 
-    # it is safe as python refers to venv version
-    conn.run('killall python')
+    conn.run('killall go')
+    conn.run('killall main')
 
 
 @task

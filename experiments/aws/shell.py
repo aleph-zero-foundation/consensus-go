@@ -1,5 +1,5 @@
 '''This is a shell for orchestrating experiments on AWS EC 2'''
-import configparser
+import json
 import os
 
 from fabric import Connection
@@ -23,7 +23,7 @@ N_JOBS = 4
 #                              routines for ips
 #======================================================================================
 
-def run_task_for_ip(task='test', ip_list=[], parallel=False, output=False):
+def run_task_for_ip(task='test', ip_list=[], parallel=False, output=False, pids=None):
     '''
     Runs a task from fabfile.py on all instances in a given region.
     :param string task: name of a task defined in fabfile.py
@@ -39,7 +39,13 @@ def run_task_for_ip(task='test', ip_list=[], parallel=False, output=False):
         cmd = 'parallel fab -i key_pairs/aleph.pem -H {} '+task+' ::: '+hosts
     else:
         hosts = ",".join(["ubuntu@"+ip for ip in ip_list])
-        cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task}'
+        if pids is None:
+            cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task}'
+        else:
+            if len(ip_list) > 1:
+                print('works only for one ip, aborting')
+                return
+            cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task} --pid={pids[0]}'
 
     try:
         if output:
@@ -428,10 +434,11 @@ def run_protocol(n_processes, regions, restricted, instance_type):
     wait('running', regions)
 
     print('generating keys&addresses files')
-    pids, ip_list, c = {}, [], 0
+    pids, ip2pids, ip_list, c = {}, {}, [], 0
     for r in regions:
         ipl = instances_ip_in_region(r)
         pids[r] = [str(pid) for pid in range(c,c+len(ipl))]
+        ip2pid.update({ip:pid for (ip, pid) in zip(ipl, pids[r])})
         c += len(ipl)
         ip_list.extend(ipl)
         
@@ -458,6 +465,8 @@ def run_protocol(n_processes, regions, restricted, instance_type):
     print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
     run_task('run-protocol', regions, parallel, False, pids)
+
+    return ip2pid
 
 
 def create_images(regions=badger_regions()):
@@ -519,7 +528,7 @@ def create_images(regions=badger_regions()):
 
     print('\ndone')
 
-def get_logs(n_processes, regions, n_parents, use_tcoin, create_freq, sync_init_freq, n_recv_sync, txpu, use_fast_poset):
+def get_logs(regions, ip2pid):
     '''Retrieves all logs from instances.'''
 
     if not os.path.exists('../results'):
@@ -533,55 +542,32 @@ def get_logs(n_processes, regions, n_parents, use_tcoin, create_freq, sync_init_
     for rn in regions:
         print('collecting logs in ', rn)
         for ip in instances_ip_in_region(rn):
-            run_task_for_ip('get-logs', [ip], parallel=0)
+            run_task_for_ip('get-logs', [ip2pid[r][ip]], parallel=0)
             if len(os.listdir('../results')) > l:
                 l = len(os.listdir('../results'))
                 break
 
     print(len(os.listdir('../results')), 'files in ../results')
+    
+    with open('data/config.json') as f:
+        config = json.loads(''.join(f.readlines()))
 
-    print('read addresses')
-    with open('ip_addresses', 'r') as f:
-        ip_addresses = [line[:-1] for line in f]
+    n_processes = len(ip2pid)
 
-    print('read signing keys')
-    with open('signing_keys', 'r') as f:
-        hexes = [line[:-1].encode() for line in f]
-        signing_keys = [SigningKey(hexed) for hexed in hexes]
-
-    pk_hexes = [VerifyKey.from_SigningKey(sk).to_hex() for sk in signing_keys]
-    arg_sort = [i for i, _ in sorted(enumerate(pk_hexes), key = lambda x: x[1])]
-
-    signing_keys = [signing_keys[i] for i in arg_sort]
-    ip_addresses= [ip_addresses[i] for i in arg_sort]
-
-    print('write addresses')
-    with open('ip_addresses_sorted', 'w') as f:
-        for ip in ip_addresses:
-            f.write(ip+'\n')
-
-    print('write signing keys')
-    with open('signing_keys_sorted', 'w') as f:
-        for sk in signing_keys:
-            f.write(sk.to_hex().decode()+'\n')
-
-    print('rename logs')
-    for fp in os.listdir('../results'):
-        name = fp[-13:-8] # other | aleph
-        pid = ip_addresses.index(fp.split(f'-{name}.log')[0].replace('-', '.'))
-        os.rename(f'../results/{fp}', f'../results/{pid}.{name}.log.zip')
-
-    result_path = f'../{n_processes}_{n_parents}_{use_tcoin}_{create_freq}_{sync_init_freq}_{n_recv_sync}_{txpu}_{use_fast_poset}'
+    result_path = f'../{n_processes}_'\
+                  f'{config["NParents"]}_'\
+                  f'{config["UseTcoin"]}_'\
+                  f'{config["CreateDelay"]}_'\
+                  f'{config["SyncInitDelay"]}_'\
+                  f'{config["Txpu"]}'
 
     print('rename dir')
     os.rename('../results', result_path)
 
     for path in os.listdir(result_path):
-        index = path.split('.')[0]
         path = os.path.join(result_path, path)
         with zipfile.ZipFile(path, 'r') as zf:
             zf.extractall(result_path)
-        os.rename(f'{result_path}/aleph.log', f'{result_path}/{index}.aleph.log')
         os.remove(path)
 
     with zipfile.ZipFile(result_path+'.zip', 'w') as zf:
