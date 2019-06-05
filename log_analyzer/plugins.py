@@ -1,5 +1,5 @@
 from const import *
-from statistics import median
+from statistics import mean, median
 
 class Plugin:
     """Parent class definition for all plugins."""
@@ -30,8 +30,9 @@ class Filter(Plugin):
 
 class Timer(Plugin):
     """Plugin gathering basic timing statistics of all incoming events."""
-    def __init__(self, name):
+    def __init__(self, name, skip_first=0):
         self.name = name
+        self.skip = skip_first
         self.times = []
 
     def process(self, entry):
@@ -40,15 +41,83 @@ class Timer(Plugin):
 
     def finalize(self):
         self.times.sort()
-        self.avg = self.times[-1] / len(self.times)
         for i in range(len(self.times)-1, 1, -1):
             self.times[i] -= self.times[i-1]
 
     def report(self):
-        ret =  '    Min: %10d ms\n'%min(self.times)
-        ret += '    Max: %10d ms\n'%max(self.times)
-        ret += '    Avg: %10.2f ms\n'%self.avg
+        t = self.times[self.skip:]
+        ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
+        ret += '    Min: %10d    ms\n' % min(t)
+        ret += '    Max: %10d    ms\n' % max(t)
+        ret += '    Avg: %13.2f ms\n' % mean(t)
+        ret += '    Med: %13.2f ms\n' % median(t)
         return 'Timer: '+self.name, ret
+
+
+class Counter(Plugin):
+    """
+    Plugin gathering basis statistic (min, max, med, avg) of some numeric value.
+    'value' should be a function taking log entry (dict) and returning a value.
+    'finalize()' method can be overriden. After it self.data should be a list of numbers.
+    """
+    def __init__(self, name, events, value, skip_first=0):
+        self.name = name
+        self.skip = skip_first
+        self.data = []
+        self.val = value
+        self.events = events if isinstance(events, list) else [events]
+
+    def process(self, entry):
+        if entry[Event] in self.events:
+            self.data.append(self.val(entry))
+        return entry
+
+    def report(self):
+        d = self.data[self.skip:]
+        ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
+        ret += '    Min: %10d\n' % min(d)
+        ret += '    Max: %10d\n' % max(d)
+        ret += '    Avg: %13.2f\n' % mean(d)
+        ret += '    Med: %13.2f\n' % median(d)
+        return 'Counter: '+self.name, ret
+
+
+class Histogram(Plugin):
+    """
+    Plugin gathering a distribution of some numeric value.
+    'value' should be a function taking log entry (dict) and returning a value.
+    'finalize()' method can be overriden. After it self.data should be a list of ints.
+    """
+    def __init__(self, name, events, value, skip_first=0):
+        self.name = name
+        self.skip = skip_first
+        self.data = []
+        self.val = value
+        self.events = events if isinstance(events, list) else [events]
+
+    def process(self, entry):
+        if entry[Event] in self.events:
+            self.data.append(self.val(entry))
+        return entry
+
+    def report(self):
+        d = self.data[self.skip:]
+        h = {}
+        for i in d:
+            if i not in h:
+                h[i] = 0
+            h[i] += 1
+        num, den = 0,0
+        for k,v in h.items():
+            num += k*v
+            den += v
+
+        ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
+        ret += '    Value        Number of entries\n'
+        for i in h.items():
+            ret += '     %3d             %5d\n' % i
+        ret += '    Average:  %5.2f\n' % (num/den)
+        return 'Histogram: '+self.name, ret
 
 
 class CreateCounter(Plugin):
@@ -63,8 +132,8 @@ class CreateCounter(Plugin):
         self.nonprimes = 0
         self.primes = 0
         self.noparents = 0
+        self.streaks = []
         self.streak = 0
-        self.max_streak = 0
 
     def process(self, entry):
         if entry[Event] == UnitCreated:
@@ -72,7 +141,7 @@ class CreateCounter(Plugin):
             self.streak += 1
         elif entry[Event] == PrimeUnitCreated:
             self.primes += 1
-            self.max_streak = max(self.max_streak, self.streak)
+            self.streaks.append(self.streak)
             self.streak = 0
         elif entry[Event] == NotEnoughParents:
             self.noparents += 1
@@ -84,46 +153,14 @@ class CreateCounter(Plugin):
         ret += '    All units:                %5d\n'%(self.primes+self.nonprimes)
         ret += '    Failed (no parents):      %5d\n'%self.noparents
         ret += '    Total calls:              %5d\n'%(self.noparents+self.nonprimes+self.primes)
-        ret += '    Longest nonprime streak:  %5d\n'%max(self.max_streak, self.streak)
+        ret += '    Longest nonprime streak:  %5d\n'%max(self.streaks)
+        ret += '    Avg nonprime streak:      %8.2f\n'%mean(self.streaks)
         return 'Create counter', ret
-
-
-class TimingUnitCounter(Plugin):
-    """Plugin measuring, at the moment of choosing new timing unit, the difference
-    between the height of that timing unit and the highest prime unit in poset."""
-    def __init__(self):
-        self.data = []
-
-    def process(self, entry):
-        if entry[Event] == NewTimingUnit:
-            self.data.append((entry[Height], entry[Round]))
-        return entry
-
-    def finalize(self):
-        self.data.sort()
-        self.dif = {}
-        for i in self.data:
-            d = i[0] - i[1]
-            if d not in self.dif:
-                self.dif[d] = 0
-            self.dif[d] += 1
-        num, den = 0,0
-        for k,v in self.dif.items():
-            num += k*v
-            den += v
-        self.avg = num/den
-
-    def report(self):
-        ret =  '    Difference        Units\n'
-        for i in self.dif.items():
-            ret += '     %3d             %5d\n'%i
-        ret += '    Average:  %5f\n'%self.avg
-        return 'Timing unit choice delay', ret
 
 
 class SyncStats(Plugin):
     """Plugin gathering statistics of syncs."""
-    def __init__(self, ignore_empty=False):
+    def __init__(self, ignore_empty=True):
         self.ig = ignore_empty
         self.inc = {}
         self.out = {}
@@ -180,52 +217,37 @@ class SyncStats(Plugin):
         self.recv = sorted([i[2] for i in self.stats])
 
     def report(self):
-        ret  =  '    Syncs in total:           %5d\n'%(len(self.inc)+len(self.out))
+        ret =   '  (ignoring syncs that exchanged nothing)\n' if self.ig else ''
+        ret +=  '    Syncs in total:           %5d\n'%(len(self.inc)+len(self.out))
         ret +=  '    Incoming:                 %5d\n'%len(self.inc)
         ret +=  '    Outgoing:                 %5d\n'%len(self.out)
         ret +=  '    Failed:                   %5d\n'%self.failed
         ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
-        ret +=  '    Min time:         %10d ms\n'%self.times[0]
-        ret +=  '    Max time:         %10d ms\n'%self.times[-1]
-        ret +=  '    Avg time:         %10.2f ms\n\n'%(sum(self.times)/len(self.times))
+        ret +=  '    Min time:            %10d    ms\n'%self.times[0]
+        ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
+        ret +=  '    Avg time:            %13.2f ms\n\n'%mean(self.times)
         ret +=  '    Min sent:            %10d\n'%self.sent[0]
         ret +=  '    Max sent:            %10d\n'%self.sent[-1]
-        ret +=  '    Avg sent:            %10.4f\n\n'%(sum(self.sent)/len(self.sent))
+        ret +=  '    Avg sent:            %13.2f\n\n'%mean(self.sent)
         ret +=  '    Min received:        %10d\n'%self.recv[0]
         ret +=  '    Max received:        %10d\n'%self.recv[-1]
-        ret +=  '    Avg received:        %10.4f\n\n'%(sum(self.recv)/len(self.recv))
+        ret +=  '    Avg received:        %13.2f\n\n'%mean(self.recv)
         return 'Sync stats', ret
 
 
-class LatencyMeter(Plugin):
+class LatencyMeter(Counter):
     """Plugin measuring the time between creating a unit and ordering it."""
     def __init__(self, skip_first=0):
-        self.units = {}
-        self.skip = skip_first
-
-    def process(self, entry):
-        if entry[Height] not in self.units:
-            self.units[entry[Height]] = [None, None]
-        if entry[Event] in [UnitCreated, PrimeUnitCreated]:
-            self.units[entry[Height]][0] = entry[Time]
-        elif entry[Event] == OwnUnitOrdered:
-            self.units[entry[Height]][1] = entry[Time]
-        return entry
+        val = lambda entry: (entry[Height], entry[Time], entry[Event] == OwnUnitOrdered)
+        Counter.__init__(self, 'latency', [UnitCreated, PrimeUnitCreated, OwnUnitOrdered], val, skip_first)
 
     def finalize(self):
-        self.latencies = []
-        h = 0
-        #this will break horribly if there are some missing entries
-        while h in self.units and self.units[h][0] and self.units[h][1]:
-            self.latencies.append(self.units[h][1]-self.units[h][0])
-            h += 1
-
-    def report(self):
-        lat = self.latencies[self.skip:]
-        ret =  '  (skipped first %d units)\n'%self.skip
-        ret += '    Min: %10d ms\n'%min(lat)
-        ret += '    Max: %10d ms\n'%max(lat)
-        ret += '    Avg: %10.2f ms\n'%(sum(lat)/len(lat))
-        ret += '    Med: %10.2f ms\n'%(median(lat))
-        return 'Latency', ret
+        tmp = sorted(self.data)
+        self.data = []
+        while len(tmp) >= 2:
+            a = tmp.pop(0)
+            if a[0] == tmp[0][0]:
+                b = tmp.pop(0)
+                if not a[2] and b[2]:
+                    self.data.append(b[1]-a[1])
 
