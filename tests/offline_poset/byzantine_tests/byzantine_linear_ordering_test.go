@@ -17,15 +17,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/tests/offline_poset/helpers"
 )
 
-const (
-	forkingPrimes = int(1000)
-	floodingLevel = 10
-)
-
 // Implementation of the Preunit interface that allows to create arbitrary forks without changing units content
 type preunitWithNonce struct {
 	gomel.Preunit
-	nounce uint64
+	nounce int32
 	hash   gomel.Hash
 }
 
@@ -44,8 +39,8 @@ func (pu *preunitWithNonce) computeHash() {
 	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
 }
 
-func newPreunitWithNounce(preunit gomel.Preunit, nounce uint64) *preunitWithNonce {
-	pu := creating.NewPreunit(preunit.Creator(), preunit.Parents(), nil)
+func newPreunitWithNounce(preunit gomel.Preunit, nounce int32) *preunitWithNonce {
+	pu := creating.NewPreunit(preunit.Creator(), preunit.Parents(), []byte{}, nil, nil)
 
 	result := preunitWithNonce{Preunit: pu, nounce: nounce}
 	result.computeHash()
@@ -59,7 +54,7 @@ func (pu *preunitWithNonce) Hash() *gomel.Hash {
 func createForks(preunit gomel.Preunit, privKey gomel.PrivateKey, count int) []gomel.Preunit {
 	result := make([]gomel.Preunit, 0, count)
 	created := map[gomel.Hash]bool{}
-	for nounce := uint64(0); len(result) < count; nounce++ {
+	for nounce := int32(0); len(result) < count; nounce++ {
 		fork := newPreunitWithNounce(preunit, nounce)
 		if created[*fork.Hash()] {
 			continue
@@ -72,12 +67,7 @@ func createForks(preunit gomel.Preunit, privKey gomel.PrivateKey, count int) []g
 }
 
 func computeMaxPossibleNumberOfByzantineProcesses(nProc int) int {
-	max := nProc / 3
-	if 3*max < nProc {
-		return max
-	} else {
-		return max - 1
-	}
+	return (nProc - 1) / 3
 }
 
 func getRandomListOfByzantinePosets(n int) []int {
@@ -96,7 +86,6 @@ func newTriggeredAdder(triggerCondition func(unit gomel.Unit) bool, wrappedHandl
 			return wrappedHandler(posets, unit)
 		}
 		return nil
-
 	}
 }
 
@@ -190,9 +179,11 @@ func newRandomForkingAdder(byzantinePosets []int, forkProbability int, privKeys 
 
 func testPrimeFloodingScenario() error {
 	const (
-		nProcesses = 21
-		nUnits     = 1000
-		maxParents = 2
+		nProcesses    = 21
+		nUnits        = 1000
+		maxParents    = 2
+		forkingPrimes = 1000
+		floodingLevel = 10
 	)
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
@@ -201,14 +192,13 @@ func testPrimeFloodingScenario() error {
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newPrimeFloodAdder(floodingLevel, forkingPrimes, privKeys, byzantinePosets)
 	verifier := helpers.NewDefaultVerifier()
-	testingRoutineFactory := helpers.NewDefaultTestingRoutineFactory(
-		func(posets []*growing.Poset) []*growing.Poset { return posets },
+	testingRoutine := helpers.NewDefaultTestingRoutine(
 		unitCreator,
 		unitAdder,
 		verifier,
 	)
 
-	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
+	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutine)
 }
 
 func testSimpleForkingScenario() error {
@@ -224,14 +214,13 @@ func testSimpleForkingScenario() error {
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newSimpleForkingAdder(10, privKeys, byzantinePosets)
 	verifier := helpers.NewDefaultVerifier()
-	testingRoutineFactory := helpers.NewDefaultTestingRoutineFactory(
-		func(posets []*growing.Poset) []*growing.Poset { return posets },
+	testingRoutine := helpers.NewDefaultTestingRoutine(
 		unitCreator,
 		unitAdder,
 		verifier,
 	)
 
-	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
+	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutine)
 }
 
 func testRandomForking() error {
@@ -247,14 +236,13 @@ func testRandomForking() error {
 	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
 	unitAdder := newRandomForkingAdder(byzantinePosets, 50, privKeys)
 	verifier := helpers.NewDefaultVerifier()
-	testingRoutineFactory := helpers.NewDefaultTestingRoutineFactory(
-		func(posets []*growing.Poset) []*growing.Poset { return posets },
+	testingRoutine := helpers.NewDefaultTestingRoutine(
 		unitCreator,
 		unitAdder,
 		verifier,
 	)
 
-	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutineFactory)
+	return helpers.Test(pubKeys, nUnits, maxParents, testingRoutine)
 }
 
 var _ = Describe("Byzantine Poset Test", func() {

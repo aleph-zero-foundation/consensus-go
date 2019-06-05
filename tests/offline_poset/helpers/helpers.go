@@ -36,33 +36,27 @@ type TestingRoutine interface {
 	CreatePosetVerifier() PosetVerifier
 }
 
-// TestingRoutineFactory represent a particular test executed on a given list of posets.
-type TestingRoutineFactory func([]*growing.Poset) ([]*growing.Poset, TestingRoutine)
-
-type testingRoutineFactory struct {
-	posetInitializer func([]*growing.Poset) []*growing.Poset
-	creator          UnitCreator
-	adder            AddingHandler
-	verifier         PosetVerifier
+type testingRoutine struct {
+	creator  UnitCreator
+	adder    AddingHandler
+	verifier PosetVerifier
 }
 
-func (test *testingRoutineFactory) CreateUnitCreator() UnitCreator {
+func (test *testingRoutine) CreateUnitCreator() UnitCreator {
 	return test.creator
 }
 
-func (test *testingRoutineFactory) CreateAddingHandler() AddingHandler {
+func (test *testingRoutine) CreateAddingHandler() AddingHandler {
 	return test.adder
 }
 
-func (test *testingRoutineFactory) CreatePosetVerifier() PosetVerifier {
+func (test *testingRoutine) CreatePosetVerifier() PosetVerifier {
 	return test.verifier
 }
 
-// NewDefaultTestingRoutineFactory creates an instance of TestingRoutine.
-func NewDefaultTestingRoutineFactory(posetInitializer func([]*growing.Poset) []*growing.Poset, creator UnitCreator, adder AddingHandler, verifier PosetVerifier) TestingRoutineFactory {
-	return func(posets []*growing.Poset) ([]*growing.Poset, TestingRoutine) {
-		return posetInitializer(posets), &testingRoutineFactory{posetInitializer, creator, adder, verifier}
-	}
+// NewDefaultTestingRoutine creates an instance of TestingRoutine.
+func NewDefaultTestingRoutine(creator UnitCreator, adder AddingHandler, verifier PosetVerifier) TestingRoutine {
+	return &testingRoutine{creator, adder, verifier}
 }
 
 // NewDefaultAdder creates an instance of AddingHandler that ads a given unit to all posets under test.
@@ -330,7 +324,7 @@ func NewNoOpVerifier() PosetVerifier {
 func Test(
 	pubKeys []gomel.PublicKey,
 	nUnits, maxParents int,
-	testRoutineFactory TestingRoutineFactory,
+	testingRoutine TestingRoutine,
 ) error {
 
 	nProcesses := len(pubKeys)
@@ -340,8 +334,6 @@ func Test(
 		posets = append(posets, growing.NewPoset(&gomel.PosetConfig{Keys: pubKeys}))
 	}
 
-	var testingRoutine TestingRoutine
-	posets, testingRoutine = testRoutineFactory(posets)
 	unitCreator, addingHandler, verifier :=
 		testingRoutine.CreateUnitCreator(),
 		testingRoutine.CreateAddingHandler(),
