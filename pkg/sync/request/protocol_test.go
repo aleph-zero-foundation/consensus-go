@@ -9,6 +9,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/rs/zerolog"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -41,7 +43,7 @@ func (c *connection) Write(buf []byte) (int, error) {
 	return c.out.Write(buf)
 }
 
-func (c *connection) Close() error {
+func (c *connection) Close(zerolog.Logger) error {
 	return nil
 }
 
