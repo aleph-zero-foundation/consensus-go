@@ -1,4 +1,5 @@
 from const import *
+from statistics import median
 
 class Plugin:
     """Parent class definition for all plugins."""
@@ -198,8 +199,9 @@ class SyncStats(Plugin):
 
 class LatencyMeter(Plugin):
     """Plugin measuring the time between creating a unit and ordering it."""
-    def __init__(self):
+    def __init__(self, skip_first=0):
         self.units = {}
+        self.skip = skip_first
 
     def process(self, entry):
         if entry[Height] not in self.units:
@@ -211,11 +213,19 @@ class LatencyMeter(Plugin):
         return entry
 
     def finalize(self):
-        self.latencies = sorted([end-beg for beg,end in self.units.values() if beg and end])
+        self.latencies = []
+        h = 0
+        #this will break horribly if there are some missing entries
+        while h in self.units and self.units[h][0] and self.units[h][1]:
+            self.latencies.append(self.units[h][1]-self.units[h][0])
+            h += 1
 
     def report(self):
-        ret =  '    Min: %10d ms\n'%self.latencies[0]
-        ret += '    Max: %10d ms\n'%self.latencies[-1]
-        ret += '    Avg: %10.2f ms\n'%(sum(self.latencies)/len(self.latencies))
-        return 'Latency: ', ret
+        lat = self.latencies[self.skip:]
+        ret =  '  (skipped first %d units)\n'%self.skip
+        ret += '    Min: %10d ms\n'%min(lat)
+        ret += '    Max: %10d ms\n'%max(lat)
+        ret += '    Avg: %10.2f ms\n'%(sum(lat)/len(lat))
+        ret += '    Med: %10.2f ms\n'%(median(lat))
+        return 'Latency', ret
 
