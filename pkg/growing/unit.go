@@ -189,7 +189,17 @@ func (u *unit) computeLevel() {
 
 	level := maxLevelParents
 	nSeen := 0
+
+	// we should consider our self predecessor
+	if pred, err := gomel.Predecessor(u); err == nil && pred.Level() == maxLevelParents {
+		nSeen++
+	}
+
+	creator := u.Creator()
 	for pid, vs := range u.floor {
+		if pid == creator {
+			continue
+		}
 
 		for _, unit := range vs {
 			if unit.Level() == maxLevelParents {
