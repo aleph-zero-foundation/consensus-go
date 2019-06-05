@@ -1,7 +1,7 @@
 package main
 
 import (
-"bufio"
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
@@ -46,27 +46,27 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number> [<addresses_file>].")
 		return
 	}
-    addresses := []string{}
-    if len(os.Args) == 2 {
-        for i:=0; i<num; i++ {
-            addresses = append(addresses, "127.0.0.1:" + strconv.Itoa(8888+i))
-        }
-    } else {
-        f, err := os.Open(os.Args[2])
-        if err != nil {
-		    fmt.Fprintln(os.Stderr, "Cannot open file ", os.Args[2])
-		    return
-        }
-        defer f.Close()
-        scanner := bufio.NewScanner(f)
-        for scanner.Scan() {
-            addresses = append(addresses, scanner.Text())
-        }
-        if len(addresses) < num {
-		    fmt.Fprintln(os.Stderr, "Too few addresses in ", os.Args[2])
-		    return
-        }
-    }
+	addresses := []string{}
+	if len(os.Args) == 2 {
+		for i := 0; i < num; i++ {
+			addresses = append(addresses, "127.0.0.1:"+strconv.Itoa(8888+i))
+		}
+	} else {
+		f, err := os.Open(os.Args[2])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Cannot open file ", os.Args[2])
+			return
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			addresses = append(addresses, scanner.Text())
+		}
+		if len(addresses) < num {
+			fmt.Fprintln(os.Stderr, "Too few addresses in ", os.Args[2])
+			return
+		}
+	}
 	processes := []proc{}
 	for i := 0; i < num; i++ {
 		processes = append(processes, makeProcess(i, addresses[i]))
