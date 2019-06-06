@@ -251,3 +251,26 @@ class LatencyMeter(Counter):
                 if not a[2] and b[2]:
                     self.data.append(b[1]-a[1])
 
+
+class MemoryStats(Plugin):
+    shifts = {'B':0, 'kB':10, 'MB':20, 'GB':30}
+    """Plugin gathering memory usage statistics."""
+    def __init__(self, unit='MB'):
+        self.data = []
+        if unit not in self.shifts:
+            print('MemoryStats: incorrect unit')
+            self.unit, self.sh = '??', 0
+        else:
+            self.unit, self.sh = unit, self.shifts[unit]
+
+    def process(self, entry):
+        if entry[Event] == MemoryUsage:
+            self.data.append((entry[Time]/1000, entry[Size]>>self.sh , entry[Memory]>>self.sh))
+        return entry
+
+    def report(self):
+        print(self.data)
+        ret = '     Time[s]     Heap[%s]     Total[%s]\n' % (self.unit, self.unit)
+        for i in self.data:
+            ret += '%10d    %10d    %10d\n' % i
+        return 'Memory usage', ret

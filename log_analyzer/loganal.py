@@ -29,10 +29,17 @@ driver.add_pipeline('Timing units', [
     Timer('timing unit decision intervals', SKIP),
 ])
 
-driver.add_pipeline('Sync stats', [Filter(Service, SyncService), SyncStats()])
-driver.add_pipeline('Latency', [Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]), LatencyMeter(SKIP)])
+driver.add_pipeline('Latency', [
+    Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]),
+    LatencyMeter(SKIP)
+])
 
+driver.add_pipeline('Sync stats', [
+    Filter(Service, SyncService),
+    SyncStats()
+])
 
+driver.add_pipeline('Memory', MemoryStats(unit = 'kB'))
 
 
 parser = argparse.ArgumentParser()
