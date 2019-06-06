@@ -36,6 +36,9 @@ code_coverage_report:
   stage: test
   script:
     - .gitlab/ci/make_coverage.sh ${TOTEST} coverage.cov coverage.output coverage.html
+  only:
+    - devel
+    - merge_requests
   artifacts:
     paths:
       - coverage.output
