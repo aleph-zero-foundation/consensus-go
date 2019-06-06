@@ -68,6 +68,7 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 func (s *service) Start() error {
 	s.wg.Add(1)
 	go func() {
+		s.createUnit()
 		for {
 			select {
 			case <-s.done:
