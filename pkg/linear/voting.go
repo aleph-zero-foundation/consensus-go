@@ -34,7 +34,7 @@ func (o *ordering) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
 		nNotSeen--
 		for _, w := range myFloor {
 			var reachedBottom error
-			for w.Above(uc) && ((w.Level() > level-2) && (w.Level() != level-1 || !gomel.Prime(w))) {
+			for w.Above(uc) && !((w.Level() <= level-2) || (w.Level() == level-1 && gomel.Prime(w))) {
 				w, reachedBottom = gomel.Predecessor(w)
 				if reachedBottom != nil {
 					break

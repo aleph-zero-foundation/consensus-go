@@ -18,7 +18,7 @@ type Unit interface {
 	// HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
 	// i.e. it is above two units created by creator that share a predecessor.
 	HasForkingEvidence(creator int) bool
-	// Floors returns a collection of units containing, for each process, all maximal units created by that process below the unit.
+	// Floor returns a collection of units containing, for each process, all maximal units created by that process below the unit.
 	Floor() [][]Unit
 }
 
