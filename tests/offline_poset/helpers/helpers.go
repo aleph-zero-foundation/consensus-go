@@ -236,7 +236,7 @@ func verifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checke
 				unit2, open := <-units2
 
 				if !open {
-					return gomel.NewDataError("Posets contains different number of units")
+					return gomel.NewDataError(fmt.Sprintf("poset id=%d returned more units than poset id=%d", ix, ix+1))
 				}
 
 				if err := checker(unit1, unit2); err != nil {
@@ -245,7 +245,7 @@ func verifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checke
 			}
 
 			if _, open := <-units2; open {
-				return gomel.NewDataError("Posets returned different number of units")
+				return gomel.NewDataError(fmt.Sprintf("poset id=%d returned more units than poset id=%d", ix+1, ix))
 			}
 
 		}
