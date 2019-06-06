@@ -16,14 +16,12 @@ import (
 type In struct {
 	MyPid   int
 	Timeout time.Duration
-	Log     zerolog.Logger
 }
 
 // Out implements the side of the protocol that handles outgoing connections.
 type Out struct {
 	MyPid   int
 	Timeout time.Duration
-	Log     zerolog.Logger
 }
 
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
@@ -134,9 +132,9 @@ func nonempty(req requests) bool {
 		9. Add the received units to the poset.
 */
 func (p *In) Run(poset gomel.Poset, conn network.Connection) {
-	log := p.Log.With().Uint16(logging.PID, conn.Pid()).Uint32(logging.ISID, conn.Sid()).Logger()
+	defer conn.Close()
+	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
-	defer conn.Close(log)
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
 
@@ -233,9 +231,9 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 		10. Add the received units to the poset.
 */
 func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
-	log := p.Log.With().Uint16(logging.PID, conn.Pid()).Uint32(logging.OSID, conn.Sid()).Logger()
+	defer conn.Close()
+	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
-	defer conn.Close(log)
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
 
