@@ -42,7 +42,7 @@ func createAndStartProcess(
 	userDB string,
 	maxLevel,
 	maxHeight uint64,
-	callback func(id int, err error),
+	finished *sync.WaitGroup,
 ) error {
 	committee := config.Committee{
 		Pid:        id,
@@ -67,7 +67,7 @@ func createAndStartProcess(
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 		}
-		callback(id, err)
+		finished.Done()
 	}()
 	return nil
 }
@@ -84,13 +84,9 @@ func main() {
 	pubKeys, privKeys := generateKeys(*testSize)
 
 	var allDone sync.WaitGroup
-	allDone.Add(int(*testSize))
-	doneCallback := func(id int, err error) {
-		allDone.Done()
-	}
-
 	for id := range addresses {
-		err := createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, *maxHeight, doneCallback)
+		allDone.Add(1)
+		err := createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, *maxHeight, &allDone)
 		if err != nil {
 			panic(err)
 		}
