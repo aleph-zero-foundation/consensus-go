@@ -36,7 +36,8 @@ driver.add_pipeline('Latency', [
 
 driver.add_pipeline('Sync stats', [
     Filter(Service, SyncService),
-    SyncStats()
+    SyncStats(),
+    NetworkTraffic(SKIP)
 ])
 
 driver.add_pipeline('Memory', MemoryStats(unit = 'kB'))

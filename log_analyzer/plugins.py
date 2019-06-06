@@ -226,12 +226,12 @@ class SyncStats(Plugin):
         ret +=  '    Min time:            %10d    ms\n'%self.times[0]
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n\n'%mean(self.times)
-        ret +=  '    Min sent:            %10d\n'%self.sent[0]
-        ret +=  '    Max sent:            %10d\n'%self.sent[-1]
-        ret +=  '    Avg sent:            %13.2f\n\n'%mean(self.sent)
-        ret +=  '    Min received:        %10d\n'%self.recv[0]
-        ret +=  '    Max received:        %10d\n'%self.recv[-1]
-        ret +=  '    Avg received:        %13.2f\n\n'%mean(self.recv)
+        ret +=  '    Min units sent:      %10d\n'%self.sent[0]
+        ret +=  '    Max units sent:      %10d\n'%self.sent[-1]
+        ret +=  '    Avg units sent:      %13.2f\n\n'%mean(self.sent)
+        ret +=  '    Min units received:  %10d\n'%self.recv[0]
+        ret +=  '    Max units received:  %10d\n'%self.recv[-1]
+        ret +=  '    Avg units received:  %13.2f\n\n'%mean(self.recv)
         return 'Sync stats', ret
 
 
@@ -239,7 +239,7 @@ class LatencyMeter(Counter):
     """Plugin measuring the time between creating a unit and ordering it."""
     def __init__(self, skip_first=0):
         val = lambda entry: (entry[Height], entry[Time], entry[Event] == OwnUnitOrdered)
-        Counter.__init__(self, 'latency', [UnitCreated, PrimeUnitCreated, OwnUnitOrdered], val, skip_first)
+        Counter.__init__(self, 'latency [ms]', [UnitCreated, PrimeUnitCreated, OwnUnitOrdered], val, skip_first)
 
     def finalize(self):
         tmp = sorted(self.data)
@@ -250,6 +250,37 @@ class LatencyMeter(Counter):
                 b = tmp.pop(0)
                 if not a[2] and b[2]:
                     self.data.append(b[1]-a[1])
+
+
+class NetworkTraffic(Plugin):
+    """Plugin measuring the size of data sent/received through the network."""
+    def __init__(self, skip_first=0):
+        self.data = {}
+        self.skip = skip_first
+
+    def process(self, entry):
+        if entry[Event] == ConnectionClosed:
+            bracket = entry[Time] // 1000
+            if bracket not in self.data:
+                self.data[bracket] = [0, 0]
+            self.data[bracket][0] += entry[Sent]
+            self.data[bracket][1] += entry[Recv]
+        return entry
+
+    def finalize(self):
+        self.sent = [self.data[k][0]>>10 for k in sorted(self.data.keys())]
+        self.recv = [self.data[k][1]>>10 for k in sorted(self.data.keys())]
+
+    def report(self):
+        s = self.sent[self.skip:]
+        r = self.recv[self.skip:]
+        ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
+        ret += '                Sent           Received\n'
+        ret += '    Min: %10d       %10d\n' % (min(s), min(r))
+        ret += '    Max: %10d       %10d\n' % (max(s), max(r))
+        ret += '    Avg: %13.2f    %13.2f\n' % (mean(s), mean(r))
+        ret += '    Med: %13.2f    %13.2f\n' % (median(s), median(r))
+        return 'Network traffic [kB/s]', ret
 
 
 class MemoryStats(Plugin):
