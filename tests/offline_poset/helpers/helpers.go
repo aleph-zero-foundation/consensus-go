@@ -20,14 +20,14 @@ const (
 )
 
 // UnitCreator is a type of a function that given a list of posets attempts to create a new unit or returns an error otherwise.
-type UnitCreator func([]*growing.Poset) (gomel.Preunit, error)
+type UnitCreator func([]gomel.Poset) (gomel.Preunit, error)
 
 // AddingHandler is a type of a function that given a list of posets and a unit handles adding of that unit with accordance to
 // used strategy.
-type AddingHandler func(posets []*growing.Poset, unit gomel.Preunit) error
+type AddingHandler func(posets []gomel.Poset, unit gomel.Preunit) error
 
 // PosetVerifier is a type of a function that is responsible for verifying if a given list of posests is in valid state.
-type PosetVerifier func([]*growing.Poset) error
+type PosetVerifier func([]gomel.Poset) error
 
 // TestingRoutine describes a strategy for performing a test on a given set of posets.
 type TestingRoutine interface {
@@ -61,7 +61,7 @@ func NewDefaultTestingRoutine(creator UnitCreator, adder AddingHandler, verifier
 
 // NewDefaultAdder creates an instance of AddingHandler that ads a given unit to all posets under test.
 func NewDefaultAdder() AddingHandler {
-	return func(posets []*growing.Poset, unit gomel.Preunit) error {
+	return func(posets []gomel.Poset, unit gomel.Preunit) error {
 		_, err := AddToPosets(unit, posets)
 		return err
 	}
@@ -83,7 +83,7 @@ func AddToPoset(poset gomel.Poset, pu gomel.Preunit) (gomel.Unit, error) {
 }
 
 // AddToPosets is a helper function that adds a given unit to all provided posets.
-func AddToPosets(unit gomel.Preunit, posets []*growing.Poset) (resultUnit gomel.Unit, err error) {
+func AddToPosets(unit gomel.Preunit, posets []gomel.Poset) (resultUnit gomel.Unit, err error) {
 	for ix, poset := range posets {
 		result, errTmp := AddToPoset(poset, unit)
 		if errTmp != nil {
@@ -98,7 +98,7 @@ func AddToPosets(unit gomel.Preunit, posets []*growing.Poset) (resultUnit gomel.
 }
 
 // AddUnitsToPosetsInRandomOrder adds a set of units in random order (per each poset) to all provided posets.
-func AddUnitsToPosetsInRandomOrder(units []gomel.Preunit, posets []*growing.Poset) error {
+func AddUnitsToPosetsInRandomOrder(units []gomel.Preunit, posets []gomel.Poset) error {
 	for _, poset := range posets {
 		rand.Shuffle(len(units), func(i, j int) {
 			units[i], units[j] = units[j], units[i]
@@ -128,7 +128,7 @@ func GenerateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.P
 // NewDefaultUnitCreator returns an implementation of the UnitCreator type that tries to build a unit using a randomly selected
 // poset.
 func NewDefaultUnitCreator(privKeys []gomel.PrivateKey) UnitCreator {
-	return func(posets []*growing.Poset) (gomel.Preunit, error) {
+	return func(posets []gomel.Poset) (gomel.Preunit, error) {
 		attempts := 0
 		for {
 			attempts++
@@ -213,7 +213,7 @@ func getMaximalUnitsSorted(poset gomel.Poset) (units chan gomel.Unit) {
 // ComposeVerifiers composes provided verifiers into a single verifier. Created verifier fails immediately after it discovers a failure of one of
 // the verifiers.
 func ComposeVerifiers(verifiers ...PosetVerifier) PosetVerifier {
-	return func(posets []*growing.Poset) error {
+	return func(posets []gomel.Poset) error {
 		for _, verifier := range verifiers {
 			if err := verifier(posets); err != nil {
 				return err
@@ -224,7 +224,7 @@ func ComposeVerifiers(verifiers ...PosetVerifier) PosetVerifier {
 }
 
 func verifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) PosetVerifier {
-	return func(posets []*growing.Poset) error {
+	return func(posets []gomel.Poset) error {
 		if len(posets) < 2 {
 			return nil
 		}
@@ -314,7 +314,7 @@ func NewDefaultVerifier() PosetVerifier {
 
 // NewNoOpVerifier returns a PosetVerifier that does not check provided posets and immediately answers that they are correct.
 func NewNoOpVerifier() PosetVerifier {
-	return func([]*growing.Poset) error {
+	return func([]gomel.Poset) error {
 		fmt.Println("No verification step")
 		return nil
 	}
@@ -328,7 +328,7 @@ func Test(
 ) error {
 
 	nProcesses := len(pubKeys)
-	posets := make([]*growing.Poset, 0, nProcesses)
+	posets := make([]gomel.Poset, 0, nProcesses)
 
 	for len(posets) < nProcesses {
 		posets = append(posets, growing.NewPoset(&gomel.PosetConfig{Keys: pubKeys}))
