@@ -269,7 +269,6 @@ class MemoryStats(Plugin):
         return entry
 
     def report(self):
-        print(self.data)
         ret = '     Time[s]     Heap[%s]     Total[%s]\n' % (self.unit, self.unit)
         for i in self.data:
             ret += '%10d    %10d    %10d\n' % i
