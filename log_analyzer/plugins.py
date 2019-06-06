@@ -114,8 +114,8 @@ class Histogram(Plugin):
 
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         ret += '    Value        Number of entries\n'
-        for i in h.items():
-            ret += '     %3d             %5d\n' % i
+        for k in sorted(h.keys()):
+            ret += '     %3d             %5d\n' % (k, h[k])
         ret += '    Average:  %5.2f\n' % (num/den)
         return 'Histogram: '+self.name, ret
 
