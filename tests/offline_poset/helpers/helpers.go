@@ -150,8 +150,8 @@ func NewDefaultUnitCreator(privKeys []gomel.PrivateKey) UnitCreator {
 	}
 }
 
-func getOrderedUnits(poset gomel.Poset) (units chan gomel.Unit) {
-	units = make(chan gomel.Unit)
+func getOrderedUnits(poset gomel.Poset) chan gomel.Unit {
+	units := make(chan gomel.Unit)
 	go func() {
 		config := config.NewDefaultConfiguration()
 		// TODO types
