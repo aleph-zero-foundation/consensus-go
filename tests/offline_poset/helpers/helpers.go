@@ -331,7 +331,9 @@ func Test(
 	posets := make([]gomel.Poset, 0, nProcesses)
 
 	for len(posets) < nProcesses {
-		posets = append(posets, growing.NewPoset(&gomel.PosetConfig{Keys: pubKeys}))
+		poset := growing.NewPoset(&gomel.PosetConfig{Keys: pubKeys})
+		defer poset.Stop()
+		posets = append(posets, poset)
 	}
 
 	unitCreator, addingHandler, verifier :=
