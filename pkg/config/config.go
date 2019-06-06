@@ -8,10 +8,10 @@ type Configuration struct {
 	// delay after creating a new unit
 	CreateDelay float32
 
-	// a number in (0,1) describing how aggresive is the create_delay adjusting mechanism, large = aggresive
+	// a number in (0,1) describing how aggressive is the create_delay adjusting mechanism, large = aggressive
 	StepSize float32
 
-	// delay after initianing a sync with other processes
+	// delay after initializing a sync with other processes
 	SyncInitDelay float32
 
 	// number of allowed parallel received syncs
@@ -69,7 +69,7 @@ func NewDefaultConfiguration() Configuration {
 
 		NParents: 10,
 
-		CreateDelay: 2.0,
+		CreateDelay: 1.0,
 
 		StepSize: 0.14,
 
@@ -83,7 +83,7 @@ func NewDefaultConfiguration() Configuration {
 
 		TxLimit: 1000000,
 
-		LevelLimit: 20,
+		LevelLimit: 1000,
 
 		UnitsLimit: nil,
 
@@ -103,7 +103,7 @@ func NewDefaultConfiguration() Configuration {
 
 		LogBuffer: 100000,
 
-		LogMemInterval: 0,
+		LogMemInterval: 10,
 
 		LogHuman: false,
 	}

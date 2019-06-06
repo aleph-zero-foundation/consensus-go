@@ -30,7 +30,7 @@ func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 
 func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 	// TODO: magic number
-	maxHeight := 2137
+	maxHeight := 27091986
 	if conf.UnitsLimit != nil {
 		maxHeight = int(*conf.UnitsLimit)
 	}
