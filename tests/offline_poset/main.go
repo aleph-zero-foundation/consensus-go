@@ -1,8 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -11,11 +15,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
-func main() {
+func runOfflineTest() {
 	// size of the test
-	nProcesses := 4
-	maxParents := 2
-	nUnits := 500
+	nProcesses := 50
+	maxParents := 10
+	nUnits := 5000
 
 	pubKeys := make([]gomel.PublicKey, nProcesses)
 	privKeys := make([]gomel.PrivateKey, nProcesses)
@@ -65,5 +69,38 @@ func main() {
 			})
 		}
 		wg.Wait()
+	}
+}
+
+var cpuprofile = flag.String("cpuprof", "", "the name of the file with cpu-profile results")
+var memprofile = flag.String("memprof", "", "the name of the file with mem-profile results")
+
+func main() {
+
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Creating cpu-profile file \"%s\" failed because: %s.\n", cpuprofile, err.Error())
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			fmt.Fprintf(os.Stderr, "Cpu-profile failed to start because: %s", err.Error())
+		}
+		defer pprof.StopCPUProfile()
+	}
+
+	runOfflineTest()
+
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Creating mem-profile file \"%s\" failed because: %s.\n", memprofile, err.Error())
+		}
+		defer f.Close()
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			fmt.Fprintf(os.Stderr, "Mem-profile failed to start because: %s", err.Error())
+		}
 	}
 }
