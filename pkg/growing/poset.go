@@ -37,9 +37,9 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 		pubKeys:    pubKeys,
 		tcByHash:   newTcBag(),
 	}
+	newPoset.tasks.Add(len(adders))
 	for k := range adders {
 		go newPoset.adder(adders[k])
-		newPoset.tasks.Add(1)
 	}
 	return newPoset
 }
