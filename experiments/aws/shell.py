@@ -337,7 +337,7 @@ def launch_new_instances(nppr, instance_type='t2.micro'):
         print('reporting complete failure in regions', failed)
 
 
-def terminate_instances(regions='all', parallel=True):
+def terminate_instances(regions='badger regions', parallel=True):
     '''Terminates all instances in ever region from given regions.'''
 
     return exec_for_regions(terminate_instances_in_region, regions, parallel)
@@ -434,7 +434,7 @@ def run_protocol(n_processes, regions, restricted, instance_type):
     wait('running', regions)
 
     print('generating keys&addresses files')
-    pids, ip2pids, ip_list, c = {}, {}, [], 0
+    pids, ip2pid, ip_list, c = {}, {}, [], 0
     for r in regions:
         ipl = instances_ip_in_region(r)
         pids[r] = [str(pid) for pid in range(c,c+len(ipl))]
@@ -451,13 +451,6 @@ def run_protocol(n_processes, regions, restricted, instance_type):
 
     print('cloning repo')
     run_task('clone-repo', regions, parallel)
-
-    print('installing missing deps')
-    run_task('inst-deps', regions, parallel)
-
-    print('wait till installation finishes')
-    sleep(20)
-    wait_install(regions)
 
     print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
@@ -492,6 +485,9 @@ def create_images(regions=badger_regions()):
     # wait till installing finishes
     sleep(60)
     wait_install(regions[:1])
+    
+    print('clone repo')
+    run_task_in_region('clone-repo', regions[0])
 
     print('creating image in region', regions[0])
     image = instance.create_image( 
@@ -511,10 +507,13 @@ def create_images(regions=badger_regions()):
 
     print('waiting for image to be available')
     while image.state != 'available':
-        print('', end='.')
+        print('.', end='')
         sleep(10)
         image.reload()
     print()
+
+    print('terminating the instance')
+    instance.terminate()
 
     print('copying image to remaining regions')
     for region in regions[1:]:
@@ -527,6 +526,17 @@ def create_images(regions=badger_regions()):
         )
 
     print('\ndone')
+
+def deregister_image(regions, image_names):
+    for r in regions:
+        print(r)
+        ec2 = boto3.resource('ec2', r)
+        images = ec2.images.filter(Filters=[{'Name':'name','Values':image_name}])
+        for i in images:
+            print('   ', i.deregister())
+
+def memory_usage(regions):
+    cmd = 'grep {"L":"1","S":5,"M":72286456,"N":4098424,"T":10008,"E":"Y"}
 
 def get_logs(regions, ip2pid):
     '''Retrieves all logs from instances.'''
@@ -578,27 +588,6 @@ def get_logs(regions, ip2pid):
 
     os.rmdir(result_path)
 
-
-def memory_usage(regions=badger_regions()):
-    cmd = 'grep memory proof-of-concept/aleph/aleph.log | tail -1'
-    output = run_cmd(cmd, regions, True)
-    results = [float(line.split()[7]) for line in output]
-    return round(min(results), 2), round(np.mean(results), 2), round(max(results), 2)
-
-
-def reached_max_level(regions=badger_regions()):
-    cmd = 'grep max_level proof-of-concept/aleph/aleph.log'
-    output = run_cmd(cmd, regions, True, True)
-    n_protocol_stopped = 0
-    for out in output:
-        if len(out.decode().split('reached')) > 1:
-            n_protocol_stopped += 1
-
-    return n_protocol_stopped
-
-
-
-
 #======================================================================================
 #                                        shortcuts
 #======================================================================================
@@ -618,8 +607,8 @@ restricted = {'ap-south-1':     10,  # Mumbai
 badger_restricted = {'ap-southeast-2': 5, 'sa-east-1': 5}
 
 
-pb = lambda : run_protocol(104, badger_regions(), [], 't2.medium')
-rs = lambda : run_protocol(8, badger_regions(), restricted, 't2.micro')
+pb = lambda : run_protocol(104, badger_regions(), badger_restricted, 't2.medium')
+rs = lambda : run_protocol(8, badger_regions(), badger_restricted, 't2.micro')
 rf = lambda : run_protocol(128, available_regions(), restricted, 't2.micro')
 mu = lambda regions=badger_regions(): memory_usage(regions)
 

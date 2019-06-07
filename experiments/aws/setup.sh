@@ -7,7 +7,7 @@ echo upgrade >> setup.log
 sudo apt -y upgrade
 
 echo install gcc >> setup.log
-sudo apt -y install gcc
+sudo apt -y install gcc zip
 
 echo install go from snap >> setup.log
 sudo snap install go --classic

@@ -14,7 +14,7 @@ def setup(conn):
     conn.put('setup.sh', '.')
     conn.sudo('apt update', hide='both')
     conn.sudo('apt install dtach', hide='both')
-    conn.run('dtach -n `mktemp -u /tmp/dtach.XXXX` bash setup.sh', hide='both')
+    conn.run('PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` bash setup.sh', hide='both')
 
 @task
 def setup_completed(conn):

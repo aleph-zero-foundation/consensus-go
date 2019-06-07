@@ -36,5 +36,7 @@
 
 		"LogBuffer": 100000,
 
+        "LogMemInterval": 10,
+
 		"LogHuman": false 
 	}
