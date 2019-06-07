@@ -54,15 +54,10 @@ func (pu *preunitWithNonce) Hash() *gomel.Hash {
 
 func createForks(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey, count int) []gomel.Preunit {
 	result := make([]gomel.Preunit, 0, count)
-	created := map[gomel.Hash]bool{*preunit.Hash(): true}
 	for nounce := int32(0); len(result) < count; nounce++ {
 		fork := newPreunitWithNounce(preunit, nounce)
-		if created[*fork.Hash()] {
-			continue
-		}
 		fork.SetSignature(privKey.Sign(fork))
 		result = append(result, fork)
-		created[*fork.Hash()] = true
 	}
 	return result
 }
