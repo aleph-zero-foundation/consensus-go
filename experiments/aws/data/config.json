@@ -2,7 +2,7 @@
 
 		"NParents": 10,
 
-		"CreateDelay": 2.0,
+		"CreateDelay": 1.0,
 
 		"StepSize": 0.14,
 
@@ -16,7 +16,7 @@
 
 		"TxLimit": 1000000,
 
-		"LevelLimit": 20,
+		"LevelLimit": 50,
 
 		"UnitsLimit": null,
 

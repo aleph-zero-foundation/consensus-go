@@ -536,7 +536,7 @@ def deregister_image(regions, image_names):
             print('   ', i.deregister())
 
 def memory_usage(regions):
-    cmd = 'grep {"L":"1","S":5,"M":72286456,"N":4098424,"T":10008,"E":"Y"}
+    cmd = 'grep {"L":"1","S":5,"M":72286456,"N":4098424,"T":10008,"E":"Y"}'
 
 def get_logs(regions, ip2pid):
     '''Retrieves all logs from instances.'''
@@ -552,7 +552,7 @@ def get_logs(regions, ip2pid):
     for rn in regions:
         print('collecting logs in ', rn)
         for ip in instances_ip_in_region(rn):
-            run_task_for_ip('get-logs', [ip2pid[r][ip]], parallel=0)
+            run_task_for_ip('get-log', [ip], parallel=0, pids=[ip2pid[ip]])
             if len(os.listdir('../results')) > l:
                 l = len(os.listdir('../results'))
                 break

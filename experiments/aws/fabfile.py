@@ -25,7 +25,7 @@ def setup_completed(conn):
 
 @task
 def clone_repo(conn):
-    '''Clones main repo, checkouts to devel, and installs it via pip.'''
+    '''Clones main repo.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     # delete current repo
@@ -65,7 +65,7 @@ def run_protocol(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --log {pid}.log --config config.json --db pkg/testdata/users.txt'
+        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
@@ -75,7 +75,7 @@ def get_log(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'zip -q {pid}.log.zip {pid}.log')
+        conn.run(f'zip -q {pid}.log.zip aleph.log')
     conn.get(f'{repo_path}/{pid}.log.zip', f'../results/{pid}.log.zip')
 
 @task
