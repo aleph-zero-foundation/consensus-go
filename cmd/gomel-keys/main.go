@@ -29,7 +29,7 @@ func makeProcess(i int, address string) proc {
 // This program generates files with random keys and local addresses for a committee of the specified size.
 // These files are intended to be used for simple local tests of the gomel binary.
 func main() {
-    usageMsg := "Usage: gomel-keys <number> [<addresses_file>]."
+	usageMsg := "Usage: gomel-keys <number> [<addresses_file>]."
 	if len(os.Args) != 2 && len(os.Args) != 3 {
 		fmt.Fprintln(os.Stderr, usageMsg)
 		return

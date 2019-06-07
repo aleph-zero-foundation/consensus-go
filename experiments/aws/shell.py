@@ -536,7 +536,15 @@ def deregister_image(regions, image_names):
             print('   ', i.deregister())
 
 def memory_usage(regions):
-    cmd = 'grep {"L":"1","S":5,"M":72286456,"N":4098424,"T":10008,"E":"Y"}'
+    cmd = 'grep ".*E.*Y" go/src/gitlab.com/alephledger/consensus-go/*.log | tail -1'
+    output = run_cmd(cmd, regions, True)
+    output = [item.decode().strip() for item in output]
+    mems = []
+    for item in output:
+        log = dict(p.split(':') for p in item[1:-1].split(','))
+        mems.append(int(log['"N"']) / 2**20)
+
+    return np.min(mems), np.mean(mems), np.max(mems)
 
 def get_logs(regions, ip2pid):
     '''Retrieves all logs from instances.'''
@@ -566,7 +574,7 @@ def get_logs(regions, ip2pid):
 
     result_path = f'../{n_processes}_'\
                   f'{config["NParents"]}_'\
-                  f'{config["UseTcoin"]}_'\
+                  f'{int(config["UseTcoin"])}_'\
                   f'{config["CreateDelay"]}_'\
                   f'{config["SyncInitDelay"]}_'\
                   f'{config["Txpu"]}'
@@ -608,7 +616,7 @@ badger_restricted = {'ap-southeast-2': 5, 'sa-east-1': 5}
 
 
 pb = lambda : run_protocol(104, badger_regions(), badger_restricted, 't2.medium')
-rs = lambda : run_protocol(8, badger_regions(), badger_restricted, 't2.micro')
+rs = lambda : run_protocol(4, badger_regions()[:4], badger_restricted, 't2.micro')
 rf = lambda : run_protocol(128, available_regions(), restricted, 't2.micro')
 mu = lambda regions=badger_regions(): memory_usage(regions)
 
