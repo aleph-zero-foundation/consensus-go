@@ -8,10 +8,10 @@ type Configuration struct {
 	// delay after creating a new unit
 	CreateDelay float32
 
-	// a number in (0,1) describing how aggresive is the create_delay adjusting mechanism, large = aggresive
+	// a number in (0,1) describing how aggressive is the create_delay adjusting mechanism, large = aggressive
 	StepSize float32
 
-	// delay after initianing a sync with other processes
+	// delay after initializing a sync with other processes
 	SyncInitDelay float32
 
 	// number of allowed parallel received syncs
@@ -56,6 +56,9 @@ type Configuration struct {
 	// The size of log diode buffer in bytes. 0 disables the diode. Recommended at least 100k.
 	LogBuffer int
 
+	// How often (in seconds) log the memory usage. 0 to disable.
+	LogMemInterval int
+
 	// whether to write log in human readable form or in JSON.
 	LogHuman bool
 }
@@ -66,7 +69,7 @@ func NewDefaultConfiguration() Configuration {
 
 		NParents: 10,
 
-		CreateDelay: 2.0,
+		CreateDelay: 1.0,
 
 		StepSize: 0.14,
 
@@ -99,6 +102,8 @@ func NewDefaultConfiguration() Configuration {
 		LogLevel: 1,
 
 		LogBuffer: 100000,
+
+		LogMemInterval: 10,
 
 		LogHuman: false,
 	}

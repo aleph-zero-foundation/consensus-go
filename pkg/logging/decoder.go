@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 
 	"github.com/rs/zerolog"
@@ -36,7 +37,7 @@ func (d *decoder) Write(p []byte) (n int, err error) {
 
 func decode(data *map[string]interface{}) string {
 	if event, ok := (*data)[Event]; ok && event == Genesis {
-		return fmt.Sprintln("Beginning of time at ", (*data)[Time])
+		return fmt.Sprintln("Beginning of time at ", (*data)[Genesis])
 	}
 	ret := ""
 	if val, ok := (*data)[Time]; ok {
@@ -49,14 +50,19 @@ func decode(data *map[string]interface{}) string {
 	if val, ok := (*data)[Service]; ok {
 		ret += fmt.Sprintf("%s:%7v|", fieldNameDict[Service], serviceTypeDict[int(val.(float64))])
 	}
-	for k, v := range *data {
+	slice := make([]string, 0)
+	for k := range *data {
 		if k == Time || k == Service || k == Event || k == Level {
 			continue
 		}
+		slice = append(slice, k)
+	}
+	sort.Strings(slice)
+	for _, k := range slice {
 		if f, ok := fieldNameDict[k]; ok {
-			ret += fmt.Sprintf("%8s = %-6v|", f, v)
+			ret += fmt.Sprintf("%8s = %-6v|", f, (*data)[k])
 		} else {
-			ret += fmt.Sprintf("%8s = %-6v|", k, v)
+			ret += fmt.Sprintf("%8s = %-6v|", k, (*data)[k])
 		}
 	}
 	if val, ok := (*data)[Event]; ok {

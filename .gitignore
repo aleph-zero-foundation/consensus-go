@@ -4,3 +4,5 @@
 *.out
 # logs
 *.log
+# python
+*.pyc

@@ -25,6 +25,9 @@ const (
 	SentUnits             = "T"
 	ReceivedPreunits      = "U"
 	DuplicatedUnit        = "V"
+	OwnUnitOrdered        = "W"
+	ConnectionClosed      = "X"
+	MemoryUsage           = "Y"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -39,7 +42,7 @@ var eventTypeDict = map[string]string{
 	ConnectionEstablished: "dialer established a TCP connection",
 	NotEnoughParents:      "creating.NewUnit failed (not enough parents)",
 	SyncStarted:           "new sync started",
-	SyncCompleted:         "sync completed",
+	SyncCompleted:         "sync completed (stats = units)",
 	GetPosetInfo:          "receiving poset info started",
 	SendPosetInfo:         "sending poset info started",
 	GetPreunits:           "receiving preunits started",
@@ -51,40 +54,47 @@ var eventTypeDict = map[string]string{
 	SentUnits:             "successfully sent units",
 	ReceivedPreunits:      "successfully received preunits",
 	DuplicatedUnit:        "attempting to add unit already present in poset",
+	OwnUnitOrdered:        "unit created by this process has been ordered",
+	ConnectionClosed:      "connection closed after sync (stats = bytes)",
+	MemoryUsage:           "memory usage statistics",
 }
 
 // Field names
 const (
-	Time      = "T"
-	Level     = "L"
-	Event     = "E"
-	Service   = "S"
-	Size      = "N"
-	Height    = "H"
-	Round     = "R"
-	PID       = "P"
-	ISID      = "I"
-	OSID      = "O"
-	UnitsSent = "U"
-	UnitsRecv = "V"
-	Creator   = "C"
+	Time     = "T"
+	Level    = "L"
+	Event    = "E"
+	Service  = "S"
+	Size     = "N"
+	Height   = "H"
+	Round    = "R"
+	PID      = "P"
+	ISID     = "I"
+	OSID     = "O"
+	Sent     = "U"
+	Recv     = "V"
+	Creator  = "C"
+	NParents = "A"
+	Memory   = "M"
 )
 
 // fieldNameDict maps short field names to human readable form
 var fieldNameDict = map[string]string{
-	Time:      "time",
-	Level:     "level",
-	Event:     "event",
-	Service:   "service",
-	Size:      "size",
-	Height:    "height",
-	Round:     "round",
-	PID:       "PID",
-	ISID:      "inSID",
-	OSID:      "outSID",
-	UnitsSent: "Us sent",
-	UnitsRecv: "Us recv",
-	Creator:   "creator",
+	Time:     "time",
+	Level:    "level",
+	Event:    "event",
+	Service:  "service",
+	Size:     "size",
+	Height:   "height",
+	Round:    "round",
+	PID:      "PID",
+	ISID:     "inSID",
+	OSID:     "outSID",
+	Sent:     "sent",
+	Recv:     "received",
+	Creator:  "creator",
+	NParents: "parents",
+	Memory:   "bytes",
 }
 
 // Service types
@@ -94,6 +104,7 @@ const (
 	SyncService
 	ValidateService
 	GenerateService
+	MemLogService
 )
 
 // serviceTypeDict maps integer service types to human readable names
@@ -103,6 +114,7 @@ var serviceTypeDict = map[int]string{
 	SyncService:     "SYNC",
 	ValidateService: "VALID",
 	GenerateService: "GENER",
+	MemLogService:   "MEMLOG",
 }
 
 // Genesis was better with Phil Collins

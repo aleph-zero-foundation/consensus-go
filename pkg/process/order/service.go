@@ -18,6 +18,7 @@ import (
 //   the go routine which is ordering units that a new timingUnit has been chosen
 // - currentRound is the round up to which we have chosen timing units
 type service struct {
+	pid                   int
 	linearOrdering        gomel.LinearOrdering
 	attemptTimingRequests <-chan int
 	extendOrderRequests   chan int
@@ -31,6 +32,7 @@ type service struct {
 // NewService is a constructor of an ordering service
 func NewService(poset gomel.Poset, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
+		pid:                   config.Pid,
 		linearOrdering:        linear.NewOrdering(poset, config.VotingLevel, config.PiDeltaLevel),
 		attemptTimingRequests: attemptTimingRequests,
 		orderedUnits:          orderedUnits,
@@ -67,6 +69,9 @@ func (s *service) extendOrder() {
 		units := s.linearOrdering.TimingRound(round)
 		for _, u := range units {
 			s.orderedUnits <- u
+			if u.Creator() == s.pid {
+				s.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
+			}
 		}
 		s.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
 	}

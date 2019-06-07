@@ -69,7 +69,7 @@ func NewLogger(path string, level, diodeBuf int, humanReadable bool) (zerolog.Lo
 	}
 
 	log := zerolog.New(output).With().Timestamp().Logger().Level(zerolog.Level(level))
-	log.Log().Str("Started on", genesis.Format(time.RFC1123Z)).Msg(Genesis)
+	log.Log().Str(Genesis, genesis.Format(time.RFC1123Z)).Msg(Genesis)
 
 	return log, nil
 }

@@ -68,6 +68,7 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 func (s *service) Start() error {
 	s.wg.Add(1)
 	go func() {
+		s.createUnit()
 		for {
 			select {
 			case <-s.done:
@@ -133,7 +134,7 @@ func (s *service) createUnit() {
 	if len(created.Parents()) == 0 {
 		tc, err := tcoin.Decode(created.ThresholdCoinData(), s.pid)
 		if err != nil {
-			// TODO: handle the error
+			s.log.Error().Str("where", "poset.createUnit.tcoin.Decode").Msg(err.Error())
 			return
 		}
 		s.poset.AddThresholdCoin(created.Hash(), tc)
@@ -149,11 +150,11 @@ func (s *service) createUnit() {
 		}
 
 		if gomel.Prime(added) {
-			s.log.Info().Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
+			s.log.Info().Int(logging.Height, added.Height()).Int(logging.NParents, len(added.Parents())).Msg(logging.PrimeUnitCreated)
 			s.quicker()
 			s.primeUnitCreated <- added.Level()
 		} else {
-			s.log.Info().Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
+			s.log.Info().Int(logging.Height, added.Height()).Int(logging.NParents, len(added.Parents())).Msg(logging.UnitCreated)
 			s.slower()
 		}
 

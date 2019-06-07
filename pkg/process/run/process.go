@@ -75,6 +75,12 @@ func Process(config process.Config, log zerolog.Logger) error {
 	}
 	services = append(services, service)
 
+	service, err = logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+	if err != nil {
+		return err
+	}
+	services = append(services, service)
+
 	service, err = sync.NewService(poset, config.Sync, log.With().Int(logging.Service, logging.SyncService).Logger())
 	if err != nil {
 		return err

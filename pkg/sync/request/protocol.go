@@ -16,14 +16,12 @@ import (
 type In struct {
 	MyPid   int
 	Timeout time.Duration
-	Log     zerolog.Logger
 }
 
 // Out implements the side of the protocol that handles outgoing connections.
 type Out struct {
 	MyPid   int
 	Timeout time.Duration
-	Log     zerolog.Logger
 }
 
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
@@ -135,10 +133,10 @@ func nonempty(req requests) bool {
 */
 func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
+	log := conn.Log()
+	log.Info().Msg(logging.SyncStarted)
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
-	log := p.Log.With().Uint16(logging.PID, conn.Pid()).Uint32(logging.ISID, conn.Sid()).Logger()
-	log.Info().Msg(logging.SyncStarted)
 
 	log.Debug().Msg(logging.GetPosetInfo)
 	theirPosetInfo, err := getPosetInfo(nProc, conn)
@@ -213,7 +211,7 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.UnitsSent, nSent).Int(logging.UnitsRecv, nReceived).Msg(logging.SyncCompleted)
+	log.Info().Int(logging.Sent, nSent).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }
 
 // Run handles the outgoing connection using info from the poset.
@@ -234,10 +232,10 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 */
 func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
+	log := conn.Log()
+	log.Info().Msg(logging.SyncStarted)
 	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
-	log := p.Log.With().Uint32(logging.OSID, conn.Sid()).Logger()
-	log.Info().Msg(logging.SyncStarted)
 
 	maxSnapshot := posetMaxSnapshot(poset)
 	posetInfo := toPosetInfo(maxSnapshot)
@@ -307,5 +305,5 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.UnitsSent, nSent).Int(logging.UnitsRecv, nReceived).Msg(logging.SyncCompleted)
+	log.Info().Int(logging.Sent, nSent).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }

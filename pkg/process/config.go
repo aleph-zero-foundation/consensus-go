@@ -14,6 +14,7 @@ type Config struct {
 	Order      *Order
 	TxValidate *TxValidate
 	TxGenerate *TxGenerate
+	MemLog     int
 }
 
 // Sync represents a complete configuration needed for a syncing service to start.
@@ -42,6 +43,7 @@ type Create struct {
 
 // Order represents a complete configuration needed for an ordering service to start.
 type Order struct {
+	Pid          int
 	VotingLevel  int
 	PiDeltaLevel int
 }
