@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/pprof"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -42,10 +44,12 @@ func getConfiguration(filename string) (*config.Configuration, error) {
 }
 
 type cliOptions struct {
-	keyFilename    string
-	configFilename string
-	dbFilename     string
-	logFilename    string
+	keyFilename     string
+	configFilename  string
+	dbFilename      string
+	logFilename     string
+	cpuProfFilename string
+	memProfFilename string
 }
 
 func getOptions() cliOptions {
@@ -54,6 +58,8 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.configFilename, "config", "", "a configuration file")
 	flag.StringVar(&result.dbFilename, "db", "", "a mock database file")
 	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
+	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
+	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.Parse()
 	return result
 }
@@ -75,9 +81,35 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Creating log file \"%s\" failed because: %s.\n", options.logFilename, err.Error())
 		return
 	}
+
 	processConfig := conf.GenerateConfig(committee, options.dbFilename)
+
+	if options.cpuProfFilename != "" {
+		f, err := os.Create(options.cpuProfFilename)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Creating cpu-profile file \"%s\" failed because: %s.\n", options.cpuProfFilename, err.Error())
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			fmt.Fprintf(os.Stderr, "Cpu-profile failed to start because: %s", err.Error())
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	err = run.Process(processConfig, log)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
+	}
+
+	if options.memProfFilename != "" {
+		f, err := os.Create(options.memProfFilename)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Creating mem-profile file \"%s\" failed because: %s.\n", options.memProfFilename, err.Error())
+		}
+		defer f.Close()
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			fmt.Fprintf(os.Stderr, "Mem-profile failed to start because: %s", err.Error())
+		}
 	}
 }
