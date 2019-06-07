@@ -16,7 +16,7 @@ type unit struct {
 	signature     gomel.Signature
 	hash          gomel.Hash
 	parents       []gomel.Unit
-	floor         [][]*unit
+	floor         [][]gomel.Unit
 	data          []byte
 	cs            *tcoin.CoinShare
 	tcData        []byte
@@ -30,6 +30,10 @@ func newUnit(pu gomel.Preunit) *unit {
 		cs:      pu.CoinShare(),
 		tcData:  pu.ThresholdCoinData(),
 	}
+}
+
+func (u *unit) Floor() [][]gomel.Unit {
+	return u.floor
 }
 
 func (u *unit) CoinShare() *tcoin.CoinShare {
@@ -78,7 +82,7 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
 	// check whether collection of these maximal units has a single maximal element
 	if creator == u.creator {
-		var floor []*unit
+		var floor []gomel.Unit
 		for _, parent := range u.parents {
 			actualParent := parent.(*unit)
 			floor = append(floor, actualParent.floor[creator]...)
@@ -113,10 +117,10 @@ func (u *unit) computeHeight() {
 }
 
 func (u *unit) computeFloor(nProcesses int) {
-	u.floor = make([][]*unit, nProcesses, nProcesses)
-	u.floor[u.creator] = []*unit{u}
+	u.floor = make([][]gomel.Unit, nProcesses)
+	u.floor[u.creator] = []gomel.Unit{u}
 
-	floors := make([][]*unit, nProcesses, nProcesses)
+	floors := make([][]gomel.Unit, nProcesses)
 
 	for _, parent := range u.parents {
 		if realParent, ok := parent.(*unit); ok {
@@ -144,8 +148,8 @@ func (u *unit) computeFloor(nProcesses int) {
 	wg.Wait()
 }
 
-func combineFloorsPerProc(floors []*unit) []*unit {
-	newFloor := []*unit{}
+func combineFloorsPerProc(floors []gomel.Unit) []gomel.Unit {
+	newFloor := []gomel.Unit{}
 
 	// Computes maximal elements in floors and stores them in newFloor
 	// floors contains elements created by only one proc
@@ -156,12 +160,12 @@ func combineFloorsPerProc(floors []*unit) []*unit {
 	for _, u := range floors {
 		found, ri := false, -1
 		for k, v := range newFloor {
-			if ok, _ := u.aboveWithinProc(v); ok {
+			if ok, _ := u.(*unit).aboveWithinProc(v.(*unit)); ok {
 				found = true
 				ri = k
 				break
 			}
-			if ok, _ := u.belowWithinProc(v); ok {
+			if ok, _ := u.(*unit).belowWithinProc(v.(*unit)); ok {
 				found = true
 			}
 		}

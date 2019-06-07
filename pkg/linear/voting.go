@@ -19,37 +19,42 @@ const (
 // Which means that at least 2/3 * N processes created a unit w such that:
 // (1) uc <= w <= v
 // (2) level(w) <= level(v) - 2 or level(w) = level(v) - 1 and w is a prime unit
-// It might be further optimized by using floors, but at this point gomel.Unit
-// doesn't define floors
 func (o *ordering) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
-	if result, ok := o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}]; ok {
-		return result
-	}
 	if uc.Level() >= v.Level() || !uc.Below(v) {
 		return false
 	}
-	// simple BFS from v
-	seenProcesses := make(map[int]bool)
-	seenUnits := make(map[gomel.Hash]bool)
-	seenUnits[*v.Hash()] = true
-	queue := []gomel.Unit{v}
-	for len(queue) > 0 {
-		w := queue[0]
-		queue = queue[1:]
-		if w.Level() <= v.Level()-2 || (w.Level() == v.Level()-1 && gomel.Prime(w)) {
-			seenProcesses[w.Creator()] = true
-			if o.poset.IsQuorum(len(seenProcesses)) {
-				return true
+	if result, ok := o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}]; ok {
+		return result
+	}
+
+	level := v.Level()
+	nProcValid := 0
+	nProcNotSeen := o.poset.NProc()
+	for _, myFloor := range v.Floor() {
+		nProcNotSeen--
+		for _, w := range myFloor {
+			var reachedBottom error
+			for w.Above(uc) && !((w.Level() <= level-2) || (w.Level() == level-1 && gomel.Prime(w))) {
+				w, reachedBottom = gomel.Predecessor(w)
+				if reachedBottom != nil {
+					break
+				}
+			}
+			if reachedBottom == nil && w.Above(uc) {
+				nProcValid++
+				if o.poset.IsQuorum(nProcValid) {
+					o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = true
+					return true
+				}
+				break
 			}
 		}
-		for _, wParent := range w.Parents() {
-			if _, exists := seenUnits[*wParent.Hash()]; !exists && uc.Below(wParent) {
-				queue = append(queue, wParent)
-				seenUnits[*wParent.Hash()] = true
-			}
+		if !o.poset.IsQuorum(nProcValid + nProcNotSeen) {
+			o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = false
+			return false
 		}
 	}
-	result := o.poset.IsQuorum(len(seenProcesses))
+	result := o.poset.IsQuorum(nProcValid)
 	o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = result
 	return result
 }

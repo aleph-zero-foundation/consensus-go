@@ -50,7 +50,7 @@ func (u *unit) Below(v gomel.Unit) bool {
 	}
 	for _, w := range V.floor[u.creator] {
 
-		if ok, _ := u.belowWithinProc(w); ok {
+		if ok, _ := u.belowWithinProc(w.(*unit)); ok {
 			return true
 		}
 	}

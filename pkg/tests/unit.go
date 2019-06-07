@@ -12,10 +12,15 @@ type unit struct {
 	version   int
 	hash      gomel.Hash
 	parents   []gomel.Unit
+	floor     [][]gomel.Unit
 	signature gomel.Signature
 	data      []byte
 	cs        *tcoin.CoinShare
 	tcData    []byte
+}
+
+func (u *unit) Floor() [][]gomel.Unit {
+	return u.floor
 }
 
 func (u *unit) CoinShare() *tcoin.CoinShare {

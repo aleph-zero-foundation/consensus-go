@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"sort"
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -100,8 +101,9 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	} else {
 		u.version = len(p.unitsByHeight[u.height].Get(u.creator))
 	}
-	// Setting level of u
+	// Setting level and floor of u
 	setLevel(&u, p)
+	setFloor(&u, p)
 
 	//Setting poset variables
 	if u.Height() == 0 {
@@ -173,6 +175,35 @@ func (p *Poset) NProc() int {
 func (p *Poset) IsQuorum(number int) bool {
 	// nProcesses doesn't change so no lock needed
 	return 3*number >= 2*p.nProcesses
+}
+
+func setFloor(u *unit, p *Poset) {
+	parentsFloorUnion := make([][]gomel.Unit, p.NProc())
+	parentsFloorUnion[u.Creator()] = []gomel.Unit{u}
+	for _, v := range u.Parents() {
+		for pid, units := range v.Floor() {
+			parentsFloorUnion[pid] = append(parentsFloorUnion[pid], units...)
+		}
+	}
+	result := make([][]gomel.Unit, p.NProc())
+	for pid := 0; pid < p.NProc(); pid++ {
+		sort.Slice(parentsFloorUnion[pid], func(i, j int) bool {
+			return parentsFloorUnion[pid][i].Height() > parentsFloorUnion[pid][j].Height()
+		})
+		for _, v := range parentsFloorUnion[pid] {
+			ok := true
+			for _, f := range result[pid] {
+				if v.Below(f) {
+					ok = false
+					break
+				}
+			}
+			if ok {
+				result[pid] = append(result[pid], v)
+			}
+		}
+	}
+	u.floor = result
 }
 
 func setLevel(u *unit, p *Poset) {
