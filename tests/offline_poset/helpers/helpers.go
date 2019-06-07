@@ -83,18 +83,18 @@ func AddToPoset(poset gomel.Poset, pu gomel.Preunit) (gomel.Unit, error) {
 }
 
 // AddToPosets is a helper function that adds a given unit to all provided posets.
-func AddToPosets(unit gomel.Preunit, posets []gomel.Poset) (resultUnit gomel.Unit, err error) {
+func AddToPosets(unit gomel.Preunit, posets []gomel.Poset) (gomel.Unit, error) {
+	var resultUnit gomel.Unit
 	for ix, poset := range posets {
-		result, errTmp := AddToPoset(poset, unit)
-		if errTmp != nil {
-			err = errTmp
-			return
+		result, err := AddToPoset(poset, unit)
+		if err != nil {
+			return nil, err
 		}
 		if ix == unit.Creator() {
 			resultUnit = result
 		}
 	}
-	return
+	return resultUnit, nil
 }
 
 // AddUnitsToPosetsInRandomOrder adds a set of units in random order (per each poset) to all provided posets.
@@ -170,8 +170,8 @@ func getOrderedUnits(poset gomel.Poset) chan gomel.Unit {
 	return units
 }
 
-func getAllTimingUnits(poset gomel.Poset) (units chan gomel.Unit) {
-	units = make(chan gomel.Unit)
+func getAllTimingUnits(poset gomel.Poset) chan gomel.Unit {
+	units := make(chan gomel.Unit)
 	go func() {
 		config := config.NewDefaultConfiguration()
 		// TODO types
@@ -188,8 +188,8 @@ func getAllTimingUnits(poset gomel.Poset) (units chan gomel.Unit) {
 	return units
 }
 
-func getMaximalUnitsSorted(poset gomel.Poset) (units chan gomel.Unit) {
-	units = make(chan gomel.Unit)
+func getMaximalUnitsSorted(poset gomel.Poset) chan gomel.Unit {
+	units := make(chan gomel.Unit)
 	go func() {
 		poset.MaximalUnitsPerProcess().Iterate(func(forks []gomel.Unit) bool {
 			// order of 'forks' list might be different for different posets depending on order in which units were add to it
