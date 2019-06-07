@@ -28,10 +28,10 @@ func (o *ordering) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
 	}
 
 	level := v.Level()
-	nSeen := 0
-	nNotSeen := o.poset.NProc()
+	nProcValid := 0
+	nProcNotSeen := o.poset.NProc()
 	for _, myFloor := range v.Floor() {
-		nNotSeen--
+		nProcNotSeen--
 		for _, w := range myFloor {
 			var reachedBottom error
 			for w.Above(uc) && !((w.Level() <= level-2) || (w.Level() == level-1 && gomel.Prime(w))) {
@@ -41,20 +41,20 @@ func (o *ordering) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
 				}
 			}
 			if reachedBottom == nil && w.Above(uc) {
-				nSeen++
-				if o.poset.IsQuorum(nSeen) {
+				nProcValid++
+				if o.poset.IsQuorum(nProcValid) {
 					o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = true
 					return true
 				}
 				break
 			}
 		}
-		if !o.poset.IsQuorum(nSeen + nNotSeen) {
+		if !o.poset.IsQuorum(nProcValid + nProcNotSeen) {
 			o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = false
 			return false
 		}
 	}
-	result := o.poset.IsQuorum(nSeen)
+	result := o.poset.IsQuorum(nProcValid)
 	o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = result
 	return result
 }
