@@ -136,5 +136,73 @@ var _ = Describe("Units", func() {
 				Expect(u2.Below(u1)).To(BeFalse())
 			})
 		})
+		Describe("Checking floors", func() {
+			Describe("On dealing", func() {
+				BeforeEach(func() {
+					poset, readingErr = tests.CreatePosetFromTestFile("../testdata/only_dealing.txt", pf)
+					Expect(readingErr).NotTo(HaveOccurred())
+				})
+				It("Should return floors containing one unit each", func() {
+					for pid := 0; pid < poset.NProc(); pid++ {
+						floor := units[pid][0][0].Floor()
+						for pid2, myFloor := range floor {
+							if pid2 == pid {
+								Expect(len(myFloor)).To(Equal(1))
+								Expect(myFloor[0].Hash()).To(Equal(units[pid][0][0].Hash()))
+							} else {
+								Expect(len(myFloor)).To(Equal(0))
+							}
+						}
+					}
+				})
+			})
+			Describe("On a single unit with two parents", func() {
+				BeforeEach(func() {
+					poset, readingErr = tests.CreatePosetFromTestFile("../testdata/single_unit_with_two_parents.txt", pf)
+					Expect(readingErr).NotTo(HaveOccurred())
+				})
+				It("Should contain correct floor", func() {
+					floor := units[0][1][0].Floor()
+					Expect(len(floor[0])).To(Equal(1))
+					Expect(floor[0][0].Hash()).To(Equal(units[0][1][0].Hash()))
+					Expect(len(floor[1])).To(Equal(1))
+					Expect(floor[1][0].Hash()).To(Equal(units[1][0][0].Hash()))
+				})
+			})
+			Describe("When seeing a fork", func() {
+				BeforeEach(func() {
+					poset, readingErr = tests.CreatePosetFromTestFile("../testdata/fork_accepted.txt", pf)
+					Expect(readingErr).NotTo(HaveOccurred())
+				})
+				It("Should contain both versions", func() {
+					floor := units[3][1][0].Floor()
+					Expect(len(floor[0])).To(Equal(2))
+					for version := 0; version < 2; version++ {
+						inside := false
+						for _, u := range floor[0] {
+							if u.Hash() == units[0][0][version].Hash() {
+								inside = true
+							}
+						}
+						Expect(inside).To(BeTrue())
+					}
+				})
+			})
+			Describe("On a chain with 9 consecutive dealing units as the other parent ", func() {
+				BeforeEach(func() {
+					poset, readingErr = tests.CreatePosetFromTestFile("../testdata/chain.txt", pf)
+					Expect(readingErr).NotTo(HaveOccurred())
+				})
+				It("Should contain all dealing units in floor", func() {
+					floor := units[0][9][0].Floor()
+					Expect(len(floor[0])).To(Equal(1))
+					Expect(floor[0][0].Hash()).To(Equal(units[0][9][0].Hash()))
+					for pid := 1; pid < 10; pid++ {
+						Expect(len(floor[pid])).To(Equal(1))
+						Expect(floor[pid][0].Hash()).To(Equal(units[pid][0][0].Hash()))
+					}
+				})
+			})
+		})
 	})
 })
