@@ -83,7 +83,7 @@ func NewDefaultConfiguration() Configuration {
 
 		TxLimit: 1000000,
 
-		LevelLimit: 1000,
+		LevelLimit: 20,
 
 		UnitsLimit: nil,
 
