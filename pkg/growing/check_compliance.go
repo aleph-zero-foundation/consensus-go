@@ -1,6 +1,8 @@
 package growing
 
 import (
+	"fmt"
+
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -28,7 +30,7 @@ func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	}
 
 	// 4. Satisfies the expand primes rule
-	if err := dag.checkExpandPrimes(u); err != nil {
+	if err := CheckExpandPrimes(dag, u.Parents()); err != nil {
 		return err
 	}
 
@@ -39,7 +41,7 @@ func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	return nil
 }
 
-func (dag *Dag) checkBasicParentsCorrectness(u gomel.Unit) error {
+func checkBasicParentsCorrectness(u gomel.Unit) error {
 	if len(u.Parents()) == 0 && gomel.Dealing(u) {
 		return nil
 	}
@@ -77,7 +79,8 @@ func checkParentsDiversity(u gomel.Unit) error {
 // Checks if the unit U does not provide evidence of its creator forking.
 func checkNoSelfForkingEvidence(u gomel.Unit) error {
 	if u.HasForkingEvidence(u.Creator()) {
-		return gomel.NewComplianceError("A unit is evidence of self forking")
+		// return gomel.NewComplianceError("A unit is evidence of self forking")
+		return gomel.NewComplianceError(fmt.Sprintf("A unit is evidence of self forking: %+v", u))
 	}
 	return nil
 }
@@ -105,10 +108,7 @@ func checkForkerMuting(u gomel.Unit) error {
 // just accepted. Then let L be the level of the last checked parent and P the set of creators of prime units of level L below
 // all the parents checked up to now. The next parent must either have prime units of level L below it that are created by
 // processes not in P, or have level greater than L.
-func (dag *Dag) checkExpandPrimes(u gomel.Unit) error {
-	if len(u.Parents()) == 0 {
-		return nil
-	}
+func CheckExpandPrimes(dag gomel.Dag, parents []gomel.Unit) error {
 	wholeSet := make([]int, dag.NProc())
 	for pid := 0; pid < len(wholeSet); pid++ {
 		wholeSet[pid] = pid
@@ -116,14 +116,14 @@ func (dag *Dag) checkExpandPrimes(u gomel.Unit) error {
 	notSeenPrimes := wholeSet
 	left := notSeenPrimes[:0]
 
-	predecessor := u.Parents()[0]
+	predecessor := parents[0]
 	// predecessor can't have higher level than all other parents
-	if predecessor.Level() > u.Parents()[len(u.Parents())-1].Level() {
+	if predecessor.Level() > parents[len(parents)-1].Level() {
 		return gomel.NewComplianceError("Expand primes rule violated - predecessor has higher level than any other parent")
 	}
 
-	level := u.Parents()[1].Level()
-	for _, parent := range u.Parents()[1:] {
+	level := parents[1].Level()
+	for _, parent := range parents[1:] {
 		if currentLevel := parent.Level(); currentLevel < level {
 			return gomel.NewComplianceError("Expand primes rule violated - parents are not sorted in ascending order of levels")
 		} else if currentLevel > level {
