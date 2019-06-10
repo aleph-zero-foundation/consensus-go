@@ -11,7 +11,7 @@ import (
 
 type preunit struct {
 	creator   int
-	parents   []gomel.Hash
+	parents   []*gomel.Hash
 	signature gomel.Signature
 	hash      gomel.Hash
 	data      []byte
@@ -20,7 +20,7 @@ type preunit struct {
 }
 
 // NewPreunit returns preunit
-func NewPreunit(creator int, parents []gomel.Hash, data []byte, cs *tcoin.CoinShare, tcData []byte) gomel.Preunit {
+func NewPreunit(creator int, parents []*gomel.Hash, data []byte, cs *tcoin.CoinShare, tcData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		parents:   parents,
@@ -63,7 +63,7 @@ func (pu *preunit) Hash() *gomel.Hash {
 }
 
 // Parents returns hashes of the preunit's parents.
-func (pu *preunit) Parents() []gomel.Hash {
+func (pu *preunit) Parents() []*gomel.Hash {
 	return pu.parents
 }
 
@@ -83,7 +83,9 @@ func toBytes(data interface{}) []byte {
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	data.Write(toBytes(int32(pu.creator)))
-	data.Write(toBytes(pu.parents))
+	for _, p := range pu.parents {
+		data.Write(toBytes(*p))
+	}
 	data.Write(pu.Data())
 	if pu.cs != nil {
 		csBytes := pu.cs.Marshal()

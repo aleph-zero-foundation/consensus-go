@@ -41,6 +41,7 @@ func decodeUnitInfo(r io.Reader) (*unitInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	result.hash = &gomel.Hash{}
 	_, err = io.ReadFull(r, result.hash[:])
 	return result, err
 }
@@ -115,7 +116,7 @@ func decodeRequests(r io.Reader, nProc int) (*requests, error) {
 		if j > uint32(nProc) {
 			return nil, errors.New("invalid process id in requests")
 		}
-		var h gomel.Hash
+		h := &gomel.Hash{}
 		_, err = io.ReadFull(r, h[:])
 		if err != nil {
 			return nil, err

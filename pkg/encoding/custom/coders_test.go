@@ -52,7 +52,7 @@ var _ = Describe("Encoding/Decoding", func() {
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
 			Expect(len(pu.Parents())).To(Equal(len(u.Parents())))
 			for i, parent := range u.Parents() {
-				Expect(*parent.Hash()).To(Equal(pu.Parents()[i]))
+				Expect(*parent.Hash()).To(Equal(*pu.Parents()[i]))
 			}
 		})
 	})

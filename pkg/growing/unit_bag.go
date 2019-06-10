@@ -21,12 +21,12 @@ func (units *unitBag) add(u *unit) {
 	units.contents[*u.Hash()] = u
 }
 
-func (units *unitBag) get(hashes []gomel.Hash) []gomel.Unit {
+func (units *unitBag) get(hashes []*gomel.Hash) []gomel.Unit {
 	units.RLock()
 	defer units.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
 	for i, h := range hashes {
-		if u, ok := units.contents[h]; ok {
+		if u, ok := units.contents[*h]; ok {
 			result[i] = u
 		} else {
 			result[i] = nil

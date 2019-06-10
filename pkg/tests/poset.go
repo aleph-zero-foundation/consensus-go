@@ -80,11 +80,11 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	// Dehashing parents
 	u.parents = []gomel.Unit{}
 	for _, parentHash := range pu.Parents() {
-		if _, ok := p.unitByHash[parentHash]; !ok {
+		if _, ok := p.unitByHash[*parentHash]; !ok {
 			callback(pu, nil, gomel.NewDataError("unit with provided hash doesn't exist in our poset"))
 			return
 		}
-		u.parents = append(u.parents, p.unitByHash[parentHash])
+		u.parents = append(u.parents, p.unitByHash[*parentHash])
 	}
 	// Setting height, creator, signature, version, hash
 	u.creator = pu.Creator()
@@ -155,12 +155,12 @@ func (p *Poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 }
 
 // Get retunrs the units with the given hashes or nil, when it doesn't find them.
-func (p *Poset) Get(hashes []gomel.Hash) []gomel.Unit {
+func (p *Poset) Get(hashes []*gomel.Hash) []gomel.Unit {
 	p.RLock()
 	defer p.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
 	for i, h := range hashes {
-		result[i] = p.unitByHash[h]
+		result[i] = p.unitByHash[*h]
 	}
 	return result
 }

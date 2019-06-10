@@ -101,7 +101,7 @@ func (p *Poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 
 // Get returns a slice of units corresponding to the hashes provided.
 // If a unit of a given hash is not present in the poset, the value at the same index in the result is nil.
-func (p *Poset) Get(hashes []gomel.Hash) []gomel.Unit {
+func (p *Poset) Get(hashes []*gomel.Hash) []gomel.Unit {
 	return p.units.get(hashes)
 }
 
