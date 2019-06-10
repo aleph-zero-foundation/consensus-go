@@ -114,29 +114,33 @@ func checkForkerMuting(u gomel.Unit) error {
 }
 
 // Checks if the unit U respects the "expand primes" rule. Parents are checked consecutively. The first is just accepted.
-// Then let L be the level of the last checked parent and P the set of prime units of level L below all the parents checked up
-// to now. The next parent must must either have prime units of level L below it that are not in P, or have level greater than L.
+// Then let L be the level of the last checked parent and P the set of creators of prime units of level L below all the parents
+// checked up to now. The next parent must must either have prime units of level L below it that are created by processes
+//  not in P, or have level greater than L.
 func (p *Poset) checkExpandPrimes(u gomel.Unit) error {
-	parents := u.Parents()
-	firstParent := parents[0]
-	level := firstParent.Level()
-	primesBelowParents := map[gomel.Unit]bool{}
-	for _, prime := range p.getPrimeUnitsAtLevelBelowUnit(level, firstParent) {
-		primesBelowParents[prime] = true
-	}
-	for _, parent := range parents[1:] {
-		if parent.Level() > level {
-			level = parent.Level()
-			primesBelowParents = map[gomel.Unit]bool{}
-		}
-		primeBelowParent := p.getPrimeUnitsAtLevelBelowUnit(level, parent)
-		// If Parent has only a subset of previously seen prime units below it we have a violation
-		isSubset := true
-		for _, prime := range primeBelowParent {
-			if !primesBelowParents[prime] {
-				isSubset = false
+	seenPrimes := make([]bool, p.NProc())
+	level := u.Parents()[0].Level()
+	for _, parent := range u.Parents() {
+		if currentLevel := parent.Level(); currentLevel > level {
+			level = currentLevel
+			for pid := range seenPrimes {
+				seenPrimes[pid] = false
 			}
-			primesBelowParents[prime] = true
+		}
+
+		isSubset := true
+		parentsFloor := parent.Floor()
+		for pid, seen := range seenPrimes {
+			if seen {
+				continue
+			}
+			for _, unit := range parentsFloor[pid] {
+				if unit.Level() == level {
+					seenPrimes[pid] = true
+					isSubset = false
+					break
+				}
+			}
 		}
 		if isSubset {
 			return gomel.NewComplianceError("Expand primes rule violated")
