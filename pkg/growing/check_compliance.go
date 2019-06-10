@@ -118,29 +118,25 @@ func checkForkerMuting(u gomel.Unit) error {
 // checked up to now. The next parent must must either have prime units of level L below it that are created by processes
 //  not in P, or have level greater than L.
 func (p *Poset) checkExpandPrimes(u gomel.Unit) error {
-	notSeenPrimes := make(map[uint16]struct{}, p.NProc())
-	seenPrimes := make(map[uint16]struct{}, p.NProc())
-	for pid := uint16(0); pid < uint16(p.NProc()); pid++ {
-		notSeenPrimes[pid] = struct{}{}
-	}
-
+	seenPrimes := make([]bool, p.NProc())
 	level := u.Parents()[0].Level()
 	for _, parent := range u.Parents() {
 		if currentLevel := parent.Level(); currentLevel > level {
 			level = currentLevel
 			for pid := range seenPrimes {
-				notSeenPrimes[pid] = struct{}{}
-				delete(seenPrimes, pid)
+				seenPrimes[pid] = false
 			}
 		}
 
 		isSubset := true
 		parentsFloor := parent.Floor()
-		for pid := range notSeenPrimes {
+		for pid, seen := range seenPrimes {
+			if seen {
+				continue
+			}
 			for _, unit := range parentsFloor[pid] {
 				if unit.Level() == level {
-					seenPrimes[pid] = struct{}{}
-					delete(notSeenPrimes, pid)
+					seenPrimes[pid] = true
 					isSubset = false
 					break
 				}
