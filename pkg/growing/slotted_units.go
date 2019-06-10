@@ -19,7 +19,7 @@ func newSlottedUnits(n int) *slottedUnits {
 }
 
 // Get returns the units at the provided id.
-// DO NOT MODIFY THE RETURNED VALUE DIRECTLY OR I WILL EAT YOU FACE.
+// MODIFYING THE RETURNED VALUE DIRECTLY RESULTS IN UNDEFINED BEHAVIOUR!
 func (su *slottedUnits) Get(id int) []gomel.Unit {
 	if id < 0 || id >= len(su.mxs) {
 		return []gomel.Unit{}

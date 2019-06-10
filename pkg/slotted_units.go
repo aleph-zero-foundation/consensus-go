@@ -3,6 +3,9 @@ package gomel
 // SlottedUnits interface defines a container for storing slices of units and access them using their creator's id.
 type SlottedUnits interface {
 	// Get all units in this container created by the process with the given id.
+	// Note that in the main implementation
+	// MODIFYING THE RETURNED VALUE DIRECTLY RESULTS IN UNDEFINED BEHAVIOUR!
+	// Please avoid doing that.
 	Get(int) []Unit
 	// Set replaces all units in this container created by the process with the given id with given units.
 	Set(int, []Unit)
