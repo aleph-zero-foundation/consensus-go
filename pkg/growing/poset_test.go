@@ -694,19 +694,29 @@ var _ = Describe("Poset", func() {
 						pu2.hash[0] = 3
 						pu2.parents = []*gomel.Hash{&pu1.hash, &pForker1.hash}
 
+						// we have to add some helper unit in order to satisfy 'expand_primes' rule
+						fixingPrime := preunitMock{}
+						fixingPrime.creator = 2
+						fixingPrime.hash[0] = 4
+
+						fixingUnit := preunitMock{}
+						fixingUnit.creator = 2
+						fixingUnit.hash[0] = 5
+						fixingUnit.parents = []*gomel.Hash{&fixingPrime.hash, &pForker2.hash}
+
 						pu3 := preunitMock{}
 						pu3.creator = 1
-						pu3.hash[0] = 4
-						pu3.parents = []*gomel.Hash{&pu2.hash, &pForker2.hash}
+						pu3.hash[0] = 6
+						pu3.parents = []*gomel.Hash{&pu2.hash, &fixingUnit.hash}
 
 						addFirst = [][]*preunitMock{
-							[]*preunitMock{&pForker1, &pForker2, &pu1},
-							[]*preunitMock{&pu2},
+							[]*preunitMock{&pForker1, &pForker2, &pu1, &fixingPrime},
+							[]*preunitMock{&pu2, &fixingUnit},
 							[]*preunitMock{&pu3}}
 
 						muted = &preunitMock{}
 						muted.creator = 0
-						muted.hash[0] = 5
+						muted.hash[0] = 7
 						muted.parents = []*gomel.Hash{&pForker1.hash, &pu3.hash}
 						muted.SetSignature(privKeys[muted.creator].Sign(muted))
 					})
