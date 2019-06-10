@@ -415,7 +415,7 @@ def wait_install(regions='badger regions'):
 #                               aggregates
 #======================================================================================
 
-def run_protocol(n_processes, regions, restricted, instance_type):
+def run_protocol(n_processes, regions, restricted, instance_type, profiler=False):
     '''Runs the protocol.'''
 
     start = time()
@@ -452,14 +452,20 @@ def run_protocol(n_processes, regions, restricted, instance_type):
     print('cloning repo')
     run_task('clone-repo', regions, parallel)
 
+    print('TMP send new tcp/server.go')
+    send_file('pkg/network/tcp/server.go', regions)
+
     print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
 
     print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
-    run_task('run-protocol', regions, parallel, False, pids)
+    if profiler:
+        run_task('run-protocol-profiler', regions, parallel, False, pids)
+    else:
+        run_task('run-protocol', regions, parallel, False, pids)
 
-    return ip2pid
+    return pids, ip2pid
 
 
 def create_images(regions=badger_regions()):
@@ -617,7 +623,7 @@ badger_restricted = {'ap-southeast-2': 5, 'sa-east-1': 5}
 
 pb = lambda : run_protocol(104, badger_regions(), badger_restricted, 't2.medium')
 rs = lambda : run_protocol(4, badger_regions()[:4], badger_restricted, 't2.micro')
-rf = lambda : run_protocol(128, available_regions(), restricted, 't2.micro')
+rf = lambda : run_protocol(128, badger_regions(), {}, 'm4.2xlarge')
 mu = lambda regions=badger_regions(): memory_usage(regions)
 
 #======================================================================================

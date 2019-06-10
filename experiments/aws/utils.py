@@ -214,6 +214,7 @@ def generate_keys(ip_list, port):
     os.chdir('data/')
     pubs = None
     if len(keys_path) == n_processes:
+        print('reusing keys')
         # there are enough keys, we need only to update ips
         for i, ip in enumerate(ip_list):
             with open(f'{i}.keys', 'r') as f:
@@ -228,6 +229,7 @@ def generate_keys(ip_list, port):
                 for pub, ip in zip(pubs, ip_list):
                     f.write(f'{pub} {ip}:{port}\n')
     else:
+        print('genereting a new set of keys')
         # we need to generate a new set of keys
         with open('addresses', 'w') as f:
             for ip in ip_list:

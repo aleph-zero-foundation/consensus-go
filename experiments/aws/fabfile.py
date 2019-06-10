@@ -46,6 +46,12 @@ def inst_deps(conn):
 #======================================================================================
 #                                   syncing local version
 #======================================================================================
+@task 
+def send_config(conn):
+    ''' Sends keys, addresses, and parameters. '''
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    conn.put('data/config.json', repo_path)
+
 
 @task 
 def send_data(conn, pid):
@@ -60,6 +66,19 @@ def send_data(conn, pid):
 #======================================================================================
 
 @task
+def run_protocol_profiler(conn, pid):
+    ''' Runs the protocol.'''
+
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    with conn.cd(repo_path):
+        if int(pid) in list(range(16)):
+            cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --cpuprof cpuprof --memprof memprof'
+        else:
+            cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt'
+        conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
+
+
+@task
 def run_protocol(conn, pid):
     ''' Runs the protocol.'''
 
@@ -69,13 +88,22 @@ def run_protocol(conn, pid):
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
+def get_profile_data(conn, pid):
+    ''' Retrieves aleph.log from the server.'''
+
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    conn.get(f'{repo_path}/cpuprof', f'../results/{pid}.cpuprof')
+    conn.get(f'{repo_path}/memprof', f'../results/{pid}.memprof')
+
+@task
 def get_log(conn, pid):
     ''' Retrieves aleph.log from the server.'''
 
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'zip -q {pid}.log.zip aleph.log')
+        conn.run(f'mv aleph.log {pid}.log')
+        conn.run(f'zip -q {pid}.log.zip {pid}.log')
     conn.get(f'{repo_path}/{pid}.log.zip', f'../results/{pid}.log.zip')
 
 @task
