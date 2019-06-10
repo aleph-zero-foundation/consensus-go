@@ -1,6 +1,8 @@
 package growing
 
 import (
+	"sort"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
@@ -38,7 +40,14 @@ func (p *Poset) addPrime(u gomel.Unit) {
 	}
 	su, _ := p.primeUnits.getLevel(u.Level())
 	creator := u.Creator()
-	primesByCreator := append(su.Get(creator), u)
+	oldPrimes := su.Get(creator)
+	primesByCreator := make([]gomel.Unit, len(oldPrimes), len(oldPrimes)+1)
+	copy(primesByCreator, oldPrimes)
+	primesByCreator = append(primesByCreator, u)
+	// we keep the primes sorted by hash, mostly for ordering
+	sort.Slice(primesByCreator, func(i, j int) bool {
+		return primesByCreator[i].Hash().LessThan(primesByCreator[j].Hash())
+	})
 	// this assumes that we are adding u for the first time
 	su.Set(creator, primesByCreator)
 }
