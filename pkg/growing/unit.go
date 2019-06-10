@@ -82,12 +82,7 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
 	// check whether collection of these maximal units has a single maximal element
 	if creator == u.creator {
-		var floor []gomel.Unit
-		for _, parent := range u.parents {
-			actualParent := parent.(*unit)
-			floor = append(floor, actualParent.floor[creator]...)
-		}
-		return len(combineFloorsPerProc(floor)) > 1
+		return len(combineParentsFloorsPerProc(u, creator)) > 1
 	}
 	return len(u.floor[creator]) > 1
 }
@@ -128,43 +123,36 @@ func (u *unit) computeFloor(nProcesses int) {
 		}
 		go func(pid int) {
 			defer wg.Done()
-			for _, parent := range u.Parents() {
-				u.floor[pid] = append(u.floor[pid], parent.Floor()[pid]...)
-			}
-			u.floor[pid] = combineFloorsPerProc(u.floor[pid])
+			u.floor[pid] = combineParentsFloorsPerProc(u, pid)
 		}(pid)
 	}
 
 	wg.Wait()
 }
 
-func combineFloorsPerProc(floors []gomel.Unit) []gomel.Unit {
+func combineParentsFloorsPerProc(u gomel.Unit, pid int) []gomel.Unit {
 	newFloor := []gomel.Unit{}
 
-	// Computes maximal elements in floors and stores them in newFloor
-	// floors contains elements created by only one proc
-	if len(floors) == 0 {
-		return newFloor
-	}
-
-	for _, u := range floors {
-		found, ri := false, -1
-		for k, v := range newFloor {
-			if ok, _ := u.(*unit).aboveWithinProc(v.(*unit)); ok {
-				found = true
-				ri = k
-				break
+	for _, parent := range u.Parents() {
+		for _, w := range parent.Floor()[pid] {
+			found, ri := false, -1
+			for k, v := range newFloor {
+				if ok, _ := w.(*unit).aboveWithinProc(v.(*unit)); ok {
+					found = true
+					ri = k
+					break
+				}
+				if ok, _ := w.(*unit).belowWithinProc(v.(*unit)); ok {
+					found = true
+				}
 			}
-			if ok, _ := u.(*unit).belowWithinProc(v.(*unit)); ok {
-				found = true
+			if !found {
+				newFloor = append(newFloor, w)
 			}
-		}
-		if !found {
-			newFloor = append(newFloor, u)
-		}
 
-		if ri >= 0 {
-			newFloor[ri] = u
+			if ri >= 0 {
+				newFloor[ri] = w
+			}
 		}
 	}
 
