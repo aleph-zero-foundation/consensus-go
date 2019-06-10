@@ -119,19 +119,6 @@ func (u *unit) computeHeight() {
 func (u *unit) computeFloor(nProcesses int) {
 	u.floor = make([][]gomel.Unit, nProcesses)
 	u.floor[u.creator] = []gomel.Unit{u}
-
-	floors := make([][]gomel.Unit, nProcesses)
-
-	for _, parent := range u.parents {
-		if realParent, ok := parent.(*unit); ok {
-			for pid := 0; pid < nProcesses; pid++ {
-				floors[pid] = append(floors[pid], realParent.floor[pid]...)
-			}
-		} else {
-			// TODO: this might be needed in the far future when there are special units that separate existing and nonexistent units
-		}
-	}
-
 	var wg sync.WaitGroup
 	wg.Add(nProcesses - 1)
 
@@ -141,7 +128,10 @@ func (u *unit) computeFloor(nProcesses int) {
 		}
 		go func(pid int) {
 			defer wg.Done()
-			u.floor[pid] = combineFloorsPerProc(floors[pid])
+			for _, parent := range u.Parents() {
+				u.floor[pid] = append(u.floor[pid], parent.Floor()[pid]...)
+			}
+			u.floor[pid] = combineFloorsPerProc(u.floor[pid])
 		}(pid)
 	}
 
