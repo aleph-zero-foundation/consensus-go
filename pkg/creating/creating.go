@@ -2,7 +2,6 @@ package creating
 
 import (
 	"math/rand"
-	"sort"
 	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -220,11 +219,7 @@ func firstDealingUnitFromParents(parents []gomel.Unit, level int, poset gomel.Po
 		// We could check if we have evidence that the dealer is forking
 		// but this is expensive without access to floors.
 		var result gomel.Unit
-		var dealersDealingUnits = dealingUnits.Get(dealer)
-		sort.Slice(dealersDealingUnits, func(i, j int) bool {
-			return dealersDealingUnits[i].Hash().LessThan(dealersDealingUnits[j].Hash())
-		})
-		for _, u := range dealersDealingUnits {
+		for _, u := range dealingUnits.Get(dealer) {
 			if gomel.BelowAny(u, parents) {
 				if result != nil {
 					// we see forked dealing unit

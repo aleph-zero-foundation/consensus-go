@@ -68,7 +68,9 @@ func consistentMaximal(maxes [][]gomel.Unit) [][]gomel.Unit {
 func posetMaxSnapshot(poset gomel.Poset) [][]gomel.Unit {
 	maxUnits := [][]gomel.Unit{}
 	poset.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
-		maxUnits = append(maxUnits, units)
+		unitsCopy := make([]gomel.Unit, len(units))
+		copy(unitsCopy, units)
+		maxUnits = append(maxUnits, unitsCopy)
 		return true
 	})
 	// The maximal units constructed through iterate might be inconsistent, i.e. contain units with parents that are not below any of their creators "maximal units".

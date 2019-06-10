@@ -63,11 +63,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		return nil
 	}
 	for _, pid := range o.poset.GetCRP(level) {
-		primeUnitsByCurrProcess := o.poset.PrimeUnits(level).Get(pid)
-		sort.Slice(primeUnitsByCurrProcess, func(i, j int) bool {
-			return primeUnitsByCurrProcess[i].Hash().LessThan(primeUnitsByCurrProcess[j].Hash())
-		})
-		for _, uc := range primeUnitsByCurrProcess {
+		for _, uc := range o.poset.PrimeUnits(level).Get(pid) {
 			decision := o.decideUnitIsPopular(uc)
 			if decision == popular {
 				o.timingUnits.pushBack(uc)

@@ -1,8 +1,6 @@
 package linear
 
 import (
-	"sort"
-
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
@@ -154,14 +152,10 @@ func firstDealingUnit(u gomel.Unit, poset gomel.Poset) gomel.Unit {
 	dealingUnits := poset.PrimeUnits(0)
 	for _, dealer := range poset.GetCRP(u.Level()) {
 		var result gomel.Unit
-		var dealersDealingUnits = dealingUnits.Get(dealer)
-		sort.Slice(dealersDealingUnits, func(i, j int) bool {
-			return dealersDealingUnits[i].Hash().LessThan(dealersDealingUnits[j].Hash())
-		})
 		// We are only checking if there are forked dealing units created by the dealer below u.
 		// We can change it to hasForkingEvidence, but we would have to also implement
 		// this in creating.
-		for _, v := range dealersDealingUnits {
+		for _, v := range dealingUnits.Get(dealer) {
 			if v.Below(u) {
 				if result != nil {
 					// we see forked dealing unit
@@ -194,9 +188,6 @@ func (o *ordering) coinToss(uc gomel.Unit, uTossing gomel.Unit) int {
 	shareCollected := make(map[int]bool)
 
 	o.poset.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
-		sort.Slice(units, func(i, j int) bool {
-			return units[i].Hash().LessThan(units[j].Hash())
-		})
 		for _, v := range units {
 			if !v.Below(uTossing) {
 				continue
