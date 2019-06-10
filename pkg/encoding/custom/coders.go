@@ -141,8 +141,9 @@ func (d *decoder) DecodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 	nParents := binary.LittleEndian.Uint16(uint16Buf)
-	parents := make([]gomel.Hash, nParents)
+	parents := make([]*gomel.Hash, nParents)
 	for i := range parents {
+		parents[i] = &gomel.Hash{}
 		_, err = io.ReadFull(d.reader, parents[i][:])
 		if err != nil {
 			return nil, err

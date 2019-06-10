@@ -16,7 +16,7 @@ type preunitMock struct {
 	creator   int
 	signature gomel.Signature
 	hash      gomel.Hash
-	parents   []gomel.Hash
+	parents   []*gomel.Hash
 	data      []byte
 	cs        *tcoin.CoinShare
 	tcData    []byte
@@ -50,7 +50,7 @@ func (pu *preunitMock) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-func (pu *preunitMock) Parents() []gomel.Hash {
+func (pu *preunitMock) Parents() []*gomel.Hash {
 	return pu.parents
 }
 
@@ -113,14 +113,14 @@ var _ = Describe("Poset", func() {
 				addedUnit    *preunitMock
 				addedCreator int
 				addedHash    gomel.Hash
-				parentHashes []gomel.Hash
+				parentHashes []*gomel.Hash
 			)
 
 			BeforeEach(func() {
 				addedUnit = &preunitMock{}
 				addedCreator = 0
 				addedHash = gomel.Hash{}
-				parentHashes = []gomel.Hash{}
+				parentHashes = []*gomel.Hash{}
 			})
 
 			JustBeforeEach(func() {
@@ -163,7 +163,7 @@ var _ = Describe("Poset", func() {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewDuplicateUnit(poset.Get([]gomel.Hash{*pu.Hash()})[0])))
+							Expect(err).To(MatchError(gomel.NewDuplicateUnit(poset.Get([]*gomel.Hash{pu.Hash()})[0])))
 							close(done)
 						})
 					})
@@ -198,8 +198,8 @@ var _ = Describe("Poset", func() {
 
 				BeforeEach(func() {
 					addedHash[0] = 43
-					parentHashes = make([]gomel.Hash, 1)
-					parentHashes[0][0] = 1
+					parentHashes = make([]*gomel.Hash, 1)
+					parentHashes[0] = &gomel.Hash{1}
 				})
 
 				Context("When the poset is empty", func() {
@@ -220,7 +220,7 @@ var _ = Describe("Poset", func() {
 
 					BeforeEach(func() {
 						pu := &preunitMock{}
-						pu.hash = parentHashes[0]
+						pu.hash = *parentHashes[0]
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
@@ -242,9 +242,9 @@ var _ = Describe("Poset", func() {
 
 				BeforeEach(func() {
 					addedHash[0] = 43
-					parentHashes = make([]gomel.Hash, 2)
-					parentHashes[0][0] = 1
-					parentHashes[1][0] = 2
+					parentHashes = make([]*gomel.Hash, 2)
+					parentHashes[0] = &gomel.Hash{1}
+					parentHashes[1] = &gomel.Hash{2}
 				})
 
 				Context("When the poset is empty", func() {
@@ -265,7 +265,7 @@ var _ = Describe("Poset", func() {
 
 					BeforeEach(func() {
 						pu := &preunitMock{}
-						pu.hash = parentHashes[0]
+						pu.hash = *parentHashes[0]
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
@@ -285,9 +285,9 @@ var _ = Describe("Poset", func() {
 
 					BeforeEach(func() {
 						pu1 := &preunitMock{}
-						pu1.hash = parentHashes[0]
+						pu1.hash = *parentHashes[0]
 						pu2 := &preunitMock{}
-						pu2.hash = parentHashes[1]
+						pu2.hash = *parentHashes[1]
 						pu2.creator = 1
 						addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
 					})
@@ -299,8 +299,8 @@ var _ = Describe("Poset", func() {
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(gomel.Prime(result)).To(BeFalse())
-							Expect(*result.Parents()[0].Hash()).To(Equal(addedUnit.Parents()[0]))
-							Expect(*result.Parents()[1].Hash()).To(Equal(addedUnit.Parents()[1]))
+							Expect(*result.Parents()[0].Hash()).To(Equal(*addedUnit.Parents()[0]))
+							Expect(*result.Parents()[1].Hash()).To(Equal(*addedUnit.Parents()[1]))
 							close(done)
 						})
 					})
@@ -317,7 +317,7 @@ var _ = Describe("Poset", func() {
 								defer GinkgoRecover()
 								Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 								Expect(result).To(BeNil())
-								Expect(err).To(MatchError(gomel.NewDuplicateUnit(poset.Get([]gomel.Hash{*pu.Hash()})[0])))
+								Expect(err).To(MatchError(gomel.NewDuplicateUnit(poset.Get([]*gomel.Hash{pu.Hash()})[0])))
 								close(done)
 							})
 						})
@@ -471,7 +471,7 @@ var _ = Describe("Poset", func() {
 					pu11 := &preunitMock{}
 					pu11.hash[0] = 11
 					pu11.creator = 0
-					pu11.parents = []gomel.Hash{pu1.hash, pu2.hash}
+					pu11.parents = []*gomel.Hash{&pu1.hash, &pu2.hash}
 					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}, []*preunitMock{pu11}}
 				})
 
@@ -528,17 +528,17 @@ var _ = Describe("Poset", func() {
 
 					puAbove4 := &preunitMock{}
 					puAbove4.creator = 0
-					puAbove4.parents = []gomel.Hash{pu0.hash, pu1.hash, pu2.hash, pu3.hash}
+					puAbove4.parents = []*gomel.Hash{&pu0.hash, &pu1.hash, &pu2.hash, &pu3.hash}
 					puAbove4.hash[0] = 114
 
 					puAbove3 := &preunitMock{}
 					puAbove3.creator = 1
-					puAbove3.parents = []gomel.Hash{pu1.hash, pu0.hash, pu2.hash}
+					puAbove3.parents = []*gomel.Hash{&pu1.hash, &pu0.hash, &pu2.hash}
 					puAbove3.hash[0] = 113
 
 					puAbove2 := &preunitMock{}
 					puAbove2.creator = 2
-					puAbove2.parents = []gomel.Hash{pu2.hash, pu0.hash}
+					puAbove2.parents = []*gomel.Hash{&pu2.hash, &pu0.hash}
 					puAbove2.hash[0] = 112
 
 					addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1, pu2, pu3}, []*preunitMock{puAbove4, puAbove3, puAbove2}}
@@ -590,7 +590,7 @@ var _ = Describe("Poset", func() {
 				It("should confirm that a unit is valid", func(done Done) {
 					validUnit := pu1
 					validUnit.hash[0] = 4
-					validUnit.parents = []gomel.Hash{pu1.hash, pu2.hash, pu3.hash}
+					validUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash}
 					(&validUnit).SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
 
 					poset.AddUnit(&validUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
@@ -615,19 +615,19 @@ var _ = Describe("Poset", func() {
 						pu4 := preunitMock{}
 						pu4.creator = pu1.creator
 						pu4.hash[0] = 4
-						pu4.parents = []gomel.Hash{pu1.hash, pu2.hash, pu3.hash}
+						pu4.parents = []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash}
 
 						pu5 := preunitMock{}
 						pu5.creator = pu2.creator
 						pu5.hash[0] = 5
-						pu5.parents = []gomel.Hash{pu2.hash, pu1.hash, pu3.hash}
+						pu5.parents = []*gomel.Hash{&pu2.hash, &pu1.hash, &pu3.hash}
 
 						addFirst = append(addFirst, []*preunitMock{&pu4, &pu5})
 
 						invalidUnit = preunitMock{}
 						invalidUnit.creator = 0
 						invalidUnit.hash[0] = 6
-						invalidUnit.parents = []gomel.Hash{pu4.hash, pu5.hash}
+						invalidUnit.parents = []*gomel.Hash{&pu4.hash, &pu5.hash}
 					})
 
 					It("should reject a unit", func(done Done) {
@@ -648,20 +648,20 @@ var _ = Describe("Poset", func() {
 						pu4 := preunitMock{}
 						pu4.creator = pu1.creator
 						pu4.hash[0] = 4
-						pu4.parents = []gomel.Hash{pu1.hash, pu2.hash}
+						pu4.parents = []*gomel.Hash{&pu1.hash, &pu2.hash}
 
 						// evidence of the second fork
 						pu5 := preunitMock{}
 						pu5.creator = pu2.creator
 						pu5.hash[0] = 5
-						pu5.parents = []gomel.Hash{pu2.hash, pu3.hash}
+						pu5.parents = []*gomel.Hash{&pu2.hash, &pu3.hash}
 
 						addFirst = append(addFirst, []*preunitMock{&pu4, &pu5})
 
 						// self forking evidence - merge of two previous forks
 						invalidUnit.creator = pu1.creator
 						invalidUnit.hash[0] = 6
-						invalidUnit.parents = []gomel.Hash{pu4.hash, pu5.hash}
+						invalidUnit.parents = []*gomel.Hash{&pu4.hash, &pu5.hash}
 					})
 
 					It("should reject a unit", func(done Done) {
@@ -692,12 +692,12 @@ var _ = Describe("Poset", func() {
 						pu2 := preunitMock{}
 						pu2.creator = 1
 						pu2.hash[0] = 3
-						pu2.parents = []gomel.Hash{pu1.hash, pForker1.hash}
+						pu2.parents = []*gomel.Hash{&pu1.hash, &pForker1.hash}
 
 						pu3 := preunitMock{}
 						pu3.creator = 1
 						pu3.hash[0] = 4
-						pu3.parents = []gomel.Hash{pu2.hash, pForker2.hash}
+						pu3.parents = []*gomel.Hash{&pu2.hash, &pForker2.hash}
 
 						addFirst = [][]*preunitMock{
 							[]*preunitMock{&pForker1, &pForker2, &pu1},
@@ -707,7 +707,7 @@ var _ = Describe("Poset", func() {
 						muted = &preunitMock{}
 						muted.creator = 0
 						muted.hash[0] = 5
-						muted.parents = []gomel.Hash{pForker1.hash, pu3.hash}
+						muted.parents = []*gomel.Hash{&pForker1.hash, &pu3.hash}
 						muted.SetSignature(privKeys[muted.creator].Sign(muted))
 					})
 
@@ -728,7 +728,7 @@ var _ = Describe("Poset", func() {
 							invalidUnit = preunitMock{}
 							invalidUnit.creator = 0
 							invalidUnit.hash[0] = 4
-							invalidUnit.parents = []gomel.Hash{pu1.hash, pu2.hash}
+							invalidUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash}
 						})
 
 						It("should reject a unit", func(done Done) {
@@ -746,7 +746,7 @@ var _ = Describe("Poset", func() {
 							invalidUnit = preunitMock{}
 							invalidUnit.creator = 1
 							invalidUnit.hash[0] = 4
-							invalidUnit.parents = []gomel.Hash{pu1.hash}
+							invalidUnit.parents = []*gomel.Hash{&pu1.hash}
 						})
 
 						It("should reject a unit", func(done Done) {
@@ -765,7 +765,7 @@ var _ = Describe("Poset", func() {
 							invalidUnit = preunitMock{}
 							invalidUnit.creator = 1
 							invalidUnit.hash[0] = 4
-							invalidUnit.parents = []gomel.Hash{pu2.hash, pu1.hash}
+							invalidUnit.parents = []*gomel.Hash{&pu2.hash, &pu1.hash}
 						})
 
 						It("should reject a unit", func(done Done) {
@@ -786,14 +786,14 @@ var _ = Describe("Poset", func() {
 						pu4 := preunitMock{}
 						pu4.creator = pu2.creator
 						pu4.hash[0] = 4
-						pu4.parents = []gomel.Hash{pu2.hash, pu1.hash}
+						pu4.parents = []*gomel.Hash{&pu2.hash, &pu1.hash}
 
 						addFirst = append(addFirst, []*preunitMock{&pu4})
 
 						invalidUnit = preunitMock{}
 						invalidUnit.creator = pu3.creator
 						invalidUnit.hash[0] = 5
-						invalidUnit.parents = []gomel.Hash{pu3.hash, pu2.hash, pu4.hash}
+						invalidUnit.parents = []*gomel.Hash{&pu3.hash, &pu2.hash, &pu4.hash}
 					})
 
 					It("should reject a unit", func(done Done) {

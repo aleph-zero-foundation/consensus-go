@@ -9,7 +9,7 @@ import (
 )
 
 type unitInfo struct {
-	hash   gomel.Hash
+	hash   *gomel.Hash
 	height uint32
 }
 
@@ -17,12 +17,12 @@ type processInfo []*unitInfo
 
 type posetInfo []processInfo
 
-type processRequests []gomel.Hash
+type processRequests []*gomel.Hash
 
 type requests []processRequests
 
 func toInfo(unit gomel.Unit) *unitInfo {
-	return &unitInfo{*unit.Hash(), uint32(unit.Height())}
+	return &unitInfo{unit.Hash(), uint32(unit.Height())}
 }
 
 func toPosetInfo(maxSnapshot [][]gomel.Unit) posetInfo {
@@ -97,30 +97,6 @@ func maximalHeight(units []gomel.Unit) int {
 	return result
 }
 
-func hashesSetFromInfo(info processInfo) map[gomel.Hash]bool {
-	result := map[gomel.Hash]bool{}
-	for _, i := range info {
-		result[i.hash] = true
-	}
-	return result
-}
-
-func hashesSliceFromInfo(info processInfo) []gomel.Hash {
-	result := make([]gomel.Hash, len(info))
-	for i, in := range info {
-		result[i] = in.hash
-	}
-	return result
-}
-
-func hashesFromUnits(units []gomel.Unit) map[gomel.Hash]bool {
-	result := map[gomel.Hash]bool{}
-	for _, u := range units {
-		result[*u.Hash()] = true
-	}
-	return result
-}
-
 // unitsToSendByProcess returns the units that are predecessors of maxes and successors of tops.
 // A special case occurs when there are no tops, but maxes exist --
 // then simply all predecessors of maxes are returned.
@@ -131,11 +107,11 @@ func unitsToSendByProcess(tops processInfo, maxes []gomel.Unit) []gomel.Unit {
 		return maxes[i].Height() < maxes[j].Height()
 	})
 	minimalRemoteHeight := minimalHeight(tops)
-	remoteHashes := hashesSetFromInfo(tops)
+	remoteHashes := newStaticHashSet(hashesFromInfo(tops))
 	for _, u := range maxes {
 		possiblySend := []gomel.Unit{}
 		for u.Height() >= minimalRemoteHeight {
-			if remoteHashes[*u.Hash()] {
+			if remoteHashes.contains(u.Hash()) {
 				result = append(result, possiblySend...)
 				break
 			}
@@ -151,18 +127,8 @@ func unitsToSendByProcess(tops processInfo, maxes []gomel.Unit) []gomel.Unit {
 	return result
 }
 
-func fiterOutKnown(hashes []gomel.Hash, known map[gomel.Hash]bool) []gomel.Hash {
-	result := []gomel.Hash{}
-	for _, h := range hashes {
-		if !known[h] {
-			result = append(result, h)
-		}
-	}
-	return result
-}
-
 func knownUnits(poset gomel.Poset, info processInfo) map[gomel.Unit]bool {
-	allUnits := poset.Get(hashesSliceFromInfo(info))
+	allUnits := poset.Get(hashesFromInfo(info))
 	result := map[gomel.Unit]bool{}
 	for _, u := range allUnits {
 		if u != nil {
@@ -270,7 +236,7 @@ func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req
 	for i := range info {
 		go func(id int) {
 			toSendPid[id] = unitsToSendByProcess(info[id], maxUnits[id])
-			unfulfilledRequests := fiterOutKnown(req[id], hashesFromUnits(toSendPid[id]))
+			unfulfilledRequests := newStaticHashSet(hashesFromUnits(toSendPid[id])).fiterOutKnown(req[id])
 			requested, e := requestedToSend(poset, info[id], unfulfilledRequests)
 			if e != nil {
 				err = e
@@ -290,12 +256,12 @@ func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req
 	return toLayers(toSend), len(toSend), nil
 }
 
-func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown map[gomel.Hash]bool) processRequests {
+func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown staticHashSet) processRequests {
 	result := processRequests{}
-	units := poset.Get(hashesSliceFromInfo(info))
+	units := poset.Get(hashesFromInfo(info))
 	for i, u := range units {
 		if u == nil {
-			if !alsoKnown[info[i].hash] {
+			if !alsoKnown.contains(info[i].hash) {
 				result = append(result, info[i].hash)
 			}
 		}
@@ -303,14 +269,15 @@ func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown map[gomel.Hash
 	return result
 }
 
-func requestsToSend(poset gomel.Poset, info posetInfo, aquiredUnits [][]gomel.Preunit) requests {
+func requestsToSend(poset gomel.Poset, info posetInfo, acquiredUnits [][]gomel.Preunit) requests {
 	result := make(requests, len(info))
-	alsoKnown := map[gomel.Hash]bool{}
-	for _, aus := range aquiredUnits {
+	acquiredHashes := []*gomel.Hash{}
+	for _, aus := range acquiredUnits {
 		for _, au := range aus {
-			alsoKnown[*au.Hash()] = true
+			acquiredHashes = append(acquiredHashes, au.Hash())
 		}
 	}
+	alsoKnown := newStaticHashSet(acquiredHashes)
 	var wg sync.WaitGroup
 	wg.Add(len(info))
 	for i := range info {

@@ -58,7 +58,7 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 }
 
 func (p *Poset) dehashParents(ub *unitBuilt) error {
-	if u := p.Get([]gomel.Hash{*ub.preunit.Hash()}); u[0] != nil {
+	if u := p.Get([]*gomel.Hash{ub.preunit.Hash()}); u[0] != nil {
 		return gomel.NewDuplicateUnit(u[0])
 	}
 	possibleParents := p.units.get(ub.preunit.Parents())

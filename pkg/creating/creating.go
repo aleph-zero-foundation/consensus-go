@@ -27,7 +27,7 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 // newDealingUnit creates a new preunit with the given creator and no parents.
 func newDealingUnit(creator, NProc int, data []byte) gomel.Preunit {
 	tc := tcoin.Deal(NProc, NProc/3+1)
-	return NewPreunit(creator, []gomel.Hash{}, data, nil, tc)
+	return NewPreunit(creator, []*gomel.Hash{}, data, nil, tc)
 }
 
 // maxLevel returns the maximal level from units present in mu.
@@ -160,10 +160,10 @@ func combineParents(parents, newParents []gomel.Unit) []gomel.Unit {
 }
 
 // hashes returns a slice with hashes of given units.
-func hashes(units []gomel.Unit) []gomel.Hash {
-	result := make([]gomel.Hash, len(units))
+func hashes(units []gomel.Unit) []*gomel.Hash {
+	result := make([]*gomel.Hash, len(units))
 	for i, u := range units {
-		result[i] = *u.Hash()
+		result[i] = u.Hash()
 	}
 	return result
 }

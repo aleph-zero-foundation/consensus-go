@@ -21,12 +21,12 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 		pid := r.Intn(nProcesses)
 		if p.maximalHeight[pid] == -1 {
 			tcData := tcoin.Deal(nProcesses, nProcesses/3+1)
-			pu := NewPreunit(pid, []gomel.Hash{}, []byte{}, nil, tcData)
+			pu := NewPreunit(pid, []*gomel.Hash{}, []byte{}, nil, tcData)
 			p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
 			created++
 		} else {
 			h := p.maximalHeight[pid]
-			parents := []gomel.Hash{*p.unitsByHeight[h].Get(pid)[0].Hash()}
+			parents := []*gomel.Hash{p.unitsByHeight[h].Get(pid)[0].Hash()}
 			nParents := minParents + r.Intn(maxParents-minParents+1)
 			for _, parentID := range r.Perm(nProcesses) {
 				if len(parents) == nParents {
@@ -36,7 +36,7 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 					continue
 				}
 				if p.maximalHeight[parentID] != -1 {
-					parents = append(parents, *p.MaximalUnitsPerProcess().Get(parentID)[0].Hash())
+					parents = append(parents, p.MaximalUnitsPerProcess().Get(parentID)[0].Hash())
 				}
 				// TODO: Add non empty coin shares here
 				pu := NewPreunit(pid, parents, []byte{}, nil, nil)
