@@ -71,19 +71,12 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-// toBytes returns a byte representation of any object.
-func toBytes(data interface{}) []byte {
-	var newData bytes.Buffer
-	binary.Write(&newData, binary.LittleEndian, data)
-	return newData.Bytes()
-}
-
 // computeHash computes preunit's hash value and puts it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
-	data.Write(toBytes(int32(pu.creator)))
+	binary.Write(&data, binary.LittleEndian, int32(pu.creator))
 	for _, p := range pu.parents {
-		data.Write(toBytes(*p))
+		binary.Write(&data, binary.LittleEndian, *p)
 	}
 	data.Write(pu.Data())
 	if pu.cs != nil {
