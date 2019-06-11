@@ -17,7 +17,7 @@ type proc struct {
 	address    string
 }
 
-func makeProcess(i int, address string) proc {
+func makeProcess(address string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
 	return proc{
 		publicKey:  pubKey,
@@ -70,7 +70,7 @@ func main() {
 	}
 	processes := []proc{}
 	for i := 0; i < num; i++ {
-		processes = append(processes, makeProcess(i, addresses[i]))
+		processes = append(processes, makeProcess(addresses[i]))
 	}
 	committee := &config.Committee{}
 	for _, p := range processes {
