@@ -37,7 +37,9 @@ driver.add_pipeline('Latency', [
 driver.add_pipeline('Sync stats', [
     Filter(Service, SyncService),
     SyncStats(),
-    NetworkTraffic(SKIP)
+    NetworkTraffic(SKIP),
+    Delay('Incoming sync after connection', ConnectionReceived, SyncStarted, lambda entry: (entry[PID],entry[ISID]), SKIP),
+    Delay('Outgoing sync after connection', ConnectionEstablished, SyncStarted, lambda entry: (entry[PID],entry[OSID]), SKIP)
 ])
 
 driver.add_pipeline('Memory', MemoryStats(unit = 'kB'))
