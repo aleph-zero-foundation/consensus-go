@@ -10,6 +10,7 @@ import (
 type Connection interface {
 	Read([]byte) (int, error)
 	Write([]byte) (int, error)
+	Flush() error
 	Close() error
 	TimeoutAfter(t time.Duration)
 	Log() zerolog.Logger
