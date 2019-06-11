@@ -44,6 +44,10 @@ func (c *connection) Write(buf []byte) (int, error) {
 	return c.out.Write(buf)
 }
 
+func (c *connection) Flush() error {
+	return nil
+}
+
 func (c *connection) Close() error {
 	return nil
 }

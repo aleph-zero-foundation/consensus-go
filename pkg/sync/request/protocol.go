@@ -31,7 +31,7 @@ func sendPosetInfo(info posetInfo, conn network.Connection) error {
 			return err
 		}
 	}
-	return nil
+	return conn.Flush()
 }
 
 func getPosetInfo(nProc int, conn network.Connection) (posetInfo, error) {
@@ -47,7 +47,11 @@ func getPosetInfo(nProc int, conn network.Connection) (posetInfo, error) {
 }
 
 func sendUnits(units [][]gomel.Unit, conn network.Connection) error {
-	return encodeUnits(conn, units)
+	err := encodeUnits(conn, units)
+	if err != nil {
+		return err
+	}
+	return conn.Flush()
 }
 
 func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
@@ -55,7 +59,11 @@ func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
 }
 
 func sendRequests(req requests, conn network.Connection) error {
-	return encodeRequests(conn, &req)
+	err := encodeRequests(conn, &req)
+	if err != nil {
+		return err
+	}
+	return conn.Flush()
 }
 
 func getRequests(nProc int, conn network.Connection) (requests, error) {
