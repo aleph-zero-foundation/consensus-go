@@ -39,9 +39,20 @@ func (c *conn) Read(b []byte) (int, error) {
 }
 
 func (c *conn) Write(b []byte) (int, error) {
-	n, err := c.writer.Write(b)
-	c.sent += uint32(n)
-	return n, err
+	written, n := 0, 0
+	var err error
+	for written < len(b) {
+		n, err = c.writer.Write(b)
+		written += n
+		if err == bufio.ErrBufferFull {
+			err = c.writer.Flush()
+		}
+		if err != nil {
+			break
+		}
+	}
+	c.sent += uint32(written)
+	return written, err
 }
 
 func (c *conn) Flush() error {
