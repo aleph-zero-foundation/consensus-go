@@ -3,7 +3,7 @@ package gomel
 import "encoding/base64"
 
 // Hash is a type storing hash values, usually used to identify units.
-type Hash [64]byte
+type Hash [32]byte
 
 // Short returns a shortened version of the hash for easy viewing.
 func (h *Hash) Short() string {

@@ -19,7 +19,7 @@ type encoder struct {
 //  1. Creator id, 2 bytes.
 //  2. Signature, 64 bytes.
 //  3. Number of parents, 2 bytes.
-//  4. Parent hashes, as many as declared in 3., 64 bytes each.
+//  4. Parent hashes, as many as declared in 3., 32 bytes each.
 //  5. Size of the unit data in bytes, 4 bytes.
 //  6. The unit data, as much as declared in 5.
 //  7. Size of a coin share in bytes, 2 bytes.
@@ -35,7 +35,7 @@ func NewEncoder(w io.Writer) encoding.Encoder {
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
 func (e *encoder) EncodeUnit(unit gomel.Unit) error {
 	nParents := uint16(len(unit.Parents()))
-	data := make([]byte, 2+64+2+nParents*64+4)
+	data := make([]byte, 2+64+2+nParents*32+4)
 	s := 0
 	creator := uint16(unit.Creator())
 	binary.LittleEndian.PutUint16(data[s:s+2], creator)
@@ -45,8 +45,8 @@ func (e *encoder) EncodeUnit(unit gomel.Unit) error {
 	binary.LittleEndian.PutUint16(data[s:s+2], nParents)
 	s += 2
 	for _, p := range unit.Parents() {
-		copy(data[s:s+64], p.Hash()[:])
-		s += 64
+		copy(data[s:s+32], p.Hash()[:])
+		s += 32
 	}
 
 	unitDataLen := uint32(len(unit.Data()))
@@ -107,7 +107,7 @@ type decoder struct {
 //  1. Creator id, 2 bytes.
 //  2. Signature, 64 bytes.
 //  3. Number of parents, 2 bytes.
-//  4. Parent hashes, as many as declared in 3., 64 bytes each.
+//  4. Parent hashes, as many as declared in 3., 32 bytes each.
 //  5. Size of the unit data in bytes, 4 bytes.
 //  6. The unit data, as much as declared in 5.
 //  7. Size of a coin share in bytes, 2 bytes.

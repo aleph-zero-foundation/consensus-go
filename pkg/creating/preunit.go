@@ -86,5 +86,5 @@ func (pu *preunit) computeHash() {
 	if pu.tcData != nil {
 		data.Write(pu.tcData)
 	}
-	sha3.ShakeSum256(pu.hash[:len(pu.hash)], data.Bytes())
+	sha3.ShakeSum128(pu.hash[:], data.Bytes())
 }
