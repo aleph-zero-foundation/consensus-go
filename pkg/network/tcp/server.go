@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/semaphore"
 
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -15,6 +16,8 @@ type connServer struct {
 	pid         uint16
 	localAddr   *net.TCPAddr
 	remoteAddrs []*net.TCPAddr
+	listenSem   *semaphore.Weighted
+	dialSem     *semaphore.Weighted
 	listenChan  chan network.Connection
 	dialChan    chan network.Connection
 	dialSource  <-chan int
@@ -26,7 +29,7 @@ type connServer struct {
 }
 
 // NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs, dialSource, and queue lengths for listens and syncs.
-func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listQueueLen, syncQueueLen uint, myPid uint16, log zerolog.Logger) (network.ConnectionServer, error) {
+func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listenSem, dialSem *semaphore.Weighted, listQueueLen, syncQueueLen uint, myPid uint16, log zerolog.Logger) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err
@@ -46,6 +49,8 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 		pid:         myPid,
 		localAddr:   localTCP,
 		remoteAddrs: remoteTCPs,
+		listenSem:   listenSem,
+		dialSem:     dialSem,
 		listenChan:  make(chan network.Connection, listQueueLen),
 		dialChan:    make(chan network.Connection, syncQueueLen),
 		dialSource:  dialSource,
@@ -84,25 +89,33 @@ func (cs *connServer) Listen() error {
 					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
 					continue
 				}
+				if !cs.listenSem.TryAcquire(1) {
+					link.Close()
+					continue
+				}
 				g, err := getGreeting(link)
 				if err != nil {
 					cs.log.Error().Str("where", "connServer.Listen.greeting").Msg(err.Error())
 					link.Close()
+					cs.listenSem.Release(1)
 					continue
 				}
 				if g.pid >= uint16(len(cs.inUse)) {
 					cs.log.Warn().Uint16(logging.PID, g.pid).Msg("Called by a stranger")
 					link.Close()
+					cs.listenSem.Release(1)
 					continue
 				}
 				m := cs.inUse[g.pid]
 				if !m.tryAcquire() {
 					link.Close()
+					cs.listenSem.Release(1)
 					continue
 				}
 				log := cs.log.With().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Logger()
 				cs.listenChan <- newConn(link, m, 0, 6, log) // greeting has 6 bytes
 				log.Info().Msg(logging.ConnectionReceived)
+
 			}
 		}
 	}()
@@ -124,9 +137,14 @@ func (cs *connServer) StartDialing() {
 					<-cs.exitChan
 					return
 				}
+				if !cs.dialSem.TryAcquire(1) {
+					continue
+				}
+
 				// check if we are already syncing with remotePeer
 				m := cs.inUse[remotePid]
 				if !m.tryAcquire() {
+					cs.dialSem.Release(1)
 					continue
 				}
 
@@ -134,6 +152,7 @@ func (cs *connServer) StartDialing() {
 				if err != nil {
 					cs.log.Error().Str("where", "connServer.Dial").Msg(err.Error())
 					m.release()
+					cs.dialSem.Release(1)
 					continue
 				}
 				g := &greeting{
@@ -143,8 +162,8 @@ func (cs *connServer) StartDialing() {
 				cs.syncIds[remotePid]++
 				err = g.send(link)
 				if err != nil {
-
 					m.release()
+					cs.dialSem.Release(1)
 					continue
 				}
 				log := cs.log.With().Int(logging.PID, remotePid).Uint32(logging.OSID, g.sid).Logger()

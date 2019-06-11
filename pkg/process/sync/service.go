@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/semaphore"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -24,13 +25,15 @@ type service struct {
 // NewService creates a new syncing service for the given poset, with the given config.
 func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (process.Service, error) {
 	dial := newDialer(poset.NProc(), config.Pid, config.SyncInitDelay)
-	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), config.ListenQueueLength, config.SyncQueueLength, uint16(config.Pid), log)
+	dialSem := semaphore.NewWeighted(int64(config.InitializedSyncLimit))
+	listenSem := semaphore.NewWeighted(int64(config.ReceivedSyncLimit))
+	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), listenSem, dialSem, config.ListenQueueLength, config.SyncQueueLength, uint16(config.Pid), log)
 	if err != nil {
 		return nil, err
 	}
 	requestIn := &request.In{Timeout: config.Timeout, MyPid: config.Pid}
 	requestOut := &request.Out{Timeout: config.Timeout, MyPid: config.Pid}
-	syncServ := ssync.NewServer(poset, connServ.ListenChannel(), connServ.DialChannel(), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit)
+	syncServ := ssync.NewServer(poset, listenSem, dialSem, connServ.ListenChannel(), connServ.DialChannel(), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit)
 	return &service{
 		syncServer: syncServ,
 		connServer: connServ,
