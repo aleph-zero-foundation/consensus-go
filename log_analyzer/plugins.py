@@ -1,5 +1,6 @@
 from const import *
 from statistics import mean, median
+from numpy import histogram
 
 class Plugin:
     """Parent class definition for all plugins."""
@@ -120,6 +121,72 @@ class Histogram(Plugin):
         return 'Histogram: '+self.name, ret
 
 
+class Delay(Plugin):
+    """
+    Plugin gathering basis statistic about time between two types of events.
+    'func' should be a function taking log entry (dict) and returning a unique, hashable key.
+    A particular key has to be returned exactly once for start-type entry and once for end-type entry.
+    Alternatively, 'func' can be a pair of functions, if different logic is needed for start and end entries.
+    """
+    def __init__(self, name, start, end, func, skip_first=0):
+        self.name = name
+        self.skip = skip_first
+        self.tmpdata = {}
+        self.start = start if isinstance(start, list) else [start]
+        self.end = end if isinstance(end, list) else [end]
+        self.startid, self.endid = func if isinstance(func, tuple) else (func, func)
+
+    def process(self, entry):
+        if entry[Event] in self.start:
+            try:
+                key = self.startid(entry)
+            except:
+                return entry
+            if key not in self.tmpdata:
+                self.tmpdata[key] = [None, None]
+            self.tmpdata[key][0] = entry[Time]
+        if entry[Event] in self.end:
+            try:
+                key = self.endid(entry)
+            except:
+                return entry
+            if key not in self.tmpdata:
+                self.tmpdata[key] = [None, None]
+            self.tmpdata[key][1] = entry[Time]
+        return entry
+
+    def finalize(self):
+        self.tmpdata = [(v[0], v[1], k) for k,v in self.tmpdata.items()]
+        self.data = []
+        self.incomplete = []
+        for s,e,k in self.tmpdata:
+            if s == None or e == None:
+                self.incomplete.append((s,e,k))
+            else:
+                self.data.append((s, e-s, k))
+        self.data.sort()
+
+    def report(self):
+        data = [(i[1], i[2]) for i in self.data[self.skip:]]
+        times = [i[0] for i in data]
+        ret =  '    Complete:   %7d\n' % len(self.data)
+        ret += '    Incomplete: %7d\n\n' % len(self.incomplete)
+        ret += '  (skipped first %d entries)\n'%self.skip if self.skip else ''
+        ret += '    Min: %10d    ms\n' % min(times)
+        ret += '    Max: %10d    ms\n' % max(times)
+        ret += '    Avg: %13.2f ms\n' % mean(times)
+        ret += '    Med: %13.2f ms\n\n' % median(times)
+        data.sort(reverse=True)
+        ret += '  5 largest:\n'
+        for t,k in data[:5]:
+            ret += '%15s: %10d ms\n' % (k,t)
+        ret += '  Distribution:\n'
+        size, brackets = histogram(times, bins=10)
+        for i in zip(brackets[:-1], brackets[1:],size):
+            ret += '   %6.1f-%-6.1f: %10d\n' % i
+        return 'Delay: '+self.name, ret
+
+
 class CreateCounter(Plugin):
     """
     Plugin counting basis statistics of create service:
@@ -160,7 +227,7 @@ class CreateCounter(Plugin):
 
 class SyncStats(Plugin):
     """Plugin gathering statistics of syncs."""
-    def __init__(self, ignore_empty=True):
+    def __init__(self, ignore_empty=False):
         self.ig = ignore_empty
         self.inc = {}
         self.out = {}
