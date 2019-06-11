@@ -42,7 +42,7 @@ func (c *conn) Write(b []byte) (int, error) {
 	written, n := 0, 0
 	var err error
 	for written < len(b) {
-		n, err = c.writer.Write(b)
+		n, err = c.writer.Write(b[written:])
 		written += n
 		if err == bufio.ErrBufferFull {
 			err = c.writer.Flush()
