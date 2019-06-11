@@ -27,7 +27,7 @@ func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (pr
 	dial := newDialer(poset.NProc(), config.Pid, config.SyncInitDelay)
 	dialSem := semaphore.NewWeighted(int64(config.InitializedSyncLimit))
 	listenSem := semaphore.NewWeighted(int64(config.ReceivedSyncLimit))
-	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), listenSem, dialSem, config.ListenQueueLength, config.SyncQueueLength, uint16(config.Pid), log)
+	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), listenSem, dialSem, uint16(config.Pid), log)
 	if err != nil {
 		return nil, err
 	}

@@ -29,7 +29,7 @@ type connServer struct {
 }
 
 // NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs, dialSource, and queue lengths for listens and syncs.
-func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listenSem, dialSem *semaphore.Weighted, listQueueLen, syncQueueLen uint, myPid uint16, log zerolog.Logger) (network.ConnectionServer, error) {
+func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listenSem, dialSem *semaphore.Weighted, myPid uint16, log zerolog.Logger) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err
@@ -51,8 +51,8 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 		remoteAddrs: remoteTCPs,
 		listenSem:   listenSem,
 		dialSem:     dialSem,
-		listenChan:  make(chan network.Connection, listQueueLen),
-		dialChan:    make(chan network.Connection, syncQueueLen),
+		listenChan:  make(chan network.Connection),
+		dialChan:    make(chan network.Connection),
 		dialSource:  dialSource,
 		inUse:       inUse,
 		syncIds:     make([]uint32, len(remoteAddrs)),

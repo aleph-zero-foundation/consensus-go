@@ -42,6 +42,7 @@ func NewServer(poset gomel.Poset, inConnSem, outConnSem *semaphore.Weighted, inC
 }
 
 // Start starts server
+// THIS REQUIRES A SERIOUS REFACTOR -- WE DO NOT NEED TO SPAWN GOROUTINES HERE IN ADVANCE
 func (s *Server) Start() {
 	for i := uint(0); i < s.nRecvSync; i++ {
 		s.wg.Add(1)
