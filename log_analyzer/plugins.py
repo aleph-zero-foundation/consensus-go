@@ -128,9 +128,10 @@ class Delay(Plugin):
     A particular key has to be returned exactly once for start-type entry and once for end-type entry.
     Alternatively, 'func' can be a pair of functions, if different logic is needed for start and end entries.
     """
-    def __init__(self, name, start, end, func, skip_first=0):
+    def __init__(self, name, start, end, func, skip_first=0, threshold=5):
         self.name = name
         self.skip = skip_first
+        self.thr = threshold
         self.tmpdata = {}
         self.start = start if isinstance(start, list) else [start]
         self.end = end if isinstance(end, list) else [end]
@@ -167,8 +168,12 @@ class Delay(Plugin):
         self.data.sort()
 
     def report(self):
+        if len(self.data) == 0:
+            return 'Delay: '+self.name, 'NO SUCH EVENTS'
         data = [(i[1], i[2]) for i in self.data[self.skip:]]
         times = [i[0] for i in data]
+        if max(times) <= self.thr:
+            return 'Delay: '+self.name, 'NEGLIGIBLE'
         ret =  '    Complete:   %7d\n' % len(self.data)
         ret += '    Incomplete: %7d\n\n' % len(self.incomplete)
         ret += '  (skipped first %d entries)\n'%self.skip if self.skip else ''
