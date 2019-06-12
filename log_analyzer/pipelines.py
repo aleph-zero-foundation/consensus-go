@@ -22,6 +22,8 @@ driver.add_pipeline('Timing units', [
 driver.add_pipeline('Latency', [
     Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]),
     Delay('Latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
+    After(HALFTIME),
+    Delay('Latency (second half)', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
 ])
 
 

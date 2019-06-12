@@ -37,7 +37,7 @@ class After(Plugin):
         return entry if entry[Time] > self.time else None
 
     def report(self):
-        return 'Entries after '+self.time, ''
+        return 'Entries after '+str(self.time), ''
 
 class Before(Plugin):
     """Plugin filtering out entries based on time."""
@@ -48,7 +48,7 @@ class Before(Plugin):
         return entry if entry[Time] < self.time else None
 
     def report(self):
-        return 'Entries before '+self.time, ''
+        return 'Entries before '+str(self.time), ''
 
 
 class Timer(Plugin):
