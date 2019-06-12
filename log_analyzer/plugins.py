@@ -329,23 +329,6 @@ class SyncStats(Plugin):
         return 'Sync stats', ret
 
 
-class LatencyMeter(Counter):
-    """Plugin measuring the time between creating a unit and ordering it."""
-    def __init__(self, skip_first=0):
-        val = lambda entry: (entry[Height], entry[Time], entry[Event] == OwnUnitOrdered)
-        Counter.__init__(self, 'latency [ms]', [UnitCreated, PrimeUnitCreated, OwnUnitOrdered], val, skip_first)
-
-    def finalize(self):
-        tmp = sorted(self.data)
-        self.data = []
-        while len(tmp) >= 2:
-            a = tmp.pop(0)
-            if a[0] == tmp[0][0]:
-                b = tmp.pop(0)
-                if not a[2] and b[2]:
-                    self.data.append(b[1]-a[1])
-
-
 class NetworkTraffic(Plugin):
     """Plugin measuring the size of data sent/received through the network."""
     def __init__(self, skip_first=0):

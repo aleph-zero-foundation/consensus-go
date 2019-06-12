@@ -21,7 +21,7 @@ driver.add_pipeline('Timing units', [
 
 driver.add_pipeline('Latency', [
     Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]),
-    LatencyMeter(SKIP),
+    Delay('Latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
 ])
 
 
