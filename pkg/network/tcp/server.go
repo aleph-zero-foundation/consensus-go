@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,19 +14,20 @@ import (
 )
 
 type connServer struct {
-	pid         uint16
-	localAddr   *net.TCPAddr
-	remoteAddrs []*net.TCPAddr
-	listenSem   *semaphore.Weighted
-	dialSem     *semaphore.Weighted
-	listenChan  chan network.Connection
-	dialChan    chan network.Connection
-	dialSource  <-chan int
-	inUse       []*mutex
-	syncIds     []uint32
-	exitChan    chan struct{}
-	wg          sync.WaitGroup
-	log         zerolog.Logger
+	pid          uint16
+	outboundAddr *net.TCPAddr
+	localAddr    *net.TCPAddr
+	remoteAddrs  []*net.TCPAddr
+	listenSem    *semaphore.Weighted
+	dialSem      *semaphore.Weighted
+	listenChan   chan network.Connection
+	dialChan     chan network.Connection
+	dialSource   <-chan int
+	inUse        []*mutex
+	syncIds      []uint32
+	exitChan     chan struct{}
+	wg           sync.WaitGroup
+	log          zerolog.Logger
 }
 
 // NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs, dialSource, and queue lengths for listens and syncs.
@@ -34,6 +36,12 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 	if err != nil {
 		return nil, err
 	}
+	outboundIP, err := getOutboundIP()
+	if err != nil {
+		return nil, err
+	}
+	outboundPort := localTCP.Port
+	outboundTCP := &net.TCPAddr{net.ParseIP(outboundIP), outboundPort, ""}
 	remoteTCPs := make([]*net.TCPAddr, len(remoteAddrs))
 	inUse := make([]*mutex, len(remoteAddrs))
 	for i, remoteAddr := range remoteAddrs {
@@ -46,18 +54,19 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 	}
 
 	return &connServer{
-		pid:         myPid,
-		localAddr:   localTCP,
-		remoteAddrs: remoteTCPs,
-		listenSem:   listenSem,
-		dialSem:     dialSem,
-		listenChan:  make(chan network.Connection),
-		dialChan:    make(chan network.Connection),
-		dialSource:  dialSource,
-		inUse:       inUse,
-		syncIds:     make([]uint32, len(remoteAddrs)),
-		exitChan:    make(chan struct{}),
-		log:         log,
+		pid:          myPid,
+		outboundAddr: outboundTCP,
+		localAddr:    localTCP,
+		remoteAddrs:  remoteTCPs,
+		listenSem:    listenSem,
+		dialSem:      dialSem,
+		listenChan:   make(chan network.Connection),
+		dialChan:     make(chan network.Connection),
+		dialSource:   dialSource,
+		inUse:        inUse,
+		syncIds:      make([]uint32, len(remoteAddrs)),
+		exitChan:     make(chan struct{}),
+		log:          log,
 	}, nil
 }
 
@@ -70,7 +79,7 @@ func (cs *connServer) DialChannel() <-chan network.Connection {
 }
 
 func (cs *connServer) Listen() error {
-	ln, err := net.ListenTCP("tcp", cs.localAddr)
+	ln, err := net.ListenTCP("tcp", cs.outboundAddr)
 	if err != nil {
 		return err
 	}
@@ -178,4 +187,20 @@ func (cs *connServer) StartDialing() {
 func (cs *connServer) Stop() {
 	close(cs.exitChan)
 	cs.wg.Wait()
+}
+
+func getOutboundIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, addr := range addrs {
+		ip := strings.Split(addr.String(), "/")[0]
+		parts := strings.Split(ip, ".")
+		if len(parts) != 4 || parts[0] == "127" {
+			continue
+		}
+		return ip, nil
+	}
+	return "", nil
 }
