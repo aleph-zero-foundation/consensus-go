@@ -34,13 +34,12 @@ func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 	if conf.UnitsLimit != nil {
 		maxHeight = int(*conf.UnitsLimit)
 	}
-	// TODO: magic number in adjust factor
 	return &process.Create{
 		Pid:          c.Pid,
 		MaxParents:   int(conf.NParents),
 		PrivateKey:   c.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
-		AdjustFactor: 0.14,
+		AdjustFactor: conf.StepSize,
 		MaxLevel:     int(conf.LevelLimit),
 		MaxHeight:    maxHeight,
 	}
