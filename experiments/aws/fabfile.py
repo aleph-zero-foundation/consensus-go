@@ -61,6 +61,13 @@ def send_data(conn, pid):
 
     conn.put('data/config.json', repo_path)
 
+@task
+def send_repo(conn):
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    conn.put('repo.zip', repo_path)
+    conn.run(f'rm -rf {repo_path}/pkg {repo_path}/cmd')
+    conn.run(f'unzip -q {repo_path}/repo.zip -d {repo_path}')
+
 #======================================================================================
 #                                   run experiments
 #======================================================================================
@@ -79,12 +86,12 @@ def run_protocol_profiler(conn, pid):
 
 
 @task
-def run_protocol(conn, pid):
+def run_protocol(conn, pid, delay='0'):
     ''' Runs the protocol.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt'
+        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))}'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task

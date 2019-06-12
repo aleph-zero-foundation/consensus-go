@@ -159,7 +159,7 @@ def instances_state_in_region(region_name=default_region_name()):
     return states
 
 
-def run_task_in_region(task='test', region_name=default_region_name(), parallel=False, output=False, pids=None):
+def run_task_in_region(task='test', region_name=default_region_name(), parallel=False, output=False, pids=None, delay=0):
     '''
     Runs a task from fabfile.py on all instances in a given region.
     :param string task: name of a task defined in fabfile.py
@@ -173,10 +173,15 @@ def run_task_in_region(task='test', region_name=default_region_name(), parallel=
     ip_list = instances_ip_in_region(region_name)
     if parallel:
         hosts = " ".join(["ubuntu@"+ip for ip in ip_list])
+        pcmd = 'parallel fab -i key_pairs/aleph.pem -H'
         if pids is None:
-            cmd = 'parallel fab -i key_pairs/aleph.pem -H {} ' + task + ' ::: ' + hosts
+            cmd = pcmd + ' {} ' + task + ' ::: ' + hosts
         else:
-            cmd = 'parallel fab -i key_pairs/aleph.pem -H {1} ' + task + ' --pid={2} ::: ' + hosts + ' :::+ ' + ' '.join(pids)
+            if not delay:
+                cmd = pcmd + ' {1} ' + task + ' --pid={2} ::: ' + hosts + ' :::+ ' + ' '.join(pids)
+            else:
+                sleep = round(delay - time(), 0)
+                cmd = pcmd + ' {1} ' + task + ' --pid={2} --delay={3} ::: ' + hosts + ' :::+ ' + ' '.join(pids) + ' :::+ ' + ' '.join([str(sleep)] * len(pids))
     else:
         hosts = ",".join(["ubuntu@"+ip for ip in ip_list])
         cmd = f'fab -i key_pairs/aleph.pem -H {hosts} {task}'
@@ -278,7 +283,7 @@ def installation_finished_in_region(region_name=default_region_name()):
 #                              routines for all regions
 #======================================================================================
 
-def exec_for_regions(func, regions='badger regions', parallel=True, pids=None):
+def exec_for_regions(func, regions='badger regions', parallel=True, pids=None, delay=0):
     '''A helper function for running routines in all regions.'''
 
     if regions == 'all':
@@ -292,7 +297,7 @@ def exec_for_regions(func, regions='badger regions', parallel=True, pids=None):
             if pids is None:
                 results = Parallel(n_jobs=N_JOBS)(delayed(func)(region_name) for region_name in regions)
             else:
-                results = Parallel(n_jobs=N_JOBS)(delayed(func)(region_name, pids=pids[region_name]) for region_name in regions)
+                results = Parallel(n_jobs=N_JOBS)(delayed(func)(region_name, pids=pids[region_name], delay=delay) for region_name in regions)
 
         except Exception as e:
             print('error during collecting results', type(e), e)
@@ -365,7 +370,7 @@ def send_file(path='cmd/gomel/main.go', regions='badger regions'):
 
     return exec_for_regions(partial(send_file_in_region, path), regions, True)
 
-def run_task(task='test', regions='badger regions', parallel=True, output=False, pids=None):
+def run_task(task='test', regions='badger regions', parallel=True, output=False, pids=None, delay=0):
     '''
     Runs a task from fabfile.py on all instances in all given regions.
     :param string task: name of a task defined in fabfile.py
@@ -374,10 +379,10 @@ def run_task(task='test', regions='badger regions', parallel=True, output=False,
     :param bool output: indicates whether output of task is needed
     '''
 
-    return exec_for_regions(partial(run_task_in_region, task, parallel=parallel, output=output), regions, parallel, pids)
+    return exec_for_regions(partial(run_task_in_region, task, parallel=parallel, output=output), regions, parallel, pids, delay)
 
 
-def run_cmd(cmd='ls', regions='badger regions', output=False, parallel=True):
+def run_cmd(cmd='ls', regions='badger regions', parallel=True, output=False):
     '''
     Runs a shell command cmd on all instances in all given regions.
     :param string cmd: a shell command that is run on instances
@@ -447,13 +452,22 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     print('waiting till ports are open on machines')
     # this is really slow, and actually machines are ready earlier! refactor
     #wait('ssh ready', regions)
-    sleep(60)
+    sleep(100)
 
-    print('cloning repo')
-    run_task('clone-repo', regions, parallel)
+    print('pack the repo')
+    call('rm -f repo.zip'.split())
+    call('zip -rq repo.zip ../../cmd ../../pkg -x "*testdata*"'.split())
+    call('zip -uq repo.zip ../../pkg/testdata/users.txt'.split())
+    run_task('send-repo', regions, parallel)
 
-    print('TMP send new tcp/server.go')
-    send_file('pkg/network/tcp/server.go', regions)
+    #print('cloning repo')
+    #run_task('clone-repo', regions, parallel)
+
+    #print('TMP send new tcp/server.go')
+    #send_file('pkg/network/tcp/server.go', regions)
+
+    print('TMP install semaphore')
+    run_cmd('PATH="$PATH:/snap/bin" && go get golang.org/x/sync/semaphore', regions, parallel) 
 
     print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
@@ -461,9 +475,9 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
     if profiler:
-        run_task('run-protocol-profiler', regions, parallel, False, pids)
+        run_task('run-protocol-profiler', regions, parallel, False, pids, time()+60)
     else:
-        run_task('run-protocol', regions, parallel, False, pids)
+        run_task('run-protocol', regions, parallel, False, pids, time()+60)
 
     return pids, ip2pid
 
@@ -552,7 +566,7 @@ def memory_usage(regions):
 
     return np.min(mems), np.mean(mems), np.max(mems)
 
-def get_logs(regions, ip2pid):
+def get_logs(regions, ip2pid, logs_per_region=1):
     '''Retrieves all logs from instances.'''
 
     if not os.path.exists('../results'):
@@ -565,11 +579,14 @@ def get_logs(regions, ip2pid):
 
     for rn in regions:
         print('collecting logs in ', rn)
+        collected = 0
         for ip in instances_ip_in_region(rn):
             run_task_for_ip('get-log', [ip], parallel=0, pids=[ip2pid[ip]])
             if len(os.listdir('../results')) > l:
                 l = len(os.listdir('../results'))
-                break
+                collected += 1
+                if collected == logs_per_region:
+                    break
 
     print(len(os.listdir('../results')), 'files in ../results')
     
@@ -622,7 +639,7 @@ badger_restricted = {'ap-southeast-2': 5, 'sa-east-1': 5}
 
 
 pb = lambda : run_protocol(104, badger_regions(), badger_restricted, 't2.medium')
-rs = lambda : run_protocol(4, badger_regions()[:4], badger_restricted, 't2.micro')
+rs = lambda : run_protocol(8, badger_regions(), badger_restricted, 't2.micro')
 rf = lambda : run_protocol(128, badger_regions(), {}, 'm4.2xlarge')
 mu = lambda regions=badger_regions(): memory_usage(regions)
 
