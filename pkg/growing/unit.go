@@ -2,7 +2,6 @@ package growing
 
 import (
 	"math"
-	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
@@ -114,20 +113,34 @@ func (u *unit) computeHeight() {
 func (u *unit) computeFloor(nProcesses int) {
 	u.floor = make([][]gomel.Unit, nProcesses)
 	u.floor[u.creator] = []gomel.Unit{u}
-	var wg sync.WaitGroup
-	wg.Add(nProcesses - 1)
 
-	for pid := 0; pid < nProcesses; pid++ {
-		if pid == u.creator {
-			continue
+	for _, parent := range u.parents {
+		pFloor := parent.Floor()
+		for pid := 0; pid < nProcesses; pid++ {
+			if pid == u.creator {
+				continue
+			}
+			for _, w := range pFloor[pid] {
+				found, ri := false, -1
+				for k, v := range u.floor[pid] {
+					if ok, _ := w.(*unit).aboveWithinProc(v.(*unit)); ok {
+						found = true
+						ri = k
+						break
+					}
+					if ok, _ := w.(*unit).belowWithinProc(v.(*unit)); ok {
+						found = true
+					}
+				}
+				if !found {
+					u.floor[pid] = append(u.floor[pid], w)
+				}
+				if ri >= 0 {
+					u.floor[pid][ri] = w
+				}
+			}
 		}
-		go func(pid int) {
-			defer wg.Done()
-			u.floor[pid] = combineParentsFloorsPerProc(u, pid)
-		}(pid)
 	}
-
-	wg.Wait()
 }
 
 func combineParentsFloorsPerProc(u gomel.Unit, pid int) []gomel.Unit {
