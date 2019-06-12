@@ -39,7 +39,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
 	// creator/syncer should send a notification to the channel when a new prime unit is added to the poset
 	// orderer attempts timing decision after receiving the notification
-	attemptTimingRequests := make(chan int, 10)
+	attemptTimingRequests := make(chan int)
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered units to the channel
 	// validator reads the units from the channel and validates transactions contained in the unit
@@ -81,7 +81,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	}
 	services = append(services, service)
 
-	service, err = sync.NewService(poset, config.Sync, log.With().Int(logging.Service, logging.SyncService).Logger())
+	service, err = sync.NewService(poset, config.Sync, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
 	if err != nil {
 		return nil, err
 	}
