@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-    "time"
+	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
