@@ -25,8 +25,30 @@ class Filter(Plugin):
     def process(self, entry):
         if self.key in entry and (self.values is None or entry[self.key] in self.values):
             return entry
-            print(entry)
         return None
+
+
+class After(Plugin):
+    """Plugin filtering out entries based on time."""
+    def __init__(self, time):
+        self.time = time
+
+    def process(self, entry):
+        return entry if entry[Time] > self.time else None
+
+    def report(self):
+        return 'Entries after '+self.time, ''
+
+class Before(Plugin):
+    """Plugin filtering out entries based on time."""
+    def __init__(self, time):
+        self.time = time
+
+    def process(self, entry):
+        return entry if entry[Time] < self.time else None
+
+    def report(self):
+        return 'Entries before '+self.time, ''
 
 
 class Timer(Plugin):

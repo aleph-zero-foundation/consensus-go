@@ -37,6 +37,7 @@ class Driver:
                 name, rep = plugin.report()
                 if name:
                     ret += maketitle(name, 60, '-') + '\n'
+                if rep:
                     ret += rep + '\n'
             ret += '\n'
         return ret
