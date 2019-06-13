@@ -25,8 +25,30 @@ class Filter(Plugin):
     def process(self, entry):
         if self.key in entry and (self.values is None or entry[self.key] in self.values):
             return entry
-            print(entry)
         return None
+
+
+class After(Plugin):
+    """Plugin filtering out entries based on time."""
+    def __init__(self, time):
+        self.time = time
+
+    def process(self, entry):
+        return entry if entry[Time] > self.time else None
+
+    def report(self):
+        return 'Entries after '+str(self.time), ''
+
+class Before(Plugin):
+    """Plugin filtering out entries based on time."""
+    def __init__(self, time):
+        self.time = time
+
+    def process(self, entry):
+        return entry if entry[Time] < self.time else None
+
+    def report(self):
+        return 'Entries before '+str(self.time), ''
 
 
 class Timer(Plugin):
@@ -305,23 +327,6 @@ class SyncStats(Plugin):
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
         ret +=  '    Avg units received:  %13.2f\n\n'%mean(self.recv)
         return 'Sync stats', ret
-
-
-class LatencyMeter(Counter):
-    """Plugin measuring the time between creating a unit and ordering it."""
-    def __init__(self, skip_first=0):
-        val = lambda entry: (entry[Height], entry[Time], entry[Event] == OwnUnitOrdered)
-        Counter.__init__(self, 'latency [ms]', [UnitCreated, PrimeUnitCreated, OwnUnitOrdered], val, skip_first)
-
-    def finalize(self):
-        tmp = sorted(self.data)
-        self.data = []
-        while len(tmp) >= 2:
-            a = tmp.pop(0)
-            if a[0] == tmp[0][0]:
-                b = tmp.pop(0)
-                if not a[2] and b[2]:
-                    self.data.append(b[1]-a[1])
 
 
 class NetworkTraffic(Plugin):
