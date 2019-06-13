@@ -29,6 +29,8 @@ const (
 	ConnectionClosed      = "X"
 	MemoryUsage           = "Y"
 	DataValidated         = "Z"
+	TooManyIncoming       = "a"
+	TooManyOutgoing       = "b"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -59,6 +61,8 @@ var eventTypeDict = map[string]string{
 	ConnectionClosed:      "connection closed after sync (stats = bytes)",
 	MemoryUsage:           "memory usage statistics",
 	DataValidated:         "validated some bytes of data",
+	TooManyIncoming:       "too many incoming connections",
+	TooManyOutgoing:       "too many outgoing connections",
 }
 
 // Field names

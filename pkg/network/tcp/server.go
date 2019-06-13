@@ -85,7 +85,7 @@ func (cs *connServer) Listen() error {
 					cs.log.Info().Msg(logging.ConnectionReceived)
 				default:
 					link.Close()
-					cs.log.Info().Msg("too many incoming")
+					cs.log.Info().Msg(logging.TooManyIncoming)
 				}
 			}
 		}
@@ -126,7 +126,7 @@ func (cs *connServer) StartDialing() {
 				default:
 					link.Close()
 					m.Release()
-					cs.log.Info().Msg("too many outgoing")
+					cs.log.Info().Msg(logging.TooManyOutgoing)
 				}
 			}
 		}
