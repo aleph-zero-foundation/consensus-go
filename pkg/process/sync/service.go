@@ -23,7 +23,7 @@ type service struct {
 }
 
 // NewService creates a new syncing service for the given poset, with the given config.
-func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (process.Service, error) {
+func NewService(poset gomel.Poset, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, error) {
 	dial := newDialer(poset.NProc(), config.Pid, config.SyncInitDelay)
 	dialSem := semaphore.NewWeighted(int64(config.InitializedSyncLimit))
 	listenSem := semaphore.NewWeighted(int64(config.ReceivedSyncLimit))
@@ -31,8 +31,8 @@ func NewService(poset gomel.Poset, config *process.Sync, log zerolog.Logger) (pr
 	if err != nil {
 		return nil, err
 	}
-	requestIn := &request.In{Timeout: config.Timeout, MyPid: config.Pid}
-	requestOut := &request.Out{Timeout: config.Timeout, MyPid: config.Pid}
+	requestIn := &request.In{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
+	requestOut := &request.Out{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
 	syncServ := ssync.NewServer(poset, listenSem, dialSem, connServ.ListenChannel(), connServ.DialChannel(), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit)
 	return &service{
 		syncServer: syncServ,
