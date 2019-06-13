@@ -4,7 +4,7 @@ import (
 	"crypto/subtle"
 	"math/big"
 
-	"golang.org/x/crypto/bn256"
+	"github.com/cloudflare/bn256"
 )
 
 type verificationKey struct {
@@ -20,8 +20,9 @@ type signature []byte
 var gen = new(bn256.G2).ScalarBaseMult(big.NewInt(int64(1)))
 
 func (vk *verificationKey) verify(s signature, msg *big.Int) bool {
-	sHash, ok := new(bn256.G1).Unmarshal(s)
-	if !ok {
+	sHash := new(bn256.G1)
+	_, err := sHash.Unmarshal(s)
+	if err != nil {
 		return false
 	}
 
