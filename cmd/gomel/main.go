@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -50,6 +51,7 @@ type cliOptions struct {
 	logFilename     string
 	cpuProfFilename string
 	memProfFilename string
+	delay           int64
 }
 
 func getOptions() cliOptions {
@@ -60,12 +62,19 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
+	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
 	return result
 }
 
 func main() {
 	options := getOptions()
+
+	if options.delay != 0 {
+		duration := time.Duration(options.delay) * time.Second
+		time.Sleep(duration)
+	}
+
 	committee, err := getCommittee(options.keyFilename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keyFilename, err.Error())

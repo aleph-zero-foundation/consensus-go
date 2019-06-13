@@ -8,8 +8,8 @@ type Configuration struct {
 	// delay after creating a new unit
 	CreateDelay float32
 
-	// a number in (0,1) describing how aggressive is the create_delay adjusting mechanism, large = aggressive
-	StepSize float32
+	// a number in [0,1) describing how aggressive is the CreateDelay adjusting mechanism, large = aggressive, 0 = no adjustment at all
+	StepSize float64
 
 	// delay after initializing a sync with other processes
 	SyncInitDelay float32
