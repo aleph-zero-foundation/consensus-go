@@ -1,4 +1,4 @@
-package tcp
+package sync
 
 import (
 	"encoding/binary"

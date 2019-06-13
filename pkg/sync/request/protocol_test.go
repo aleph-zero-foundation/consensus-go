@@ -12,7 +12,6 @@ import (
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/request"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -58,7 +57,7 @@ func (c *connection) Log() zerolog.Logger {
 	return c.log
 }
 
-func newConnection() (network.Connection, network.Connection) {
+func newConnection() (gsync.Connection, gsync.Connection) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
 	return &connection{r1, w2, 0, 0, zerolog.Logger{}}, &connection{r2, w1, 0, 0, zerolog.Logger{}}
@@ -71,8 +70,8 @@ var _ = Describe("Protocol", func() {
 		p2  *poset
 		in  gsync.Protocol
 		out gsync.Protocol
-		c1  network.Connection
-		c2  network.Connection
+		c1  gsync.Connection
+		c2  gsync.Connection
 	)
 
 	BeforeEach(func() {
