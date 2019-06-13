@@ -7,31 +7,27 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"golang.org/x/sync/semaphore"
 
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 type connServer struct {
-	pid          uint16
 	outboundAddr *net.TCPAddr
 	localAddr    *net.TCPAddr
-	remoteAddrs  []*net.TCPAddr
-	listenSem    *semaphore.Weighted
-	dialSem      *semaphore.Weighted
-	listenChan   chan network.Connection
-	dialChan     chan network.Connection
+	remoteAddrs  []string
+	listenChan   chan net.Conn
+	dialChan     chan net.Conn
 	dialSource   <-chan int
-	inUse        []*mutex
-	syncIds      []uint32
+	inUse        []*gsync.Mutex
 	exitChan     chan struct{}
 	wg           sync.WaitGroup
 	log          zerolog.Logger
 }
 
 // NewConnServer creates and initializes a new connServer with given localAddr, remoteAddrs, dialSource, and queue lengths for listens and syncs.
-func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, listenSem, dialSem *semaphore.Weighted, myPid uint16, log zerolog.Logger) (network.ConnectionServer, error) {
+func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int, inUse []*gsync.Mutex, log zerolog.Logger) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err
@@ -41,40 +37,26 @@ func NewConnServer(localAddr string, remoteAddrs []string, dialSource <-chan int
 		return nil, err
 	}
 	outboundPort := localTCP.Port
-	outboundTCP := &net.TCPAddr{net.ParseIP(outboundIP), outboundPort, ""}
-	remoteTCPs := make([]*net.TCPAddr, len(remoteAddrs))
-	inUse := make([]*mutex, len(remoteAddrs))
-	for i, remoteAddr := range remoteAddrs {
-		remoteTCP, err := net.ResolveTCPAddr("tcp", remoteAddr)
-		if err != nil {
-			return nil, err
-		}
-		remoteTCPs[i] = remoteTCP
-		inUse[i] = newMutex()
-	}
+	outboundTCP := &net.TCPAddr{IP: net.ParseIP(outboundIP), Port: outboundPort, Zone: ""}
 
 	return &connServer{
-		pid:          myPid,
 		outboundAddr: outboundTCP,
 		localAddr:    localTCP,
-		remoteAddrs:  remoteTCPs,
-		listenSem:    listenSem,
-		dialSem:      dialSem,
-		listenChan:   make(chan network.Connection),
-		dialChan:     make(chan network.Connection),
+		remoteAddrs:  remoteAddrs,
+		listenChan:   make(chan net.Conn),
+		dialChan:     make(chan net.Conn),
 		dialSource:   dialSource,
 		inUse:        inUse,
-		syncIds:      make([]uint32, len(remoteAddrs)),
 		exitChan:     make(chan struct{}),
 		log:          log,
 	}, nil
 }
 
-func (cs *connServer) ListenChannel() <-chan network.Connection {
+func (cs *connServer) ListenChannel() <-chan net.Conn {
 	return cs.listenChan
 }
 
-func (cs *connServer) DialChannel() <-chan network.Connection {
+func (cs *connServer) DialChannel() <-chan net.Conn {
 	return cs.dialChan
 }
 
@@ -98,33 +80,13 @@ func (cs *connServer) Listen() error {
 					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
 					continue
 				}
-				if !cs.listenSem.TryAcquire(1) {
+				select {
+				case cs.listenChan <- link:
+					cs.log.Info().Msg(logging.ConnectionReceived)
+				default:
 					link.Close()
-					continue
+					cs.log.Info().Msg("too many incoming")
 				}
-				g, err := getGreeting(link)
-				if err != nil {
-					cs.log.Error().Str("where", "connServer.Listen.greeting").Msg(err.Error())
-					link.Close()
-					cs.listenSem.Release(1)
-					continue
-				}
-				if g.pid >= uint16(len(cs.inUse)) {
-					cs.log.Warn().Uint16(logging.PID, g.pid).Msg("Called by a stranger")
-					link.Close()
-					cs.listenSem.Release(1)
-					continue
-				}
-				m := cs.inUse[g.pid]
-				if !m.tryAcquire() {
-					link.Close()
-					cs.listenSem.Release(1)
-					continue
-				}
-				log := cs.log.With().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Logger()
-				cs.listenChan <- newConn(link, m, 0, 6, log) // greeting has 6 bytes
-				log.Info().Msg(logging.ConnectionReceived)
-
 			}
 		}
 	}()
@@ -146,38 +108,26 @@ func (cs *connServer) StartDialing() {
 					<-cs.exitChan
 					return
 				}
-				if !cs.dialSem.TryAcquire(1) {
-					continue
-				}
-
 				// check if we are already syncing with remotePeer
 				m := cs.inUse[remotePid]
-				if !m.tryAcquire() {
-					cs.dialSem.Release(1)
+				if !m.TryAcquire() {
 					continue
 				}
-
-				link, err := net.DialTCP("tcp", nil, cs.remoteAddrs[remotePid])
+				dialer := &net.Dialer{Deadline: time.Now().Add(time.Second * 2)}
+				link, err := dialer.Dial("tcp", cs.remoteAddrs[remotePid])
 				if err != nil {
 					cs.log.Error().Str("where", "connServer.Dial").Msg(err.Error())
-					m.release()
-					cs.dialSem.Release(1)
+					m.Release()
 					continue
 				}
-				g := &greeting{
-					pid: uint16(cs.pid),
-					sid: cs.syncIds[remotePid],
+				select {
+				case cs.dialChan <- link:
+					cs.log.Info().Msg(logging.ConnectionEstablished)
+				default:
+					link.Close()
+					m.Release()
+					cs.log.Info().Msg("too many outgoing")
 				}
-				cs.syncIds[remotePid]++
-				err = g.send(link)
-				if err != nil {
-					m.release()
-					cs.dialSem.Release(1)
-					continue
-				}
-				log := cs.log.With().Int(logging.PID, remotePid).Uint32(logging.OSID, g.sid).Logger()
-				cs.dialChan <- newConn(link, m, 6, 0, log) // greeting has 6 bytes
-				log.Info().Msg(logging.ConnectionEstablished)
 			}
 		}
 	}()
