@@ -466,8 +466,7 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     #print('TMP send new tcp/server.go')
     #send_file('pkg/network/tcp/server.go', regions)
 
-    print('TMP install semaphore')
-    run_cmd('PATH="$PATH:/snap/bin" && go get golang.org/x/sync/semaphore', regions, parallel) 
+    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel) 
 
     print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
