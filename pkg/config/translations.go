@@ -59,9 +59,11 @@ func generateTxValidateConfig(dbFilename string) *process.TxValidate {
 	}
 }
 
-func generateTxGenerateConfig(dbFilename string) *process.TxGenerate {
+func generateTxGenerateConfig(conf *Configuration, dbFilename string) *process.TxGenerate {
 	return &process.TxGenerate{
-		UserDb: dbFilename,
+		CompressionLevel: 5,
+		UserDb:           dbFilename,
+		Txpu:             uint32(conf.Txpu),
 	}
 }
 
@@ -73,7 +75,7 @@ func (conf *Configuration) GenerateConfig(c *Committee, dbFilename string) proce
 		Create:     generateCreateConfig(conf, c),
 		Order:      generateOrderConfig(conf, c),
 		TxValidate: generateTxValidateConfig(dbFilename),
-		TxGenerate: generateTxGenerateConfig(dbFilename),
+		TxGenerate: generateTxGenerateConfig(conf, dbFilename),
 		MemLog:     conf.LogMemInterval,
 	}
 }
