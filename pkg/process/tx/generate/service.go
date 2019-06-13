@@ -1,9 +1,7 @@
 package generate
 
 import (
-	"bufio"
 	"math/rand"
-	"os"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -11,72 +9,39 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
-	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
 type service struct {
-	users            []string
-	txpu             uint32
-	txChan           chan<- []byte
-	exitChan         chan struct{}
-	compressionLevel int
-	log              zerolog.Logger
-	wg               sync.WaitGroup
-}
-
-func readUsers(filename string) ([]string, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	users := []string{}
-	for scanner.Scan() {
-		users = append(users, scanner.Text())
-	}
-	return users, nil
+	txpu     uint32
+	txChan   chan<- []byte
+	exitChan chan struct{}
+	log      zerolog.Logger
+	wg       sync.WaitGroup
 }
 
 // NewService creates a new service generating transactions
 func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- []byte, log zerolog.Logger) (process.Service, error) {
-	users, err := readUsers(config.UserDb)
-	if err != nil {
-		return nil, err
-	}
 	return &service{
-		users:            users,
-		txpu:             config.Txpu,
-		txChan:           txChan,
-		exitChan:         make(chan struct{}),
-		compressionLevel: config.CompressionLevel,
-		log:              log,
+		txpu:     config.Txpu,
+		txChan:   txChan,
+		exitChan: make(chan struct{}),
+		log:      log,
 	}, nil
 }
 
-func (s *service) generateRandom(txID uint32) []transactions.Tx {
-	result := []transactions.Tx{}
-	for uint32(len(result)) < s.txpu {
-		result = append(result, transactions.Tx{
-			ID:       txID,
-			Issuer:   s.users[rand.Intn(len(s.users))],
-			Receiver: s.users[rand.Intn(len(s.users))],
-			Amount:   uint32(rand.Intn(10)),
-		})
-		txID++
-	}
+func (s *service) generateRandom() []byte {
+	txpu := int(s.txpu)
+	size := 9*txpu + rand.Intn(2*txpu)
+	result := make([]byte, size)
+	rand.Read(result)
 	return result
 }
 
 func (s *service) main() {
-	var txID uint32
 	for {
-		txs := s.generateRandom(txID)
-		encodedTxs := transactions.Encode(txs)
-		compressedTxs, _ := transactions.Compress(encodedTxs, s.compressionLevel)
+		data := s.generateRandom()
 		select {
-		case s.txChan <- compressedTxs:
-			txID += uint32(len(txs))
+		case s.txChan <- data:
 		case <-s.exitChan:
 			close(s.txChan)
 			s.wg.Done()

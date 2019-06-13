@@ -28,6 +28,7 @@ const (
 	OwnUnitOrdered        = "W"
 	ConnectionClosed      = "X"
 	MemoryUsage           = "Y"
+	DataValidated         = "Z"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -57,6 +58,7 @@ var eventTypeDict = map[string]string{
 	OwnUnitOrdered:        "unit created by this process has been ordered",
 	ConnectionClosed:      "connection closed after sync (stats = bytes)",
 	MemoryUsage:           "memory usage statistics",
+	DataValidated:         "validated some bytes of data",
 }
 
 // Field names

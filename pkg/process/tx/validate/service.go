@@ -8,11 +8,9 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
-	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
 type service struct {
-	validator  *validator
 	unitSource <-chan gomel.Unit
 	exitChan   chan struct{}
 	log        zerolog.Logger
@@ -21,14 +19,10 @@ type service struct {
 
 // NewService creates a new transaction validation service for the given poset, with the given configuration.
 func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan gomel.Unit, log zerolog.Logger) (process.Service, error) {
-	validator, err := newValidator(config.UserDb)
-	if err != nil {
-		return nil, err
-	}
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),
-		validator:  validator,
+		log:        log,
 	}, nil
 }
 
@@ -41,13 +35,7 @@ func (s *service) main() {
 				<-s.exitChan
 				return
 			}
-			txsEncoded, cErr := transactions.Decompress(u.Data())
-			txs, dErr := transactions.Decode(txsEncoded)
-			if cErr != nil && dErr != nil {
-				for _, t := range txs {
-					s.validator.validate(t)
-				}
-			}
+			s.log.Info().Int(logging.Size, len(u.Data())).Msg(logging.DataValidated)
 		case <-s.exitChan:
 			return
 		}
