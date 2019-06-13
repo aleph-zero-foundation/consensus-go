@@ -80,8 +80,13 @@ func (cs *connServer) Listen() error {
 					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
 					continue
 				}
-				cs.listenChan <- link
-				cs.log.Info().Msg(logging.ConnectionReceived)
+				select {
+				case cs.listenChan <- link:
+					cs.log.Info().Msg(logging.ConnectionReceived)
+				default:
+					link.Close()
+					cs.log.Info().Msg("too many incoming")
+				}
 			}
 		}
 	}()
@@ -115,8 +120,14 @@ func (cs *connServer) StartDialing() {
 					m.Release()
 					continue
 				}
-				cs.dialChan <- link
-				cs.log.Info().Msg(logging.ConnectionEstablished)
+				select {
+				case cs.dialChan <- link:
+					cs.log.Info().Msg(logging.ConnectionEstablished)
+				default:
+					link.Close()
+					m.Release()
+					cs.log.Info().Msg("too many outgoing")
+				}
 			}
 		}
 	}()
