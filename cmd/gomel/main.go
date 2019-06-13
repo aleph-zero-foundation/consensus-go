@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,9 +10,11 @@ import (
 	"runtime/pprof"
 	"time"
 
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process/run"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 func getCommittee(filename string) (*config.Committee, error) {
@@ -51,6 +54,7 @@ type cliOptions struct {
 	logFilename     string
 	cpuProfFilename string
 	memProfFilename string
+	posetFilename   string
 	delay           int64
 }
 
@@ -62,6 +66,7 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
+	flag.StringVar(&result.posetFilename, "poset", "", "the name of the file to save resulting poset")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
 	return result
@@ -105,7 +110,8 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	err = run.Process(processConfig, log)
+	var poset gomel.Poset
+	poset, err = run.Process(processConfig, log)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
@@ -120,5 +126,16 @@ func main() {
 		if err := pprof.WriteHeapProfile(f); err != nil {
 			fmt.Fprintf(os.Stderr, "Mem-profile failed to start because: %s", err.Error())
 		}
+	}
+
+	if options.posetFilename != "" {
+		f, err := os.Create(options.posetFilename)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Creating poset file \"%s\" failed because: %s.\n", options.posetFilename, err.Error())
+		}
+		defer f.Close()
+		out := bufio.NewWriter(f)
+		tests.WritePoset(out, poset)
+		out.Flush()
 	}
 }

@@ -33,7 +33,7 @@ func startAll(services []process.Service) error {
 
 // Process runs all the services with the configuration provided.
 // It blocks until all of them are done.
-func Process(config process.Config, log zerolog.Logger) error {
+func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	posetFinished := make(chan struct{})
 	var services []process.Service
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
@@ -53,45 +53,45 @@ func Process(config process.Config, log zerolog.Logger) error {
 
 	service, err := create.NewService(poset, config.Create, posetFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	services = append(services, service)
 
 	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	services = append(services, service)
 
 	service, err = validate.NewService(poset, config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	services = append(services, service)
 
 	service, err = generate.NewService(poset, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	services = append(services, service)
 
 	service, err = logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	services = append(services, service)
 
 	service, err = sync.NewService(poset, config.Sync, log.With().Int(logging.Service, logging.SyncService).Logger())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	services = append(services, service)
 
 	err = startAll(services)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stopAll(services)
 	<-posetFinished
-	return nil
+	return poset, nil
 }
