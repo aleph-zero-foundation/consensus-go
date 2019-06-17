@@ -27,6 +27,8 @@ func getOptions() cliOptions {
 	return result
 }
 
+// collectUnits for a given poset returns a slice containing all the units from the poset.
+// It uses dfs from maximal units.
 func collectUnits(p gomel.Poset) []gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
 	units := []gomel.Unit{}
@@ -51,6 +53,9 @@ func collectUnits(p gomel.Poset) []gomel.Unit {
 	return units
 }
 
+// popularityStats for a given poset calculates for each prime unit
+// the number of levels until the unit becomes popular.
+// Unpopular units are ignored. The result is sliced by the prime level.
 func popularityStats(p gomel.Poset, maxLevel int) [][]int {
 	result := make([][]int, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
@@ -81,12 +86,17 @@ func popularityStats(p gomel.Poset, maxLevel int) [][]int {
 	return result
 }
 
+// levelPrimeUnitStat contains statistics per level
+// (1) number of prime units
+// (2) number of minimal (in DAG order) prime units
+// (3) number of primes visible below each prime
 type levelPrimeUnitStat struct {
 	primes       int
 	minPrimes    int
 	visibleBelow []int
 }
 
+// basicStats contains basic stats of some sequence of integers
 type basicStats struct {
 	size int
 	min  int
@@ -94,6 +104,11 @@ type basicStats struct {
 	avg  float64
 }
 
+// computeBasicStats for a given slice of integers computes
+// (0) length of the slice
+// (1) min value
+// (2) max value
+// (3) avarge
 func computeBasicStats(slice []int) basicStats {
 	size := len(slice)
 	if size == 0 {
@@ -122,6 +137,8 @@ func computeBasicStats(slice []int) basicStats {
 	}
 }
 
+// cntVisibleBelow for a given unit u, and a collection su of SlottedUnits calculates the number
+// of units which are elemnts of su and are below of u.
 func cntVisibleBelow(u gomel.Unit, su gomel.SlottedUnits) int {
 	ans := 0
 	su.Iterate(func(units []gomel.Unit) bool {
@@ -135,6 +152,10 @@ func cntVisibleBelow(u gomel.Unit, su gomel.SlottedUnits) int {
 	return ans
 }
 
+// getPrimeUnitStatsOnLevel for a given poset and a given level calculates
+// (1) number of prime units on the level
+// (2) number of minimal (in DAG order) prime units on the level
+// (3) for each prime unit number of primes on level - 1 which are below the unit
 func getPrimeUnitStatsOnLevel(p gomel.Poset, level int) levelPrimeUnitStat {
 	primes := p.PrimeUnits(level)
 	primesBelow := p.PrimeUnits(level - 1)
@@ -159,6 +180,7 @@ func getPrimeUnitStatsOnLevel(p gomel.Poset, level int) levelPrimeUnitStat {
 	return lps
 }
 
+// getPrimeUnitsStats for a given poset caluclates primeUnitStats on each level
 func getPrimeUnitsStats(p gomel.Poset, maxLevel int) []levelPrimeUnitStat {
 	result := []levelPrimeUnitStat{}
 	for level := 0; level <= maxLevel; level++ {
@@ -167,12 +189,20 @@ func getPrimeUnitsStats(p gomel.Poset, maxLevel int) []levelPrimeUnitStat {
 	return result
 }
 
+// levelUnitStat contains
+// (1) the number of prime units on the level
+// (2) the number of regular (not prime) units on the level
+// (3) the number of processes which skipped the level
 type levelUnitStat struct {
 	primes  int
 	regular int
 	skipped int
 }
 
+// getUnitStats for a given poset calculates for each level the levelUnitStat i.e.
+// (1) the number of prime units on the level
+// (2) the number of regular (not prime) units on the level
+// (3) the number of processes which skipped the level
 func getUnitStats(p gomel.Poset, units []gomel.Unit, maxLevel int) []levelUnitStat {
 	result := make([]levelUnitStat, p.NProc())
 	pSeen := make([]map[int]bool, maxLevel+1)
