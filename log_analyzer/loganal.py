@@ -24,10 +24,19 @@ parser.add_argument('path', metavar='path', help='single JSON log, whole folder 
 parser.add_argument('-p', '--pipe', metavar='file', help='file with pipelines definitions')
 args = parser.parse_args()
 
-pipelines = args.pipe if args.pipe else os.path.join(os.path.dirname(__file__), 'pipelines.py')
 
-if not os.path.isfile(pipelines):
-    print(f'{pipelines}: invalid file')
+if not args.pipe:
+    pipelines = os.path.join(os.path.dirname(__file__), 'default.py')
+elif os.path.isfile(args.pipe):
+    pipelines = args.pipe
+elif os.path.isfile(args.pipe+'.py'):
+    pipelines = args.pipe+'.py'
+elif os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe)):
+    pipelines = os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe))
+elif os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe+'.py')):
+    pipelines = os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe+'.py'))
+else:
+    print(f'{args.pipe}: invalid file')
     sys.exit(1)
 
 driver = Driver()
