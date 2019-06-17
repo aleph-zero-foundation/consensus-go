@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+from os.path import join, isfile, isdir, dirname
 
 from driver import Driver
 from const import *
@@ -26,15 +27,15 @@ args = parser.parse_args()
 
 
 if not args.pipe:
-    pipelines = os.path.join(os.path.dirname(__file__), 'default.py')
-elif os.path.isfile(args.pipe):
+    pipelines = join(dirname(__file__), 'default.py')
+elif isfile(args.pipe):
     pipelines = args.pipe
-elif os.path.isfile(args.pipe+'.py'):
+elif isfile(args.pipe+'.py'):
     pipelines = args.pipe+'.py'
-elif os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe)):
-    pipelines = os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe))
-elif os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe+'.py')):
-    pipelines = os.path.isfile(os.path.join(os.path.dirname(__file__), args.pipe+'.py'))
+elif isfile(join(dirname(__file__), args.pipe)):
+    pipelines = isfile(join(dirname(__file__), args.pipe))
+elif isfile(join(dirname(__file__), args.pipe+'.py')):
+    pipelines = isfile(join(dirname(__file__), args.pipe+'.py'))
 else:
     print(f'{args.pipe}: invalid file')
     sys.exit(1)
@@ -42,11 +43,11 @@ else:
 driver = Driver()
 exec(compile(open(pipelines).read(), 'pipelines.py', 'exec'))
 
-if not (os.path.isdir(args.path) or (os.path.isfile(args.path) and (args.path.endswith('.log') or args.path.endswith('.zip')))):
+if not (isdir(args.path) or (isfile(args.path) and (args.path.endswith('.log') or args.path.endswith('.zip')))):
     print(f'{args.path}: invalid path')
     sys.exit(1)
 
-if os.path.isfile(args.path) and args.path.endswith('.log'):
+if isfile(args.path) and args.path.endswith('.log'):
     name = args.path[:-4]
     driver.new_dataset(name)
     with open(args.path) as f:
@@ -55,11 +56,11 @@ if os.path.isfile(args.path) and args.path.endswith('.log'):
     driver.finalize()
     print(driver.report(name))
 else:
-    path = args.path if os.path.isdir(args.path) else extract(args.path)
+    path = args.path if isdir(args.path) else extract(args.path)
     for filename in filter(lambda x: x.endswith('.log'), os.listdir(path)):
         name = filename[:-4]
         driver.new_dataset(name)
-        with open(os.path.join(path, filename)) as f:
+        with open(join(path, filename)) as f:
             for line in f:
                 driver.handle(json.loads(line))
         driver.finalize()
