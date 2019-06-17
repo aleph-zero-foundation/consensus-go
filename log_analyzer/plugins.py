@@ -210,7 +210,7 @@ class Delay(Plugin):
         ret += '  Distribution:\n'
         size, brackets = histogram(times, bins=10)
         for i in zip(brackets[:-1], brackets[1:],size):
-            ret += '   %6.1f-%-6.1f: %10d\n' % i
+            ret += '   %10.1f-%-8.1f: %10d\n' % i
         return 'Delay: '+self.name, ret
 
 

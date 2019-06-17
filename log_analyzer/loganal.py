@@ -14,14 +14,15 @@ def lasttime(path, seek=128):
         f.seek(-seek, os.SEEK_END)
         return json.loads(f.readlines()[-1])[Time]
 
+def extract(path):
+    pass
+
+
+
 parser = argparse.ArgumentParser()
-parser.add_argument('filename', metavar='logfile', help='file with JSON log')
+parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archive')
 parser.add_argument('-p', '--pipe', metavar='file', help='file with pipelines definitions')
 args = parser.parse_args()
-
-if not os.path.isfile(args.filename):
-    print(f'{args.filename}: invalid file')
-    sys.exit(1)
 
 pipelines = args.pipe if args.pipe else os.path.join(os.path.dirname(__file__), 'pipelines.py')
 
@@ -29,14 +30,28 @@ if not os.path.isfile(pipelines):
     print(f'{pipelines}: invalid file')
     sys.exit(1)
 
-FULLTIME = lasttime(args.filename)
-
 driver = Driver()
 exec(compile(open(pipelines).read(), 'pipelines.py', 'exec'))
 
-with open(args.filename) as f:
-    for line in f:
-        driver.handle(json.loads(line))
+if not (os.path.isdir(args.path) or (os.path.isfile(args.path) and (args.path.endswith('.log') or args.path.endswith('.zip')))):
+    print(f'{args.path}: invalid path')
+    sys.exit(1)
 
-driver.finalize()
-print(driver.report())
+if os.path.isfile(args.path) and args.path.endswith('.log'):
+    name = args.path[:-4]
+    driver.new_dataset(name)
+    with open(args.path) as f:
+        for line in f:
+            driver.handle(json.loads(line))
+    driver.finalize()
+    print(driver.report(name))
+else:
+    path = args.path if os.path.isdir(args.path) else extract(args.path)
+    for filename in filter(lambda x: x.endswith('.log'), os.listdir(path)):
+        name = filename[:-4]
+        driver.new_dataset(name)
+        with open(os.path.join(path, filename)) as f:
+            for line in f:
+                driver.handle(json.loads(line))
+        driver.finalize()
+        print(driver.report(name))

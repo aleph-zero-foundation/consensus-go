@@ -1,5 +1,4 @@
 SKIP = 5
-HALFTIME = FULLTIME//2
 
 driver.add_pipeline('Create service', [
     Filter(Service, CreateService),
@@ -12,7 +11,7 @@ driver.add_pipeline('Create service', [
 
 driver.add_pipeline('Timing units', [
     Filter(Event, [NewTimingUnit, LinearOrderExtended]),
-    Histogram('timing unit choice delay', NewTimingUnit, lambda entry: (-1 if entry[Round] < 0 else entry[Height]-entry[Round]), SKIP),
+    Histogram('timing unit choice delay', NewTimingUnit, lambda entry: (-1 if entry[Height] < 0 else entry[Height]-entry[Round]), SKIP),
     Counter('units ordered per level', LinearOrderExtended, lambda entry: entry[Size], SKIP),
     Filter(Event, NewTimingUnit),
     Timer('timing unit decision intervals', SKIP),
@@ -22,8 +21,6 @@ driver.add_pipeline('Timing units', [
 driver.add_pipeline('Latency', [
     Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]),
     Delay('Latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
-    After(HALFTIME),
-    Delay('Latency (second half)', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
 ])
 
 

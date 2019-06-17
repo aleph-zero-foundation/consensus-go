@@ -10,14 +10,20 @@ class Driver:
     """
     def __init__(self):
         self.pipelines = OrderedDict()
+        self.datasets = OrderedDict()
+        self.current = None
 
     def add_pipeline(self, name, plugins):
         if not isinstance(plugins, list):
             plugins = [plugins]
         self.pipelines[name] = plugins
 
+    def new_dataset(self, name):
+        self.datasets[name] = deepcopy(self.pipelines)
+        self.current = self.datasets[name]
+
     def handle(self, entry):
-        for pipeline in self.pipelines.values():
+        for pipeline in self.current.values():
             e = deepcopy(entry)
             for plugin in pipeline:
                 e = plugin.process(e)
@@ -25,13 +31,13 @@ class Driver:
                     break
 
     def finalize(self):
-        for pipeline in self.pipelines.values():
+        for pipeline in self.current.values():
             for plugin in pipeline:
                 plugin.finalize()
 
-    def report(self):
-        ret = ''
-        for title, pipeline in self.pipelines.items():
+    def report(self, name=None):
+        dataset, ret = (self.current, '') if name is None else (self.datasets[name], maketitle(name, 100, '#')+'\n')
+        for title, pipeline in dataset.items():
             ret += maketitle(title, 80, '=') + '\n'
             for plugin in pipeline:
                 name, rep = plugin.report()
@@ -41,6 +47,9 @@ class Driver:
                     ret += rep + '\n'
             ret += '\n'
         return ret
+
+    def summary(self):
+        pass
 
 
 def maketitle(string, length, pad):
