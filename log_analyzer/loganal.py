@@ -68,7 +68,7 @@ if isfile(args.path) and args.path.endswith('.log'):
         for line in f:
             driver.handle(json.loads(line))
     driver.finalize()
-    print(driver.report(name))
+    print(driver.report())
 else:
     path = args.path if isdir(args.path) else extract(args.path)
     for filename in filter(lambda x: x.endswith('.log'), os.listdir(path)):

@@ -49,8 +49,20 @@ class Driver:
         return ret
 
     def summary(self):
-        return ''
-
+        ret = ''
+        for pipeline in self.pipelines:
+            pipesummary = ''
+            for i, plugin in enumerate(self.pipelines[pipeline]):
+                data = {dataset: self.datasets[dataset][pipeline][i].get_data() for dataset in self.datasets}
+                if any(data.values()):
+                    pluginsummary = plugin.__class__.multistats(data)
+                    if pluginsummary:
+                        pipesummary += maketitle(plugin.name, 60, '-') + '\n'
+                        pipesummary += pluginsummary
+            if pipesummary:
+                ret += maketitle(pipeline, 80, '=') + '\n'
+                ret += pipesummary
+        return ret
 
 def maketitle(string, length, pad):
     h = length - len(string) - 2

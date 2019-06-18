@@ -13,7 +13,22 @@ class Plugin:
         return []
     def report(self):
         return ''
+    @staticmethod
+    def multistats(datasets):
+        return ''
 
+def multimean(datasets):
+    full = []
+    stats = []
+    for name, data in datasets.items():
+        full += data
+        stats.append((mean(data), name))
+    stats.sort()
+    glob = mean(full)
+    ret =  '    Global Average: %13.2f\n' % glob
+    ret += '    Min Average: %13.2f (%s)\n' % stats[0]
+    ret += '    Max Average: %13.2f (%s)\n' % stats[-1]
+    return ret
 
 class Filter(Plugin):
     """
@@ -53,6 +68,7 @@ class Before(Plugin):
 
 class Timer(Plugin):
     """Plugin gathering basic timing statistics of all incoming events."""
+    multistats = multimean
     def __init__(self, name, skip_first=0):
         self.name = 'Timer: '+name
         self.skip = skip_first - 1
@@ -87,6 +103,7 @@ class Counter(Plugin):
     'value' should be a function taking log entry (dict) and returning a value.
     'finalize()' method can be overriden. After it self.data should be a list of numbers.
     """
+    multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
         self.name = 'Counter: '+name
         self.skip = skip_first - 1
@@ -118,6 +135,7 @@ class Histogram(Plugin):
     'value' should be a function taking log entry (dict) and returning a value.
     'finalize()' method can be overriden. After it self.data should be a list of ints.
     """
+    multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
         self.name = 'Histogram: '+name
         self.skip = skip_first - 1
@@ -130,11 +148,11 @@ class Histogram(Plugin):
             self.data.append(self.val(entry))
         return entry
 
-    #def get_data(self):
-    #    return self.data[self.skip:]
+    def get_data(self):
+        return self.data[self.skip:]
 
     def report(self):
-        d = self.data[self.skip:]
+        d = self.get_data()
         h = {}
         for i in d:
             if i not in h:
@@ -160,6 +178,7 @@ class Delay(Plugin):
     A particular key has to be returned exactly once for start-type entry and once for end-type entry.
     Alternatively, 'func' can be a pair of functions, if different logic is needed for start and end entries.
     """
+    multistats = multimean
     def __init__(self, name, start, end, func, skip_first=0, threshold=5):
         self.name = 'Delay: '+name
         self.skip = skip_first - 1
@@ -198,12 +217,15 @@ class Delay(Plugin):
             else:
                 self.data.append((s, e-s, k))
         self.data.sort()
+        self.data = [(d, k) for _,d,k in self.data]
+
+    def get_data(self):
+        return [i[0] for i in self.data[self.skip:]]
 
     def report(self):
         if len(self.data) == 0:
             return 'NO SUCH EVENTS'
-        data = [(i[1], i[2]) for i in self.data[self.skip:]]
-        times = [i[0] for i in data]
+        times = self.get_data()
         if max(times) <= self.thr:
             return 'NEGLIGIBLE'
         ret =  '    Complete:   %7d\n' % len(self.data)
@@ -213,6 +235,7 @@ class Delay(Plugin):
         ret += '    Max: %10d    ms\n' % max(times)
         ret += '    Avg: %13.2f ms\n' % mean(times)
         ret += '    Med: %13.2f ms\n\n' % median(times)
+        data = self.data[self.skip:]
         data.sort(reverse=True)
         ret += '  5 largest:\n'
         for t,k in data[:5]:
@@ -266,6 +289,7 @@ class CreateCounter(Plugin):
 class SyncStats(Plugin):
     """Plugin gathering statistics of syncs."""
     name = 'Sync stats'
+    multistats = multimean
     def __init__(self, ignore_empty=False):
         self.ig = ignore_empty
         self.inc = {}
@@ -321,6 +345,10 @@ class SyncStats(Plugin):
         self.times = sorted([i[0] for i in self.stats])
         self.sent = sorted([i[1] for i in self.stats])
         self.recv = sorted([i[2] for i in self.stats])
+        self.dupl = sorted([i[3] for i in self.stats])
+
+    def get_data(self):
+        return self.times
 
     def report(self):
         ret =   '  (ignoring syncs that exchanged nothing)\n' if self.ig else ''
@@ -338,6 +366,9 @@ class SyncStats(Plugin):
         ret +=  '    Min units received:  %10d\n'%self.recv[0]
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
         ret +=  '    Avg units received:  %13.2f\n\n'%mean(self.recv)
+        ret +=  '    Min duplicated:      %10d\n'%self.dupl[0]
+        ret +=  '    Max duplicated:      %10d\n'%self.dupl[-1]
+        ret +=  '    Avg duplicated:      %13.2f\n\n'%mean(self.dupl)
         return ret
 
 
