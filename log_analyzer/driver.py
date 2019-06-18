@@ -40,16 +40,16 @@ class Driver:
         for title, pipeline in dataset.items():
             ret += maketitle(title, 80, '=') + '\n'
             for plugin in pipeline:
-                name, rep = plugin.report()
-                if name:
-                    ret += maketitle(name, 60, '-') + '\n'
+                rep = plugin.report()
+                if plugin.name:
+                    ret += maketitle(plugin.name, 60, '-') + '\n'
                 if rep:
                     ret += rep + '\n'
             ret += '\n'
         return ret
 
     def summary(self):
-        pass
+        return ''
 
 
 def maketitle(string, length, pad):

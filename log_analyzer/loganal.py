@@ -35,7 +35,8 @@ def extract(path):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archive')
-parser.add_argument('-p', '--pipe', metavar='file', help='file with pipelines definitions')
+parser.add_argument('-p', '--pipe', metavar='file', help='file with pipelines definitions (if not present, log analyzer source directory is checked)')
+parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
 args = parser.parse_args()
 
 
@@ -61,7 +62,7 @@ if not (isdir(args.path) or (isfile(args.path) and (args.path.endswith('.log') o
     sys.exit(1)
 
 if isfile(args.path) and args.path.endswith('.log'):
-    name = args.path[:-4]
+    name = basename(args.path)[:-4]
     driver.new_dataset(name)
     with open(args.path) as f:
         for line in f:
@@ -77,4 +78,6 @@ else:
             for line in f:
                 driver.handle(json.loads(line))
         driver.finalize()
-        print(driver.report(name))
+        if args.all:
+            print(driver.report(name))
+    print(driver.summary())
