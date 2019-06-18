@@ -1,19 +1,16 @@
 package sync
 
-// Mutex is a structure that allows nonblocking locks.
-type Mutex struct {
+type mutex struct {
 	token chan struct{}
 }
 
-// NewMutex creates a soft mutex.
-func NewMutex() *Mutex {
-	m := &Mutex{make(chan struct{}, 1)}
+func newMutex() *mutex {
+	m := &mutex{make(chan struct{}, 1)}
 	m.token <- struct{}{}
 	return m
 }
 
-// TryAcquire returns whether the resource has been locked.
-func (m *Mutex) TryAcquire() bool {
+func (m *mutex) tryAcquire() bool {
 	select {
 	case _, ok := <-m.token:
 		return ok
@@ -22,7 +19,6 @@ func (m *Mutex) TryAcquire() bool {
 	}
 }
 
-// Release unlocks the resource.
-func (m *Mutex) Release() {
+func (m *mutex) release() {
 	m.token <- struct{}{}
 }

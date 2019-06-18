@@ -10,7 +10,7 @@ import (
 type dialer struct {
 	n      int
 	id     int
-	source chan int
+	source chan uint16
 	ticker *time.Ticker
 	done   chan struct{}
 	wg     sync.WaitGroup
@@ -20,13 +20,13 @@ func newDialer(n, id int, syncInitDelay time.Duration) *dialer {
 	return &dialer{
 		n:      n,
 		id:     id,
-		source: make(chan int),
+		source: make(chan uint16),
 		ticker: time.NewTicker(syncInitDelay),
 		done:   make(chan struct{}),
 	}
 }
 
-func (d *dialer) channel() <-chan int {
+func (d *dialer) channel() <-chan uint16 {
 	return d.source
 }
 
@@ -39,7 +39,7 @@ func (d *dialer) start() {
 				n = rand.Intn(d.n)
 			}
 			select {
-			case d.source <- n:
+			case d.source <- uint16(n):
 			case <-d.done:
 				close(d.source)
 				d.ticker.Stop()

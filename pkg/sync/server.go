@@ -7,22 +7,23 @@ import (
 	"github.com/rs/zerolog"
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-// Server retrieves ready-to-use connections and dispatches workers that use
-// the connections for running in/out synchronizations according to a sync-protocol
+// Server receives ready-to-use incoming connections and establishes outgoing ones,
+// to later handle them using the provided protocols.
 type Server struct {
 	pid          uint16
 	poset        gomel.Poset
 	inConnChan   <-chan net.Conn
-	outConnChan  <-chan net.Conn
+	pidDialChan  <-chan uint16
+	dialer       network.Dialer
 	inSyncProto  Protocol
 	outSyncProto Protocol
 	nInitSync    uint
 	nRecvSync    uint
-	addrIds      map[string]uint16
 	syncIds      []uint32
-	inUse        []*Mutex
+	inUse        []*mutex
 	exitChan     chan struct{}
 	wg           sync.WaitGroup
 	log          zerolog.Logger
@@ -30,30 +31,29 @@ type Server struct {
 
 // NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,
 // and maximal numbers of syncs to initialize and receive.
-func NewServer(myPid uint16, poset gomel.Poset, inConnChan, outConnChan <-chan net.Conn, inSyncProto, outSyncProto Protocol, nInitSync, nRecvSync uint, remoteAddrs []string, inUse []*Mutex, log zerolog.Logger) *Server {
-	addrIds := map[string]uint16{}
-	for pid, addr := range remoteAddrs {
-		addrIds[addr] = uint16(pid)
+func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, pidDialChan <-chan uint16, dialer network.Dialer, inSyncProto, outSyncProto Protocol, nInitSync, nRecvSync uint, log zerolog.Logger) *Server {
+	inUse := make([]*mutex, dialer.Length())
+	for i := range inUse {
+		inUse[i] = newMutex()
 	}
 	return &Server{
 		pid:          myPid,
 		poset:        poset,
 		inConnChan:   inConnChan,
-		outConnChan:  outConnChan,
+		pidDialChan:  pidDialChan,
+		dialer:       dialer,
 		inSyncProto:  inSyncProto,
 		outSyncProto: outSyncProto,
 		nInitSync:    nInitSync,
 		nRecvSync:    nRecvSync,
-		addrIds:      addrIds,
 		inUse:        inUse,
-		syncIds:      make([]uint32, len(remoteAddrs)),
+		syncIds:      make([]uint32, dialer.Length()),
 		exitChan:     make(chan struct{}),
 		log:          log,
 	}
 }
 
 // Start starts server
-// THIS REQUIRES A SERIOUS REFACTOR -- WE DO NOT NEED TO SPAWN GOROUTINES HERE IN ADVANCE
 func (s *Server) Start() {
 	for i := uint(0); i < s.nRecvSync; i++ {
 		s.wg.Add(1)
@@ -94,7 +94,7 @@ func (s *Server) inDispatcher() {
 				continue
 			}
 			m := s.inUse[g.pid]
-			if !m.TryAcquire() {
+			if !m.tryAcquire() {
 				link.Close()
 				continue
 			}
@@ -111,28 +111,31 @@ func (s *Server) outDispatcher() {
 		select {
 		case <-s.exitChan:
 			return
-		case link, ok := <-s.outConnChan:
+		case remotePid, ok := <-s.pidDialChan:
 			if !ok {
 				<-s.exitChan
 				return
 			}
-			remotePid, ok := s.addrIds[link.RemoteAddr().String()]
-			if !ok {
-				// TODO: handle error.
-				// Alternatively and better -- ensure this is done in a way that actually is guaranteed to work.
-				// The strings returned from net.Addr only guarantee the ability to be used to create a similar Addr object.
-				// No guarantees for format. Seems to be working for now though.
+			m := s.inUse[remotePid]
+			if !m.tryAcquire() {
 				continue
 			}
-			m := s.inUse[remotePid]
+			link, err := s.dialer.Dial(remotePid)
+			if err != nil {
+				s.log.Error().Str("where", "syncServer.outDispatcher.dial").Msg(err.Error())
+				m.release()
+				continue
+			}
 			g := &greeting{
 				pid: uint16(s.pid),
 				sid: s.syncIds[remotePid],
 			}
 			s.syncIds[remotePid]++
-			err := g.send(link)
+			err = g.send(link)
 			if err != nil {
-				m.Release()
+				s.log.Error().Str("where", "syncServer.outDispatcher.greeting").Msg(err.Error())
+				m.release()
+				link.Close()
 				continue
 			}
 			log := s.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, g.sid).Logger()

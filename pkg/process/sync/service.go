@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"net"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -23,18 +24,15 @@ type service struct {
 
 // NewService creates a new syncing service for the given poset, with the given config.
 func NewService(poset gomel.Poset, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, error) {
-	dial := newDialer(poset.NProc(), config.Pid, config.SyncInitDelay)
-	inUse := make([]*gsync.Mutex, len(config.RemoteAddresses))
-	for i := range inUse {
-		inUse[i] = gsync.NewMutex()
-	}
-	connServ, err := tcp.NewConnServer(config.LocalAddress, config.RemoteAddresses, dial.channel(), inUse, log)
+	listenChan := make(chan net.Conn)
+	connServ, err := tcp.NewConnServer(config.LocalAddress, listenChan, log)
 	if err != nil {
 		return nil, err
 	}
+	dial := newDialer(poset.NProc(), config.Pid, config.SyncInitDelay)
 	requestIn := &request.In{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
 	requestOut := &request.Out{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
-	syncServ := gsync.NewServer(uint16(config.Pid), poset, connServ.ListenChannel(), connServ.DialChannel(), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit, config.RemoteAddresses, inUse, log)
+	syncServ := gsync.NewServer(uint16(config.Pid), poset, listenChan, dial.channel(), tcp.NewDialer(config.RemoteAddresses), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit, log)
 	return &service{
 		syncServer: syncServ,
 		connServer: connServ,
@@ -44,12 +42,11 @@ func NewService(poset gomel.Poset, config *process.Sync, attemptTiming chan<- in
 }
 
 func (s *service) Start() error {
-	err := s.connServer.Listen()
+	err := s.connServer.Start()
 	if err != nil {
 		return err
 	}
 	s.syncServer.Start()
-	s.connServer.StartDialing()
 	s.dialer.start()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
