@@ -3,8 +3,11 @@
 import argparse
 import json
 import os
+import shutil
 import sys
-from os.path import join, isfile, isdir, dirname
+
+from os.path import join, isfile, isdir, dirname, basename, splitext
+from zipfile import ZipFile
 
 from driver import Driver
 from const import *
@@ -16,8 +19,18 @@ def lasttime(path, seek=128):
         return json.loads(f.readlines()[-1])[Time]
 
 def extract(path):
-    pass
-
+    fwo = splitext(basename(path))[0]
+    base, code = fwo.rsplit('_',1)
+    newname = join(dirname(path),'_'.join([code,base]))
+    with ZipFile(path, 'r') as f:
+        f.extractall()
+    if isdir(newname):
+        for f in os.listdir(base):
+            shutil.copy2(join(base,f), join(newname,f))
+        shutil.rmtree(base)
+    else:
+        os.rename(base, newname)
+    return newname
 
 
 parser = argparse.ArgumentParser()
