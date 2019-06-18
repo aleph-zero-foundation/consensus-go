@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,12 +12,11 @@ import (
 )
 
 type connServer struct {
-	outboundAddr *net.TCPAddr
-	localAddr    *net.TCPAddr
-	listenChan   chan<- net.Conn
-	exitChan     chan struct{}
-	wg           sync.WaitGroup
-	log          zerolog.Logger
+	localAddr  *net.TCPAddr
+	listenChan chan<- net.Conn
+	exitChan   chan struct{}
+	wg         sync.WaitGroup
+	log        zerolog.Logger
 }
 
 // NewConnServer creates and initializes a new connServer at the given localAddr pushing any connections into connSink.
@@ -27,24 +25,17 @@ func NewConnServer(localAddr string, connSink chan<- net.Conn, log zerolog.Logge
 	if err != nil {
 		return nil, err
 	}
-	outboundIP, err := getOutboundIP()
-	if err != nil {
-		return nil, err
-	}
-	outboundPort := localTCP.Port
-	outboundTCP := &net.TCPAddr{IP: net.ParseIP(outboundIP), Port: outboundPort, Zone: ""}
 
 	return &connServer{
-		outboundAddr: outboundTCP,
-		localAddr:    localTCP,
-		listenChan:   connSink,
-		exitChan:     make(chan struct{}),
-		log:          log,
+		localAddr:  localTCP,
+		listenChan: connSink,
+		exitChan:   make(chan struct{}),
+		log:        log,
 	}, nil
 }
 
 func (cs *connServer) Start() error {
-	ln, err := net.ListenTCP("tcp", cs.outboundAddr)
+	ln, err := net.ListenTCP("tcp", cs.localAddr)
 	if err != nil {
 		return err
 	}
@@ -80,20 +71,4 @@ func (cs *connServer) Start() error {
 func (cs *connServer) Stop() {
 	close(cs.exitChan)
 	cs.wg.Wait()
-}
-
-func getOutboundIP() (string, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "", err
-	}
-	for _, addr := range addrs {
-		ip := strings.Split(addr.String(), "/")[0]
-		parts := strings.Split(ip, ".")
-		if len(parts) != 4 || parts[0] == "127" {
-			continue
-		}
-		return ip, nil
-	}
-	return "", nil
 }
