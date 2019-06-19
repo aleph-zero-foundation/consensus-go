@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -55,6 +56,7 @@ type cliOptions struct {
 	logFilename     string
 	cpuProfFilename string
 	memProfFilename string
+	traceFilename   string
 	posetFilename   string
 	localAddress    string
 	delay           int64
@@ -68,6 +70,7 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
+	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
 	flag.StringVar(&result.posetFilename, "poset", "", "the name of the file to save resulting poset")
 	flag.StringVar(&result.localAddress, "address", "", "the address on which to run the process, if ommitted will be read from the key file")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
@@ -119,6 +122,15 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Cpu-profile failed to start because: %s", err.Error())
 		}
 		defer pprof.StopCPUProfile()
+	}
+	if options.traceFilename != "" {
+		f, err := os.Create(options.traceFilename)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Creating trace-profile file \"%s\" failed because: %s.\n", options.traceFilename, err.Error())
+		}
+		defer f.Close()
+		trace.Start(f)
+		defer trace.Stop()
 	}
 
 	var poset gomel.Poset
