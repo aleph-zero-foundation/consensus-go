@@ -1,6 +1,7 @@
 '''This is a shell for orchestrating experiments on AWS EC 2'''
 import json
 import os
+import shutil
 
 from fabric import Connection
 from functools import partial
@@ -565,7 +566,7 @@ def memory_usage(regions):
 
     return np.min(mems), np.mean(mems), np.max(mems)
 
-def get_logs(regions, ip2pid, logs_per_region=1):
+def get_logs(regions, ip2pid, name, logs_per_region=1):
     '''Retrieves all logs from instances.'''
 
     if not os.path.exists('../results'):
@@ -594,15 +595,16 @@ def get_logs(regions, ip2pid, logs_per_region=1):
 
     n_processes = len(ip2pid)
 
-    result_path = f'../{n_processes}_'\
+    result_path = f'{n_processes}_'\
                   f'{config["NParents"]}_'\
                   f'{int(config["UseTcoin"])}_'\
                   f'{config["CreateDelay"]}_'\
                   f'{config["SyncInitDelay"]}_'\
-                  f'{config["Txpu"]}'
+                  f'{config["Txpu"]}_'\
+                  f'{name}'
 
-    print('rename dir')
-    os.rename('../results', result_path)
+    print('move and rename dir')
+    shutil.move('../results', result_path)
 
     for path in os.listdir(result_path):
         path = os.path.join(result_path, path)
