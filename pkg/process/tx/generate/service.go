@@ -31,7 +31,7 @@ func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- []b
 
 func (s *service) generateRandom() []byte {
 	txpu := int(s.txpu)
-	size := 9*txpu + rand.Intn(2*txpu)
+	size := 15*txpu + rand.Intn(txpu)
 	result := make([]byte, size)
 	rand.Read(result)
 	return result
