@@ -7,6 +7,7 @@ import shutil
 import sys
 
 from os.path import join, isfile, isdir, dirname, basename, splitext
+from tqdm import tqdm
 from zipfile import ZipFile
 
 from driver import Driver
@@ -33,9 +34,9 @@ def extract(path):
     return newname
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archive')
-parser.add_argument('-p', '--pipe', metavar='file', help='file with pipelines definitions (if not present, log analyzer source directory is checked)')
+parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel.Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed).')
+parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archived folder')
+parser.add_argument('-p', '--pipe', metavar='name', help='file with pipelines definitions (if not present, log analyzer source directory is checked)')
 parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
 args = parser.parse_args()
 
@@ -47,9 +48,9 @@ elif isfile(args.pipe):
 elif isfile(args.pipe+'.py'):
     pipelines = args.pipe+'.py'
 elif isfile(join(dirname(__file__), args.pipe)):
-    pipelines = isfile(join(dirname(__file__), args.pipe))
+    pipelines = join(dirname(__file__), args.pipe)
 elif isfile(join(dirname(__file__), args.pipe+'.py')):
-    pipelines = isfile(join(dirname(__file__), args.pipe+'.py'))
+    pipelines = join(dirname(__file__), args.pipe+'.py')
 else:
     print(f'{args.pipe}: invalid file')
     sys.exit(1)
@@ -71,7 +72,7 @@ if isfile(args.path) and args.path.endswith('.log'):
     print(driver.report())
 else:
     path = args.path if isdir(args.path) else extract(args.path)
-    for filename in filter(lambda x: x.endswith('.log'), os.listdir(path)):
+    for filename in tqdm(list(filter(lambda x: x.endswith('.log'), os.listdir(path)))):
         name = filename[:-4]
         driver.new_dataset(name)
         with open(join(path, filename)) as f:

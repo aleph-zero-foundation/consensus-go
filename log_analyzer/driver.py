@@ -62,6 +62,7 @@ class Driver:
             if pipesummary:
                 ret += maketitle(pipeline, 80, '=') + '\n'
                 ret += pipesummary
+                ret += '\n'
         return ret
 
 def maketitle(string, length, pad):
