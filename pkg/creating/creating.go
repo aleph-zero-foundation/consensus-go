@@ -14,6 +14,34 @@ func (e *noAvailableParents) Error() string {
 	return "No legal parents for the unit."
 }
 
+type visionSplit struct {
+	visible   map[gomel.Unit]bool
+	invisible map[gomel.Unit]bool
+}
+
+func newVisionSplit() *visionSplit {
+	return &visionSplit{
+		visible:   make(map[gomel.Unit]bool),
+		invisible: make(map[gomel.Unit]bool),
+	}
+}
+
+func (vs *visionSplit) newSeer(u gomel.Unit) bool {
+	seesNew := false
+	for nv := range vs.invisible {
+		if vs.invisible[nv] && nv.Below(u) {
+			vs.invisible[nv] = false
+			vs.visible[nv] = true
+			seesNew = true
+		}
+	}
+	return seesNew
+}
+
+func (vs *visionSplit) hasQuorumIn(poset gomel.Poset) bool {
+	return poset.IsQuorum(len(vs.visible))
+}
+
 // getPredecessor picks one of the units in mu produced by the given creator.
 func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 	maxUnits := mu.Get(creator)
@@ -43,13 +71,15 @@ func maxLevel(mu gomel.SlottedUnits) int {
 	return result
 }
 
-// filterNotBelow picks all the units in su that are not below any of the units.
-func filterNotBelow(su gomel.SlottedUnits, units []gomel.Unit) []gomel.Unit {
-	result := []gomel.Unit{}
+// splitByBelow return a split of the units in su into parts that are either visible or invisible from units
+func splitByBelow(su gomel.SlottedUnits, units []gomel.Unit) *visionSplit {
+	result := newVisionSplit()
 	su.Iterate(func(primes []gomel.Unit) bool {
 		for _, prime := range primes {
-			if !gomel.BelowAny(prime, units) {
-				result = append(result, prime)
+			if gomel.BelowAny(prime, units) {
+				result.visible[prime] = true
+			} else {
+				result.invisible[prime] = true
 			}
 		}
 		return true
@@ -106,30 +136,18 @@ func getCandidatesAtLevel(candidates gomel.SlottedUnits, parents []gomel.Unit, l
 	return result
 }
 
-// filterOutBelow chooses from units the ones that are not below the given unit.
-func filterOutBelow(units []gomel.Unit, unit gomel.Unit) []gomel.Unit {
-	result := []gomel.Unit{}
-	for _, u := range units {
-		if !u.Below(unit) {
-			result = append(result, u)
-		}
-	}
-	return result
-}
-
 // pickMoreParents chooses from candidates, in a random order, up to limit units that fulfill
 // "expand primes" rule with respect to prime units contained in nvp.
-func pickMoreParents(candidates, nvp []gomel.Unit, limit int) []gomel.Unit {
+func pickMoreParents(candidates []gomel.Unit, vs *visionSplit, enough func([]gomel.Unit) bool) []gomel.Unit {
 	result := []gomel.Unit{}
 	perm := rand.New(rand.NewSource(time.Now().Unix())).Perm(len(candidates))
 	for _, i := range perm {
-		if len(result) == limit {
+		if enough(result) {
 			return result
 		}
 		c := candidates[i]
-		if gomel.AboveAny(c, nvp) {
+		if vs.newSeer(c) {
 			result = append(result, c)
-			nvp = filterOutBelow(nvp, c)
 		}
 	}
 	return result
@@ -167,47 +185,6 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 	return result
 }
 
-// levelFromParents calculates level of the unit under construction that will have given set parents
-// Expects units in parents to be sorted via ascending level
-// It uses dfs on the maximal level of parents
-func levelFromParents(parents []gomel.Unit, poset gomel.Poset) int {
-	if len(parents) == 0 {
-		return 0
-	}
-
-	level := parents[len(parents)-1].Level()
-	procSeen := make(map[int]bool)
-	unitsSeen := make(map[gomel.Hash]bool)
-	stack := []gomel.Unit{}
-	for _, u := range parents {
-		if u.Level() != level {
-			continue
-		}
-		stack = append(stack, u)
-		unitsSeen[*u.Hash()] = true
-		procSeen[u.Creator()] = true
-		if poset.IsQuorum(len(procSeen)) {
-			return level + 1
-		}
-	}
-	for len(stack) > 0 {
-		w := stack[len(stack)-1]
-		stack = stack[:(len(stack) - 1)]
-
-		for _, v := range w.Parents() {
-			if v.Level() == level && !unitsSeen[*v.Hash()] {
-				stack = append(stack, v)
-				unitsSeen[*v.Hash()] = true
-				procSeen[v.Creator()] = true
-				if poset.IsQuorum(len(procSeen)) {
-					return level + 1
-				}
-			}
-		}
-	}
-	return level
-}
-
 // firstDealingUnitFromParents takes parents of the unit under construction
 // and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
 // that is below the unit under construction
@@ -240,11 +217,7 @@ func firstDealingUnitFromParents(parents []gomel.Unit, level int, poset gomel.Po
 // createCoinShare takes parents of the unit under construction
 // if the unit will be a prime unit it returns coin share to include in the unit
 // otherwise it returns nil
-func createCoinShare(parents []gomel.Unit, poset gomel.Poset) *tcoin.CoinShare {
-	level := levelFromParents(parents, poset)
-	if level == parents[0].Level() {
-		return nil
-	}
+func createCoinShare(parents []gomel.Unit, level int, poset gomel.Poset) *tcoin.CoinShare {
 	fdu := firstDealingUnitFromParents(parents, level, poset)
 	tc := poset.ThresholdCoin(fdu.Hash())
 	if tc == nil {
@@ -253,10 +226,10 @@ func createCoinShare(parents []gomel.Unit, poset gomel.Poset) *tcoin.CoinShare {
 	return tc.CreateCoinShare(level)
 }
 
-// NewUnit creates a preunit for a given process with at most maximumParents parents.
+// NewUnit creates a preunit for a given process aiming at desiredParents parents.
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
-func NewUnit(poset gomel.Poset, creator int, maximumParents int, data []byte) (gomel.Preunit, error) {
+func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte) (gomel.Preunit, error) {
 	mu := poset.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
@@ -265,16 +238,31 @@ func NewUnit(poset gomel.Poset, creator int, maximumParents int, data []byte) (g
 	}
 	parents := []gomel.Unit{predecessor}
 	posetLevel := maxLevel(mu)
+	resultLevel := posetLevel
+	isPrime := resultLevel > predecessor.Level()
 	// We try picking units of the highest possible level as parents, going down if we haven't filled all the parent slots.
 	// Usually this loop spans over at most two levels.
-	for level := posetLevel; level >= predecessor.Level() && len(parents) < maximumParents; level-- {
+	for level := posetLevel; level >= predecessor.Level() && (len(parents) < desiredParents || !isPrime); level-- {
 		candidates := getCandidatesAtLevel(mu, parents, level)
-		nvp := filterNotBelow(poset.PrimeUnits(level), parents)
-		parents = combineParents(parents, pickMoreParents(candidates, nvp, maximumParents-len(parents)))
+		vs := splitByBelow(poset.PrimeUnits(level), parents)
+		newParents := pickMoreParents(candidates, vs, func(np []gomel.Unit) bool {
+			if vs.hasQuorumIn(poset) {
+				isPrime = true
+			}
+			totalLen := len(parents) + len(np)
+			return isPrime && totalLen >= desiredParents
+		})
+		parents = combineParents(parents, newParents)
+		if vs.hasQuorumIn(poset) {
+			isPrime = true
+			if level == resultLevel {
+				resultLevel++
+			}
+		}
 	}
-	if len(parents) < 2 {
+	if posetLevel == predecessor.Level() && (len(parents) < 2 || !splitByBelow(poset.PrimeUnits(posetLevel), parents).hasQuorumIn(poset)) {
 		return nil, &noAvailableParents{}
 	}
-	cs := createCoinShare(parents, poset)
+	cs := createCoinShare(parents, resultLevel, poset)
 	return NewPreunit(creator, hashes(parents), data, cs, nil), nil
 }
