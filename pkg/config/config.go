@@ -69,9 +69,9 @@ func NewDefaultConfiguration() Configuration {
 
 		NParents: 10,
 
-		CreateDelay: 1.0,
+		CreateDelay: 0.1,
 
-		StepSize: 0.14,
+		StepSize: 0.0,
 
 		SyncInitDelay: 0.015625,
 
