@@ -23,13 +23,13 @@ type conn struct {
 	link   net.Conn
 	reader *bufio.Reader
 	writer *bufio.Writer
-	inUse  *Mutex
+	inUse  *mutex
 	sent   uint32
 	recv   uint32
 	log    zerolog.Logger
 }
 
-func newConn(link net.Conn, m *Mutex, sent, recv uint32, log zerolog.Logger) *conn {
+func newConn(link net.Conn, m *mutex, sent, recv uint32, log zerolog.Logger) *conn {
 	return &conn{
 		link:   link,
 		reader: bufio.NewReader(link),
@@ -69,7 +69,7 @@ func (c *conn) Flush() error {
 }
 
 func (c *conn) Close() error {
-	defer c.inUse.Release()
+	defer c.inUse.release()
 	err := c.link.Close()
 	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Msg(logging.ConnectionClosed)
 	return err

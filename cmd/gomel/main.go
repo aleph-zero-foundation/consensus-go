@@ -13,6 +13,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
@@ -55,6 +56,7 @@ type cliOptions struct {
 	cpuProfFilename string
 	memProfFilename string
 	posetFilename   string
+	localAddress    string
 	delay           int64
 }
 
@@ -67,9 +69,16 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.posetFilename, "poset", "", "the name of the file to save resulting poset")
+	flag.StringVar(&result.localAddress, "address", "", "the address on which to run the process, if ommitted will be read from the key file")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
 	return result
+}
+
+func fixLocalAddress(processConfig process.Config, localAddress string) {
+	if localAddress != "" {
+		processConfig.Sync.LocalAddress = localAddress
+	}
 }
 
 func main() {
@@ -97,6 +106,8 @@ func main() {
 	}
 
 	processConfig := conf.GenerateConfig(committee, options.dbFilename)
+
+	fixLocalAddress(processConfig, options.localAddress)
 
 	if options.cpuProfFilename != "" {
 		f, err := os.Create(options.cpuProfFilename)
