@@ -73,25 +73,35 @@ def send_repo(conn):
 #======================================================================================
 
 @task
-def run_protocol_profiler(conn, pid, delay='0'):
-    ''' Runs the protocol.'''
-
-    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
-    with conn.cd(repo_path):
-        if int(pid) in list(range(16)):
-            cmd = f'go run cmd/gomel/main.go --poset {pid}.poset --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))} --cpuprof cpuprof --memprof memprof '
-        else:
-            cmd = f'go run cmd/gomel/main.go --poset {pid}.poset --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))}'
-        conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
-
-
-@task
 def run_protocol(conn, pid, delay='0'):
     ''' Runs the protocol.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        cmd = f'go run cmd/gomel/main.go --poset {pid}.poset --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))}'
+        cmd = f'go run cmd/gomel/main.go \
+                    --address "$(hostname --ip-address):8888" \
+                    --keys {pid}.keys \
+                    --config config.json \
+                    --db pkg/testdata/users.txt \
+                    --poset {pid}.poset \
+                    --delay {int(float(delay))}'
+        conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
+
+@task
+def run_protocol_profiler(conn, pid, delay='0'):
+    ''' Runs the protocol.'''
+
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    with conn.cd(repo_path):
+        cmd = f'go run cmd/gomel/main.go \
+                    --address "$(hostname --ip-address):8888" \
+                    --keys {pid}.keys \
+                    --config config.json \
+                    --db pkg/testdata/users.txt \
+                    --poset {pid}.poset \
+                    --delay {int(float(delay))}'
+        if int(pid)%16 == 0 :
+            cmd += ' --cpuprof cpuprof --memprof memprof'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
