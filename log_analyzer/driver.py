@@ -10,14 +10,20 @@ class Driver:
     """
     def __init__(self):
         self.pipelines = OrderedDict()
+        self.datasets = OrderedDict()
+        self.current = None
 
     def add_pipeline(self, name, plugins):
         if not isinstance(plugins, list):
             plugins = [plugins]
         self.pipelines[name] = plugins
 
+    def new_dataset(self, name):
+        self.datasets[name] = deepcopy(self.pipelines)
+        self.current = self.datasets[name]
+
     def handle(self, entry):
-        for pipeline in self.pipelines.values():
+        for pipeline in self.current.values():
             e = deepcopy(entry)
             for plugin in pipeline:
                 e = plugin.process(e)
@@ -25,23 +31,39 @@ class Driver:
                     break
 
     def finalize(self):
-        for pipeline in self.pipelines.values():
+        for pipeline in self.current.values():
             for plugin in pipeline:
                 plugin.finalize()
 
-    def report(self):
-        ret = ''
-        for title, pipeline in self.pipelines.items():
+    def report(self, name=None):
+        dataset, ret = (self.current, '') if name is None else (self.datasets[name], maketitle(name, 100, '#')+'\n')
+        for title, pipeline in dataset.items():
             ret += maketitle(title, 80, '=') + '\n'
             for plugin in pipeline:
-                name, rep = plugin.report()
-                if name:
-                    ret += maketitle(name, 60, '-') + '\n'
+                rep = plugin.report()
+                if plugin.name:
+                    ret += maketitle(plugin.name, 60, '-') + '\n'
                 if rep:
                     ret += rep + '\n'
             ret += '\n'
         return ret
 
+    def summary(self):
+        ret = ''
+        for pipeline in self.pipelines:
+            pipesummary = ''
+            for i, plugin in enumerate(self.pipelines[pipeline]):
+                data = {dataset: self.datasets[dataset][pipeline][i].get_data() for dataset in self.datasets}
+                if any(data.values()):
+                    pluginsummary = plugin.__class__.multistats(data)
+                    if pluginsummary:
+                        pipesummary += maketitle(plugin.name, 60, '-') + '\n'
+                        pipesummary += pluginsummary
+            if pipesummary:
+                ret += maketitle(pipeline, 80, '=') + '\n'
+                ret += pipesummary
+                ret += '\n'
+        return ret
 
 def maketitle(string, length, pad):
     h = length - len(string) - 2

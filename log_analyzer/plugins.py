@@ -4,13 +4,31 @@ from numpy import histogram
 
 class Plugin:
     """Parent class definition for all plugins."""
+    name = ''
     def process(self, entry):
         return entry
     def finalize(self):
         pass
+    def get_data(self):
+        return []
     def report(self):
-        return None, ''
+        return ''
+    @staticmethod
+    def multistats(datasets):
+        return ''
 
+def multimean(datasets):
+    full = []
+    stats = []
+    for name, data in datasets.items():
+        full += data
+        stats.append((mean(data), name))
+    stats.sort()
+    glob = mean(full)
+    ret =  '    Global Average: %13.2f\n' % glob
+    ret += '    Min Average: %13.2f (%s)\n' % stats[0]
+    ret += '    Max Average: %13.2f (%s)\n' % stats[-1]
+    return ret
 
 class Filter(Plugin):
     """
@@ -32,30 +50,28 @@ class After(Plugin):
     """Plugin filtering out entries based on time."""
     def __init__(self, time):
         self.time = time
+        self.name = 'Entries after '+str(self.time)
 
     def process(self, entry):
         return entry if entry[Time] > self.time else None
 
-    def report(self):
-        return 'Entries after '+str(self.time), ''
 
 class Before(Plugin):
     """Plugin filtering out entries based on time."""
     def __init__(self, time):
         self.time = time
+        self.name = 'Entries before '+str(self.time)
 
     def process(self, entry):
         return entry if entry[Time] < self.time else None
 
-    def report(self):
-        return 'Entries before '+str(self.time), ''
-
 
 class Timer(Plugin):
     """Plugin gathering basic timing statistics of all incoming events."""
+    multistats = multimean
     def __init__(self, name, skip_first=0):
-        self.name = name
-        self.skip = skip_first
+        self.name = 'Timer: '+name
+        self.skip = skip_first - 1
         self.times = []
 
     def process(self, entry):
@@ -67,14 +83,18 @@ class Timer(Plugin):
         for i in range(len(self.times)-1, 1, -1):
             self.times[i] -= self.times[i-1]
 
+    def get_data(self):
+        return self.times[self.skip:]
+
     def report(self):
-        t = self.times[self.skip:]
+        t = self.get_data()
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         ret += '    Min: %10d    ms\n' % min(t)
         ret += '    Max: %10d    ms\n' % max(t)
         ret += '    Avg: %13.2f ms\n' % mean(t)
         ret += '    Med: %13.2f ms\n' % median(t)
-        return 'Timer: '+self.name, ret
+        return ret
+
 
 
 class Counter(Plugin):
@@ -83,9 +103,10 @@ class Counter(Plugin):
     'value' should be a function taking log entry (dict) and returning a value.
     'finalize()' method can be overriden. After it self.data should be a list of numbers.
     """
+    multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
-        self.name = name
-        self.skip = skip_first
+        self.name = 'Counter: '+name
+        self.skip = skip_first - 1
         self.data = []
         self.val = value
         self.events = events if isinstance(events, list) else [events]
@@ -95,14 +116,17 @@ class Counter(Plugin):
             self.data.append(self.val(entry))
         return entry
 
+    def get_data(self):
+        return self.data[self.skip:]
+
     def report(self):
-        d = self.data[self.skip:]
+        d = self.get_data()
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         ret += '    Min: %10d\n' % min(d)
         ret += '    Max: %10d\n' % max(d)
         ret += '    Avg: %13.2f\n' % mean(d)
         ret += '    Med: %13.2f\n' % median(d)
-        return 'Counter: '+self.name, ret
+        return ret
 
 
 class Histogram(Plugin):
@@ -111,9 +135,10 @@ class Histogram(Plugin):
     'value' should be a function taking log entry (dict) and returning a value.
     'finalize()' method can be overriden. After it self.data should be a list of ints.
     """
+    multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
-        self.name = name
-        self.skip = skip_first
+        self.name = 'Histogram: '+name
+        self.skip = skip_first - 1
         self.data = []
         self.val = value
         self.events = events if isinstance(events, list) else [events]
@@ -123,8 +148,11 @@ class Histogram(Plugin):
             self.data.append(self.val(entry))
         return entry
 
+    def get_data(self):
+        return self.data[self.skip:]
+
     def report(self):
-        d = self.data[self.skip:]
+        d = self.get_data()
         h = {}
         for i in d:
             if i not in h:
@@ -140,7 +168,7 @@ class Histogram(Plugin):
         for k in sorted(h.keys()):
             ret += '     %3d             %5d\n' % (k, h[k])
         ret += '    Average:  %5.2f\n' % (num/den)
-        return 'Histogram: '+self.name, ret
+        return ret
 
 
 class Delay(Plugin):
@@ -150,9 +178,10 @@ class Delay(Plugin):
     A particular key has to be returned exactly once for start-type entry and once for end-type entry.
     Alternatively, 'func' can be a pair of functions, if different logic is needed for start and end entries.
     """
+    multistats = multimean
     def __init__(self, name, start, end, func, skip_first=0, threshold=5):
-        self.name = name
-        self.skip = skip_first
+        self.name = 'Delay: '+name
+        self.skip = skip_first - 1
         self.thr = threshold
         self.tmpdata = {}
         self.start = start if isinstance(start, list) else [start]
@@ -188,14 +217,17 @@ class Delay(Plugin):
             else:
                 self.data.append((s, e-s, k))
         self.data.sort()
+        self.data = [(d, k) for _,d,k in self.data]
+
+    def get_data(self):
+        return [i[0] for i in self.data[self.skip:]]
 
     def report(self):
         if len(self.data) == 0:
-            return 'Delay: '+self.name, 'NO SUCH EVENTS'
-        data = [(i[1], i[2]) for i in self.data[self.skip:]]
-        times = [i[0] for i in data]
+            return 'NO SUCH EVENTS'
+        times = self.get_data()
         if max(times) <= self.thr:
-            return 'Delay: '+self.name, 'NEGLIGIBLE'
+            return 'NEGLIGIBLE'
         ret =  '    Complete:   %7d\n' % len(self.data)
         ret += '    Incomplete: %7d\n\n' % len(self.incomplete)
         ret += '  (skipped first %d entries)\n'%self.skip if self.skip else ''
@@ -203,6 +235,7 @@ class Delay(Plugin):
         ret += '    Max: %10d    ms\n' % max(times)
         ret += '    Avg: %13.2f ms\n' % mean(times)
         ret += '    Med: %13.2f ms\n\n' % median(times)
+        data = self.data[self.skip:]
         data.sort(reverse=True)
         ret += '  5 largest:\n'
         for t,k in data[:5]:
@@ -210,8 +243,8 @@ class Delay(Plugin):
         ret += '  Distribution:\n'
         size, brackets = histogram(times, bins=10)
         for i in zip(brackets[:-1], brackets[1:],size):
-            ret += '   %6.1f-%-6.1f: %10d\n' % i
-        return 'Delay: '+self.name, ret
+            ret += '   %10.1f-%-8.1f: %10d\n' % i
+        return ret
 
 
 class CreateCounter(Plugin):
@@ -222,6 +255,7 @@ class CreateCounter(Plugin):
     * number of times create unit failed due to not enough parents
     * longest streak of non-prime units
     """
+    name = 'Create counter'
     def __init__(self):
         self.nonprimes = 0
         self.primes = 0
@@ -249,11 +283,13 @@ class CreateCounter(Plugin):
         ret += '    Total calls:              %5d\n'%(self.noparents+self.nonprimes+self.primes)
         ret += '    Longest nonprime streak:  %5d\n'%max(self.streaks)
         ret += '    Avg nonprime streak:      %8.2f\n'%mean(self.streaks)
-        return 'Create counter', ret
+        return ret
 
 
 class SyncStats(Plugin):
     """Plugin gathering statistics of syncs."""
+    name = 'Sync stats'
+    multistats = multimean
     def __init__(self, ignore_empty=False):
         self.ig = ignore_empty
         self.inc = {}
@@ -309,6 +345,10 @@ class SyncStats(Plugin):
         self.times = sorted([i[0] for i in self.stats])
         self.sent = sorted([i[1] for i in self.stats])
         self.recv = sorted([i[2] for i in self.stats])
+        self.dupl = sorted([i[3] for i in self.stats])
+
+    def get_data(self):
+        return self.times
 
     def report(self):
         ret =   '  (ignoring syncs that exchanged nothing)\n' if self.ig else ''
@@ -326,14 +366,18 @@ class SyncStats(Plugin):
         ret +=  '    Min units received:  %10d\n'%self.recv[0]
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
         ret +=  '    Avg units received:  %13.2f\n\n'%mean(self.recv)
-        return 'Sync stats', ret
+        ret +=  '    Min duplicated:      %10d\n'%self.dupl[0]
+        ret +=  '    Max duplicated:      %10d\n'%self.dupl[-1]
+        ret +=  '    Avg duplicated:      %13.2f\n\n'%mean(self.dupl)
+        return ret
 
 
 class NetworkTraffic(Plugin):
     """Plugin measuring the size of data sent/received through the network."""
+    name = 'Network traffic [kB/s]'
     def __init__(self, skip_first=0):
         self.data = {}
-        self.skip = skip_first
+        self.skip = skip_first - 1
 
     def process(self, entry):
         if entry[Event] == ConnectionClosed:
@@ -357,12 +401,13 @@ class NetworkTraffic(Plugin):
         ret += '    Max: %10d       %10d\n' % (max(s), max(r))
         ret += '    Avg: %13.2f    %13.2f\n' % (mean(s), mean(r))
         ret += '    Med: %13.2f    %13.2f\n' % (median(s), median(r))
-        return 'Network traffic [kB/s]', ret
+        return ret
 
 
 class MemoryStats(Plugin):
-    shifts = {'B':0, 'kB':10, 'MB':20, 'GB':30}
     """Plugin gathering memory usage statistics."""
+    shifts = {'B':0, 'kB':10, 'MB':20, 'GB':30}
+    name = 'Memory usage'
     def __init__(self, unit='MB'):
         self.data = []
         if unit not in self.shifts:
@@ -380,4 +425,4 @@ class MemoryStats(Plugin):
         ret = '     Time[s]     Heap[%s]     Total[%s]\n' % (self.unit, self.unit)
         for i in self.data:
             ret += '%10d    %10d    %10d\n' % i
-        return 'Memory usage', ret
+        return ret
