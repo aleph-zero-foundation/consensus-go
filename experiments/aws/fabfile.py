@@ -46,6 +46,7 @@ def inst_deps(conn):
 #======================================================================================
 #                                   syncing local version
 #======================================================================================
+
 @task 
 def send_config(conn):
     ''' Sends keys, addresses, and parameters. '''
@@ -105,7 +106,18 @@ def run_protocol_profiler(conn, pid, delay='0'):
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
-def get_profile_data(conn, pid):
+def stop_world(conn):
+    ''' Kills the committee member.'''
+
+    conn.run('killall go')
+    conn.run('killall main')
+
+#======================================================================================
+#                                        get data
+#======================================================================================
+
+@task
+def get_profile(conn, pid):
     ''' Retrieves aleph.log from the server.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
@@ -122,7 +134,6 @@ def get_poset(conn, pid):
         conn.run(f'zip -q {pid}.poset.zip {pid}.poset')
     conn.get(f'{repo_path}/{pid}.poset.zip', f'../results/{pid}.poset.zip')
 
-
 @task
 def get_log(conn, pid):
     ''' Retrieves aleph.log from the server.'''
@@ -133,17 +144,3 @@ def get_log(conn, pid):
         conn.run(f'mv aleph.log {pid}.log')
         conn.run(f'zip -q {pid}.log.zip {pid}.log')
     conn.get(f'{repo_path}/{pid}.log.zip', f'../results/{pid}.log.zip')
-
-@task
-def stop_world(conn):
-    ''' Kills the committee member.'''
-
-    conn.run('killall go')
-    conn.run('killall main')
-
-
-@task
-def version(conn):
-    ''' Always changing task for experimenting with fab.'''
-
-    conn.run(f'PATH="$PATH:/snap/bin" && go version')

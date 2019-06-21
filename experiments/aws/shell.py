@@ -5,6 +5,7 @@ import shutil
 
 from fabric import Connection
 from functools import partial
+from glob import glob
 from subprocess import call, check_output
 from time import sleep, time
 from joblib import Parallel, delayed
@@ -481,7 +482,6 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
 
     return pids, ip2pid
 
-
 def create_images(regions=badger_regions()):
     '''Creates images with golang set up for gomel.'''
 
@@ -566,7 +566,7 @@ def memory_usage(regions):
 
     return np.min(mems), np.mean(mems), np.max(mems)
 
-def get_logs(regions, ip2pid, name, logs_per_region=1):
+def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
     '''Retrieves all logs from instances.'''
 
     if not os.path.exists('../results'):
@@ -581,13 +581,18 @@ def get_logs(regions, ip2pid, name, logs_per_region=1):
         print('collecting logs in ', rn)
         collected = 0
         for ip in instances_ip_in_region(rn):
-            run_task_for_ip('get-log', [ip], parallel=0, pids=[ip2pid[ip]])
-            run_task_for_ip('get-poset', [ip], parallel=0, pids=[ip2pid[ip]])
-            if len(os.listdir('../results')) > l:
-                l = len(os.listdir('../results'))
+            pid = ip2pid[ip]
+            run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
+            run_task_for_ip('get-poset', [ip], parallel=0, pids=[pid])
+            if int(pid) % 16 == 0:
+                run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
+
+            if len(glob('../results/*.log')) > l:
+                l = len(glob('../results/*.log'))
                 collected += 1
                 if collected == logs_per_region:
                     break
+
 
     print(len(os.listdir('../results')), 'files in ../results')
     
@@ -639,8 +644,6 @@ restricted = {'ap-south-1':     10,  # Mumbai
               'sa-east-1':      5}   # Sao Paolo
 badger_restricted = {'ap-southeast-2': 5, 'sa-east-1': 5}
 
-
-pb = lambda : run_protocol(104, badger_regions(), badger_restricted, 't2.medium')
 rs = lambda : run_protocol(8, badger_regions(), badger_restricted, 't2.micro')
 rf = lambda : run_protocol(128, badger_regions(), {}, 'm4.2xlarge')
 mu = lambda regions=badger_regions(): memory_usage(regions)

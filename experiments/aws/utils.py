@@ -208,10 +208,9 @@ def read_aws_keys():
 def generate_keys(ip_list, port):
     ''' Generate signing keys for the committee.'''
     n_processes = len(ip_list)
-    
-    keys_path = glob('data/*.keys')
 
     os.chdir('data/')
+    keys_path = glob('*.keys')
     pubs = None
     if len(keys_path) == n_processes:
         print('reusing keys')
@@ -229,6 +228,9 @@ def generate_keys(ip_list, port):
                 for pub, ip in zip(pubs, ip_list):
                     f.write(f'{pub} {ip}:{port}\n')
     else:
+        print('removing old keys')
+        for kp in keys_path:
+            os.remove(kp)
         print('genereting a new set of keys')
         # we need to generate a new set of keys
         with open('addresses', 'w') as f:
