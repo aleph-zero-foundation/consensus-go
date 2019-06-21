@@ -334,3 +334,6 @@ def translate_region_codes(regions):
         'sa-east-1':'Sao Paulo,',
     }
     return [dictionary[r] for r in regions]
+
+def color_print(string):
+    print('\x1b[6;30;42m' + string + '\x1b[0m')

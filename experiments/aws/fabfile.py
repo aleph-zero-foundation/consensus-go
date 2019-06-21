@@ -128,7 +128,6 @@ def get_profile(conn, pid):
 def get_poset(conn, pid):
     ''' Retrieves aleph.log from the server.'''
 
-
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
         conn.run(f'zip -q {pid}.poset.zip {pid}.poset')
@@ -138,9 +137,18 @@ def get_poset(conn, pid):
 def get_log(conn, pid):
     ''' Retrieves aleph.log from the server.'''
 
-
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
         conn.run(f'mv aleph.log {pid}.log')
         conn.run(f'zip -q {pid}.log.zip {pid}.log')
     conn.get(f'{repo_path}/{pid}.log.zip', f'../results/{pid}.log.zip')
+
+#======================================================================================
+#                                        misc
+#======================================================================================
+
+@task
+def test(conn):
+    ''' Tests if connection is ready '''
+
+    conn.open()

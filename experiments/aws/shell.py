@@ -6,7 +6,7 @@ import shutil
 from fabric import Connection
 from functools import partial
 from glob import glob
-from subprocess import call, check_output
+from subprocess import call, check_output, DEVNULL
 from time import sleep, time
 from joblib import Parallel, delayed
 
@@ -14,7 +14,7 @@ import boto3
 import numpy as np
 import zipfile
 
-from utils import image_id_in_region, default_region_name, init_key_pair, security_group_id_by_region, available_regions, badger_regions, generate_keys, n_processes_per_regions, eu_regions, translate_region_codes
+from utils import image_id_in_region, default_region_name, init_key_pair, security_group_id_by_region, available_regions, badger_regions, generate_keys, n_processes_per_regions, color_print
 
 import warnings
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
@@ -231,7 +231,7 @@ def run_cmd_in_region(cmd='tail -f proof-of-concept/experiments/aleph.log', regi
     return results
 
 
-def wait_in_region(target_state, region_name):
+def wait_in_region(target_state, region_name=default_region_name()):
     '''Waits until all machines in a given region reach a given state.'''
 
     if region_name == default_region_name():
@@ -242,8 +242,13 @@ def wait_in_region(target_state, region_name):
     instances = all_instances_in_region(region_name)
     if target_state == 'running':
         for i in instances: i.wait_until_running()
-    if target_state == 'terminated':
+    elif target_state == 'terminated':
         for i in instances: i.wait_until_terminated()
+    elif target_state == 'open 22':
+        for i in instances:
+            cmd = f'fab -i key_pairs/aleph.pem -H ubuntu@{i.public_ip_address} test'
+            while call(cmd.split(), stderr=DEVNULL):
+                pass
     if target_state == 'ssh ready':
         ids = [instance.id for instance in instances]
         initializing = True
@@ -432,15 +437,14 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     if regions == 'all':
         regions = available_regions()
 
-    # note: there are only 5 t2.micro machines in 'sa-east-1', 'ap-southeast-2' each
-    print('launching machines')
+    color_print('launching machines')
     nhpr = n_processes_per_regions(n_processes, regions, restricted)
     launch_new_instances(nhpr, instance_type)
 
-    print('waiting for transition from pending to running')
+    color_print('waiting for transition from pending to running')
     wait('running', regions)
 
-    print('generating keys&addresses files')
+    color_print('generating keys&addresses files')
     pids, ip2pid, ip_list, c = {}, {}, [], 0
     for r in regions:
         ipl = instances_ip_in_region(r)
@@ -451,29 +455,28 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
         
     generate_keys(ip_list, 8888)
 
-    print('waiting till ports are open on machines')
+    color_print('waiting till ports are open on machines')
     # this is really slow, and actually machines are ready earlier! refactor
-    #wait('ssh ready', regions)
-    sleep(100)
+    wait('open 22', regions)
 
-    print('pack the repo')
+    color_print('pack the repo')
     call('rm -f repo.zip'.split())
-    call('zip -rq repo.zip ../../cmd ../../pkg -x "*testdata*"'.split())
+    call('zip -rq repo.zip ../../cmd ../../pkg -x "*testdata*"', shell=True)
     call('zip -uq repo.zip ../../pkg/testdata/users.txt'.split())
     run_task('send-repo', regions, parallel)
 
-    #print('cloning repo')
+    #color_print('cloning repo')
     #run_task('clone-repo', regions, parallel)
 
-    #print('TMP send new tcp/server.go')
+    #color_print('TMP send new tcp/server.go')
     #send_file('pkg/network/tcp/server.go', regions)
 
     run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel) 
 
-    print('send data: keys, addresses, parameters')
+    color_print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
 
-    print(f'establishing the environment took {round(time()-start, 2)}s')
+    color_print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
     if profiler:
         run_task('run-protocol-profiler', regions, parallel, False, pids, time()+60)
@@ -637,6 +640,7 @@ cmr = run_cmd_in_region
 cm = run_cmd
 
 ti = terminate_instances
+tir = terminate_instances_in_region
 
 restricted = {'ap-south-1':     10,  # Mumbai
               'ap-southeast-2': 5,   # Sydney
