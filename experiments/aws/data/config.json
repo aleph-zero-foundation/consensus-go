@@ -1,0 +1,42 @@
+{
+
+		"NParents": 10,
+
+		"CreateDelay": 1.0,
+
+		"StepSize": 0.14,
+
+		"SyncInitDelay": 0.015625,
+
+		"NRecvSync": 10,
+
+		"NInitSync": 10,
+
+		"Txpu": 1,
+
+		"TxLimit": 1000000,
+
+		"LevelLimit": 50,
+
+		"UnitsLimit": null,
+
+		"SyncsLimit": null,
+
+		"UseTcoin": true,
+
+		"AdaptiveDelay": true,
+
+		"VotingLevel": 3,
+
+		"PiDeltaLevel": 12,
+
+		"AddShares": 0,
+
+		"LogLevel": 1,
+
+		"LogBuffer": 100000,
+
+        "LogMemInterval": 10,
+
+		"LogHuman": false 
+	}
