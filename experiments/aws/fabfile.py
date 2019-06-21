@@ -73,15 +73,15 @@ def send_repo(conn):
 #======================================================================================
 
 @task
-def run_protocol_profiler(conn, pid):
+def run_protocol_profiler(conn, pid, delay='0'):
     ''' Runs the protocol.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
         if int(pid) in list(range(16)):
-            cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --cpuprof cpuprof --memprof memprof'
+            cmd = f'go run cmd/gomel/main.go --poset {pid}.poset --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))} --cpuprof cpuprof --memprof memprof '
         else:
-            cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt'
+            cmd = f'go run cmd/gomel/main.go --poset {pid}.poset --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))}'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 
@@ -91,7 +91,7 @@ def run_protocol(conn, pid, delay='0'):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        cmd = f'go run cmd/gomel/main.go --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))}'
+        cmd = f'go run cmd/gomel/main.go --poset {pid}.poset --keys {pid}.keys --config config.json --db pkg/testdata/users.txt --delay {int(float(delay))}'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
@@ -101,6 +101,17 @@ def get_profile_data(conn, pid):
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     conn.get(f'{repo_path}/cpuprof', f'../results/{pid}.cpuprof')
     conn.get(f'{repo_path}/memprof', f'../results/{pid}.memprof')
+
+@task
+def get_poset(conn, pid):
+    ''' Retrieves aleph.log from the server.'''
+
+
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    with conn.cd(repo_path):
+        conn.run(f'zip -q {pid}.poset.zip {pid}.poset')
+    conn.get(f'{repo_path}/{pid}.poset.zip', f'../results/{pid}.poset.zip')
+
 
 @task
 def get_log(conn, pid):

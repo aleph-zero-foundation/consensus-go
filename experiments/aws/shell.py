@@ -582,6 +582,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1):
         collected = 0
         for ip in instances_ip_in_region(rn):
             run_task_for_ip('get-log', [ip], parallel=0, pids=[ip2pid[ip]])
+            run_task_for_ip('get-poset', [ip], parallel=0, pids=[ip2pid[ip]])
             if len(os.listdir('../results')) > l:
                 l = len(os.listdir('../results'))
                 collected += 1
