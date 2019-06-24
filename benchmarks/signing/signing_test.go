@@ -9,6 +9,9 @@ import (
 	"golang.org/x/crypto/nacl/sign"
 )
 
+// NOTE: Tried to benchmark the libgodium library (https://github.com/ArteMisc/libgodium) as well, but was unable to convince
+// it to work correctly, i.e. calling VerifyDetached directly on a result of SignDetached was always returning false.
+
 const (
 	testDataSize  int = 1024 * 1024
 	signatureSize int = 64
