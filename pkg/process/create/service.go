@@ -22,6 +22,7 @@ type service struct {
 	poset            gomel.Poset
 	pid              int
 	maxParents       int
+	primeOnly        bool
 	maxLevel         int
 	maxHeight        int
 	privKey          gomel.PrivateKey
@@ -50,6 +51,7 @@ func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- 
 		poset:            poset,
 		pid:              config.Pid,
 		maxParents:       config.MaxParents,
+		primeOnly:        config.PrimeOnly,
 		maxLevel:         config.MaxLevel,
 		maxHeight:        config.MaxHeight,
 		privKey:          config.PrivateKey,
@@ -123,7 +125,7 @@ func (s *service) getData() []byte {
 }
 
 func (s *service) createUnit() {
-	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, s.getData())
+	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, s.getData(), s.primeOnly)
 	if err != nil {
 		s.slower()
 		s.log.Info().Msg(logging.NotEnoughParents)

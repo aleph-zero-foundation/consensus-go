@@ -2,9 +2,11 @@
 
 		"NParents": 10,
 
-		"CreateDelay": 0.1,
+		"PrimeOnly": false,
 
-		"StepSize": 0.0,
+		"CreateDelay": 1.0,
+
+		"StepSize": 0.14,
 
 		"SyncInitDelay": 0.015625,
 

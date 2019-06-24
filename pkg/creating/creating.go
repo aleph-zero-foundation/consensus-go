@@ -229,7 +229,8 @@ func createCoinShare(parents []gomel.Unit, level int, poset gomel.Poset) *tcoin.
 // NewUnit creates a preunit for a given process aiming at desiredParents parents.
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
-func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte) (gomel.Preunit, error) {
+// It also returns an error if requirePrime is true and no prime can be produced.
+func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte, requirePrime bool) (gomel.Preunit, error) {
 	mu := poset.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
@@ -242,7 +243,7 @@ func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte) (g
 	isPrime := resultLevel > predecessor.Level()
 	// We try picking units of the highest possible level as parents, going down if we haven't filled all the parent slots.
 	// Usually this loop spans over at most two levels.
-	for level := posetLevel; level >= predecessor.Level() && (len(parents) < desiredParents || !isPrime); level-- {
+	for level := posetLevel; level >= predecessor.Level() && (len(parents) < desiredParents || (requirePrime && !isPrime)); level-- {
 		candidates := getCandidatesAtLevel(mu, parents, level)
 		vs := splitByBelow(poset.PrimeUnits(level), parents)
 		newParents := pickMoreParents(candidates, vs, func(np []gomel.Unit) bool {
@@ -250,7 +251,7 @@ func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte) (g
 				isPrime = true
 			}
 			totalLen := len(parents) + len(np)
-			return isPrime && totalLen >= desiredParents
+			return (!requirePrime || isPrime) && totalLen >= desiredParents
 		})
 		parents = combineParents(parents, newParents)
 		if vs.hasQuorumIn(poset) {
@@ -260,9 +261,12 @@ func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte) (g
 			}
 		}
 	}
-	if posetLevel == predecessor.Level() && (len(parents) < 2 || !splitByBelow(poset.PrimeUnits(posetLevel), parents).hasQuorumIn(poset)) {
+	if posetLevel == predecessor.Level() && (len(parents) < 2 || (requirePrime && !isPrime)) {
 		return nil, &noAvailableParents{}
 	}
-	cs := createCoinShare(parents, resultLevel, poset)
+	var cs *tcoin.CoinShare
+	if isPrime {
+		cs = createCoinShare(parents, resultLevel, poset)
+	}
 	return NewPreunit(creator, hashes(parents), data, cs, nil), nil
 }

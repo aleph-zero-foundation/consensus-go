@@ -34,6 +34,7 @@ type Sync struct {
 type Create struct {
 	Pid          int
 	MaxParents   int
+	PrimeOnly    bool
 	PrivateKey   gomel.PrivateKey
 	InitialDelay time.Duration
 	AdjustFactor float64

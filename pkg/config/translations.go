@@ -37,6 +37,7 @@ func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 	return &process.Create{
 		Pid:          c.Pid,
 		MaxParents:   int(conf.NParents),
+		PrimeOnly:    conf.PrimeOnly,
 		PrivateKey:   c.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
