@@ -6,6 +6,7 @@ import (
 
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -20,8 +21,19 @@ type forkingStrategy func(gomel.Preunit, gomel.Poset, gomel.PrivateKey, int) []g
 
 type forker func(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey) (gomel.Preunit, error)
 
+func generateFreshData(preunitData []byte) []byte {
+	var data []byte
+	data = append(data, preunitData...)
+	if len(data) > 0 && data[len(data)-1] < math.MaxUint8 {
+		data[len(data)-1]++
+	} else {
+		data = append(data, 0)
+	}
+	return data
+}
+
 func newForkWithDifferentData(preunit gomel.Preunit) gomel.Preunit {
-	data := append(preunit.Data(), 1)
+	data := generateFreshData(preunit.Data())
 	return creating.NewPreunit(
 		preunit.Creator(),
 		preunit.Parents(),
@@ -37,16 +49,75 @@ func newForkerUsingDifferentDataStrategy() forker {
 	}
 }
 
+func createForkUsingCreating(parentsCount int) forker {
+	return func(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey) (gomel.Preunit, error) {
+
+		pu, err := creating.NewUnit(poset, int(preunit.Creator()), parentsCount, helpers.NewDefaultDataContent())
+		if err != nil {
+			fmt.Println("forker", err)
+			return nil, errors.New("unable to create a forking unit")
+		}
+
+		parents := pu.Parents()
+		parents[0] = preunit.Parents()[0]
+		freshData := generateFreshData(preunit.Data())
+		return creating.NewPreunit(pu.Creator(), parents, freshData, preunit.CoinShare(), preunit.ThresholdCoinData()), nil
+	}
+}
+
+func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
+	var max gomel.Unit
+	for ix, parent := range parents {
+		if floor := parent.Floor()[creator]; len(floor) > 0 {
+			if len(floor) > 1 {
+				return false
+			}
+			max = floor[0]
+			parents = parents[ix:]
+			break
+		}
+	}
+	if max == nil {
+		return true
+	}
+	for _, parent := range parents {
+		floor := parent.Floor()[creator]
+		if len(floor) == 0 {
+			continue
+		}
+		if len(floor) > 1 {
+			return false
+		}
+		if max.Below(floor[0]) {
+			max = floor[0]
+		} else if !floor[0].Below(max) {
+			return false
+		}
+	}
+	return true
+}
+
+func checkCompliance(poset gomel.Poset, creator uint16, parents []gomel.Unit) error {
+	if !checkSelfForkingEvidence(parents, creator) {
+		return gomel.NewComplianceError("parents contain evidence of self forking")
+	}
+	if growing.CheckForkerMuting(parents) != nil {
+		return gomel.NewComplianceError("parents do not satisfy the forker-muting rule")
+	}
+	if growing.CheckExpandPrimes(poset, parents) != nil {
+		return gomel.NewComplianceError("parents violate the expand-primes rule")
+	}
+	return nil
+}
+
 func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 	return func(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey) (gomel.Preunit, error) {
 
 		parents := make([]*gomel.Hash, 0, parentsCount)
 		parentUnits := make([]gomel.Unit, 0, parentsCount)
-		firstParent := preunit.Parents()[0]
-		parents = append(parents, firstParent)
-		parentUnits = append(parentUnits, poset.Get([]*gomel.Hash{firstParent})[0])
-
-		selfPredecessor := poset.Get([]*gomel.Hash{firstParent})[0]
+		selfPredecessor := poset.Get([]*gomel.Hash{preunit.Parents()[0]})[0]
+		parents = append(parents, selfPredecessor.Hash())
+		parentUnits = append(parentUnits, selfPredecessor)
 
 		for _, pid := range rand.Perm(poset.NProc()) {
 			if len(parents) >= parentsCount {
@@ -56,14 +127,18 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 				continue
 			}
 
-			availableParents := poset.MaximalUnitsPerProcess().Get(pid)
+			var availableParents []gomel.Unit
+			availableParents = append(availableParents, poset.MaximalUnitsPerProcess().Get(pid)...)
+
 			for len(availableParents) > 0 {
 				randIx := rand.Intn(len(availableParents))
 				selectedParent := availableParents[randIx]
 				availableParents[len(availableParents)-1], availableParents[randIx] =
 					availableParents[randIx], availableParents[len(availableParents)-1]
 				parentUnits = append(parentUnits, selectedParent)
-				if growing.CheckExpandPrimes(poset, parentUnits) != nil {
+				if err := checkCompliance(poset, uint16(preunit.Creator()), parentUnits); err != nil {
+					// TODO output some message
+					// fmt.Println()
 					parentUnits = parentUnits[:len(parentUnits)-1]
 					predecessor, err := gomel.Predecessor(selectedParent)
 					if err != nil || predecessor.Below(selfPredecessor) {
@@ -74,13 +149,14 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 					continue
 				}
 				parents = append(parents, selectedParent.Hash())
-				availableParents = availableParents[:len(availableParents)-1]
+				break
 			}
 		}
-		if len(parents) != parentsCount {
+		if len(parents) < 2 {
 			return nil, errors.New("unable to collect enough parents")
 		}
-		return creating.NewPreunit(preunit.Creator(), parents, preunit.Data(), nil, nil), nil
+		freshData := generateFreshData(preunit.Data())
+		return creating.NewPreunit(preunit.Creator(), parents, freshData, nil, nil), nil
 	}
 }
 
@@ -380,14 +456,14 @@ func testRandomForking(forkingStrategy forkingStrategy) error {
 	return helpers.Test(pubKeys, privKeys, nUnits, maxParents, testingRoutine)
 }
 
-func testForkingChangingParents() error {
+func testForkingChangingParents(forker forker) error {
 	const (
 		nProcesses      = 21
 		nUnits          = 1000
 		maxParents      = 2
 		votingLevel     = 4
 		createLevel     = 10
-		buildLevel      = createLevel + 1
+		buildLevel      = createLevel + 3
 		showOffLevel    = buildLevel + 2
 		numberOfForks   = 2
 		numberOfParents = 2
@@ -399,7 +475,6 @@ func testForkingChangingParents() error {
 	fmt.Println("byzantine posets:", byzantinePosets)
 
 	type byzAddingHandler func(posets []gomel.Poset, preunit gomel.Preunit, unit gomel.Unit) error
-	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	byzPosets := map[uint16]struct {
 		byzCreator helpers.Creator
 		byzAdder   byzAddingHandler
@@ -411,7 +486,7 @@ func testForkingChangingParents() error {
 
 			uint16(byzPoset),
 			privKeys[byzPoset],
-			createForksUsingForker(createForkWithRandomParents(numberOfParents, rand)),
+			createForksUsingForker(forker),
 			numberOfForks,
 			maxParents,
 		)
@@ -484,9 +559,21 @@ var _ = Describe("Byzantine Poset Test", func() {
 	})
 
 	Describe("fork with different parents", func() {
-		It("should finish without errors", func() {
-			err := testForkingChangingParents()
-			Expect(err).NotTo(HaveOccurred())
+		Context("by calling creating on a bigger poset", func() {
+			FIt("should finish without errors", func() {
+				const parentsInForkingUnits = 2
+				err := testForkingChangingParents(createForkUsingCreating(parentsInForkingUnits))
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("by randomly choosing parents", func() {
+			FIt("should finish without errors", func() {
+				const parentsInForkingUnits = 2
+				rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+				err := testForkingChangingParents(createForkWithRandomParents(parentsInForkingUnits, rand))
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
 	})
 })

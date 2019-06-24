@@ -1,8 +1,6 @@
 package growing
 
 import (
-	"fmt"
-
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -25,7 +23,7 @@ func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	}
 
 	// 3. Satisfies forker-muting policy
-	if err := checkForkerMuting(u); err != nil {
+	if err := CheckForkerMuting(u.Parents()); err != nil {
 		return err
 	}
 
@@ -79,20 +77,19 @@ func checkParentsDiversity(u gomel.Unit) error {
 // Checks if the unit U does not provide evidence of its creator forking.
 func checkNoSelfForkingEvidence(u gomel.Unit) error {
 	if u.HasForkingEvidence(u.Creator()) {
-		// return gomel.NewComplianceError("A unit is evidence of self forking")
-		return gomel.NewComplianceError(fmt.Sprintf("A unit is evidence of self forking: %+v", u))
+		return gomel.NewComplianceError("A unit is evidence of self forking")
 	}
 	return nil
 }
 
-// Checks if the unit U respects the forker-muting policy, i.e.:
+// Checks if the set of units respects the forker-muting policy, i.e.:
 // The following situation is not allowed:
-//   - There exists a process j, s.t. one of U's parents was created by j
+//   - There exists a process j, s.t. one of parents was created by j
 //   AND
-//   - U has as one of the parents a unit that has evidence that j is forking.
-func checkForkerMuting(u gomel.Unit) error {
-	for _, parent1 := range u.Parents() {
-		for _, parent2 := range u.Parents() {
+//   - one of the parents has evidence that j is forking.
+func CheckForkerMuting(parents []gomel.Unit) error {
+	for _, parent1 := range parents {
+		for _, parent2 := range parents {
 			if parent1 == parent2 {
 				continue
 			}
