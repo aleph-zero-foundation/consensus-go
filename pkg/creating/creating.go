@@ -215,12 +215,12 @@ func firstDealingUnitFromParents(parents []gomel.Unit, level int, poset gomel.Po
 }
 
 // createCoinShare takes parents of the unit under construction
-// if the unit will be a prime unit it returns coin share to include in the unit
-// otherwise it returns nil
+// and the level of the unit and returns coin share to include in the unit
 func createCoinShare(parents []gomel.Unit, level int, poset gomel.Poset) *tcoin.CoinShare {
 	fdu := firstDealingUnitFromParents(parents, level, poset)
 	tc := poset.ThresholdCoin(fdu.Hash())
 	if tc == nil {
+		// This should never happen.
 		return nil
 	}
 	return tc.CreateCoinShare(level)
