@@ -75,9 +75,9 @@ func NewDefaultConfiguration() Configuration {
 
 		SyncInitDelay: 0.015625,
 
-		NRecvSync: 10,
+		NRecvSync: 64,
 
-		NInitSync: 10,
+		NInitSync: 64,
 
 		Txpu: 1,
 
