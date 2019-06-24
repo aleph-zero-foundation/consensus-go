@@ -82,27 +82,25 @@ func (s *Server) inDispatcher() {
 				<-s.exitChan
 				return
 			}
-			go func() {
-				g, err := getGreeting(link)
-				if err != nil {
-					s.log.Error().Str("where", "syncServer.inDispatcher.greeting").Msg(err.Error())
-					link.Close()
-					return
-				}
-				if g.pid >= uint16(len(s.inUse)) {
-					s.log.Warn().Uint16(logging.PID, g.pid).Msg("Called by a stranger")
-					link.Close()
-					return
-				}
-				m := s.inUse[g.pid]
-				if !m.tryAcquire() {
-					link.Close()
-					return
-				}
-				log := s.log.With().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Logger()
-				conn := newConn(link, m, 0, 6, log) // greeting has 6 bytes
-				s.inSyncProto.Run(s.poset, conn)
-			}()
+			g, err := getGreeting(link)
+			if err != nil {
+				s.log.Error().Str("where", "syncServer.inDispatcher.greeting").Msg(err.Error())
+				link.Close()
+				continue
+			}
+			if g.pid >= uint16(len(s.inUse)) {
+				s.log.Warn().Uint16(logging.PID, g.pid).Msg("Called by a stranger")
+				link.Close()
+				continue
+			}
+			m := s.inUse[g.pid]
+			if !m.tryAcquire() {
+				link.Close()
+				continue
+			}
+			log := s.log.With().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Logger()
+			conn := newConn(link, m, 0, 6, log) // greeting has 6 bytes
+			s.inSyncProto.Run(s.poset, conn)
 		}
 	}
 }
@@ -116,35 +114,33 @@ func (s *Server) outDispatcher() {
 		case remotePid, ok := <-s.pidDialChan:
 			if !ok {
 				<-s.exitChan
+				return
+			}
+			m := s.inUse[remotePid]
+			if !m.tryAcquire() {
 				continue
 			}
-			go func() {
-				m := s.inUse[remotePid]
-				if !m.tryAcquire() {
-					return
-				}
-				link, err := s.dialer.Dial(remotePid)
-				if err != nil {
-					s.log.Error().Str("where", "syncServer.outDispatcher.dial").Msg(err.Error())
-					m.release()
-					return
-				}
-				g := &greeting{
-					pid: uint16(s.pid),
-					sid: s.syncIds[remotePid],
-				}
-				s.syncIds[remotePid]++
-				err = g.send(link)
-				if err != nil {
-					s.log.Error().Str("where", "syncServer.outDispatcher.greeting").Msg(err.Error())
-					m.release()
-					link.Close()
-					return
-				}
-				log := s.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, g.sid).Logger()
-				conn := newConn(link, m, 6, 0, log) // greeting has 6 bytes
-				s.outSyncProto.Run(s.poset, conn)
-			}()
+			link, err := s.dialer.Dial(remotePid)
+			if err != nil {
+				s.log.Error().Str("where", "syncServer.outDispatcher.dial").Msg(err.Error())
+				m.release()
+				continue
+			}
+			g := &greeting{
+				pid: uint16(s.pid),
+				sid: s.syncIds[remotePid],
+			}
+			s.syncIds[remotePid]++
+			err = g.send(link)
+			if err != nil {
+				s.log.Error().Str("where", "syncServer.outDispatcher.greeting").Msg(err.Error())
+				m.release()
+				link.Close()
+				continue
+			}
+			log := s.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, g.sid).Logger()
+			conn := newConn(link, m, 6, 0, log) // greeting has 6 bytes
+			s.outSyncProto.Run(s.poset, conn)
 		}
 	}
 }
