@@ -5,9 +5,6 @@ import (
 	"testing"
 	"time"
 
-	godium "go.artemisc.eu/godium"
-	"go.artemisc.eu/godium/random"
-	godium_sign "go.artemisc.eu/godium/sign"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/nacl/sign"
 )
@@ -111,40 +108,6 @@ func generateEd25519Keys() (publicKey, privateKey, error) {
 	return &ed25519PublicKey{pk}, &ed25519PrivateKey{sk}, nil
 }
 
-type godiumPrivateKey struct {
-	data godium.Sign
-}
-
-type godiumPublicKey struct {
-	data godium.SignVerifier
-}
-
-func (sk *godiumPrivateKey) sign(dst, data []byte) signedMessage {
-	return sk.data.Sign(dst, data)
-}
-
-func (sk *godiumPrivateKey) signDetached(data []byte, signature signature) signature {
-	return sk.data.SignDetached(signature[:0], data)
-}
-
-func (pk *godiumPublicKey) verify(dst, signed []byte) bool {
-	_, v := pk.data.Open(dst[:0], signed)
-	return v
-}
-
-func (pk *godiumPublicKey) verifyDetached(data []byte, signature signature) bool {
-	return pk.data.VerifyDetached(signature, data)
-}
-
-func generateGodiumKeys() (publicKey, privateKey, error) {
-	random := random.New()
-	sign, err := godium_sign.KeyPairEd25519(random)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &godiumPublicKey{godium_sign.NewEd25519Verifier(sign.PublicKey())}, &godiumPrivateKey{sign}, nil
-}
-
 func initializeData() (dst []byte, data []byte) {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var dataArray [2*testDataSize + signatureSize]byte
@@ -207,17 +170,6 @@ func BenchmarkSignAndVerifyEd25519(b *testing.B) {
 	}
 	benchmarkSignAndVerify(b, pk, sk, dst, testData)
 }
-
-func BenchmarkSignGodium(b *testing.B) {
-	dst, testData := initializeData()
-	_, sk, err := generateGodiumKeys()
-	if err != nil {
-		b.Fatal("unable to generate keys")
-	}
-	benchmarkSign(b, sk, dst, testData)
-}
-
-// TODO Missing 'verify' and 'sign and verify' benchmarks for godium.
 
 func benchmarkVerify(b *testing.B, pk publicKey, sk privateKey, dst, data []byte) {
 	signature := sk.signDetached(data, dst)
