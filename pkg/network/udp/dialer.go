@@ -1,4 +1,4 @@
-package tcp
+package udp
 
 import (
 	"io"
@@ -21,7 +21,7 @@ func NewDialer(remoteAddrs []string) network.Dialer {
 
 func (d *dialer) Dial(pid uint16) (net.Conn, error) {
 	dialer := &net.Dialer{Deadline: time.Now().Add(time.Second * 2)}
-	return dialer.Dial("tcp", d.remoteAddrs[pid])
+	return dialer.Dial("udp", d.remoteAddrs[pid])
 }
 
 func (d *dialer) DialAll() io.Writer {
