@@ -39,7 +39,8 @@ class Driver:
     def report(self, name=None):
         dataset, ret = (self.current, '') if name is None else (self.datasets[name], maketitle(name, 100, '#')+'\n')
         for title, pipeline in dataset.items():
-            ret += maketitle(title, 80, '=') + '\n'
+            if title:
+                ret += maketitle(title, 80, '=') + '\n'
             for plugin in pipeline:
                 rep = plugin.report()
                 if plugin.name:

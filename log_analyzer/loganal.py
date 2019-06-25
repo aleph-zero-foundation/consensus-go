@@ -72,10 +72,11 @@ if isfile(args.path) and args.path.endswith('.log'):
     print(driver.report(name))
 else:
     path = args.path if isdir(args.path) else extract(args.path)
-    for filename in tqdm(list(filter(lambda x: x.endswith('.log'), os.listdir(path)))):
+    os.chdir(path)
+    for filename in tqdm(list(filter(lambda x: x.endswith('.log'), os.listdir('.')))):
         name = filename[:-4]
         driver.new_dataset(name)
-        with open(join(path, filename)) as f:
+        with open(filename) as f:
             for line in f:
                 driver.handle(json.loads(line))
         driver.finalize()
