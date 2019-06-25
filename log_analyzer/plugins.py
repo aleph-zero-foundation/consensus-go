@@ -301,7 +301,7 @@ class SyncStats(Plugin):
     """Plugin gathering statistics of syncs."""
     name = 'Sync stats'
     multistats = multimean
-    def __init__(self, ignore_empty=False):
+    def __init__(self, ignore_empty=True):
         self.ig = ignore_empty
         self.inc = {}
         self.out = {}
@@ -340,8 +340,11 @@ class SyncStats(Plugin):
 
     def finalize(self):
         values = list(self.inc.values()) + list(self.out.values())
-        self.stats = []
-        self.addexc, self.failed, self.unfinished, self.totaltime = 0,0,0,0
+        self.times = []
+        self.sent = []
+        self.recv = []
+        self.dupl = []
+        self.addexc, self.failed, self.unfinished = 0,0,0
         for d in values:
             if d['fail']:
                 self.failed += 1
@@ -349,14 +352,16 @@ class SyncStats(Plugin):
                 self.unfinished += 1
                 continue
             elif 'start' in d:
-                self.stats.append((d['end']-d['start'], d['sent'], d['recv'], d['dupl']))
-                self.totaltime += d['end']-d['start']
+                self.times.append(d['end']-d['start'])
+                self.sent.append(d['sent'])
+                self.recv.append(d['recv'])
+                self.dupl.append(d['dupl'])
             if d['addexc']:
                 self.addexc += 1
-        self.times = sorted([i[0] for i in self.stats])
-        self.sent = sorted([i[1] for i in self.stats])
-        self.recv = sorted([i[2] for i in self.stats])
-        self.dupl = sorted([i[3] for i in self.stats])
+        self.times.sort()
+        self.sent.sort()
+        self.recv.sort()
+        self.dupl.sort()
 
     def get_data(self):
         return self.times
@@ -370,16 +375,21 @@ class SyncStats(Plugin):
         ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
         ret +=  '    Min time:            %10d    ms\n'%self.times[0]
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
-        ret +=  '    Avg time:            %13.2f ms\n\n'%mean(self.times)
+        ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
+        ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
+        ret +=  '    Med time:            %13.2f ms\n\n'%median(self.times)
         ret +=  '    Min units sent:      %10d\n'%self.sent[0]
         ret +=  '    Max units sent:      %10d\n'%self.sent[-1]
-        ret +=  '    Avg units sent:      %13.2f\n\n'%mean(self.sent)
+        ret +=  '    Avg units sent:      %13.2f\n'%mean(self.sent)
+        ret +=  '    Med units sent:      %13.2f\n\n'%median(self.sent)
         ret +=  '    Min units received:  %10d\n'%self.recv[0]
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
-        ret +=  '    Avg units received:  %13.2f\n\n'%mean(self.recv)
+        ret +=  '    Avg units received:  %13.2f\n'%mean(self.recv)
+        ret +=  '    Med units received:  %13.2f\n\n'%median(self.recv)
         ret +=  '    Min duplicated:      %10d\n'%self.dupl[0]
         ret +=  '    Max duplicated:      %10d\n'%self.dupl[-1]
-        ret +=  '    Avg duplicated:      %13.2f\n\n'%mean(self.dupl)
+        ret +=  '    Avg duplicated:      %13.2f\n'%mean(self.dupl)
+        ret +=  '    Med duplicated:      %13.2f\n\n'%median(self.dupl)
         return ret
 
 
