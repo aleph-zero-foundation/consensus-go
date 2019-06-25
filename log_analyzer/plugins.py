@@ -493,7 +493,7 @@ class SyncPlots(Plotter):
                 lst.append((v['start'],v['end'],v['units'],pid))
         self.out = lst
 
-    def makeplot(self, data, name):
+    def makeplot(self, data, name, pid=None):
         d = np.array(sorted(data))
         filename = f'syncs_{name}.png' if name else 'syncs.png'
 
@@ -501,6 +501,7 @@ class SyncPlots(Plotter):
             colors = [self.colornames[self.regions[i]] for i in d[:,3]]
         else:
             colors = None
+        mycol = self.colornames[self.regions[pid]] if pid is not None else 'black'
 
         conc = [(i,1) for i in d[:,0]] + [(i,-1) for i in d[:,1]]
         conc.sort()
@@ -516,8 +517,11 @@ class SyncPlots(Plotter):
 
         fig, ax1 = plt.subplots()
         fig.set_size_inches(25,15)
-        ax1.set_xlabel('time (ms)')
-        ax1.set_ylabel('sync duration (ms)')
+
+        ax1.set_title(str(pid), fontsize=32, color=mycol)
+        ax1.set_xlabel('time (ms)', color=mycol)
+        ax1.set_ylabel('sync duration (ms)', color=mycol)
+        ax1.tick_params(colors=mycol)
         sc = ax1.scatter(d[:,0],d[:,1]-d[:,0], s=d[:,2], c=colors, alpha=0.5)
         if self.region_names:
             leg = plt.legend(handles=[Patch(color=c, label=r) for c,r in zip(self.colornames, self.region_names)], loc="upper right", framealpha=0.5)
@@ -525,15 +529,27 @@ class SyncPlots(Plotter):
         ax1.legend(*sc.legend_elements(prop='sizes', num=5), title="units exchanged", loc="upper left", framealpha=0.5)
 
         ax2 = ax1.twinx()
-        ax2.set_ylabel('number of concurrent syncs')
+        ax2.set_ylabel('number of concurrent syncs', color=mycol)
+        ax2.tick_params(colors=mycol)
+        ax2.spines['top'].set_color(mycol)
+        ax2.spines['bottom'].set_color(mycol)
+        ax2.spines['left'].set_color(mycol)
+        ax2.spines['right'].set_color(mycol)
         ax2.plot(x, y, color='black', linewidth=1, alpha=0.2)
+
         plt.savefig(filename)
+        plt.close()
         return filename
 
     def saveplot(self, name):
-        filename = self.makeplot(self.inc + self.out, name)
+        try:
+            pid = int(name)
+        except:
+            pid = None
+
+        filename = self.makeplot(self.inc + self.out, name, pid)
         if self.divide:
-            fileo  = self.makeplot(self.out, name+'_o')
-            filei  = self.makeplot(self.inc, name+'_i')
+            fileo  = self.makeplot(self.out, name+'_o', pid)
+            filei  = self.makeplot(self.inc, name+'_i', pid)
             return f'Plots saved as {filename}, {fileo} and {filei}'
         return f'Plot saved as {filename}'
