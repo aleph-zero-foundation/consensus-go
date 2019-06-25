@@ -19,7 +19,7 @@ var _ = Describe("VeryPoly", func() {
 			pf = NewPolyVerifier(n, f)
 		})
 		Describe("On a sequence of constant values", func() {
-			It("should be return true", func() {
+			It("should return true", func() {
 				values = make([]*bn256.G2, n)
 				for i := 0; i < n; i++ {
 					values[i] = new(bn256.G2).ScalarBaseMult(big.NewInt(2137))
@@ -28,7 +28,7 @@ var _ = Describe("VeryPoly", func() {
 			})
 		})
 		Describe("On a sequence x^4 for x=1,2,...,n", func() {
-			It("should be return false", func() {
+			It("should return false", func() {
 				values = make([]*bn256.G2, n)
 				for i := 0; i < n; i++ {
 					values[i] = new(bn256.G2).ScalarBaseMult(big.NewInt(int64(i * i * i * i)))
@@ -37,7 +37,7 @@ var _ = Describe("VeryPoly", func() {
 			})
 		})
 		Describe("On a sequence x^3 for x=1,2,...,n", func() {
-			It("should be return false", func() {
+			It("should return true", func() {
 				values = make([]*bn256.G2, n)
 				for i := 0; i < n; i++ {
 					values[i] = new(bn256.G2).ScalarBaseMult(big.NewInt(int64(i * i * i)))
@@ -46,12 +46,21 @@ var _ = Describe("VeryPoly", func() {
 			})
 		})
 		Describe("On a sequence of values of some polynomial of degree 3", func() {
-			It("should be return false", func() {
+			It("should return true", func() {
 				values = make([]*bn256.G2, n)
 				for i := 0; i < n; i++ {
 					values[i] = new(bn256.G2).ScalarBaseMult(big.NewInt(int64(3*i*i*i + 2*i*i + i + 7)))
 				}
 				Expect(pf.Verify(values)).To(BeTrue())
+			})
+		})
+		Describe("On a sequence of values of some polynomial of degree 4", func() {
+			It("should return false", func() {
+				values = make([]*bn256.G2, n)
+				for i := 0; i < n; i++ {
+					values[i] = new(bn256.G2).ScalarBaseMult(big.NewInt(int64(2*i*i*i*i + 3*i*i*i + 2*i*i + i + 7)))
+				}
+				Expect(pf.Verify(values)).To(BeFalse())
 			})
 		})
 	})
