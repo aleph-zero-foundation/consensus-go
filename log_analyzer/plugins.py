@@ -1,6 +1,11 @@
 from const import *
+
 from statistics import mean, median
-from numpy import histogram
+import numpy as np
+
+from matplotlib.patches import Patch
+import matplotlib.pyplot as plt
+
 
 class Plugin:
     """Parent class definition for all plugins."""
@@ -247,7 +252,7 @@ class Delay(Plugin):
         for t,k in data[:5]:
             ret += '%15s: %10d ms\n' % (k,t)
         ret += '  Distribution:\n'
-        size, brackets = histogram(times, bins=10)
+        size, brackets = np.histogram(times, bins=10)
         for i in zip(brackets[:-1], brackets[1:],size):
             ret += '   %10.1f-%-8.1f: %10d\n' % i
         return ret
@@ -432,3 +437,93 @@ class MemoryStats(Plugin):
         for i in self.data:
             ret += '%10d    %10d    %10d\n' % i
         return ret
+
+
+class SyncPlots(Plotter):
+    """Plugin gathering statistics of syncs."""
+    name = 'Sync plots'
+    def __init__(self, regions=None, region_names=None, divide=True):
+        self.inc = {}
+        self.out = {}
+        self.regions = {r:i for i,region in enumerate(regions) for r in region} if regions is not None else None
+        self.region_names = region_names
+        self.divide = divide
+        self.colornames = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    def process(self, entry):
+        if PID not in entry:
+            return entry
+        if OSID in entry:
+            d = self.out
+            key = (entry[PID], entry[OSID])
+        elif ISID in entry:
+            d = self.inc
+            key = (entry[PID], entry[ISID])
+        else:
+            return entry
+
+        if key not in d:
+            d[key] = {}
+        if entry[Event] == SyncStarted:
+            d[key]['start'] = entry[Time]
+        elif entry[Event] == SyncCompleted:
+            d[key]['end'] = entry[Time]
+            d[key]['units'] = entry[Sent] + entry[Recv]
+        return entry
+
+    def finalize(self):
+        lst = []
+        for (pid,sid),v in self.inc.items():
+            if 'start' in v and 'end' in v and v['units'] > 0:
+                lst.append((v['start'],v['end'],v['units'],pid))
+        self.inc = lst
+        lst = []
+        for (pid,sid),v in self.out.items():
+            if 'start' in v and 'end' in v and v['units'] > 0:
+                lst.append((v['start'],v['end'],v['units'],pid))
+        self.out = lst
+
+    def makeplot(self, data, name):
+        d = np.array(sorted(data))
+        filename = f'syncs_{name}.png' if name else 'syncs.png'
+
+        if self.regions is not None:
+            colors = [self.colornames[self.regions[i]] for i in d[:,3]]
+        else:
+            colors = None
+
+        conc = [(i,1) for i in d[:,0]] + [(i,-1) for i in d[:,1]]
+        conc.sort()
+        x,y = [],[]
+        cur, last = 0,0
+        for t,s in conc:
+            if t != last:
+                if last != 0:
+                    x.append(last)
+                    y.append(cur)
+                last = t
+            cur += s
+
+        fig, ax1 = plt.subplots()
+        fig.set_size_inches(25,15)
+        ax1.set_xlabel('time (ms)')
+        ax1.set_ylabel('sync duration (ms)')
+        sc = ax1.scatter(d[:,0],d[:,1]-d[:,0], s=d[:,2], c=colors, alpha=0.5)
+        if self.region_names:
+            leg = plt.legend(handles=[Patch(color=c, label=r) for c,r in zip(self.colornames, self.region_names)], loc="upper right", framealpha=0.5)
+            ax1.add_artist(leg)
+        ax1.legend(*sc.legend_elements(prop='sizes', num=5), title="units exchanged", loc="upper left", framealpha=0.5)
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('number of concurrent syncs')
+        ax2.plot(x, y, color='black', linewidth=1, alpha=0.2)
+        plt.savefig(filename)
+        return filename
+
+    def saveplot(self, name):
+        filename = self.makeplot(self.inc + self.out, name)
+        if self.divide:
+            fileo  = self.makeplot(self.out, name+'_o')
+            filei  = self.makeplot(self.inc, name+'_i')
+            return f'Plots saved as {filename}, {fileo} and {filei}'
+        return f'Plot saved as {filename}'
