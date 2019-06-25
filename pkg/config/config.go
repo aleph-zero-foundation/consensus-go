@@ -5,6 +5,9 @@ type Configuration struct {
 	// maximal number of parents a unit can have
 	NParents uint
 
+	// whether only prime units should be created
+	PrimeOnly bool
+
 	// delay after creating a new unit
 	CreateDelay float32
 
@@ -69,9 +72,11 @@ func NewDefaultConfiguration() Configuration {
 
 		NParents: 10,
 
-		CreateDelay: 1.0,
+		PrimeOnly: true,
 
-		StepSize: 0.14,
+		CreateDelay: 0.1,
+
+		StepSize: 0.0,
 
 		SyncInitDelay: 0.015625,
 
