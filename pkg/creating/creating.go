@@ -71,7 +71,7 @@ func maxLevel(mu gomel.SlottedUnits) int {
 	return result
 }
 
-// splitByBelow return a split of the units in su into parts that are either visible or invisible from units
+// splitByBelow returns a split of the units in su into parts that are either visible or invisible to units
 func splitByBelow(su gomel.SlottedUnits, units []gomel.Unit) *visionSplit {
 	result := newVisionSplit()
 	su.Iterate(func(primes []gomel.Unit) bool {
@@ -137,7 +137,7 @@ func getCandidatesAtLevel(candidates gomel.SlottedUnits, parents []gomel.Unit, l
 }
 
 // pickMoreParents chooses from candidates, in a random order, up to limit units that fulfill
-// "expand primes" rule with respect to prime units contained in nvp.
+// "expand primes" rule with respect to vs.
 func pickMoreParents(candidates []gomel.Unit, vs *visionSplit, enough func([]gomel.Unit) bool) []gomel.Unit {
 	result := []gomel.Unit{}
 	perm := rand.New(rand.NewSource(time.Now().Unix())).Perm(len(candidates))
@@ -214,13 +214,14 @@ func firstDealingUnitFromParents(parents []gomel.Unit, level int, poset gomel.Po
 	return nil
 }
 
-// createCoinShare takes parents of the unit under construction
-// and the level of the unit and returns coin share to include in the unit
+// createCoinShare returns the coin shares that should be included in
+// a prime unit at a given level with the given parents
 func createCoinShare(parents []gomel.Unit, level int, poset gomel.Poset) *tcoin.CoinShare {
 	fdu := firstDealingUnitFromParents(parents, level, poset)
 	tc := poset.ThresholdCoin(fdu.Hash())
 	if tc == nil {
-		// This should never happen.
+		// This is only needed for tests where we don't currently have threshold coins.
+		// TODO: Add threshold coins to tests?
 		return nil
 	}
 	return tc.CreateCoinShare(level)
