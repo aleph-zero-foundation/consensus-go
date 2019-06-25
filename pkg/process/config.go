@@ -19,15 +19,12 @@ type Config struct {
 
 // Sync represents a complete configuration needed for a syncing service to start.
 type Sync struct {
-	Pid                  int
-	LocalAddress         string
-	RemoteAddresses      []string
-	ListenQueueLength    uint
-	SyncQueueLength      uint
-	InitializedSyncLimit uint
-	ReceivedSyncLimit    uint
-	SyncInitDelay        time.Duration
-	Timeout              time.Duration
+	Pid             int
+	LocalAddress    string
+	RemoteAddresses []string
+	OutSyncLimit    uint
+	InSyncLimit     uint
+	Timeout         time.Duration
 }
 
 // Create represents a complete configuration needed for a creating service to start.

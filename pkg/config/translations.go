@@ -16,15 +16,12 @@ func generatePosetConfig(c *Committee) *gomel.PosetConfig {
 func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 	// TODO: Timeout should also be read from config.
 	return &process.Sync{
-		Pid:                  c.Pid,
-		LocalAddress:         c.Addresses[c.Pid],
-		RemoteAddresses:      c.Addresses,
-		ListenQueueLength:    conf.NRecvSync,
-		SyncQueueLength:      conf.NInitSync,
-		InitializedSyncLimit: conf.NInitSync,
-		ReceivedSyncLimit:    conf.NRecvSync,
-		SyncInitDelay:        time.Duration(conf.SyncInitDelay * float32(time.Second)),
-		Timeout:              2 * time.Second,
+		Pid:             c.Pid,
+		LocalAddress:    c.Addresses[c.Pid],
+		RemoteAddresses: c.Addresses,
+		OutSyncLimit:    conf.NOutSync,
+		InSyncLimit:     conf.NInSync,
+		Timeout:         2 * time.Second,
 	}
 }
 

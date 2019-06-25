@@ -18,7 +18,6 @@ import (
 type service struct {
 	syncServer *gsync.Server
 	connServer network.ConnectionServer
-	dialer     *dialer
 	log        zerolog.Logger
 }
 
@@ -29,14 +28,12 @@ func NewService(poset gomel.Poset, config *process.Sync, attemptTiming chan<- in
 	if err != nil {
 		return nil, err
 	}
-	dial := newDialer(poset.NProc(), config.Pid, config.SyncInitDelay)
 	requestIn := &request.In{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
 	requestOut := &request.Out{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
-	syncServ := gsync.NewServer(uint16(config.Pid), poset, listenChan, dial.channel(), tcp.NewDialer(config.RemoteAddresses), requestIn, requestOut, config.InitializedSyncLimit, config.ReceivedSyncLimit, log)
+	syncServ := gsync.NewServer(uint16(len(config.RemoteAddresses)), uint16(config.Pid), poset, listenChan, tcp.NewDialer(config.RemoteAddresses), requestIn, requestOut, config.OutSyncLimit, config.InSyncLimit, log)
 	return &service{
 		syncServer: syncServ,
 		connServer: connServ,
-		dialer:     dial,
 		log:        log,
 	}, nil
 }
@@ -47,13 +44,11 @@ func (s *service) Start() error {
 		return err
 	}
 	s.syncServer.Start()
-	s.dialer.start()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 func (s *service) Stop() {
-	s.dialer.stop()
 	// let other processes sync with us some more
 	time.Sleep(10 * time.Second)
 	s.connServer.Stop()

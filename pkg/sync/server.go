@@ -16,12 +16,12 @@ type Server struct {
 	pid          uint16
 	poset        gomel.Poset
 	inConnChan   <-chan net.Conn
-	pidDialChan  <-chan uint16
+	peerSource   *dialer
 	dialer       network.Dialer
 	inSyncProto  Protocol
 	outSyncProto Protocol
-	nInitSync    uint
-	nRecvSync    uint
+	nOutSync     uint
+	nInSync      uint
 	syncIds      []uint32
 	inUse        []*mutex
 	exitChan     chan struct{}
@@ -31,8 +31,9 @@ type Server struct {
 
 // NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,
 // and maximal numbers of syncs to initialize and receive.
-func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, pidDialChan <-chan uint16, dialer network.Dialer, inSyncProto, outSyncProto Protocol, nInitSync, nRecvSync uint, log zerolog.Logger) *Server {
-	inUse := make([]*mutex, dialer.Length())
+func NewServer(nProc, myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, dialer network.Dialer, inSyncProto, outSyncProto Protocol, nOutSync, nInSync uint, log zerolog.Logger) *Server {
+	peerSource := newDialer(nProc, myPid)
+	inUse := make([]*mutex, nProc)
 	for i := range inUse {
 		inUse[i] = newMutex()
 	}
@@ -40,12 +41,12 @@ func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, pidD
 		pid:          myPid,
 		poset:        poset,
 		inConnChan:   inConnChan,
-		pidDialChan:  pidDialChan,
+		peerSource:   peerSource,
 		dialer:       dialer,
 		inSyncProto:  inSyncProto,
 		outSyncProto: outSyncProto,
-		nInitSync:    nInitSync,
-		nRecvSync:    nRecvSync,
+		nOutSync:     nOutSync,
+		nInSync:      nInSync,
 		inUse:        inUse,
 		syncIds:      make([]uint32, dialer.Length()),
 		exitChan:     make(chan struct{}),
@@ -55,12 +56,11 @@ func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, pidD
 
 // Start starts server
 func (s *Server) Start() {
-	for i := uint(0); i < s.nRecvSync; i++ {
-		s.wg.Add(1)
+	s.wg.Add(int(s.nInSync + s.nOutSync))
+	for i := uint(0); i < s.nInSync; i++ {
 		go s.inDispatcher()
 	}
-	for i := uint(0); i < s.nInitSync; i++ {
-		s.wg.Add(1)
+	for i := uint(0); i < s.nOutSync; i++ {
 		go s.outDispatcher()
 	}
 }
@@ -111,11 +111,8 @@ func (s *Server) outDispatcher() {
 		select {
 		case <-s.exitChan:
 			return
-		case remotePid, ok := <-s.pidDialChan:
-			if !ok {
-				<-s.exitChan
-				return
-			}
+		default:
+			remotePid := s.peerSource.nextPeer()
 			m := s.inUse[remotePid]
 			if !m.tryAcquire() {
 				continue
@@ -141,6 +138,8 @@ func (s *Server) outDispatcher() {
 			log := s.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, g.sid).Logger()
 			conn := newConn(link, m, 6, 0, log) // greeting has 6 bytes
 			s.outSyncProto.Run(s.poset, conn)
+			//TODO implement proper updating
+			s.peerSource.update()
 		}
 	}
 }
