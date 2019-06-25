@@ -56,7 +56,7 @@ else:
     sys.exit(1)
 
 driver = Driver()
-exec(compile(open(pipelines).read(), 'pipelines.py', 'exec'))
+exec(compile(open(pipelines).read(), pipelines, 'exec'))
 
 if not (isdir(args.path) or (isfile(args.path) and (args.path.endswith('.log') or args.path.endswith('.zip')))):
     print(f'{args.path}: invalid path')
@@ -69,7 +69,7 @@ if isfile(args.path) and args.path.endswith('.log'):
         for line in f:
             driver.handle(json.loads(line))
     driver.finalize()
-    print(driver.report())
+    print(driver.report(name))
 else:
     path = args.path if isdir(args.path) else extract(args.path)
     for filename in tqdm(list(filter(lambda x: x.endswith('.log'), os.listdir(path)))):
