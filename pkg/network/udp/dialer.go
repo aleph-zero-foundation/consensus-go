@@ -27,9 +27,16 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	return newOutConn(conn, d.log), err
 }
 
-func (d *dialer) DialAll() io.Writer {
-	// TODO: implement
-	return nil
+func (d *dialer) DialAll() (io.Writer, error) {
+	udpConns := make([]network.Connection, 0)
+	for pid, _ := range d.remoteAddrs {
+		conn, err := d.Dial(uint16(pid))
+		if err != nil {
+			return nil, err
+		}
+		udpConns = append(udpConns, conn)
+	}
+	return newMltCaster(udpConns), nil
 }
 
 func (d *dialer) Length() int {
