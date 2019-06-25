@@ -9,16 +9,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// Connection represents a connection between two processes.
-type Connection interface {
-	Read([]byte) (int, error)
-	Write([]byte) (int, error)
-	Flush() error
-	Close() error
-	TimeoutAfter(t time.Duration)
-	Log() zerolog.Logger
-}
-
 type conn struct {
 	link   net.Conn
 	reader *bufio.Reader
