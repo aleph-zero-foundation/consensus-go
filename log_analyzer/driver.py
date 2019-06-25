@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from copy import deepcopy
+from plugins import Plotter
 
 class Driver:
     """
@@ -45,6 +46,8 @@ class Driver:
                     ret += maketitle(plugin.name, 60, '-') + '\n'
                 if rep:
                     ret += rep + '\n'
+                if isinstance(plugin, Plotter):
+                    ret += plugin.saveplot(name)
             ret += '\n'
         return ret
 

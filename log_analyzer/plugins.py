@@ -17,6 +17,12 @@ class Plugin:
     def multistats(datasets):
         return ''
 
+class Plotter(Plugin):
+    """Subclass for plugins that produce plots."""
+    def saveplot(self, name):
+        return ''
+
+
 def multimean(datasets):
     full = []
     stats = []
@@ -29,6 +35,7 @@ def multimean(datasets):
     ret += '    Min Average: %13.2f (%s)\n' % stats[0]
     ret += '    Max Average: %13.2f (%s)\n' % stats[-1]
     return ret
+
 
 class Filter(Plugin):
     """
@@ -94,7 +101,6 @@ class Timer(Plugin):
         ret += '    Avg: %13.2f ms\n' % mean(t)
         ret += '    Med: %13.2f ms\n' % median(t)
         return ret
-
 
 
 class Counter(Plugin):
