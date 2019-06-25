@@ -9,6 +9,8 @@ import (
 	"github.com/cloudflare/bn256"
 )
 
+// PolyVerifier is a struct which can verify if the given sequence is a polynomial sequence
+// of bounded degree
 type PolyVerifier struct {
 	vector []*big.Int
 }
