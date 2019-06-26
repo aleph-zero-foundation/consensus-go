@@ -83,7 +83,7 @@ class Timer(Plugin):
     multistats = multimean
     def __init__(self, name, skip_first=0):
         self.name = 'Timer: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.times = []
 
     def process(self, entry):
@@ -117,7 +117,7 @@ class Counter(Plugin):
     multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
         self.name = 'Counter: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.data = []
         self.val = value
         self.events = events if isinstance(events, list) else [events]
@@ -149,7 +149,7 @@ class Histogram(Plugin):
     multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
         self.name = 'Histogram: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.data = []
         self.val = value
         self.events = events if isinstance(events, list) else [events]
@@ -192,7 +192,7 @@ class Delay(Plugin):
     multistats = multimean
     def __init__(self, name, start, end, func, skip_first=0, threshold=5):
         self.name = 'Delay: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.thr = threshold
         self.tmpdata = {}
         self.start = start if isinstance(start, list) else [start]
@@ -398,7 +398,7 @@ class NetworkTraffic(Plugin):
     name = 'Network traffic [kB/s]'
     def __init__(self, skip_first=0):
         self.data = {}
-        self.skip = skip_first - 1
+        self.skip = skip_first
 
     def process(self, entry):
         if entry[Event] == ConnectionClosed:
