@@ -50,18 +50,14 @@ func (cs *connServer) Start() error {
 				return
 			default:
 				ln.SetDeadline(time.Now().Add(time.Second * 2))
-				_, _, err = ln.ReadFromUDP(buffer)
+				n, _, err = ln.ReadFromUDP(buffer)
 				if err != nil {
 					cs.log.Error().Str("where", "UDP connServer.Start").Msg(err.Error())
 					continue
 				}
 
-				select {
-				case cs.listenChan <- newInConn(buffer, cs.log):
-					cs.log.Info().Msg(logging.ConnectionReceived)
-				default:
-					cs.log.Info().Msg(logging.TooManyIncoming)
-				}
+				cs.listenChan <- newInConn(buffer[:n], cs.log)
+				cs.log.Info().Msg(logging.ConnectionReceived)
 			}
 		}
 	}()
