@@ -20,18 +20,10 @@ def lasttime(path, seek=128):
         return json.loads(f.readlines()[-1])[Time]
 
 def extract(path):
-    fwo = splitext(basename(path))[0]
-    base, code = fwo.rsplit('_',1)
-    newname = join(dirname(path),'_'.join([code,base]))
     with ZipFile(path, 'r') as f:
+        ret = join(dirname(path), dirname(f.namelist()[0]))
         f.extractall()
-    if isdir(newname):
-        for f in os.listdir(base):
-            shutil.copy2(join(base,f), join(newname,f))
-        shutil.rmtree(base)
-    else:
-        os.rename(base, newname)
-    return newname
+    return ret
 
 
 parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel.Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed).')
