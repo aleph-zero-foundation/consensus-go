@@ -13,14 +13,14 @@ import (
 
 type connServer struct {
 	localAddr  *net.TCPAddr
-	listenChan chan<- net.Conn
+	listenChan chan<- network.Connection
 	exitChan   chan struct{}
 	wg         sync.WaitGroup
 	log        zerolog.Logger
 }
 
 // NewConnServer creates and initializes a new connServer at the given localAddr pushing any connections into connSink.
-func NewConnServer(localAddr string, connSink chan<- net.Conn, log zerolog.Logger) (network.ConnectionServer, error) {
+func NewConnServer(localAddr string, connSink chan<- network.Connection, log zerolog.Logger) (*connServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err
@@ -54,8 +54,9 @@ func (cs *connServer) Start() error {
 					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
 					continue
 				}
+				conn := NewConn(link, 0, 0, cs.log)
 				select {
-				case cs.listenChan <- link:
+				case cs.listenChan <- conn:
 					cs.log.Info().Msg(logging.ConnectionReceived)
 				default:
 					link.Close()

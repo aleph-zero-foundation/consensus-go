@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"net"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -15,8 +14,8 @@ import (
 type Server struct {
 	pid          uint16
 	poset        gomel.Poset
-	inConnChan   <-chan net.Conn
 	peerSource   *dialer
+	inConnChan   <-chan network.Connection
 	dialer       network.Dialer
 	inSyncProto  Protocol
 	outSyncProto Protocol
@@ -31,7 +30,7 @@ type Server struct {
 
 // NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,
 // and maximal numbers of syncs to initialize and receive.
-func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, dialer network.Dialer, inSyncProto, outSyncProto Protocol, nOutSync, nInSync uint, log zerolog.Logger) *Server {
+func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan network.Connection, dialer network.Dialer, inSyncProto, outSyncProto Protocol, nOutSync, nInSync uint, log zerolog.Logger) *Server {
 	nProc := uint16(dialer.Length())
 	peerSource := newDialer(nProc, myPid)
 	inUse := make([]*mutex, nProc)
@@ -94,14 +93,7 @@ func (s *Server) inDispatcher() {
 				link.Close()
 				continue
 			}
-			m := s.inUse[g.pid]
-			if !m.tryAcquire() {
-				link.Close()
-				continue
-			}
-			log := s.log.With().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Logger()
-			conn := newConn(link, m, 0, 6, log) // greeting has 6 bytes
-			s.inSyncProto.Run(s.poset, conn)
+			s.inSyncProto.Run(s.poset, link)
 		}
 	}
 }
@@ -114,14 +106,10 @@ func (s *Server) outDispatcher() {
 			return
 		default:
 			remotePid := s.peerSource.nextPeer()
-			m := s.inUse[remotePid]
-			if !m.tryAcquire() {
-				continue
-			}
+
 			link, err := s.dialer.Dial(remotePid)
 			if err != nil {
 				s.log.Error().Str("where", "syncServer.outDispatcher.dial").Msg(err.Error())
-				m.release()
 				continue
 			}
 			g := &greeting{
@@ -132,13 +120,10 @@ func (s *Server) outDispatcher() {
 			err = g.send(link)
 			if err != nil {
 				s.log.Error().Str("where", "syncServer.outDispatcher.greeting").Msg(err.Error())
-				m.release()
 				link.Close()
 				continue
 			}
-			log := s.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, g.sid).Logger()
-			conn := newConn(link, m, 6, 0, log) // greeting has 6 bytes
-			s.outSyncProto.Run(s.poset, conn)
+			s.outSyncProto.Run(s.poset, link)
 		}
 	}
 }

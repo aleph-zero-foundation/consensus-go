@@ -1,4 +1,4 @@
-package sync
+package tcp
 
 import (
 	"bufio"
@@ -13,18 +13,16 @@ type conn struct {
 	link   net.Conn
 	reader *bufio.Reader
 	writer *bufio.Writer
-	inUse  *mutex
 	sent   uint32
 	recv   uint32
 	log    zerolog.Logger
 }
 
-func newConn(link net.Conn, m *mutex, sent, recv uint32, log zerolog.Logger) *conn {
+func NewConn(link net.Conn, sent, recv uint32, log zerolog.Logger) *conn {
 	return &conn{
 		link:   link,
 		reader: bufio.NewReader(link),
 		writer: bufio.NewWriter(link),
-		inUse:  m,
 		sent:   sent,
 		recv:   recv,
 		log:    log,
@@ -59,7 +57,6 @@ func (c *conn) Flush() error {
 }
 
 func (c *conn) Close() error {
-	defer c.inUse.release()
 	err := c.link.Close()
 	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Msg(logging.ConnectionClosed)
 	return err
