@@ -14,14 +14,11 @@ type Configuration struct {
 	// a number in [0,1) describing how aggressive is the CreateDelay adjusting mechanism, large = aggressive, 0 = no adjustment at all
 	StepSize float64
 
-	// delay after initializing a sync with other processes
-	SyncInitDelay float32
-
 	// number of allowed parallel received syncs
-	NRecvSync uint
+	NInSync uint
 
 	// number of allowed parallel initiated syncs
-	NInitSync uint
+	NOutSync uint
 
 	// number of transactions per unit
 	Txpu uint
@@ -78,11 +75,9 @@ func NewDefaultConfiguration() Configuration {
 
 		StepSize: 0.0,
 
-		SyncInitDelay: 0.015625,
+		NInSync: 32,
 
-		NRecvSync: 64,
-
-		NInitSync: 64,
+		NOutSync: 32,
 
 		Txpu: 1,
 

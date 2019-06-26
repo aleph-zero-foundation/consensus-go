@@ -8,11 +8,9 @@
 
 		"StepSize": 0.14,
 
-		"SyncInitDelay": 0.015625,
+		"NInSync": 32,
 
-		"NRecvSync": 64,
-
-		"NInitSync": 64,
+		"NOutSync": 32,
 
 		"Txpu": 1,
 
