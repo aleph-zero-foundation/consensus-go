@@ -25,6 +25,8 @@ func (m *multicaster) Write(b []byte) (int, error) {
 }
 
 func (m *multicaster) Flush() error {
+	//might be a good idea to execute this loop in parallel?
+	//also, it deserves better error handling
 	for _, conn := range m.conns {
 		err := conn.Flush()
 		if err != nil {

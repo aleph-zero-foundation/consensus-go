@@ -9,15 +9,15 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-type outConn struct {
+type connOut struct {
 	link        net.Conn
 	writeBuffer []byte
 	sent        uint32
 	log         zerolog.Logger
 }
 
-func newOutConn(link net.Conn, log zerolog.Logger) *outConn {
-	return &outConn{
+func newConnOut(link net.Conn, log zerolog.Logger) *connOut {
+	return &connOut{
 		link:        link,
 		writeBuffer: make([]byte, 0),
 		sent:        0,
@@ -25,11 +25,11 @@ func newOutConn(link net.Conn, log zerolog.Logger) *outConn {
 	}
 }
 
-func (c *outConn) Read(b []byte) (int, error) {
+func (c *connOut) Read(b []byte) (int, error) {
 	return 0, errors.New("cannot read from outgoing UDP connection")
 }
 
-func (c *outConn) Write(b []byte) (int, error) {
+func (c *connOut) Write(b []byte) (int, error) {
 	if len(c.writeBuffer)+len(b) >= (1<<16)-512 {
 		return 0, errors.New("cannot write as the message length would exceed 65023, did you forget to Flush()?")
 	}
@@ -37,23 +37,27 @@ func (c *outConn) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (c *outConn) Flush() error {
+func (c *connOut) Flush() error {
 	_, err := c.link.Write(c.writeBuffer)
 	c.sent += uint32(len(c.writeBuffer))
 	c.writeBuffer = make([]byte, 0)
 	return err
 }
 
-func (c *outConn) Close() error {
+func (c *connOut) Close() error {
 	err := c.link.Close()
 	c.log.Info().Uint32(logging.Sent, c.sent).Msg(logging.ConnectionClosed)
 	return err
 }
 
-func (c *outConn) TimeoutAfter(t time.Duration) {
+func (c *connOut) TimeoutAfter(t time.Duration) {
 	c.link.SetDeadline(time.Now().Add(t))
 }
 
-func (c *outConn) Log() zerolog.Logger {
+func (c *connOut) Log() zerolog.Logger {
 	return c.log
+}
+
+func (c *connOut) SetLogger(log zerolog.Logger) {
+	c.log = log
 }

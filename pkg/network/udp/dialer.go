@@ -12,7 +12,6 @@ type dialer struct {
 	log         zerolog.Logger
 }
 
-// NewDialer creates a dialer for the given addresses.
 func NewDialer(remoteAddrs []string, log zerolog.Logger) *dialer {
 	return &dialer{
 		remoteAddrs: remoteAddrs,
@@ -23,7 +22,10 @@ func NewDialer(remoteAddrs []string, log zerolog.Logger) *dialer {
 func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	// can consider setting a timeout here, yet DialUDP is non-blocking, so there should be no need
 	conn, err := net.Dial("udp", d.remoteAddrs[pid])
-	return newOutConn(conn, d.log), err
+	if err != nil {
+		return nil, err
+	}
+	return newConnOut(conn, d.log), nil
 }
 
 func (d *dialer) DialAll() (network.Multicaster, error) {

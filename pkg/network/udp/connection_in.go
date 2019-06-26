@@ -48,3 +48,7 @@ func (c *connIn) TimeoutAfter(t time.Duration) {
 func (c *connIn) Log() zerolog.Logger {
 	return c.log
 }
+
+func (c *connIn) SetLogger(log zerolog.Logger) {
+	c.log = log
+}

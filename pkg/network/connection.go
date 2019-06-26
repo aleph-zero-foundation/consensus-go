@@ -14,4 +14,5 @@ type Connection interface {
 	Close() error
 	TimeoutAfter(t time.Duration)
 	Log() zerolog.Logger
+	SetLogger(zerolog.Logger)
 }
