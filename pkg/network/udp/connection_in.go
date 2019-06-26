@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+//represents an incoming UDP "connection" -- i.e., just the content of the packet
 type connIn struct {
 	reader io.Reader
 	recv   uint32

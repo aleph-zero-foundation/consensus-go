@@ -93,6 +93,8 @@ func (s *Server) inDispatcher() {
 				link.Close()
 				continue
 			}
+			log := s.log.With().Uint16(logging.PID, g.pid).Uint32(logging.ISID, g.sid).Logger()
+			link.SetLogger(log)
 			s.inSyncProto.Run(s.poset, link)
 		}
 	}
@@ -123,6 +125,8 @@ func (s *Server) outDispatcher() {
 				link.Close()
 				continue
 			}
+			log := s.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, g.sid).Logger()
+			link.SetLogger(log)
 			s.outSyncProto.Run(s.poset, link)
 		}
 	}
