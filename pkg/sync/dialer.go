@@ -33,13 +33,5 @@ func newDialer(nProc, id uint16) *dialer {
 // nextPeer returns a pid of next peer to call to
 // Note: it is thread-safe
 func (d *dialer) nextPeer() uint16 {
-	p := rand.Float64()
-	pid := sort.Search(int(d.nProc), func(i int) bool { return d.dist[i] >= p })
-	return uint16(pid)
-}
-
-// update updates the distribution held by dialer
-// TODO it may take a new distribution or some info to campute a new distribution
-// Note: remember that it should be thread-safe
-func (d *dialer) update() {
+	return uint16(sort.SearchFloat64s(d.dist, rand.Float64()))
 }

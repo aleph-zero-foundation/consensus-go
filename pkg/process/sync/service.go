@@ -30,7 +30,7 @@ func NewService(poset gomel.Poset, config *process.Sync, attemptTiming chan<- in
 	}
 	requestIn := &request.In{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
 	requestOut := &request.Out{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
-	syncServ := gsync.NewServer(uint16(len(config.RemoteAddresses)), uint16(config.Pid), poset, listenChan, tcp.NewDialer(config.RemoteAddresses), requestIn, requestOut, config.OutSyncLimit, config.InSyncLimit, log)
+	syncServ := gsync.NewServer(uint16(config.Pid), poset, listenChan, tcp.NewDialer(config.RemoteAddresses), requestIn, requestOut, config.OutSyncLimit, config.InSyncLimit, log)
 	return &service{
 		syncServer: syncServ,
 		connServer: connServ,

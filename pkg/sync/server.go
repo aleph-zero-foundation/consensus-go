@@ -31,7 +31,8 @@ type Server struct {
 
 // NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,
 // and maximal numbers of syncs to initialize and receive.
-func NewServer(nProc, myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, dialer network.Dialer, inSyncProto, outSyncProto Protocol, nOutSync, nInSync uint, log zerolog.Logger) *Server {
+func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan net.Conn, dialer network.Dialer, inSyncProto, outSyncProto Protocol, nOutSync, nInSync uint, log zerolog.Logger) *Server {
+	nProc := uint16(dialer.Length())
 	peerSource := newDialer(nProc, myPid)
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
@@ -138,8 +139,6 @@ func (s *Server) outDispatcher() {
 			log := s.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, g.sid).Logger()
 			conn := newConn(link, m, 6, 0, log) // greeting has 6 bytes
 			s.outSyncProto.Run(s.poset, conn)
-			//TODO implement proper updating
-			s.peerSource.update()
 		}
 	}
 }

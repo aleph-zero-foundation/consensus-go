@@ -6,11 +6,4 @@ do
 done
 
 echo "analyze logs"
-python3 ../../log_analyzer/loganal.py . > 'summary'
-
-for x in $(ls *.log);
-do
-    echo $x
-    python3 ../../log_analyzer/loganal.py $x > $x".out"
-done
-
+python3 ../../log_analyzer/loganal.py -a -p basic . > 'summary'
