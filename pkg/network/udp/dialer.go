@@ -26,7 +26,7 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	return newOutConn(conn, d.log), err
 }
 
-func (d *dialer) DialAll() (network.MultiCaster, error) {
+func (d *dialer) DialAll() (network.Multicaster, error) {
 	udpConns := make([]network.Connection, 0)
 	for pid, _ := range d.remoteAddrs {
 		conn, err := d.Dial(uint16(pid))
@@ -35,7 +35,7 @@ func (d *dialer) DialAll() (network.MultiCaster, error) {
 		}
 		udpConns = append(udpConns, conn)
 	}
-	return newMltCaster(udpConns), nil
+	return newMulticaster(udpConns), nil
 }
 
 func (d *dialer) Length() int {

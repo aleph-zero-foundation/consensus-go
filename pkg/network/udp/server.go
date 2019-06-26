@@ -50,13 +50,13 @@ func (cs *connServer) Start() error {
 				return
 			default:
 				ln.SetDeadline(time.Now().Add(time.Second * 2))
-				n, _, err = ln.ReadFromUDP(buffer)
+				n, _, err := ln.ReadFromUDP(buffer)
 				if err != nil {
 					cs.log.Error().Str("where", "UDP connServer.Start").Msg(err.Error())
 					continue
 				}
 
-				cs.listenChan <- newInConn(buffer[:n], cs.log)
+				cs.listenChan <- NewConnIn(buffer[:n], cs.log)
 				cs.log.Info().Msg(logging.ConnectionReceived)
 			}
 		}

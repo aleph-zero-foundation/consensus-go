@@ -30,7 +30,7 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	return NewConn(link, 0, 0, d.log), nil
 }
 
-func (d *dialer) DialAll() (network.MultiCaster, error) {
+func (d *dialer) DialAll() (network.Multicaster, error) {
 	// TODO: implement
 	return nil, nil
 }

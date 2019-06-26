@@ -4,17 +4,17 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-type mltCaster struct {
+type multicaster struct {
 	conns []network.Connection
 }
 
-func newMltCaster(conns []network.Connection) *mltCaster {
-	return &mltCaster{
+func newMulticaster(conns []network.Connection) *multicaster {
+	return &multicaster{
 		conns: conns,
 	}
 }
 
-func (m *mltCaster) Write(b []byte) (int, error) {
+func (m *multicaster) Write(b []byte) (int, error) {
 	for _, conn := range m.conns {
 		_, err := conn.Write(b)
 		if err != nil {
@@ -24,7 +24,7 @@ func (m *mltCaster) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (m *mltCaster) Flush() error {
+func (m *multicaster) Flush() error {
 	for _, conn := range m.conns {
 		err := conn.Flush()
 		if err != nil {
@@ -34,7 +34,7 @@ func (m *mltCaster) Flush() error {
 	return nil
 }
 
-func (m *mltCaster) Close() error {
+func (m *multicaster) Close() error {
 	for _, conn := range m.conns {
 		err := conn.Close()
 		if err != nil {
