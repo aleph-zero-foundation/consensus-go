@@ -20,7 +20,7 @@ type connServer struct {
 }
 
 // NewConnServer creates and initializes a new connServer at the given localAddr pushing any connections into connSink.
-func NewConnServer(localAddr string, connSink chan<- network.Connection, log zerolog.Logger) (*connServer, error) {
+func NewConnServer(localAddr string, connSink chan<- network.Connection, log zerolog.Logger) (network.ConnectionServer, error) {
 	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
 	if err != nil {
 		return nil, err

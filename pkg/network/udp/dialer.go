@@ -12,7 +12,8 @@ type dialer struct {
 	log         zerolog.Logger
 }
 
-func NewDialer(remoteAddrs []string, log zerolog.Logger) *dialer {
+//NewDialer creates a dialer for the given addresses.
+func NewDialer(remoteAddrs []string, log zerolog.Logger) network.Dialer {
 	return &dialer{
 		remoteAddrs: remoteAddrs,
 		log:         log,
@@ -30,7 +31,7 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 
 func (d *dialer) DialAll() (network.Multicaster, error) {
 	udpConns := make([]network.Connection, 0)
-	for pid, _ := range d.remoteAddrs {
+	for pid := range d.remoteAddrs {
 		conn, err := d.Dial(uint16(pid))
 		if err != nil {
 			return nil, err

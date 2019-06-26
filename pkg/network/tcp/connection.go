@@ -7,6 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
 type conn struct {
@@ -18,7 +19,8 @@ type conn struct {
 	log    zerolog.Logger
 }
 
-func NewConn(link net.Conn, sent, recv uint32, log zerolog.Logger) *conn {
+//NewConn creates a conn object wrapping a particular tcp connection link
+func NewConn(link net.Conn, sent, recv uint32, log zerolog.Logger) network.Connection {
 	return &conn{
 		link:   link,
 		reader: bufio.NewReader(link),

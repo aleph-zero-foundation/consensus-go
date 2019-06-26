@@ -7,16 +7,17 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-//represents an incoming UDP "connection" -- i.e., just the content of the packet
 type connIn struct {
 	reader io.Reader
 	recv   uint32
 	log    zerolog.Logger
 }
 
-func NewConnIn(packet []byte, log zerolog.Logger) *connIn {
+//NewConnIn initializes an incoming UDP "connection" -- wrapping the content of the incoming packet
+func NewConnIn(packet []byte, log zerolog.Logger) network.Connection {
 	return &connIn{
 		reader: bytes.NewReader(packet),
 		recv:   0,

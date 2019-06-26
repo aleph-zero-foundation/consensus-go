@@ -13,8 +13,8 @@ type dialer struct {
 	log         zerolog.Logger
 }
 
-// NewDialer creates a dialer for the given addresses.
-func NewDialer(remoteAddrs []string, log zerolog.Logger) *dialer {
+//NewDialer creates a dialer for the given addresses.
+func NewDialer(remoteAddrs []string, log zerolog.Logger) network.Dialer {
 	return &dialer{
 		remoteAddrs: remoteAddrs,
 		log:         log,

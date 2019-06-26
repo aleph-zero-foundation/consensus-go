@@ -7,6 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
 type connOut struct {
@@ -16,8 +17,8 @@ type connOut struct {
 	log         zerolog.Logger
 }
 
-//represents an outgoing UDP "connection"
-func newConnOut(link net.Conn, log zerolog.Logger) *connOut {
+//NewConnOut initializes an outgoing UDP "connection"
+func newConnOut(link net.Conn, log zerolog.Logger) network.Connection {
 	return &connOut{
 		link:        link,
 		writeBuffer: make([]byte, 0),
