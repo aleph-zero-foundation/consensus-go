@@ -31,9 +31,9 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	return NewConn(link, 0, 0, d.log), nil
 }
 
-func (d *dialer) DialAll() io.Writer {
+func (d *dialer) DialAll() (io.WriteCloser, error) {
 	// TODO: implement
-	return nil
+	return nil, nil
 }
 
 func (d *dialer) Length() int {
