@@ -1,9 +1,5 @@
 package network
 
-import (
-	"io"
-)
-
 // Dialer establishes connections with commitee members.
 type Dialer interface {
 
@@ -11,7 +7,7 @@ type Dialer interface {
 	Dial(pid uint16) (Connection, error)
 
 	// DialAll returns a writer that can be used to multicast messages to all the committee members.
-	DialAll() (io.WriteCloser, error)
+	DialAll() (MultiCaster, error)
 
 	// Length returns the number of addresses handled by this dialer.
 	Length() int

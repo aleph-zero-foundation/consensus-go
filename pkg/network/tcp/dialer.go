@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"io"
 	"net"
 	"time"
 
@@ -31,7 +30,7 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	return NewConn(link, 0, 0, d.log), nil
 }
 
-func (d *dialer) DialAll() (io.WriteCloser, error) {
+func (d *dialer) DialAll() (network.MultiCaster, error) {
 	// TODO: implement
 	return nil, nil
 }

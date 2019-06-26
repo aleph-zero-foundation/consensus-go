@@ -1,7 +1,6 @@
 package udp
 
 import (
-	"io"
 	"net"
 
 	"github.com/rs/zerolog"
@@ -27,7 +26,7 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	return newOutConn(conn, d.log), err
 }
 
-func (d *dialer) DialAll() (io.WriteCloser, error) {
+func (d *dialer) DialAll() (network.MultiCaster, error) {
 	udpConns := make([]network.Connection, 0)
 	for pid, _ := range d.remoteAddrs {
 		conn, err := d.Dial(uint16(pid))
