@@ -10,6 +10,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
+const UDPMaxPacketSize = (1 << 16) - 512
+
 type connOut struct {
 	link        net.Conn
 	writeBuffer []byte
@@ -32,8 +34,8 @@ func (c *connOut) Read(b []byte) (int, error) {
 }
 
 func (c *connOut) Write(b []byte) (int, error) {
-	if len(c.writeBuffer)+len(b) >= (1<<16)-512 {
-		return 0, errors.New("cannot write as the message length would exceed 65023, did you forget to Flush()?")
+	if len(c.writeBuffer)+len(b) > UDPMaxPacketSize {
+		return 0, errors.New("cannot write as the message length would exceed 65024, did you forget to Flush()?")
 	}
 	c.writeBuffer = append(c.writeBuffer, b...)
 	return len(b), nil
