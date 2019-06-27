@@ -33,27 +33,33 @@ type PosetVerifier func([]gomel.Poset) error
 
 // TestingRoutine describes a strategy for performing a test on a given set of posets.
 type TestingRoutine interface {
-	CreateUnitCreator() UnitCreator
-	CreateAddingHandler() AddingHandler
-	CreatePosetVerifier() PosetVerifier
+	CreateUnitCreator(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator
+	CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler
+	CreatePosetVerifier(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier
+	StopCondition() func(posets []gomel.Poset) bool
 }
 
 type testingRoutine struct {
-	creator  UnitCreator
-	adder    AddingHandler
-	verifier PosetVerifier
+	creator       func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator
+	adder         func(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler
+	verifier      func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier
+	stopCondition func(posets []gomel.Poset) bool
 }
 
-func (test *testingRoutine) CreateUnitCreator() UnitCreator {
-	return test.creator
+func (test *testingRoutine) CreateUnitCreator(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator {
+	return test.creator(posets, privKeys)
 }
 
-func (test *testingRoutine) CreateAddingHandler() AddingHandler {
-	return test.adder
+func (test *testingRoutine) CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler {
+	return test.adder(posets, privKeys)
 }
 
-func (test *testingRoutine) CreatePosetVerifier() PosetVerifier {
-	return test.verifier
+func (test *testingRoutine) CreatePosetVerifier(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier {
+	return test.verifier(posets, privKeys)
+}
+
+func (test *testingRoutine) StopCondition() func(posets []gomel.Poset) bool {
+	return test.stopCondition
 }
 
 // NewDefaultDataContent creates an instance of []byte equal to [1, 2, 3, 4]. It is not intended to be a valid payload for a
@@ -62,9 +68,29 @@ func NewDefaultDataContent() []byte {
 	return []byte{1, 2, 3, 4}
 }
 
+const nUnits = 1000
+
 // NewDefaultTestingRoutine creates an instance of TestingRoutine.
-func NewDefaultTestingRoutine(creator UnitCreator, adder AddingHandler, verifier PosetVerifier) TestingRoutine {
-	return &testingRoutine{creator, adder, verifier}
+func NewDefaultTestingRoutine(
+	creator func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator,
+	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler,
+	verifier func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier,
+) TestingRoutine {
+	unitsCreated := 0
+	stopCondition := func([]gomel.Poset) bool {
+		return unitsCreated >= nUnits
+	}
+	return &testingRoutine{creator, adder, verifier, stopCondition}
+}
+
+// NewDefaultTestingRoutine creates an instance of TestingRoutine.
+func NewTestingRoutineWithStopCondition(
+	creator func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator,
+	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler,
+	verifier func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier,
+	stopCondition func([]gomel.Poset) bool,
+) TestingRoutine {
+	return &testingRoutine{creator, adder, verifier, stopCondition}
 }
 
 // NewDefaultAdder creates an instance of AddingHandler that ads a given unit to all posets under test.
@@ -105,11 +131,61 @@ func AddToPosets(unit gomel.Preunit, posets []gomel.Poset) (gomel.Unit, error) {
 		if err != nil {
 			return nil, err
 		}
-		if ix == unit.Creator() {
+		if ix == unit.Creator() || resultUnit == nil {
 			resultUnit = result
 		}
 	}
 	return resultUnit, nil
+}
+
+// AddToPosetsIngoringErrors adds a unit to all posets ignoring all errors while doing it. It returns, if possible, a Unit added the owning poset (assuming that order of 'posets' lists corresponds with their ids).
+func AddToPosetsIngoringErrors(unit gomel.Preunit, posets []gomel.Poset) gomel.Unit {
+	var resultUnit gomel.Unit
+	for _, poset := range posets {
+		result, err := AddToPoset(poset, unit)
+		if resultUnit == nil {
+			if result != nil {
+				resultUnit = result
+			} else if _, ok := err.(*gomel.DuplicateUnit); ok {
+				duplicates := poset.Get([]*gomel.Hash{unit.Hash()})
+				if len(duplicates) > 0 {
+					resultUnit = duplicates[0]
+				}
+			}
+		}
+		if err != nil {
+			if _, ok := err.(*gomel.DuplicateUnit); ok {
+				continue
+			}
+			if _, ok := err.(*gomel.DataError); ok {
+				fmt.Println("error while adding a unit (error was ignored):", err.Error())
+				fmt.Printf("%+v\n", unit)
+				for _, poset := range posets {
+					parents := poset.Get(unit.Parents())
+					if parents == nil {
+						fmt.Println("missing parents")
+						continue
+					}
+					failed := false
+					for ix, parent := range parents {
+						if parent == nil {
+							fmt.Println("missing parent:", ix)
+							failed = true
+							break
+						}
+					}
+					if failed {
+						continue
+					}
+					fmt.Println("parents:")
+					for _, parent := range parents {
+						fmt.Printf("%+v\n", parent)
+					}
+				}
+			}
+		}
+	}
+	return resultUnit
 }
 
 // AddUnitsToPosetsInRandomOrder adds a set of units in random order (per each poset) to all provided posets.
@@ -142,30 +218,32 @@ func GenerateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.P
 
 // NewDefaultUnitCreator returns an implementation of the UnitCreator type that tries to build a unit using a randomly selected
 // poset.
-func NewDefaultUnitCreator(privKeys []gomel.PrivateKey, unitFactory Creator) UnitCreator {
-	return func(posets []gomel.Poset, privKeys []gomel.PrivateKey) (gomel.Preunit, error) {
-		attempts := 0
-		for {
-			attempts++
-			if attempts%50 == 0 {
-				fmt.Println("Attempt no", attempts, "of creating a new unit")
-			}
+func NewDefaultUnitCreator(unitFactory Creator) func([]gomel.Poset, []gomel.PrivateKey) UnitCreator {
+	return func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator {
+		return func(posets []gomel.Poset, privKeys []gomel.PrivateKey) (gomel.Preunit, error) {
+			attempts := 0
+			for {
+				attempts++
+				if attempts%50 == 0 {
+					fmt.Println("Attempt no", attempts, "of creating a new unit")
+				}
 
-			creator := rand.Intn(len(posets))
-			poset := posets[creator]
+				creator := rand.Intn(len(posets))
+				poset := posets[creator]
 
-			// pu, err := creating.NewUnit(poset, creator, maxParents, NewDefaultDataContent())
-			pu, err := unitFactory(poset, uint16(creator), privKeys[creator])
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
-				continue
+				// pu, err := creating.NewUnit(poset, creator, maxParents, NewDefaultDataContent())
+				pu, err := unitFactory(poset, uint16(creator), privKeys[creator])
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
+					continue
+				}
+				if pu == nil {
+					fmt.Fprintf(os.Stderr, "Creator %d was unable to build a unit\n", creator)
+					continue
+				}
+				pu.SetSignature(privKeys[creator].Sign(pu))
+				return pu, nil
 			}
-			if pu == nil {
-				fmt.Fprintf(os.Stderr, "Creator %d was unable to build a unit\n", creator)
-				continue
-			}
-			pu.SetSignature(privKeys[creator].Sign(pu))
-			return pu, nil
 		}
 	}
 }
@@ -299,9 +377,9 @@ func VerifyTimingUnits() PosetVerifier {
 		func(u1, u2 gomel.Unit) error {
 			level := u1.Level()
 			if level != prevLevel+1 {
-				return gomel.NewDataError(
-					fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
-				)
+				// return gomel.NewDataError(
+				// 	fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
+				// )
 			}
 			prevLevel = level
 
@@ -335,6 +413,8 @@ func VerifyAllPosetsContainSameMaximalUnits() PosetVerifier {
 
 		func(u1, u2 gomel.Unit) error {
 			if *u1.Hash() != *u2.Hash() {
+				fmt.Printf("u1 %+v\n", u1)
+				fmt.Printf("u2 %+v\n", u2)
 				return gomel.NewDataError("posets contains different maximal units")
 			}
 			return nil
@@ -344,8 +424,10 @@ func VerifyAllPosetsContainSameMaximalUnits() PosetVerifier {
 
 // NewDefaultVerifier returns a PosetVerifier composed from VerifyAllPosetsContainSameMaximalUnits, VerifyTimingUnits and
 // VerifyOrdering verifiers.
-func NewDefaultVerifier() PosetVerifier {
-	return ComposeVerifiers(VerifyAllPosetsContainSameMaximalUnits(), VerifyTimingUnits(), VerifyOrdering())
+func NewDefaultVerifier() func([]gomel.Poset, []gomel.PrivateKey) PosetVerifier {
+	return func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier {
+		return ComposeVerifiers(VerifyAllPosetsContainSameMaximalUnits(), VerifyTimingUnits(), VerifyOrdering())
+	}
 }
 
 // NewNoOpVerifier returns a PosetVerifier that does not check provided posets and immediately answers that they are correct.
@@ -360,7 +442,6 @@ func NewNoOpVerifier() PosetVerifier {
 func Test(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	nUnits, maxParents int,
 	testingRoutine TestingRoutine,
 ) error {
 
@@ -373,13 +454,14 @@ func Test(
 		posets = append(posets, poset)
 	}
 
-	unitCreator, addingHandler, verifier :=
-		testingRoutine.CreateUnitCreator(),
-		testingRoutine.CreateAddingHandler(),
-		testingRoutine.CreatePosetVerifier()
+	unitCreator, addingHandler, verifier, stopCondition :=
+		testingRoutine.CreateUnitCreator(posets, privKeys),
+		testingRoutine.CreateAddingHandler(posets, privKeys),
+		testingRoutine.CreatePosetVerifier(posets, privKeys),
+		testingRoutine.StopCondition()
 
 	fmt.Println("Starting a testing routine")
-	for u := 0; u < nUnits; u++ {
+	for !stopCondition(posets) {
 
 		var newUnit gomel.Preunit
 		var err error
