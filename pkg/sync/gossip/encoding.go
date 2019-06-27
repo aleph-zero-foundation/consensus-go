@@ -76,52 +76,67 @@ func decodeProcessInfo(r io.Reader) (*processInfo, error) {
 	return &result, nil
 }
 
-func encodeRequests(w io.Writer, r *requests) error {
-	k := uint32(0)
-	for _, hs := range *r {
-		for range hs {
-			k++
-		}
+func encodeRequests(w io.Writer, r *requests, theirPosetInfo posetInfo) error {
+	k := 0
+	for _, processInfo := range theirPosetInfo {
+		k += len(processInfo)
 	}
-	err := encodeUint32(w, k)
+	err := encodeUint32(w, uint32(k))
 	if err != nil {
 		return err
 	}
-	for i, hs := range *r {
-		for _, h := range hs {
-			err := encodeUint32(w, uint32(i))
-			if err != nil {
-				return err
+	if k != 0 {
+		bs := newBitSet(k)
+		position := 0
+
+		for pid := 0; pid < len(*r); pid++ {
+			hashSet := newStaticHashSet((*r)[pid])
+			for _, uInfo := range theirPosetInfo[pid] {
+				if hashSet.contains((*uInfo).hash) {
+					bs.set(position)
+				}
+				position++
 			}
-			_, err = w.Write(h[:])
-			if err != nil {
-				return err
-			}
+		}
+		_, err := w.Write(bs.toSlice()[:])
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func decodeRequests(r io.Reader, nProc int) (*requests, error) {
+func decodeRequests(r io.Reader, myPosetInfo posetInfo) (*requests, error) {
+	nProc := len(myPosetInfo)
+	myK := 0
+	for _, processInfo := range myPosetInfo {
+		myK += len(processInfo)
+	}
 	k, err := decodeUint32(r)
 	if err != nil {
 		return nil, err
 	}
+	if k != uint32(myK) {
+		return nil, errors.New("received wrong length of requests bitset")
+	}
 	result := make(requests, nProc)
-	for i := uint32(0); i < k; i++ {
-		j, err := decodeUint32(r)
+	if k != 0 {
+		array := make([]byte, (k+7)>>3)
+		_, err := io.ReadFull(r, array[:])
 		if err != nil {
 			return nil, err
 		}
-		if j > uint32(nProc) {
-			return nil, errors.New("invalid process id in requests")
+		bs := bitSetFromSlice(array)
+
+		position := 0
+		for pid, processInfo := range myPosetInfo {
+			for _, uInfo := range processInfo {
+				if bs.test(position) {
+					result[pid] = append(result[pid], (*uInfo).hash)
+				}
+				position++
+			}
 		}
-		h := &gomel.Hash{}
-		_, err = io.ReadFull(r, h[:])
-		if err != nil {
-			return nil, err
-		}
-		result[j] = append(result[j], h)
 	}
 	return &result, nil
 }

@@ -45,16 +45,16 @@ func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
 	return decodeUnits(conn)
 }
 
-func sendRequests(req requests, conn network.Connection) error {
-	err := encodeRequests(conn, &req)
+func sendRequests(req requests, theirPosetInfo posetInfo, conn network.Connection) error {
+	err := encodeRequests(conn, &req, theirPosetInfo)
 	if err != nil {
 		return err
 	}
 	return conn.Flush()
 }
 
-func getRequests(nProc int, conn network.Connection) (requests, error) {
-	result, err := decodeRequests(conn, nProc)
+func getRequests(nProc int, myPosetInfo posetInfo, conn network.Connection) (requests, error) {
+	result, err := decodeRequests(conn, myPosetInfo)
 	return *result, err
 }
 
@@ -172,7 +172,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 
 	req := requestsToSend(poset, theirPosetInfo, nil)
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(req, conn)
+	err = sendRequests(req, theirPosetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.In.sendRequests").Msg(err.Error())
 		return
@@ -187,7 +187,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetRequests)
-	theirRequests, err := getRequests(nProc, conn)
+	theirRequests, err := getRequests(nProc, posetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.In.getRequests").Msg(err.Error())
 		return
@@ -263,7 +263,7 @@ func outExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn n
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetRequests)
-	theirRequests, err := getRequests(nProc, conn)
+	theirRequests, err := getRequests(nProc, posetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.getRequests").Msg(err.Error())
 		return
@@ -284,7 +284,7 @@ func outExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn n
 
 	req := requestsToSend(poset, theirPosetInfo, theirPreunitsReceived)
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(req, conn)
+	err = sendRequests(req, theirPosetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.sendRequests").Msg(err.Error())
 		return
