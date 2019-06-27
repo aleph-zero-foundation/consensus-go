@@ -157,7 +157,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 		return
 	}
 
-	units, nSent, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
+	units, nSent, err := unitsToSend(poset, theirPosetInfo, nil)
 	if err != nil {
 		log.Error().Str("where", "proto.In.unitsToSend").Msg(err.Error())
 		return
@@ -170,7 +170,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 	}
 	log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
 
-	req := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
+	req := requestsToSend(poset, theirPosetInfo, nil)
 	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(req, conn)
 	if err != nil {
@@ -195,7 +195,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 
 	if nonempty(theirRequests) {
 		log.Info().Msg(logging.AdditionalExchange)
-		units, nSent, err = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+		units, nSent, err = unitsToSend(poset, theirPosetInfo, theirRequests)
 		if err != nil {
 			log.Error().Str("where", "proto.In.unitsToSend(extra round)").Msg(err.Error())
 			return
@@ -269,7 +269,7 @@ func outExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn n
 		return
 	}
 
-	units, nSent, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+	units, nSent, err := unitsToSend(poset, theirPosetInfo, theirRequests)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.unitsToSend").Msg(err.Error())
 		return
