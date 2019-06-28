@@ -30,7 +30,7 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 }
 
 func (d *dialer) DialAll() (network.Multicaster, error) {
-	udpConns := make([]network.Connection, 0)
+	udpConns := make([]network.Connection, 0, len(d.remoteAddrs))
 	for pid := range d.remoteAddrs {
 		conn, err := d.Dial(uint16(pid))
 		if err != nil {
