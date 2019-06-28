@@ -9,7 +9,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
 // In implements the side of the protocol that handles incoming connections.
@@ -26,7 +26,7 @@ type Out struct {
 	AttemptTiming chan<- int
 }
 
-func sendPosetInfo(info posetInfo, conn gsync.Connection) error {
+func sendPosetInfo(info posetInfo, conn network.Connection) error {
 	for _, pi := range info {
 		err := encodeProcessInfo(conn, &pi)
 		if err != nil {
@@ -36,7 +36,7 @@ func sendPosetInfo(info posetInfo, conn gsync.Connection) error {
 	return conn.Flush()
 }
 
-func getPosetInfo(nProc int, conn gsync.Connection) (posetInfo, error) {
+func getPosetInfo(nProc int, conn network.Connection) (posetInfo, error) {
 	info := make(posetInfo, nProc)
 	for i := range info {
 		pi, err := decodeProcessInfo(conn)
@@ -48,7 +48,7 @@ func getPosetInfo(nProc int, conn gsync.Connection) (posetInfo, error) {
 	return info, nil
 }
 
-func sendUnits(units [][]gomel.Unit, conn gsync.Connection) error {
+func sendUnits(units [][]gomel.Unit, conn network.Connection) error {
 	err := encodeUnits(conn, units)
 	if err != nil {
 		return err
@@ -56,11 +56,11 @@ func sendUnits(units [][]gomel.Unit, conn gsync.Connection) error {
 	return conn.Flush()
 }
 
-func getPreunits(conn gsync.Connection) ([][]gomel.Preunit, int, error) {
+func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
 	return decodeUnits(conn)
 }
 
-func sendRequests(req requests, conn gsync.Connection) error {
+func sendRequests(req requests, conn network.Connection) error {
 	err := encodeRequests(conn, &req)
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func sendRequests(req requests, conn gsync.Connection) error {
 	return conn.Flush()
 }
 
-func getRequests(nProc int, conn gsync.Connection) (requests, error) {
+func getRequests(nProc int, conn network.Connection) (requests, error) {
 	result, err := decodeRequests(conn, nProc)
 	return *result, err
 }
@@ -152,7 +152,7 @@ func nonempty(req requests) bool {
 		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
 		9. Add the received units to the poset.
 */
-func (p *In) Run(poset gomel.Poset, conn gsync.Connection) {
+func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
@@ -251,7 +251,7 @@ func (p *In) Run(poset gomel.Poset, conn gsync.Connection) {
 			9. If the sent requests were nonempty, wait for more units. All the units are resend.
 		10. Add the received units to the poset.
 */
-func (p *Out) Run(poset gomel.Poset, conn gsync.Connection) {
+func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	defer conn.Close()
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)

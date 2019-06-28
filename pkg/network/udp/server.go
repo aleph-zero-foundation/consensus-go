@@ -1,4 +1,4 @@
-package tcp
+package udp
 
 import (
 	"net"
@@ -12,7 +12,7 @@ import (
 )
 
 type connServer struct {
-	localAddr  *net.TCPAddr
+	localAddr  *net.UDPAddr
 	listenChan chan<- network.Connection
 	exitChan   chan struct{}
 	wg         sync.WaitGroup
@@ -21,13 +21,13 @@ type connServer struct {
 
 // NewConnServer creates and initializes a new connServer at the given localAddr pushing any connections into connSink.
 func NewConnServer(localAddr string, connSink chan<- network.Connection, log zerolog.Logger) (network.ConnectionServer, error) {
-	localTCP, err := net.ResolveTCPAddr("tcp", localAddr)
+	localUDP, err := net.ResolveUDPAddr("udp", localAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &connServer{
-		localAddr:  localTCP,
+		localAddr:  localUDP,
 		listenChan: connSink,
 		exitChan:   make(chan struct{}),
 		log:        log,
@@ -35,12 +35,13 @@ func NewConnServer(localAddr string, connSink chan<- network.Connection, log zer
 }
 
 func (cs *connServer) Start() error {
-	ln, err := net.ListenTCP("tcp", cs.localAddr)
+	ln, err := net.ListenUDP("udp", cs.localAddr)
 	if err != nil {
 		return err
 	}
 	cs.wg.Add(1)
 	go func() {
+		buffer := make([]byte, (1 << 16))
 		for {
 			select {
 			case <-cs.exitChan:
@@ -49,19 +50,14 @@ func (cs *connServer) Start() error {
 				return
 			default:
 				ln.SetDeadline(time.Now().Add(time.Second * 2))
-				link, err := ln.AcceptTCP()
+				n, _, err := ln.ReadFromUDP(buffer)
 				if err != nil {
-					cs.log.Error().Str("where", "connServer.Listen").Msg(err.Error())
+					cs.log.Error().Str("where", "UDP connServer.Start").Msg(err.Error())
 					continue
 				}
-				conn := NewConn(link, 0, 0, cs.log)
-				select {
-				case cs.listenChan <- conn:
-					cs.log.Info().Msg(logging.ConnectionReceived)
-				default:
-					link.Close()
-					cs.log.Info().Msg(logging.TooManyIncoming)
-				}
+
+				cs.listenChan <- NewConnIn(buffer[:n], cs.log)
+				cs.log.Info().Msg(logging.ConnectionReceived)
 			}
 		}
 	}()

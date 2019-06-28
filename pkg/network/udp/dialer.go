@@ -1,8 +1,7 @@
-package tcp
+package udp
 
 import (
 	"net"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -22,17 +21,24 @@ func NewDialer(remoteAddrs []string, log zerolog.Logger) network.Dialer {
 }
 
 func (d *dialer) Dial(pid uint16) (network.Connection, error) {
-	dialer := &net.Dialer{Deadline: time.Now().Add(time.Second * 2)}
-	link, err := dialer.Dial("tcp", d.remoteAddrs[pid])
+	// can consider setting a timeout here, yet DialUDP is non-blocking, so there should be no need
+	conn, err := net.Dial("udp", d.remoteAddrs[pid])
 	if err != nil {
 		return nil, err
 	}
-	return NewConn(link, 0, 0, d.log), nil
+	return newConnOut(conn, d.log), nil
 }
 
 func (d *dialer) DialAll() (network.Multicaster, error) {
-	// TODO: implement
-	return nil, nil
+	udpConns := make([]network.Connection, 0, len(d.remoteAddrs))
+	for pid := range d.remoteAddrs {
+		conn, err := d.Dial(uint16(pid))
+		if err != nil {
+			return nil, err
+		}
+		udpConns = append(udpConns, conn)
+	}
+	return newMulticaster(udpConns), nil
 }
 
 func (d *dialer) Length() int {
