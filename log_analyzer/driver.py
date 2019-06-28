@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from copy import deepcopy
+from plugins import Plotter
 
 class Driver:
     """
@@ -38,13 +39,16 @@ class Driver:
     def report(self, name=None):
         dataset, ret = (self.current, '') if name is None else (self.datasets[name], maketitle(name, 100, '#')+'\n')
         for title, pipeline in dataset.items():
-            ret += maketitle(title, 80, '=') + '\n'
+            if title:
+                ret += maketitle(title, 80, '=') + '\n'
             for plugin in pipeline:
                 rep = plugin.report()
                 if plugin.name:
                     ret += maketitle(plugin.name, 60, '-') + '\n'
                 if rep:
                     ret += rep + '\n'
+                if isinstance(plugin, Plotter):
+                    ret += plugin.saveplot(name)
             ret += '\n'
         return ret
 

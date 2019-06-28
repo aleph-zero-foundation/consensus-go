@@ -1,6 +1,11 @@
 from const import *
+
 from statistics import mean, median
-from numpy import histogram
+import numpy as np
+
+from matplotlib.patches import Patch
+import matplotlib.pyplot as plt
+
 
 class Plugin:
     """Parent class definition for all plugins."""
@@ -17,6 +22,12 @@ class Plugin:
     def multistats(datasets):
         return ''
 
+class Plotter(Plugin):
+    """Subclass for plugins that produce plots."""
+    def saveplot(self, name):
+        return ''
+
+
 def multimean(datasets):
     full = []
     stats = []
@@ -29,6 +40,7 @@ def multimean(datasets):
     ret += '    Min Average: %13.2f (%s)\n' % stats[0]
     ret += '    Max Average: %13.2f (%s)\n' % stats[-1]
     return ret
+
 
 class Filter(Plugin):
     """
@@ -71,7 +83,7 @@ class Timer(Plugin):
     multistats = multimean
     def __init__(self, name, skip_first=0):
         self.name = 'Timer: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.times = []
 
     def process(self, entry):
@@ -96,7 +108,6 @@ class Timer(Plugin):
         return ret
 
 
-
 class Counter(Plugin):
     """
     Plugin gathering basis statistic (min, max, med, avg) of some numeric value.
@@ -106,7 +117,7 @@ class Counter(Plugin):
     multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
         self.name = 'Counter: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.data = []
         self.val = value
         self.events = events if isinstance(events, list) else [events]
@@ -138,7 +149,7 @@ class Histogram(Plugin):
     multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
         self.name = 'Histogram: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.data = []
         self.val = value
         self.events = events if isinstance(events, list) else [events]
@@ -181,7 +192,7 @@ class Delay(Plugin):
     multistats = multimean
     def __init__(self, name, start, end, func, skip_first=0, threshold=5):
         self.name = 'Delay: '+name
-        self.skip = skip_first - 1
+        self.skip = skip_first
         self.thr = threshold
         self.tmpdata = {}
         self.start = start if isinstance(start, list) else [start]
@@ -241,7 +252,7 @@ class Delay(Plugin):
         for t,k in data[:5]:
             ret += '%15s: %10d ms\n' % (k,t)
         ret += '  Distribution:\n'
-        size, brackets = histogram(times, bins=10)
+        size, brackets = np.histogram(times, bins=10)
         for i in zip(brackets[:-1], brackets[1:],size):
             ret += '   %10.1f-%-8.1f: %10d\n' % i
         return ret
@@ -290,7 +301,7 @@ class SyncStats(Plugin):
     """Plugin gathering statistics of syncs."""
     name = 'Sync stats'
     multistats = multimean
-    def __init__(self, ignore_empty=False):
+    def __init__(self, ignore_empty=True):
         self.ig = ignore_empty
         self.inc = {}
         self.out = {}
@@ -329,8 +340,11 @@ class SyncStats(Plugin):
 
     def finalize(self):
         values = list(self.inc.values()) + list(self.out.values())
-        self.stats = []
-        self.addexc, self.failed, self.unfinished, self.totaltime = 0,0,0,0
+        self.times = []
+        self.sent = []
+        self.recv = []
+        self.dupl = []
+        self.addexc, self.failed, self.unfinished = 0,0,0
         for d in values:
             if d['fail']:
                 self.failed += 1
@@ -338,14 +352,16 @@ class SyncStats(Plugin):
                 self.unfinished += 1
                 continue
             elif 'start' in d:
-                self.stats.append((d['end']-d['start'], d['sent'], d['recv'], d['dupl']))
-                self.totaltime += d['end']-d['start']
+                self.times.append(d['end']-d['start'])
+                self.sent.append(d['sent'])
+                self.recv.append(d['recv'])
+                self.dupl.append(d['dupl'])
             if d['addexc']:
                 self.addexc += 1
-        self.times = sorted([i[0] for i in self.stats])
-        self.sent = sorted([i[1] for i in self.stats])
-        self.recv = sorted([i[2] for i in self.stats])
-        self.dupl = sorted([i[3] for i in self.stats])
+        self.times.sort()
+        self.sent.sort()
+        self.recv.sort()
+        self.dupl.sort()
 
     def get_data(self):
         return self.times
@@ -359,16 +375,21 @@ class SyncStats(Plugin):
         ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
         ret +=  '    Min time:            %10d    ms\n'%self.times[0]
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
-        ret +=  '    Avg time:            %13.2f ms\n\n'%mean(self.times)
+        ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
+        ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
+        ret +=  '    Med time:            %13.2f ms\n\n'%median(self.times)
         ret +=  '    Min units sent:      %10d\n'%self.sent[0]
         ret +=  '    Max units sent:      %10d\n'%self.sent[-1]
-        ret +=  '    Avg units sent:      %13.2f\n\n'%mean(self.sent)
+        ret +=  '    Avg units sent:      %13.2f\n'%mean(self.sent)
+        ret +=  '    Med units sent:      %13.2f\n\n'%median(self.sent)
         ret +=  '    Min units received:  %10d\n'%self.recv[0]
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
-        ret +=  '    Avg units received:  %13.2f\n\n'%mean(self.recv)
+        ret +=  '    Avg units received:  %13.2f\n'%mean(self.recv)
+        ret +=  '    Med units received:  %13.2f\n\n'%median(self.recv)
         ret +=  '    Min duplicated:      %10d\n'%self.dupl[0]
         ret +=  '    Max duplicated:      %10d\n'%self.dupl[-1]
-        ret +=  '    Avg duplicated:      %13.2f\n\n'%mean(self.dupl)
+        ret +=  '    Avg duplicated:      %13.2f\n'%mean(self.dupl)
+        ret +=  '    Med duplicated:      %13.2f\n\n'%median(self.dupl)
         return ret
 
 
@@ -377,7 +398,7 @@ class NetworkTraffic(Plugin):
     name = 'Network traffic [kB/s]'
     def __init__(self, skip_first=0):
         self.data = {}
-        self.skip = skip_first - 1
+        self.skip = skip_first
 
     def process(self, entry):
         if entry[Event] == ConnectionClosed:
@@ -426,3 +447,109 @@ class MemoryStats(Plugin):
         for i in self.data:
             ret += '%10d    %10d    %10d\n' % i
         return ret
+
+
+class SyncPlots(Plotter):
+    """Plugin gathering statistics of syncs."""
+    name = 'Sync plots'
+    def __init__(self, regions=None, region_names=None, divide=True):
+        self.inc = {}
+        self.out = {}
+        self.regions = {r:i for i,region in enumerate(regions) for r in region} if regions is not None else None
+        self.region_names = region_names
+        self.divide = divide
+        self.colornames = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    def process(self, entry):
+        if PID not in entry:
+            return entry
+        if OSID in entry:
+            d = self.out
+            key = (entry[PID], entry[OSID])
+        elif ISID in entry:
+            d = self.inc
+            key = (entry[PID], entry[ISID])
+        else:
+            return entry
+
+        if key not in d:
+            d[key] = {}
+        if entry[Event] == SyncStarted:
+            d[key]['start'] = entry[Time]
+        elif entry[Event] == SyncCompleted:
+            d[key]['end'] = entry[Time]
+            d[key]['units'] = entry[Sent] + entry[Recv]
+        return entry
+
+    def finalize(self):
+        lst = []
+        for (pid,sid),v in self.inc.items():
+            if 'start' in v and 'end' in v and v['units'] > 0:
+                lst.append((v['start'],v['end'],v['units'],pid))
+        self.inc = lst
+        lst = []
+        for (pid,sid),v in self.out.items():
+            if 'start' in v and 'end' in v and v['units'] > 0:
+                lst.append((v['start'],v['end'],v['units'],pid))
+        self.out = lst
+
+    def makeplot(self, data, name, pid=None):
+        d = np.array(sorted(data))
+        filename = f'syncs_{name}.png' if name else 'syncs.png'
+
+        if self.regions is not None:
+            colors = [self.colornames[self.regions[i]] for i in d[:,3]]
+        else:
+            colors = None
+        mycol = self.colornames[self.regions[pid]] if pid is not None else 'black'
+
+        conc = [(i,1) for i in d[:,0]] + [(i,-1) for i in d[:,1]]
+        conc.sort()
+        x,y = [],[]
+        cur, last = 0,0
+        for t,s in conc:
+            if t != last:
+                if last != 0:
+                    x.append(last)
+                    y.append(cur)
+                last = t
+            cur += s
+
+        fig, ax1 = plt.subplots()
+        fig.set_size_inches(25,15)
+
+        ax1.set_title(str(pid), fontsize=32, color=mycol)
+        ax1.set_xlabel('time (ms)', color=mycol)
+        ax1.set_ylabel('sync duration (ms)', color=mycol)
+        ax1.tick_params(colors=mycol)
+        sc = ax1.scatter(d[:,0],d[:,1]-d[:,0], s=d[:,2], c=colors, alpha=0.5)
+        if self.region_names:
+            leg = plt.legend(handles=[Patch(color=c, label=r) for c,r in zip(self.colornames, self.region_names)], loc="upper right", framealpha=0.5)
+            ax1.add_artist(leg)
+        ax1.legend(*sc.legend_elements(prop='sizes', num=5), title="units exchanged", loc="upper left", framealpha=0.5)
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('number of concurrent syncs', color=mycol)
+        ax2.tick_params(colors=mycol)
+        ax2.spines['top'].set_color(mycol)
+        ax2.spines['bottom'].set_color(mycol)
+        ax2.spines['left'].set_color(mycol)
+        ax2.spines['right'].set_color(mycol)
+        ax2.plot(x, y, color='black', linewidth=1, alpha=0.2)
+
+        plt.savefig(filename)
+        plt.close()
+        return filename
+
+    def saveplot(self, name):
+        try:
+            pid = int(name)
+        except:
+            pid = None
+
+        filename = self.makeplot(self.inc + self.out, name, pid)
+        if self.divide:
+            fileo  = self.makeplot(self.out, name+'_o', pid)
+            filei  = self.makeplot(self.inc, name+'_i', pid)
+            return f'Plots saved as {filename}, {fileo} and {filei}'
+        return f'Plot saved as {filename}'

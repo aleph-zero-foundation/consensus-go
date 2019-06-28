@@ -20,18 +20,10 @@ def lasttime(path, seek=128):
         return json.loads(f.readlines()[-1])[Time]
 
 def extract(path):
-    fwo = splitext(basename(path))[0]
-    base, code = fwo.rsplit('_',1)
-    newname = join(dirname(path),'_'.join([code,base]))
     with ZipFile(path, 'r') as f:
+        ret = join(dirname(path), dirname(f.namelist()[0]))
         f.extractall()
-    if isdir(newname):
-        for f in os.listdir(base):
-            shutil.copy2(join(base,f), join(newname,f))
-        shutil.rmtree(base)
-    else:
-        os.rename(base, newname)
-    return newname
+    return ret
 
 
 parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel.Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed).')
@@ -56,7 +48,7 @@ else:
     sys.exit(1)
 
 driver = Driver()
-exec(compile(open(pipelines).read(), 'pipelines.py', 'exec'))
+exec(compile(open(pipelines).read(), pipelines, 'exec'))
 
 if not (isdir(args.path) or (isfile(args.path) and (args.path.endswith('.log') or args.path.endswith('.zip')))):
     print(f'{args.path}: invalid path')
@@ -69,13 +61,14 @@ if isfile(args.path) and args.path.endswith('.log'):
         for line in f:
             driver.handle(json.loads(line))
     driver.finalize()
-    print(driver.report())
+    print(driver.report(name))
 else:
     path = args.path if isdir(args.path) else extract(args.path)
-    for filename in tqdm(list(filter(lambda x: x.endswith('.log'), os.listdir(path)))):
+    os.chdir(path)
+    for filename in tqdm(list(filter(lambda x: x.endswith('.log'), os.listdir('.')))):
         name = filename[:-4]
         driver.new_dataset(name)
-        with open(join(path, filename)) as f:
+        with open(filename) as f:
             for line in f:
                 driver.handle(json.loads(line))
         driver.finalize()
