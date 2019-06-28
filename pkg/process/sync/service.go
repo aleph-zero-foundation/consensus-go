@@ -48,9 +48,10 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
+	s.syncServer.StopOut()
 	// let other processes sync with us some more
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Second)
 	s.connServer.Stop()
-	s.syncServer.Stop()
+	s.syncServer.StopIn()
 	s.log.Info().Msg(logging.ServiceStopped)
 }
