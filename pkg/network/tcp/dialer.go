@@ -30,9 +30,16 @@ func (d *dialer) Dial(pid uint16) (network.Connection, error) {
 	return NewConn(link, 0, 0, d.log), nil
 }
 
-func (d *dialer) DialAll() (network.Multicaster, error) {
-	// TODO: implement
-	return nil, nil
+func (d *dialer) DialAll() (*network.Multicaster, error) {
+	tcpConns := make([]network.Connection, 0, len(d.remoteAddrs))
+	for pid := range d.remoteAddrs {
+		conn, err := d.Dial(uint16(pid))
+		if err != nil {
+			return nil, err
+		}
+		tcpConns = append(tcpConns, conn)
+	}
+	return network.NewMulticaster(tcpConns), nil
 }
 
 func (d *dialer) Length() int {
