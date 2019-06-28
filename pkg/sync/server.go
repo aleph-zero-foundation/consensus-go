@@ -23,8 +23,10 @@ type Server struct {
 	nInSync      uint
 	syncIds      []uint32
 	inUse        []*mutex
-	exitChan     chan struct{}
-	wg           sync.WaitGroup
+	exitChanIn   chan struct{}
+	exitChanOut  chan struct{}
+	wgIn         sync.WaitGroup
+	wgOut        sync.WaitGroup
 	log          zerolog.Logger
 }
 
@@ -49,37 +51,45 @@ func NewServer(myPid uint16, poset gomel.Poset, inConnChan <-chan network.Connec
 		nInSync:      nInSync,
 		inUse:        inUse,
 		syncIds:      make([]uint32, dialer.Length()),
-		exitChan:     make(chan struct{}),
+		exitChanIn:   make(chan struct{}),
+		exitChanOut:  make(chan struct{}),
 		log:          log,
 	}
 }
 
 // Start starts server
 func (s *Server) Start() {
-	s.wg.Add(int(s.nInSync + s.nOutSync))
+	s.wgIn.Add(int(s.nInSync))
 	for i := uint(0); i < s.nInSync; i++ {
 		go s.inDispatcher()
 	}
+	s.wgOut.Add(int(s.nOutSync))
 	for i := uint(0); i < s.nOutSync; i++ {
 		go s.outDispatcher()
 	}
 }
 
-// Stop stops server
-func (s *Server) Stop() {
-	close(s.exitChan)
-	s.wg.Wait()
+// StopIn stops handling incoming synchronizations
+func (s *Server) StopIn() {
+	close(s.exitChanIn)
+	s.wgIn.Wait()
+}
+
+// StopOut stops handling outgoing synchronizations
+func (s *Server) StopOut() {
+	close(s.exitChanOut)
+	s.wgOut.Wait()
 }
 
 func (s *Server) inDispatcher() {
-	defer s.wg.Done()
+	defer s.wgIn.Done()
 	for {
 		select {
-		case <-s.exitChan:
+		case <-s.exitChanIn:
 			return
 		case link, ok := <-s.inConnChan:
 			if !ok {
-				<-s.exitChan
+				<-s.exitChanIn
 				return
 			}
 			g, err := getGreeting(link)
@@ -101,10 +111,10 @@ func (s *Server) inDispatcher() {
 }
 
 func (s *Server) outDispatcher() {
-	defer s.wg.Done()
+	defer s.wgOut.Done()
 	for {
 		select {
-		case <-s.exitChan:
+		case <-s.exitChanOut:
 			return
 		default:
 			remotePid := s.peerSource.nextPeer()
