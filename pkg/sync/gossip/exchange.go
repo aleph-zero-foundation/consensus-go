@@ -1,8 +1,7 @@
-package request
+package gossip
 
 import (
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -11,20 +10,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
-
-// In implements the side of the protocol that handles incoming connections.
-type In struct {
-	MyPid         int
-	Timeout       time.Duration
-	AttemptTiming chan<- int
-}
-
-// Out implements the side of the protocol that handles outgoing connections.
-type Out struct {
-	MyPid         int
-	Timeout       time.Duration
-	AttemptTiming chan<- int
-}
 
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
 	for _, pi := range info {
@@ -73,14 +58,14 @@ func getRequests(nProc int, conn network.Connection) (requests, error) {
 	return *result, err
 }
 
-func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, myPid int, log zerolog.Logger) (bool, error) {
+func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, myPid uint16, log zerolog.Logger) (bool, error) {
 	var wg sync.WaitGroup
 	// TODO: We only report one error, we might want to change it when we deal with Byzantine processes.
 	var problem error
 	primeAdded := false
 	for _, preunit := range preunits {
 		if len(preunit.Parents()) == 0 {
-			tc, err := tcoin.Decode(preunit.ThresholdCoinData(), myPid)
+			tc, err := tcoin.Decode(preunit.ThresholdCoinData(), int(myPid))
 			if err != nil {
 				problem = err
 				break
@@ -112,7 +97,7 @@ func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, myPid int, log ze
 }
 
 // addUnits adds the provided units to the poset, assuming they are divided into antichains as described in toLayers
-func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit, myPid int, attemptTiming chan<- int, log zerolog.Logger) error {
+func addUnits(poset gomel.Poset, preunits [][]gomel.Preunit, myPid uint16, attemptTiming chan<- int, log zerolog.Logger) error {
 	for _, pus := range preunits {
 		primeAdded, err := addAntichain(poset, pus, myPid, log)
 		if err != nil {
@@ -137,7 +122,7 @@ func nonempty(req requests) bool {
 	return false
 }
 
-// Run handles the incoming connection using info from the poset.
+// inExchange handles the incoming connection using info from the poset.
 // This version uses 3-exchange "pullpush" protocol: receive heights, send heights, units and requests, receive units and requests.
 // If we receive some requests there is a 4th exchange where we once again send units. This should only happen due to forks.
 //
@@ -152,11 +137,9 @@ func nonempty(req requests) bool {
 		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
 		9. Add the received units to the poset.
 */
-func (p *In) Run(poset gomel.Poset, conn network.Connection) {
-	defer conn.Close()
+func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
-	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
 
 	log.Debug().Msg(logging.GetPosetInfo)
@@ -227,7 +210,7 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, theirPreunitsReceived, p.MyPid, p.AttemptTiming, log)
+	err = addUnits(poset, theirPreunitsReceived, pid, attemptTiming, log)
 	if err != nil {
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
@@ -251,11 +234,9 @@ func (p *In) Run(poset gomel.Poset, conn network.Connection) {
 			9. If the sent requests were nonempty, wait for more units. All the units are resend.
 		10. Add the received units to the poset.
 */
-func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
-	defer conn.Close()
+func outExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
-	conn.TimeoutAfter(p.Timeout)
 	nProc := poset.NProc()
 
 	maxSnapshot := posetMaxSnapshot(poset)
@@ -321,7 +302,7 @@ func (p *Out) Run(poset gomel.Poset, conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, theirPreunitsReceived, p.MyPid, p.AttemptTiming, log)
+	err = addUnits(poset, theirPreunitsReceived, pid, attemptTiming, log)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return

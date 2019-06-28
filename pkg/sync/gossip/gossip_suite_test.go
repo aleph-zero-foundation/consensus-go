@@ -1,4 +1,4 @@
-package request_test
+package gossip_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRequest(t *testing.T) {
+func TestGossip(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Request Suite")
+	RunSpecs(t, "Gossip Suite")
 }

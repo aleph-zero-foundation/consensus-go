@@ -1,4 +1,4 @@
-package request_test
+package gossip_test
 
 import (
 	"encoding/binary"
@@ -14,7 +14,8 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
-	. "gitlab.com/alephledger/consensus-go/pkg/sync/request"
+	. "gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
@@ -31,8 +32,6 @@ func (p *poset) AddUnit(unit gomel.Preunit, callback func(gomel.Preunit, gomel.U
 type connection struct {
 	in  io.Reader
 	out io.Writer
-	pid uint16
-	sid uint32
 	log zerolog.Logger
 }
 
@@ -58,31 +57,54 @@ func (c *connection) Log() zerolog.Logger {
 	return c.log
 }
 
-func (c *connection) SetLogger(log zerolog.Logger) {
-	c.log = log
-}
+func (c *connection) SetLogger(zerolog.Logger) {}
 
 func newConnection() (network.Connection, network.Connection) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
-	return &connection{r1, w2, 0, 0, zerolog.Logger{}}, &connection{r2, w1, 0, 0, zerolog.Logger{}}
+	return &connection{r1, w2, zerolog.Logger{}}, &connection{r2, w1, zerolog.Logger{}}
+}
+
+type dialer struct {
+	conn network.Connection
+}
+
+// NOTE: this ignores the argument, which is not good.
+// However, for the tests below it should be sufficient.
+func (d *dialer) Dial(uint16) (network.Connection, error) {
+	return d.conn, nil
+}
+
+func (d *dialer) DialAll() (network.Multicaster, error) {
+	return nil, nil
+}
+
+// NOTE: since we return 2, we should always only ask about the other peer, which makes the above note somewhat irrelevant.
+// Still only sufficient for the tests below.
+func (d *dialer) Length() int {
+	return 2
 }
 
 var _ = Describe("Protocol", func() {
 
 	var (
-		p1  *poset
-		p2  *poset
-		in  gsync.Protocol
-		out gsync.Protocol
-		c1  network.Connection
-		c2  network.Connection
+		p1     *poset
+		p2     *poset
+		proto1 gsync.Protocol
+		proto2 gsync.Protocol
+		c      network.Connection
+		d      network.Dialer
 	)
 
 	BeforeEach(func() {
-		in = &In{}
-		out = &Out{}
-		c1, c2 = newConnection()
+		c1, c2 := newConnection()
+		c = c1
+		d = &dialer{c2}
+	})
+
+	JustBeforeEach(func() {
+		proto1 = NewProtocol(0, p1, d, time.Second, make(chan int), zerolog.Logger{})
+		proto2 = NewProtocol(1, p2, d, time.Second, make(chan int), zerolog.Logger{})
 	})
 
 	Describe("in a small poset", func() {
@@ -106,11 +128,11 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					in.Run(p1, c1)
+					proto1.In(c)
 					wg.Done()
 				}()
 				go func() {
-					out.Run(p2, c2)
+					proto2.Out()
 					wg.Done()
 				}()
 				wg.Wait()
@@ -124,10 +146,12 @@ var _ = Describe("Protocol", func() {
 					var wg sync.WaitGroup
 					wg.Add(2)
 					go func() {
-						in.Run(p1, c1)
+						proto1.In(c)
 						wg.Done()
 					}()
 					go func() {
+						c2, _ := d.Dial(0)
+						handshake.Greet(c2, 1, 0)
 						lenData := make([]byte, 4)
 						// send empty poset info
 						for i := 0; i < p2.NProc(); i++ {
@@ -184,11 +208,11 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					in.Run(p1, c1)
+					proto1.In(c)
 					wg.Done()
 				}()
 				go func() {
-					out.Run(p2, c2)
+					proto2.Out()
 					wg.Done()
 				}()
 				wg.Wait()
@@ -219,11 +243,11 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					in.Run(p1, c1)
+					proto1.In(c)
 					wg.Done()
 				}()
 				go func() {
-					out.Run(p2, c2)
+					proto2.Out()
 					wg.Done()
 				}()
 				wg.Wait()
@@ -254,11 +278,11 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					in.Run(p1, c1)
+					proto1.In(c)
 					wg.Done()
 				}()
 				go func() {
-					out.Run(p2, c2)
+					proto2.Out()
 					wg.Done()
 				}()
 				wg.Wait()
