@@ -355,7 +355,7 @@ class SyncStats(Plugin):
                 self.times.append(d['end']-d['start'])
                 self.sent.append(d['sent'])
                 self.recv.append(d['recv'])
-                self.dupl.append(d['dupl'])
+                self.dupl.append((d['dupl']/d['recv'] if d['recv'] > 0 else 0, d['recv']))
             if d['addexc']:
                 self.addexc += 1
         self.times.sort()
@@ -386,10 +386,14 @@ class SyncStats(Plugin):
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
         ret +=  '    Avg units received:  %13.2f\n'%mean(self.recv)
         ret +=  '    Med units received:  %13.2f\n\n'%median(self.recv)
-        ret +=  '    Min duplicated:      %10d\n'%self.dupl[0]
-        ret +=  '    Max duplicated:      %10d\n'%self.dupl[-1]
-        ret +=  '    Avg duplicated:      %13.2f\n'%mean(self.dupl)
-        ret +=  '    Med duplicated:      %13.2f\n\n'%median(self.dupl)
+        ret +=  '    Min duplicated ratio:%13.2f (%d units)\n'%self.dupl[0]
+        ret +=  '    Max duplicated ratio:%13.2f (%d units)\n'%self.dupl[-1]
+        ret +=  '    Avg duplicated ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
+        ret +=  '    Med duplicated ratio:%13.2f\n'%median(i[0] for i in self.dupl)
+        ret +=  '    Largest recv duplicated ratio:\n'
+        for i in sorted(self.dupl, key=lambda x: x[1], reverse=True)[:10]:
+            ret +=  '       %13.2f (%d units)\n'%i
+        ret += '\n'
         return ret
 
 
