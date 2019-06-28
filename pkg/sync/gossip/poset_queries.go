@@ -226,22 +226,12 @@ func toLayers(units []gomel.Unit) [][]gomel.Unit {
 	return result
 }
 
-func unitsToSend(poset gomel.Poset, info posetInfo, req requests) ([][]gomel.Unit, int, error) {
+func unitsToSend(poset gomel.Poset, maxSnapshot [][]gomel.Unit, info posetInfo, req requests) ([]gomel.Unit, error) {
 	nProc := poset.NProc()
 	toSendPid := make([][]gomel.Unit, nProc)
 	var err error
 	var wg sync.WaitGroup
 	wg.Add(nProc)
-	// Here we can proceed in at least two ways
-	// (1) take another, more up to date consistent
-	//     maximal snapshot and use it
-	// (2) use MaximalUnitsPerProcess which may be inconsistent, hence
-	//     the other party may not be able to add the unit we sent
-	// For now we use 1st option.
-	// To switch to the 2nd option remove maxSnapshot and use the following line
-	// toSendPid[id] = unitsToSendByProcess(info[id], poset.MaximalUnitsPerProcess().Get(id))
-	// TODO: Experiment which one is better
-	maxSnapshot := posetMaxSnapshot(poset)
 	for i := 0; i < nProc; i++ {
 		go func(id int) {
 			toSendPid[id] = unitsToSendByProcess(info[id], maxSnapshot[id])
@@ -258,13 +248,13 @@ func unitsToSend(poset gomel.Poset, info posetInfo, req requests) ([][]gomel.Uni
 	}
 	wg.Wait()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	toSend := []gomel.Unit{}
 	for _, tsp := range toSendPid {
 		toSend = append(toSend, tsp...)
 	}
-	return toLayers(toSend), len(toSend), nil
+	return toSend, nil
 }
 
 func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown staticHashSet) processRequests {
@@ -280,17 +270,8 @@ func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown staticHashSet)
 	return result
 }
 
-func requestsToSend(poset gomel.Poset, info posetInfo, acquiredUnits [][]gomel.Preunit) requests {
+func requestsToSend(poset gomel.Poset, info posetInfo, alsoKnown staticHashSet) requests {
 	result := make(requests, len(info))
-	acquiredHashes := []*gomel.Hash{}
-	if acquiredUnits != nil {
-		for _, aus := range acquiredUnits {
-			for _, au := range aus {
-				acquiredHashes = append(acquiredHashes, au.Hash())
-			}
-		}
-	}
-	alsoKnown := newStaticHashSet(acquiredHashes)
 	var wg sync.WaitGroup
 	wg.Add(len(info))
 	for i := range info {

@@ -31,6 +31,8 @@ const (
 	DataValidated         = "Z"
 	TooManyIncoming       = "a"
 	TooManyOutgoing       = "b"
+	SendFreshUnits        = "c"
+	SentFreshUnits        = "d"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -63,6 +65,8 @@ var eventTypeDict = map[string]string{
 	DataValidated:         "validated some bytes of data",
 	TooManyIncoming:       "too many incoming connections",
 	TooManyOutgoing:       "too many outgoing connections",
+	SendFreshUnits:        "sending fresh units started",
+	SentFreshUnits:        "succesfully sent fresh units",
 }
 
 // Field names
