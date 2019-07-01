@@ -1,7 +1,6 @@
 package gossip
 
 import (
-	"fmt"
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -12,7 +11,7 @@ type unitInfo struct {
 	height uint32
 }
 
-type processInfo []*unitInfo
+type processInfo []unitInfo
 
 type posetInfo []processInfo
 
@@ -20,8 +19,8 @@ type processRequests []*gomel.Hash
 
 type requests []processRequests
 
-func toInfo(unit gomel.Unit) *unitInfo {
-	return &unitInfo{unit.Hash(), uint32(unit.Height())}
+func toInfo(unit gomel.Unit) unitInfo {
+	return unitInfo{unit.Hash(), uint32(unit.Height())}
 }
 
 func toPosetInfo(maxSnapshot [][]gomel.Unit) posetInfo {
@@ -168,11 +167,6 @@ func requestedToSend(poset gomel.Poset, info processInfo, req processRequests) (
 		return result, nil
 	}
 	units := poset.Get(req)
-	for i, u := range units {
-		if u == nil {
-			return nil, fmt.Errorf("received request for unknown hash: %s", req[i].Short())
-		}
-	}
 	operationHeight := maximalHeight(units)
 	knownRemotes := knownUnits(poset, info)
 	knownRemotes = dropToHeight(knownRemotes, operationHeight)

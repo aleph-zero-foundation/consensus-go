@@ -13,7 +13,7 @@ import (
 
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
 	for _, pi := range info {
-		err := encodeProcessInfo(conn, &pi)
+		err := encodeProcessInfo(conn, pi)
 		if err != nil {
 			return err
 		}
@@ -28,7 +28,7 @@ func getPosetInfo(nProc int, conn network.Connection) (posetInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		info[i] = *pi
+		info[i] = pi
 	}
 	return info, nil
 }
@@ -46,7 +46,7 @@ func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
 }
 
 func sendRequests(req requests, theirPosetInfo posetInfo, conn network.Connection) error {
-	err := encodeRequests(conn, &req, theirPosetInfo)
+	err := encodeRequests(conn, req, theirPosetInfo)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func sendRequests(req requests, theirPosetInfo posetInfo, conn network.Connectio
 
 func getRequests(nProc int, myPosetInfo posetInfo, conn network.Connection) (requests, error) {
 	result, err := decodeRequests(conn, myPosetInfo)
-	return *result, err
+	return result, err
 }
 
 func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, myPid uint16, log zerolog.Logger) (bool, error) {
@@ -228,7 +228,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 		log.Error().Str("where", "proto.In.addUnits fresh").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
+	log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Int(logging.FreshRecv, nFreshReceived).Msg(logging.SyncCompleted)
 }
 
 // Run handles the outgoing connection using info from the poset.
@@ -336,5 +336,5 @@ func outExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn n
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
+	log.Info().Int(logging.Sent, len(units)).Int(logging.FreshSent, len(freshUnitsUnknown)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }
