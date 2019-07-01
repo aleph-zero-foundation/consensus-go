@@ -90,7 +90,7 @@ func encodeRequests(w io.Writer, r requests, theirPosetInfo posetInfo) error {
 		bs := newBitSet(k)
 		position := uint32(0)
 
-		for pid := 0; pid < len(r); pid++ {
+		for pid := range theirPosetInfo {
 			hashSet := newStaticHashSet((r)[pid])
 			for _, uInfo := range theirPosetInfo[pid] {
 				if hashSet.contains(uInfo.hash) {
