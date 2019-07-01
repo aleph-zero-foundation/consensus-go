@@ -11,7 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/request"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 )
 
 type service struct {
@@ -27,9 +27,8 @@ func NewService(poset gomel.Poset, config *process.Sync, attemptTiming chan<- in
 	if err != nil {
 		return nil, err
 	}
-	requestIn := &request.In{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
-	requestOut := &request.Out{Timeout: config.Timeout, MyPid: config.Pid, AttemptTiming: attemptTiming}
-	syncServ := gsync.NewServer(uint16(config.Pid), poset, listenChan, tcp.NewDialer(config.RemoteAddresses, log), requestIn, requestOut, config.OutSyncLimit, config.InSyncLimit, log)
+	proto := gossip.NewProtocol(uint16(config.Pid), poset, tcp.NewDialer(config.RemoteAddresses, log), config.Timeout, attemptTiming, log)
+	syncServ := gsync.NewServer(listenChan, proto, config.OutSyncLimit, config.InSyncLimit, log)
 	return &service{
 		syncServer: syncServ,
 		connServer: connServ,

@@ -1,4 +1,4 @@
-package sync
+package gossip
 
 type mutex struct {
 	token chan struct{}
