@@ -223,7 +223,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
 	}
-	err = addUnits(poset, theirFreshPreunitsReceived, p.MyPid, p.AttemptTiming, log)
+	err = addUnits(poset, theirFreshPreunitsReceived, pid, attemptTiming, log)
 	if err != nil {
 		log.Error().Str("where", "proto.In.addUnits fresh").Msg(err.Error())
 		return
