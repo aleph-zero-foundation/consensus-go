@@ -48,7 +48,7 @@ class Driver:
                 if rep:
                     ret += rep + '\n'
                 if isinstance(plugin, Plotter):
-                    ret += plugin.saveplot(name)
+                    ret += plugin.saveplot(name) + '\n'
             ret += '\n'
         return ret
 

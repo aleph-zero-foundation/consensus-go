@@ -298,7 +298,7 @@ class CreateCounter(Plugin):
 
 
 class SyncStats(Plugin):
-    """Plugin gathering statistics of syncs."""
+    """Plugin gathering detailed statistics of syncs."""
     name = 'Sync stats'
     multistats = multimean
     def __init__(self, ignore_empty=True):
@@ -454,7 +454,7 @@ class MemoryStats(Plugin):
 
 
 class SyncPlots(Plotter):
-    """Plugin gathering statistics of syncs."""
+    """Plugin preparing plots about syncs statistics."""
     name = 'Sync plots'
     def __init__(self, regions=None, region_names=None, divide=True):
         self.inc = {}
@@ -556,4 +556,62 @@ class SyncPlots(Plotter):
             fileo  = self.makeplot(self.out, name+'_o', pid)
             filei  = self.makeplot(self.inc, name+'_i', pid)
             return f'Plots saved as {filename}, {fileo} and {filei}'
+        return f'Plot saved as {filename}'
+
+
+class DuplUnitPlots(Plotter):
+    """Plugin preparing plots about the ratio of duplicated units amongst received units."""
+    name = 'Duplicated units plots'
+    def __init__(self):
+        self.inc = {}
+        self.out = {}
+
+    def process(self, entry):
+        if PID not in entry:
+            return entry
+        if OSID in entry:
+            d = self.out
+            key = (entry[PID], entry[OSID])
+        elif ISID in entry:
+            d = self.inc
+            key = (entry[PID], entry[ISID])
+        else:
+            return entry
+
+        if key not in d:
+            d[key] = {'dupl':0}
+        if entry[Event] == SyncCompleted:
+            d[key]['recv'] = entry[Recv]
+        elif entry[Event] == DuplicatedUnit:
+            d[key]['dupl'] += 1
+        return entry
+
+    def finalize(self):
+        self.inc = sorted([(v['recv'], v['dupl']) for v in self.inc.values() if 'recv' in v], reverse=True, key = lambda x: (x[0], -x[1]))
+        self.out = sorted([(v['recv'], v['dupl']) for v in self.out.values() if 'recv' in v], reverse=True, key = lambda x: (x[0], -x[1]))
+
+    def saveplot(self, name):
+        filename = f'dupl_{name}.png'
+        x_inc = list(range(len(self.inc)))
+        x_out = list(range(len(self.out)))
+        unique_inc = [i[0] - i[1] for i in self.inc]
+        unique_out = [i[0] - i[1] for i in self.out]
+        dupl_inc = [i[1] for i in self.inc]
+        dupl_out = [i[1] for i in self.out]
+
+        fig, ax = plt.subplots(nrows=2, sharex=True)
+        fig.set_size_inches(12,10)
+        fig.subplots_adjust(hspace=0)
+
+        un = ax[0].bar(x_out, unique_out, width=1.0, color='green')
+        du = ax[0].bar(x_out, dupl_out, bottom=unique_out, width=1.0, color='orange')
+        ax[0].legend((un, du), ('new', 'duplicated'))
+        ax[0].set_ylabel('received units (outgoing syncs)')
+        ax[1].bar(x_inc, unique_inc, width=1.0, color='green')
+        ax[1].bar(x_inc, dupl_inc, bottom=unique_inc, width=1.0, color='orange')
+        ax[1].invert_yaxis()
+        ax[1].set_ylabel('received units (incoming syncs)')
+
+        plt.savefig(filename)
+        plt.close()
         return f'Plot saved as {filename}'

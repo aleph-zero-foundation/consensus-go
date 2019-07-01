@@ -26,9 +26,9 @@ def extract(path):
     return ret
 
 
-parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel.Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed).')
+parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel. Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed). The file with pipelines (-p flag) can be a custom .py file or one of the predefined pipelines from the log analyzer source directory. Possible pipelines: default, basic, sync, plots.')
 parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archived folder')
-parser.add_argument('-p', '--pipe', metavar='name', help='file with pipelines definitions (if not present, log analyzer source directory is checked)')
+parser.add_argument('-p', '--pipe', metavar='name', help='file with pipelines definitions')
 parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
 args = parser.parse_args()
 
