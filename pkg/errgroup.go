@@ -13,10 +13,12 @@ type ErrGroup struct {
 	errors  []string
 }
 
+// NewErrGroup creates a new instance of ErrGroup
 func NewErrGroup() *ErrGroup {
 	return &ErrGroup{}
 }
 
+// Go runs tasks in goroutines, gathers potential errors, and returns a concatenation of them
 func (eg *ErrGroup) Go(tasks []func() error) error {
 	eg.errors = make([]string, len(tasks))
 	eg.wg.Add(len(tasks))
