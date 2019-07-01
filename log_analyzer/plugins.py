@@ -589,6 +589,25 @@ class DuplUnitPlots(Plotter):
     def finalize(self):
         self.inc = sorted([(v['recv'], v['dupl']) for v in self.inc.values() if 'recv' in v], reverse=True, key = lambda x: (x[0], -x[1]))
         self.out = sorted([(v['recv'], v['dupl']) for v in self.out.values() if 'recv' in v], reverse=True, key = lambda x: (x[0], -x[1]))
+        self.recv, self.dupl = 0,0
+        for r,d in self.inc:
+            self.recv += r
+            self.dupl += d
+        for r,d in self.out:
+            self.recv += r
+            self.dupl += d
+
+    def get_data(self):
+        return self.dupl, self.recv
+
+    @staticmethod
+    def multistats(datasets):
+        dupl, recv = 0,0
+        for d,r in datasets.values():
+            dupl += d
+            recv += r
+        ratio = 100*dupl/recv
+        return f'Global average of received duplicates: {ratio:5.2f}%'
 
     def saveplot(self, name):
         filename = f'dupl_{name}.png'
@@ -598,6 +617,9 @@ class DuplUnitPlots(Plotter):
         unique_out = [i[0] - i[1] for i in self.out]
         dupl_inc = [i[1] for i in self.inc]
         dupl_out = [i[1] for i in self.out]
+        di, do = sum(dupl_inc), sum(dupl_out)
+        r_inc = 100*di/(di + sum(unique_inc))
+        r_out = 100*do/(do + sum(unique_out))
 
         fig, ax = plt.subplots(nrows=2, sharex=True)
         fig.set_size_inches(12,10)
@@ -607,6 +629,7 @@ class DuplUnitPlots(Plotter):
         du = ax[0].bar(x_out, dupl_out, bottom=unique_out, width=1.0, color='orange')
         ax[0].legend((un, du), ('new', 'duplicated'))
         ax[0].set_ylabel('received units (outgoing syncs)')
+        ax[0].set_title(f'Duplicated units: {r_inc:4.1f}% inc, {r_out:4.1f}% out', fontsize=16)
         ax[1].bar(x_inc, unique_inc, width=1.0, color='green')
         ax[1].bar(x_inc, dupl_inc, bottom=unique_inc, width=1.0, color='orange')
         ax[1].invert_yaxis()
