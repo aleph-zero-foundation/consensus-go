@@ -24,7 +24,7 @@ func (rs *testRandomSource) GetCRP(nonce int) []int {
 	return permutation
 }
 
-// RandomBits returns a sequence of random bits for a given unit and nonce
+// RandomBytes returns a sequence of random bits for a given unit and nonce
 // it returns hash of u
 func (rs *testRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 	return uTossing.Hash()[:]

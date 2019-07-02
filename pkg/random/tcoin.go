@@ -31,7 +31,7 @@ func (rs *tcRandomSource) GetCRP(nonce int) []int {
 	return permutation
 }
 
-// RandomBits returns a sequence of random bits for a given process and nonce
+// RandomBytes returns a sequence of random bits for a given process and nonce
 // in the case of fail it returns nil
 func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 	level := uTossing.Level() - 1
