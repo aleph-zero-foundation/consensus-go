@@ -63,7 +63,7 @@ func createAndStartProcess(
 	log = log.With().Int("process_id", id).Logger()
 
 	go func() {
-		err := run.Process(config, log)
+		_, err := run.Process(config, log)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 		}

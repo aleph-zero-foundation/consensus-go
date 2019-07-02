@@ -13,7 +13,7 @@ import (
 
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
 	for _, pi := range info {
-		err := encodeProcessInfo(conn, &pi)
+		err := encodeProcessInfo(conn, pi)
 		if err != nil {
 			return err
 		}
@@ -28,13 +28,13 @@ func getPosetInfo(nProc int, conn network.Connection) (posetInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		info[i] = *pi
+		info[i] = pi
 	}
 	return info, nil
 }
 
-func sendUnits(units [][]gomel.Unit, conn network.Connection) error {
-	err := encodeUnits(conn, units)
+func sendUnits(units []gomel.Unit, conn network.Connection) error {
+	err := encodeUnits(conn, toLayers(units))
 	if err != nil {
 		return err
 	}
@@ -45,17 +45,17 @@ func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
 	return decodeUnits(conn)
 }
 
-func sendRequests(req requests, conn network.Connection) error {
-	err := encodeRequests(conn, &req)
+func sendRequests(req requests, theirPosetInfo posetInfo, conn network.Connection) error {
+	err := encodeRequests(conn, req, theirPosetInfo)
 	if err != nil {
 		return err
 	}
 	return conn.Flush()
 }
 
-func getRequests(nProc int, conn network.Connection) (requests, error) {
-	result, err := decodeRequests(conn, nProc)
-	return *result, err
+func getRequests(nProc int, myPosetInfo posetInfo, conn network.Connection) (requests, error) {
+	result, err := decodeRequests(conn, myPosetInfo)
+	return result, err
 }
 
 func addAntichain(poset gomel.Poset, preunits []gomel.Preunit, myPid uint16, log zerolog.Logger) (bool, error) {
@@ -157,7 +157,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 		return
 	}
 
-	units, nSent, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, make(requests, len(theirPosetInfo)))
+	units, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, nil)
 	if err != nil {
 		log.Error().Str("where", "proto.In.unitsToSend").Msg(err.Error())
 		return
@@ -168,11 +168,11 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 		log.Error().Str("where", "proto.In.sendUnits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
+	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 
-	req := requestsToSend(poset, theirPosetInfo, make([][]gomel.Preunit, len(theirPosetInfo)))
+	req := requestsToSend(poset, theirPosetInfo, newStaticHashSet(nil))
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(req, conn)
+	err = sendRequests(req, theirPosetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.In.sendRequests").Msg(err.Error())
 		return
@@ -186,8 +186,16 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
+	log.Debug().Msg(logging.GetPreunits)
+	theirFreshPreunitsReceived, nFreshReceived, err := getPreunits(conn)
+	if err != nil {
+		log.Error().Str("where", "proto.In.getPreunits fresh").Msg(err.Error())
+		return
+	}
+	log.Debug().Int(logging.Size, nFreshReceived).Msg(logging.ReceivedPreunits)
+
 	log.Debug().Msg(logging.GetRequests)
-	theirRequests, err := getRequests(nProc, conn)
+	theirRequests, err := getRequests(nProc, posetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.In.getRequests").Msg(err.Error())
 		return
@@ -195,7 +203,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 
 	if nonempty(theirRequests) {
 		log.Info().Msg(logging.AdditionalExchange)
-		units, nSent, err = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+		units, err = unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
 		if err != nil {
 			log.Error().Str("where", "proto.In.unitsToSend(extra round)").Msg(err.Error())
 			return
@@ -206,7 +214,7 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 			log.Error().Str("where", "proto.In.sendUnits(extra round)").Msg(err.Error())
 			return
 		}
-		log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
+		log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 	}
 
 	log.Debug().Msg(logging.AddUnits)
@@ -215,7 +223,12 @@ func inExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn ne
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.Sent, nSent).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
+	err = addUnits(poset, theirFreshPreunitsReceived, pid, attemptTiming, log)
+	if err != nil {
+		log.Error().Str("where", "proto.In.addUnits fresh").Msg(err.Error())
+		return
+	}
+	log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Int(logging.FreshRecv, nFreshReceived).Msg(logging.SyncCompleted)
 }
 
 // Run handles the outgoing connection using info from the poset.
@@ -263,28 +276,44 @@ func outExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn n
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetRequests)
-	theirRequests, err := getRequests(nProc, conn)
+	theirRequests, err := getRequests(nProc, posetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.getRequests").Msg(err.Error())
 		return
 	}
 
-	units, nSent, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
+	units, err := unitsToSend(poset, maxSnapshot, theirPosetInfo, theirRequests)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.unitsToSend").Msg(err.Error())
 		return
 	}
+
 	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(units, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.sendUnits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, nSent).Msg(logging.SentUnits)
+	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 
-	req := requestsToSend(poset, theirPosetInfo, theirPreunitsReceived)
+	freshUnits, err := unitsToSend(poset, posetMaxSnapshot(poset), posetInfo, nil)
+	if err != nil {
+		log.Error().Str("where", "proto.Out.unitsToSend fresh").Msg(err.Error())
+		return
+	}
+	theirPreunitsHashSet := newStaticHashSet(hashesFromAcquiredUnits(theirPreunitsReceived))
+	freshUnitsUnknown := theirPreunitsHashSet.filterOutKnownUnits(freshUnits)
+
+	log.Debug().Msg(logging.SendFreshUnits)
+	err = sendUnits(freshUnitsUnknown, conn)
+	if err != nil {
+		log.Error().Str("where", "proto.Out.sendUnits").Msg(err.Error())
+		return
+	}
+	log.Debug().Int(logging.Size, len(freshUnitsUnknown)).Msg(logging.SentFreshUnits)
+	req := requestsToSend(poset, theirPosetInfo, theirPreunitsHashSet)
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(req, conn)
+	err = sendRequests(req, theirPosetInfo, conn)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.sendRequests").Msg(err.Error())
 		return
@@ -307,5 +336,5 @@ func outExchange(pid uint16, poset gomel.Poset, attemptTiming chan<- int, conn n
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.Sent, nSent).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
+	log.Info().Int(logging.Sent, len(units)).Int(logging.FreshSent, len(freshUnitsUnknown)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }

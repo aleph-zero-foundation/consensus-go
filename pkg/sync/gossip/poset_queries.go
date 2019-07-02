@@ -1,8 +1,6 @@
 package gossip
 
 import (
-	"fmt"
-	"sort"
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -13,7 +11,7 @@ type unitInfo struct {
 	height uint32
 }
 
-type processInfo []*unitInfo
+type processInfo []unitInfo
 
 type posetInfo []processInfo
 
@@ -21,8 +19,8 @@ type processRequests []*gomel.Hash
 
 type requests []processRequests
 
-func toInfo(unit gomel.Unit) *unitInfo {
-	return &unitInfo{unit.Hash(), uint32(unit.Height())}
+func toInfo(unit gomel.Unit) unitInfo {
+	return unitInfo{unit.Hash(), uint32(unit.Height())}
 }
 
 func toPosetInfo(maxSnapshot [][]gomel.Unit) posetInfo {
@@ -105,9 +103,6 @@ func maximalHeight(units []gomel.Unit) int {
 // This is to avoid the fourth round of the protocol in initial exchanges in cases with no forks.
 func unitsToSendByProcess(tops processInfo, maxes []gomel.Unit) []gomel.Unit {
 	result := []gomel.Unit{}
-	sort.Slice(maxes, func(i, j int) bool {
-		return maxes[i].Height() < maxes[j].Height()
-	})
 	minimalRemoteHeight := minimalHeight(tops)
 	remoteHashes := newStaticHashSet(hashesFromInfo(tops))
 	for _, u := range maxes {
@@ -172,11 +167,6 @@ func requestedToSend(poset gomel.Poset, info processInfo, req processRequests) (
 		return result, nil
 	}
 	units := poset.Get(req)
-	for i, u := range units {
-		if u == nil {
-			return nil, fmt.Errorf("received request for unknown hash: %s", req[i].Short())
-		}
-	}
 	operationHeight := maximalHeight(units)
 	knownRemotes := knownUnits(poset, info)
 	knownRemotes = dropToHeight(knownRemotes, operationHeight)
@@ -230,32 +220,35 @@ func toLayers(units []gomel.Unit) [][]gomel.Unit {
 	return result
 }
 
-func unitsToSend(poset gomel.Poset, maxUnits [][]gomel.Unit, info posetInfo, req requests) ([][]gomel.Unit, int, error) {
-	toSendPid := make([][]gomel.Unit, len(info))
+func unitsToSend(poset gomel.Poset, maxSnapshot [][]gomel.Unit, info posetInfo, req requests) ([]gomel.Unit, error) {
+	nProc := poset.NProc()
+	toSendPid := make([][]gomel.Unit, nProc)
 	var err error
 	var wg sync.WaitGroup
-	wg.Add(len(info))
-	for i := range info {
+	wg.Add(nProc)
+	for i := 0; i < nProc; i++ {
 		go func(id int) {
-			toSendPid[id] = unitsToSendByProcess(info[id], maxUnits[id])
-			unfulfilledRequests := newStaticHashSet(hashesFromUnits(toSendPid[id])).fiterOutKnown(req[id])
-			requested, e := requestedToSend(poset, info[id], unfulfilledRequests)
-			if e != nil {
-				err = e
+			toSendPid[id] = unitsToSendByProcess(info[id], maxSnapshot[id])
+			if req != nil {
+				unfulfilledRequests := newStaticHashSet(hashesFromUnits(toSendPid[id])).fiterOutKnown(req[id])
+				requested, e := requestedToSend(poset, info[id], unfulfilledRequests)
+				if e != nil {
+					err = e
+				}
+				toSendPid[id] = append(toSendPid[id], requested...)
 			}
-			toSendPid[id] = append(toSendPid[id], requested...)
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	toSend := []gomel.Unit{}
 	for _, tsp := range toSendPid {
 		toSend = append(toSend, tsp...)
 	}
-	return toLayers(toSend), len(toSend), nil
+	return toSend, nil
 }
 
 func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown staticHashSet) processRequests {
@@ -271,15 +264,8 @@ func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown staticHashSet)
 	return result
 }
 
-func requestsToSend(poset gomel.Poset, info posetInfo, acquiredUnits [][]gomel.Preunit) requests {
+func requestsToSend(poset gomel.Poset, info posetInfo, alsoKnown staticHashSet) requests {
 	result := make(requests, len(info))
-	acquiredHashes := []*gomel.Hash{}
-	for _, aus := range acquiredUnits {
-		for _, au := range aus {
-			acquiredHashes = append(acquiredHashes, au.Hash())
-		}
-	}
-	alsoKnown := newStaticHashSet(acquiredHashes)
 	var wg sync.WaitGroup
 	wg.Add(len(info))
 	for i := range info {

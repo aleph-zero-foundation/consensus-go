@@ -1,7 +1,6 @@
 package gossip_test
 
 import (
-	"encoding/binary"
 	"io"
 	"sync"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
@@ -138,54 +136,6 @@ var _ = Describe("Protocol", func() {
 				wg.Wait()
 				Expect(p1.attemptedAdd).To(BeEmpty())
 				Expect(p2.attemptedAdd).To(BeEmpty())
-			})
-
-			Context("and the second party requests a unit", func() {
-
-				It("should not add anything", func() {
-					var wg sync.WaitGroup
-					wg.Add(2)
-					go func() {
-						proto1.In(c)
-						wg.Done()
-					}()
-					go func() {
-						c2, _ := d.Dial(0)
-						handshake.Greet(c2, 1, 0)
-						lenData := make([]byte, 4)
-						// send empty poset info
-						for i := 0; i < p2.NProc(); i++ {
-							binary.LittleEndian.PutUint32(lenData, 0)
-							c2.Write(lenData)
-						}
-						// get empty poset info
-						for i := 0; i < p2.NProc(); i++ {
-							io.ReadFull(c2, lenData)
-						}
-						// read number of layers, should be 0
-						io.ReadFull(c2, lenData)
-						// read number of requests, should be 0
-						io.ReadFull(c2, lenData)
-						// send zero as number of layers
-						binary.LittleEndian.PutUint32(lenData, 0)
-						c2.Write(lenData)
-						// send one as number of requests
-						binary.LittleEndian.PutUint32(lenData, 1)
-						c2.Write(lenData)
-						// send three as the id of the requested unit's creator
-						binary.LittleEndian.PutUint32(lenData, 3)
-						c2.Write(lenData)
-						// send a bogus hash
-						bogusHash := gomel.Hash{43}
-						c2.Write(bogusHash[:])
-						// they should give up now, so nothing more needed
-						wg.Done()
-					}()
-					wg.Wait()
-					Expect(p1.attemptedAdd).To(BeEmpty())
-					Expect(p2.attemptedAdd).To(BeEmpty())
-				})
-
 			})
 		})
 

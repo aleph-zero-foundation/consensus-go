@@ -6,6 +6,16 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
+func hashesFromAcquiredUnits(acquiredUnits [][]gomel.Preunit) []*gomel.Hash {
+	acquiredHashes := []*gomel.Hash{}
+	for _, aus := range acquiredUnits {
+		for _, au := range aus {
+			acquiredHashes = append(acquiredHashes, au.Hash())
+		}
+	}
+	return acquiredHashes
+}
+
 func hashesFromInfo(info processInfo) []*gomel.Hash {
 	result := make([]*gomel.Hash, len(info))
 	for i, in := range info {
@@ -51,6 +61,16 @@ func (shs staticHashSet) fiterOutKnown(hashes []*gomel.Hash) []*gomel.Hash {
 	for _, h := range hashes {
 		if !shs.contains(h) {
 			result = append(result, h)
+		}
+	}
+	return result
+}
+
+func (shs staticHashSet) filterOutKnownUnits(units []gomel.Unit) []gomel.Unit {
+	result := []gomel.Unit{}
+	for _, u := range units {
+		if !shs.contains(u.Hash()) {
+			result = append(result, u)
 		}
 	}
 	return result

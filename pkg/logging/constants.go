@@ -31,6 +31,8 @@ const (
 	DataValidated         = "Z"
 	TooManyIncoming       = "a"
 	TooManyOutgoing       = "b"
+	SendFreshUnits        = "c"
+	SentFreshUnits        = "d"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -63,44 +65,50 @@ var eventTypeDict = map[string]string{
 	DataValidated:         "validated some bytes of data",
 	TooManyIncoming:       "too many incoming connections",
 	TooManyOutgoing:       "too many outgoing connections",
+	SendFreshUnits:        "sending fresh units started",
+	SentFreshUnits:        "succesfully sent fresh units",
 }
 
 // Field names
 const (
-	Time     = "T"
-	Level    = "L"
-	Event    = "E"
-	Service  = "S"
-	Size     = "N"
-	Height   = "H"
-	Round    = "R"
-	PID      = "P"
-	ISID     = "I"
-	OSID     = "O"
-	Sent     = "U"
-	Recv     = "V"
-	Creator  = "C"
-	NParents = "A"
-	Memory   = "M"
+	Time      = "T"
+	Level     = "L"
+	Event     = "E"
+	Service   = "S"
+	Size      = "N"
+	Height    = "H"
+	Round     = "R"
+	PID       = "P"
+	ISID      = "I"
+	OSID      = "O"
+	Sent      = "U"
+	FreshSent = "F"
+	Recv      = "V"
+	FreshRecv = "G"
+	Creator   = "C"
+	NParents  = "A"
+	Memory    = "M"
 )
 
 // fieldNameDict maps short field names to human readable form
 var fieldNameDict = map[string]string{
-	Time:     "time",
-	Level:    "level",
-	Event:    "event",
-	Service:  "service",
-	Size:     "size",
-	Height:   "height",
-	Round:    "round",
-	PID:      "PID",
-	ISID:     "inSID",
-	OSID:     "outSID",
-	Sent:     "sent",
-	Recv:     "received",
-	Creator:  "creator",
-	NParents: "parents",
-	Memory:   "bytes",
+	Time:      "time",
+	Level:     "level",
+	Event:     "event",
+	Service:   "service",
+	Size:      "size",
+	Height:    "height",
+	Round:     "round",
+	PID:       "PID",
+	ISID:      "inSID",
+	OSID:      "outSID",
+	Sent:      "sent",
+	FreshSent: "fresh sent",
+	Recv:      "received",
+	FreshRecv: "fresh received",
+	Creator:   "creator",
+	NParents:  "parents",
+	Memory:    "bytes",
 }
 
 // Service types
