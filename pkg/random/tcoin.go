@@ -7,16 +7,16 @@ import (
 
 type tcRandomSource struct {
 	poset      gomel.Poset
-	tcs        map[*gomel.Hash]*tcoin.ThresholdCoin
-	coinShares map[*gomel.Hash]*tcoin.CoinShare
+	tcs        *safeTCMap
+	coinShares *safeCSMap
 }
 
 // NewTcRandomSource returns a RandomSource based on threshold coins
 func NewTcRandomSource(poset gomel.Poset) gomel.RandomSource {
 	return &tcRandomSource{
 		poset:      poset,
-		tcs:        make(map[*gomel.Hash]*tcoin.ThresholdCoin),
-		coinShares: make(map[*gomel.Hash]*tcoin.CoinShare),
+		tcs:        newSafeTCMap(),
+		coinShares: newSafeCSMap(),
 	}
 }
 
@@ -36,6 +36,7 @@ func (rs *tcRandomSource) GetCRP(nonce int) []int {
 func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 	level := uTossing.Level() - 1
 	var dealer gomel.Unit
+	var tc *tcoin.ThresholdCoin
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 
@@ -50,16 +51,17 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 			fduV := rs.firstDealingUnit(v)
 			if dealer == nil {
 				dealer = fduV
+				tc = rs.tcs.get(dealer.Hash())
 			}
 			if dealer != fduV {
 				continue
 			}
-			cs := rs.coinShares[v.Hash()]
+			cs := rs.coinShares.get(v.Hash())
 			if cs != nil {
-				if rs.tcs[dealer.Hash()].VerifyCoinShare(cs, level) {
+				if tc.VerifyCoinShare(cs, level) {
 					shares = append(shares, cs)
 					shareCollected[v.Creator()] = true
-					if len(shares) == rs.tcs[dealer.Hash()].Threshold {
+					if len(shares) == tc.Threshold {
 						return false
 					}
 					return true
@@ -69,34 +71,32 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 		return true
 	})
 
-	coin, ok := rs.tcs[dealer.Hash()].CombineCoinShares(shares)
-	if !ok || !rs.tcs[dealer.Hash()].VerifyCoin(coin, level) {
+	coin, ok := tc.CombineCoinShares(shares)
+	if !ok || !tc.VerifyCoin(coin, level) {
 		return nil
 	}
 	return coin.RandomBytes()
 }
 
 // Update updates the RandomSource with data included in the preunit
-// TODO: threadsafe implementation
 func (rs *tcRandomSource) Update(pu gomel.Preunit, data []byte) error {
 	tc, cs, err := unmarshall(data, pu.Creator())
 	if err != nil {
 		return err
 	}
 	if cs != nil {
-		rs.coinShares[pu.Hash()] = cs
+		rs.coinShares.add(pu.Hash(), cs)
 	}
 	if tc != nil {
-		rs.tcs[pu.Hash()] = tc
+		rs.tcs.add(pu.Hash(), tc)
 	}
 	return nil
 }
 
 // Rollback rolls back an update
-// TODO: threadsafe implementation
 func (rs *tcRandomSource) Rollback(pu gomel.Preunit) error {
-	delete(rs.coinShares, pu.Hash())
-	delete(rs.tcs, pu.Hash())
+	rs.coinShares.remove(pu.Hash())
+	rs.tcs.remove(pu.Hash())
 	return nil
 }
 
@@ -112,7 +112,7 @@ func (rs *tcRandomSource) DataToInclude(creator int, parents []gomel.Unit, level
 
 func (rs *tcRandomSource) createCoinShare(parents []gomel.Unit, level int) *tcoin.CoinShare {
 	fdu := rs.firstDealingUnitFromParents(parents, level)
-	tc := rs.tcs[fdu.Hash()]
+	tc := rs.tcs.get(fdu.Hash())
 	if tc == nil {
 		// This is only needed for tests where we don't currently have threshold coins.
 		// TODO: Add threshold coins to tests?
