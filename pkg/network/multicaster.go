@@ -20,7 +20,6 @@ func NewMulticaster(conns []Connection) *Multicaster {
 func (m *Multicaster) Write(b []byte) (int, error) {
 	tasks := make([]func() error, len(m.conns))
 	for i, conn := range m.conns {
-		i := i
 		conn := conn
 		tasks[i] = func() error {
 			_, err := conn.Write(b)
@@ -53,11 +52,15 @@ func (m *Multicaster) Flush() error {
 
 // Close closes all connections
 func (m *Multicaster) Close() error {
-	for _, conn := range m.conns {
-		err := conn.Close()
-		if err != nil {
-			return err
-		}
+	tasks := make([]func() error, len(m.conns))
+	for i, conn := range m.conns {
+		tasks[i] = func() error { return conn.Close() }
 	}
+
+	eg := gomel.NewErrGroup()
+	if err := eg.Go(tasks); err != nil {
+		return err
+	}
+
 	return nil
 }
