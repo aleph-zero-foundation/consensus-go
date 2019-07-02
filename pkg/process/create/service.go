@@ -8,7 +8,6 @@ import (
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
@@ -20,6 +19,7 @@ const (
 
 type service struct {
 	poset            gomel.Poset
+	randomSource     gomel.RandomSource
 	pid              int
 	maxParents       int
 	primeOnly        bool
@@ -46,9 +46,10 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close posetFinished channel when it stops.
-func NewService(poset gomel.Poset, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
+func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		poset:            poset,
+		randomSource:     randomSource,
 		pid:              config.Pid,
 		maxParents:       config.MaxParents,
 		primeOnly:        config.PrimeOnly,
@@ -125,7 +126,8 @@ func (s *service) getData() []byte {
 }
 
 func (s *service) createUnit() {
-	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, s.getData(), s.primeOnly)
+	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, s.getData(),
+		s.randomSource, s.primeOnly)
 	if err != nil {
 		s.slower()
 		s.log.Info().Msg(logging.NotEnoughParents)
@@ -133,20 +135,13 @@ func (s *service) createUnit() {
 	}
 	created.SetSignature(s.privKey.Sign(created))
 
-	if len(created.Parents()) == 0 {
-		tc, err := tcoin.Decode(created.ThresholdCoinData(), s.pid)
-		if err != nil {
-			s.log.Error().Str("where", "poset.createUnit.tcoin.Decode").Msg(err.Error())
-			return
-		}
-		s.poset.AddThresholdCoin(created.Hash(), tc)
-	}
+	s.randomSource.Update(created, created.RandomSourceData())
 	var wg sync.WaitGroup
 	wg.Add(1)
 	s.poset.AddUnit(created, func(_ gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
-			s.poset.RemoveThresholdCoin(added.Hash())
+			s.randomSource.Rollback(created)
 			s.log.Error().Str("where", "poset.AddUnit callback").Msg(err.Error())
 			return
 		}

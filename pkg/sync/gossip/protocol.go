@@ -14,6 +14,7 @@ import (
 type protocol struct {
 	pid           uint16
 	poset         gomel.Poset
+	randomSource  gomel.RandomSource
 	peerSource    *dialer
 	dialer        network.Dialer
 	inUse         []*mutex
@@ -24,7 +25,7 @@ type protocol struct {
 }
 
 // NewProtocol returns a new gossiping protocol.
-func NewProtocol(pid uint16, poset gomel.Poset, dialer network.Dialer, timeout time.Duration, attemptTiming chan<- int, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, dialer network.Dialer, timeout time.Duration, attemptTiming chan<- int, log zerolog.Logger) sync.Protocol {
 	nProc := uint16(dialer.Length())
 	peerSource := newDialer(nProc, pid)
 	inUse := make([]*mutex, nProc)
@@ -34,6 +35,7 @@ func NewProtocol(pid uint16, poset gomel.Poset, dialer network.Dialer, timeout t
 	return &protocol{
 		pid:           pid,
 		poset:         poset,
+		randomSource:  randomSource,
 		peerSource:    peerSource,
 		dialer:        dialer,
 		inUse:         inUse,
@@ -62,7 +64,7 @@ func (p *protocol) In(conn network.Connection) {
 	}
 	defer m.release()
 	conn.SetLogger(p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger())
-	inExchange(p.pid, p.poset, p.attemptTiming, conn)
+	inExchange(p.pid, p.poset, p.randomSource, p.attemptTiming, conn)
 }
 
 func (p *protocol) Out() {
@@ -87,5 +89,5 @@ func (p *protocol) Out() {
 		return
 	}
 	conn.SetLogger(p.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, sid).Logger())
-	outExchange(p.pid, p.poset, p.attemptTiming, conn)
+	outExchange(p.pid, p.poset, p.randomSource, p.attemptTiming, conn)
 }

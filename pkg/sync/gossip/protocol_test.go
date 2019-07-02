@@ -88,6 +88,8 @@ var _ = Describe("Protocol", func() {
 	var (
 		p1     *poset
 		p2     *poset
+		rs1    gomel.RandomSource
+		rs2    gomel.RandomSource
 		proto1 gsync.Protocol
 		proto2 gsync.Protocol
 		c      network.Connection
@@ -101,8 +103,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, p1, d, time.Second, make(chan int), zerolog.Logger{})
-		proto2 = NewProtocol(1, p2, d, time.Second, make(chan int), zerolog.Logger{})
+		proto1 = NewProtocol(0, p1, rs1, d, time.Second, make(chan int), zerolog.Logger{})
+		proto2 = NewProtocol(1, p2, rs2, d, time.Second, make(chan int), zerolog.Logger{})
 	})
 
 	Describe("in a small poset", func() {
@@ -111,11 +113,13 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				rs1 = tests.NewTestRandomSource(tp1)
 				p1 = &poset{
 					Poset:        tp1.(*tests.Poset),
 					attemptedAdd: nil,
 				}
 				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				rs2 = tests.NewTestRandomSource(tp2)
 				p2 = &poset{
 					Poset:        tp2.(*tests.Poset),
 					attemptedAdd: nil,
@@ -143,11 +147,13 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/one_unit.txt", tests.NewTestPosetFactory())
+				rs1 = tests.NewTestRandomSource(tp1)
 				p1 = &poset{
 					Poset:        tp1.(*tests.Poset),
 					attemptedAdd: nil,
 				}
 				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				rs2 = tests.NewTestRandomSource(tp2)
 				p2 = &poset{
 					Poset:        tp2.(*tests.Poset),
 					attemptedAdd: nil,
@@ -178,11 +184,13 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				rs1 = tests.NewTestRandomSource(tp1)
 				p1 = &poset{
 					Poset:        tp1.(*tests.Poset),
 					attemptedAdd: nil,
 				}
 				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/other_unit.txt", tests.NewTestPosetFactory())
+				rs2 = tests.NewTestRandomSource(tp2)
 				p2 = &poset{
 					Poset:        tp2.(*tests.Poset),
 					attemptedAdd: nil,
@@ -213,11 +221,13 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/only_dealing.txt", tests.NewTestPosetFactory())
+				rs1 = tests.NewTestRandomSource(tp1)
 				p1 = &poset{
 					Poset:        tp1.(*tests.Poset),
 					attemptedAdd: nil,
 				}
 				tp2 := tp1
+				rs2 = tests.NewTestRandomSource(tp2)
 				p2 = &poset{
 					Poset:        tp2.(*tests.Poset),
 					attemptedAdd: nil,

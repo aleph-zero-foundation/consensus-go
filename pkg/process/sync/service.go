@@ -21,13 +21,13 @@ type service struct {
 }
 
 // NewService creates a new syncing service for the given poset, with the given config.
-func NewService(poset gomel.Poset, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, error) {
+func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, error) {
 	listenChan := make(chan network.Connection)
 	connServ, err := tcp.NewConnServer(config.LocalAddress, listenChan, log)
 	if err != nil {
 		return nil, err
 	}
-	proto := gossip.NewProtocol(uint16(config.Pid), poset, tcp.NewDialer(config.RemoteAddresses, log), config.Timeout, attemptTiming, log)
+	proto := gossip.NewProtocol(uint16(config.Pid), poset, randomSource, tcp.NewDialer(config.RemoteAddresses, log), config.Timeout, attemptTiming, log)
 	syncServ := gsync.NewServer(listenChan, proto, config.OutSyncLimit, config.InSyncLimit, log)
 	return &service{
 		syncServer: syncServ,

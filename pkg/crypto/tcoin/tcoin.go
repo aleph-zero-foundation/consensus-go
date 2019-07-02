@@ -201,6 +201,11 @@ type Coin struct {
 	sgn signature
 }
 
+// RandomBytes returns randomBytes from the coin
+func (c *Coin) RandomBytes() []byte {
+	return c.sgn
+}
+
 // Toss returns a pseduorandom bit from a coin
 func (c *Coin) Toss() int {
 	return int(c.sgn[0] & 1)

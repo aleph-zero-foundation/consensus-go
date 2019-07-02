@@ -4,7 +4,6 @@ import (
 	"math"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type unit struct {
@@ -17,8 +16,7 @@ type unit struct {
 	parents       []gomel.Unit
 	floor         [][]gomel.Unit
 	data          []byte
-	cs            *tcoin.CoinShare
-	tcData        []byte
+	rsData        []byte
 }
 
 func newUnit(pu gomel.Preunit) *unit {
@@ -26,8 +24,7 @@ func newUnit(pu gomel.Preunit) *unit {
 		creator: pu.Creator(),
 		hash:    *pu.Hash(),
 		data:    pu.Data(),
-		cs:      pu.CoinShare(),
-		tcData:  pu.ThresholdCoinData(),
+		rsData:  pu.RandomSourceData(),
 	}
 }
 
@@ -35,12 +32,8 @@ func (u *unit) Floor() [][]gomel.Unit {
 	return u.floor
 }
 
-func (u *unit) CoinShare() *tcoin.CoinShare {
-	return u.cs
-}
-
-func (u *unit) ThresholdCoinData() []byte {
-	return u.tcData
+func (u *unit) RandomSourceData() []byte {
+	return u.rsData
 }
 
 func (u *unit) Data() []byte {
