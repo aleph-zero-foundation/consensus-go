@@ -17,7 +17,7 @@ var _ = Describe("Tcoin", func() {
 	BeforeEach(func() {
 		poset, err = tests.CreatePosetFromTestFile("../testdata/empty.txt", tests.NewTestPosetFactory())
 		Expect(err).NotTo(HaveOccurred())
-		rs = NewTcSource(poset)
+		rs = NewTcSource(poset, 0)
 	})
 	Describe("GetCRP", func() {
 		Context("On a given level", func() {

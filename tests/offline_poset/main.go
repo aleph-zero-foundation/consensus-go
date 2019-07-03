@@ -36,7 +36,7 @@ func runOfflineTest() {
 	// start goroutines waiting for a preunit and adding it to its' poset
 	for pid := 0; pid < nProcesses; pid++ {
 		posets[pid] = growing.NewPoset(config)
-		rses[pid] = random.NewTcSource(posets[pid])
+		rses[pid] = random.NewTcSource(posets[pid], pid)
 	}
 
 	for i := 0; i < nUnits; i++ {

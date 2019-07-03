@@ -64,7 +64,7 @@ func (p *protocol) In(conn network.Connection) {
 	}
 	defer m.release()
 	conn.SetLogger(p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger())
-	inExchange(p.pid, p.poset, p.randomSource, p.attemptTiming, conn)
+	inExchange(p.poset, p.randomSource, p.attemptTiming, conn)
 }
 
 func (p *protocol) Out() {
@@ -89,5 +89,5 @@ func (p *protocol) Out() {
 		return
 	}
 	conn.SetLogger(p.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, sid).Logger())
-	outExchange(p.pid, p.poset, p.randomSource, p.attemptTiming, conn)
+	outExchange(p.poset, p.randomSource, p.attemptTiming, conn)
 }

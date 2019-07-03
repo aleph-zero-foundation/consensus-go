@@ -57,7 +57,7 @@ func getRequests(nProc int, myPosetInfo posetInfo, conn network.Connection) (req
 	return result, err
 }
 
-func addAntichain(poset gomel.Poset, randomSource gomel.RandomSource, preunits []gomel.Preunit, myPid uint16, log zerolog.Logger) (bool, error) {
+func addAntichain(poset gomel.Poset, randomSource gomel.RandomSource, preunits []gomel.Preunit, log zerolog.Logger) (bool, error) {
 	var wg sync.WaitGroup
 	// TODO: We only report one error, we might want to change it when we deal with Byzantine processes.
 	var problem error
@@ -91,9 +91,9 @@ func addAntichain(poset gomel.Poset, randomSource gomel.RandomSource, preunits [
 }
 
 // addUnits adds the provided units to the poset, assuming they are divided into antichains as described in toLayers
-func addUnits(poset gomel.Poset, randomSource gomel.RandomSource, preunits [][]gomel.Preunit, myPid uint16, attemptTiming chan<- int, log zerolog.Logger) error {
+func addUnits(poset gomel.Poset, randomSource gomel.RandomSource, preunits [][]gomel.Preunit, attemptTiming chan<- int, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		primeAdded, err := addAntichain(poset, randomSource, pus, myPid, log)
+		primeAdded, err := addAntichain(poset, randomSource, pus, log)
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func nonempty(req requests) bool {
 		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
 		9. Add the received units to the poset.
 */
-func inExchange(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, attemptTiming chan<- int, conn network.Connection) {
+func inExchange(poset gomel.Poset, randomSource gomel.RandomSource, attemptTiming chan<- int, conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
 	nProc := poset.NProc()
@@ -212,12 +212,12 @@ func inExchange(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, 
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, randomSource, theirPreunitsReceived, pid, attemptTiming, log)
+	err = addUnits(poset, randomSource, theirPreunitsReceived, attemptTiming, log)
 	if err != nil {
 		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
 		return
 	}
-	err = addUnits(poset, randomSource, theirFreshPreunitsReceived, pid, attemptTiming, log)
+	err = addUnits(poset, randomSource, theirFreshPreunitsReceived, attemptTiming, log)
 	if err != nil {
 		log.Error().Str("where", "proto.In.addUnits fresh").Msg(err.Error())
 		return
@@ -241,7 +241,7 @@ func inExchange(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, 
 			9. If the sent requests were nonempty, wait for more units. All the units are resend.
 		10. Add the received units to the poset.
 */
-func outExchange(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, attemptTiming chan<- int, conn network.Connection) {
+func outExchange(poset gomel.Poset, randomSource gomel.RandomSource, attemptTiming chan<- int, conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
 	nProc := poset.NProc()
@@ -325,7 +325,7 @@ func outExchange(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource,
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(poset, randomSource, theirPreunitsReceived, pid, attemptTiming, log)
+	err = addUnits(poset, randomSource, theirPreunitsReceived, attemptTiming, log)
 	if err != nil {
 		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
 		return

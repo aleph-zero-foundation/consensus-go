@@ -8,14 +8,16 @@ import (
 )
 
 type tcRandomSource struct {
+	pid        int
 	poset      gomel.Poset
 	tcs        *syncTCMap
 	coinShares *syncCSMap
 }
 
 // NewTcSource returns a RandomSource based on threshold coins
-func NewTcSource(poset gomel.Poset) gomel.RandomSource {
+func NewTcSource(poset gomel.Poset, pid int) gomel.RandomSource {
 	return &tcRandomSource{
+		pid:        pid,
 		poset:      poset,
 		tcs:        newSyncTCMap(),
 		coinShares: newSyncCSMap(),
@@ -82,7 +84,7 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 
 // Update updates the RandomSource with data included in the preunit
 func (rs *tcRandomSource) Update(pu gomel.Preunit) error {
-	tc, cs, err := unmarshall(pu.RandomSourceData(), pu.Creator())
+	tc, cs, err := unmarshall(pu.RandomSourceData(), rs.pid)
 	if err != nil {
 		return err
 	}
