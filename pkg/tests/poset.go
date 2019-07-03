@@ -95,6 +95,7 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	}
 	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
+	u.data = pu.Data()
 	u.tcData = pu.ThresholdCoinData()
 	if len(p.unitsByHeight) <= u.height {
 		u.version = 0
