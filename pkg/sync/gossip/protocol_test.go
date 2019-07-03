@@ -77,6 +77,14 @@ func (d *dialer) DialAll() (*network.Multicaster, error) {
 	return nil, nil
 }
 
+type listener struct {
+	conn network.Connection
+}
+
+func (l *listener) Listen() (network.Connection, error) {
+	return l.conn, nil
+}
+
 // NOTE: since we return 2, we should always only ask about the other peer, which makes the above note somewhat irrelevant.
 // Still only sufficient for the tests below.
 func (d *dialer) Length() int {
@@ -92,19 +100,19 @@ var _ = Describe("Protocol", func() {
 		rs2    gomel.RandomSource
 		proto1 gsync.Protocol
 		proto2 gsync.Protocol
-		c      network.Connection
+		l      network.Listener
 		d      network.Dialer
 	)
 
 	BeforeEach(func() {
 		c1, c2 := newConnection()
-		c = c1
+		l = &listener{c1}
 		d = &dialer{c2}
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, p1, rs1, d, time.Second, make(chan int), zerolog.Logger{})
-		proto2 = NewProtocol(1, p2, rs2, d, time.Second, make(chan int), zerolog.Logger{})
+		proto1 = NewProtocol(0, p1, rs1, d, l, time.Second, make(chan int), zerolog.Logger{})
+		proto2 = NewProtocol(1, p2, rs2, d, l, time.Second, make(chan int), zerolog.Logger{})
 	})
 
 	Describe("in a small poset", func() {
@@ -130,7 +138,7 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					proto1.In(c)
+					proto1.In()
 					wg.Done()
 				}()
 				go func() {
@@ -164,7 +172,7 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					proto1.In(c)
+					proto1.In()
 					wg.Done()
 				}()
 				go func() {
@@ -201,7 +209,7 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					proto1.In(c)
+					proto1.In()
 					wg.Done()
 				}()
 				go func() {
@@ -238,7 +246,7 @@ var _ = Describe("Protocol", func() {
 				var wg sync.WaitGroup
 				wg.Add(2)
 				go func() {
-					proto1.In(c)
+					proto1.In()
 					wg.Done()
 				}()
 				go func() {
