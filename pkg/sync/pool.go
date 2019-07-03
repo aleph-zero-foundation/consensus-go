@@ -12,9 +12,9 @@ type pool struct {
 	quit int32
 }
 
-func newPool(size int, work func()) *pool {
+func newPool(size uint, work func()) *pool {
 	return &pool{
-		size: size,
+		size: int(size),
 		work: work,
 	}
 }

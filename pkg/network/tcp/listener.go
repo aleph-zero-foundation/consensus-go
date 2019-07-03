@@ -10,6 +10,16 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
+func Open(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Dialer, network.Listener, error) {
+	listener, err := newListener(localAddress, log)
+	if err != nil {
+		return nil, nil, err
+	}
+	dialer := newDialer(remoteAddresses, log)
+	return dialer, listener, nil
+
+}
+
 type listener struct {
 	ln  *net.TCPListener
 	log zerolog.Logger

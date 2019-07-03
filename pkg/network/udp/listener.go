@@ -10,6 +10,16 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
+func Open(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Dialer, network.Listener, error) {
+	listener, err := newListener(localAddress, log)
+	if err != nil {
+		return nil, nil, err
+	}
+	dialer := newDialer(remoteAddresses, log)
+	return dialer, listener, nil
+
+}
+
 type listener struct {
 	ln     *net.UDPConn
 	log    zerolog.Logger
@@ -39,7 +49,7 @@ func (l *listener) Listen() (network.Connection, error) {
 		l.log.Error().Str("where", "udp.Listener.Listen").Msg(err.Error())
 		return nil, err
 	}
-	conn := NewConnIn(l.buffer[:n], l.log)
+	conn := newConnIn(l.buffer[:n], l.log)
 	l.log.Info().Msg(logging.ConnectionReceived)
 	return conn, nil
 }

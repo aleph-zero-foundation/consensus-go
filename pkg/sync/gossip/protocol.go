@@ -17,6 +17,7 @@ type protocol struct {
 	randomSource  gomel.RandomSource
 	peerSource    *peerSource
 	dialer        network.Dialer
+	listener      network.Listener
 	inUse         []*mutex
 	syncIds       []uint32
 	timeout       time.Duration
@@ -25,7 +26,7 @@ type protocol struct {
 }
 
 // NewProtocol returns a new gossiping protocol.
-func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, dialer network.Dialer, timeout time.Duration, attemptTiming chan<- int, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, attemptTiming chan<- int, log zerolog.Logger) sync.Protocol {
 	nProc := uint16(dialer.Length())
 	peerSource := newPeerSource(nProc, pid)
 	inUse := make([]*mutex, nProc)
@@ -38,6 +39,7 @@ func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource,
 		randomSource:  randomSource,
 		peerSource:    peerSource,
 		dialer:        dialer,
+		listener:      listener,
 		inUse:         inUse,
 		syncIds:       make([]uint32, nProc),
 		timeout:       timeout,
@@ -46,7 +48,11 @@ func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource,
 	}
 }
 
-func (p *protocol) In(conn network.Connection) {
+func (p *protocol) In() {
+	conn, err := p.listener.Listen()
+	if err != nil {
+		return
+	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
 	pid, sid, err := handshake.AcceptGreeting(conn)
