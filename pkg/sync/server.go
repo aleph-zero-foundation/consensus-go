@@ -15,11 +15,11 @@ type Server struct {
 
 // NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,
 // and maximal numbers of syncs to initialize and receive.
-func NewServer(proto Protocol, nOutSync, nInSync uint, log zerolog.Logger) *Server {
+func NewServer(proto Protocol, nOut, nIn uint, log zerolog.Logger) *Server {
 	return &Server{
 		proto:   proto,
-		outPool: newPool(nOutSync, proto.Out),
-		inPool:  newPool(nInSync, proto.In),
+		outPool: newPool(nOut, proto.Out),
+		inPool:  newPool(nIn, proto.In),
 		log:     log,
 	}
 }

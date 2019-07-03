@@ -6,7 +6,7 @@ import (
 )
 
 type pool struct {
-	size int
+	size uint
 	work func()
 	wg   sync.WaitGroup
 	quit int32
@@ -14,14 +14,14 @@ type pool struct {
 
 func newPool(size uint, work func()) *pool {
 	return &pool{
-		size: int(size),
+		size: size,
 		work: work,
 	}
 }
 
 func (p *pool) start() {
-	p.wg.Add(p.size)
-	for i := 0; i < p.size; i++ {
+	p.wg.Add(int(p.size))
+	for i := uint(0); i < p.size; i++ {
 		go func() {
 			defer p.wg.Done()
 			for {

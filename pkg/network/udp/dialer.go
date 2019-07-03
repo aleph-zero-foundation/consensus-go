@@ -43,3 +43,15 @@ func (d *dialer) DialAll() (*network.Multicaster, error) {
 func (d *dialer) Length() int {
 	return len(d.remoteAddrs)
 }
+
+// NewNetwork initializes network setup for the given local address and the set of remote addresses.
+// Returns a pair of complementary objects: Dialer and Listener
+func NewNetwork(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Dialer, network.Listener, error) {
+	listener, err := newListener(localAddress, log)
+	if err != nil {
+		return nil, nil, err
+	}
+	dialer := newDialer(remoteAddresses, log)
+	return dialer, listener, nil
+
+}
