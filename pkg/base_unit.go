@@ -11,7 +11,7 @@ type BaseUnit interface {
 	// Data is the slice of data contained in the unit
 	Data() []byte
 	// RandomSourceData is a data contained in the unit needed to maintain
-	// the common random source between processes
+	// the common random source among processes
 	RandomSourceData() []byte
 }
 

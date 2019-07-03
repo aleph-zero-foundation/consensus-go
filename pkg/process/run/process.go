@@ -50,7 +50,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 	poset := growing.NewPoset(config.Poset)
-	rs := random.NewTcRandomSource(poset)
+	rs := random.NewTcSource(poset)
 	defer poset.Stop()
 
 	service, err := create.NewService(poset, rs, config.Create, posetFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())

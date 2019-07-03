@@ -135,7 +135,11 @@ func (s *service) createUnit() {
 	}
 	created.SetSignature(s.privKey.Sign(created))
 
-	s.randomSource.Update(created, created.RandomSourceData())
+	err = s.randomSource.Update(created)
+	if err != nil {
+		s.log.Error().Str("where", "randomSource.Update").Msg(err.Error())
+		return
+	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	s.poset.AddUnit(created, func(_ gomel.Preunit, added gomel.Unit, err error) {

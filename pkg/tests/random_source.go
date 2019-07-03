@@ -31,13 +31,12 @@ func (rs *testRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 }
 
 // Update updates the RandomSource with data included in the preunit
-func (*testRandomSource) Update(gomel.Preunit, []byte) error {
+func (*testRandomSource) Update(gomel.Preunit) error {
 	return nil
 }
 
 // Rollback rolls back an update
-func (*testRandomSource) Rollback(gomel.Preunit) error {
-	return nil
+func (*testRandomSource) Rollback(gomel.Preunit) {
 }
 
 // ToInclude returns data which should be included in the unit under creation

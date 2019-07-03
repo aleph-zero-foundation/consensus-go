@@ -222,9 +222,6 @@ func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte, rs
 	if posetLevel == predecessor.Level() && (len(parents) < 2 || (requirePrime && !isPrime)) {
 		return nil, &noAvailableParents{}
 	}
-	var rsData []byte
-	if isPrime {
-		rsData = rs.DataToInclude(creator, parents, resultLevel)
-	}
+	rsData := rs.DataToInclude(creator, parents, resultLevel)
 	return NewPreunit(creator, hashes(parents), data, rsData), nil
 }

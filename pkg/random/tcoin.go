@@ -1,22 +1,24 @@
 package random
 
 import (
+	"errors"
+
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type tcRandomSource struct {
 	poset      gomel.Poset
-	tcs        *safeTCMap
-	coinShares *safeCSMap
+	tcs        *syncTCMap
+	coinShares *syncCSMap
 }
 
-// NewTcRandomSource returns a RandomSource based on threshold coins
-func NewTcRandomSource(poset gomel.Poset) gomel.RandomSource {
+// NewTcSource returns a RandomSource based on threshold coins
+func NewTcSource(poset gomel.Poset) gomel.RandomSource {
 	return &tcRandomSource{
 		poset:      poset,
-		tcs:        newSafeTCMap(),
-		coinShares: newSafeCSMap(),
+		tcs:        newSyncTCMap(),
+		coinShares: newSyncCSMap(),
 	}
 }
 
@@ -79,11 +81,16 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 }
 
 // Update updates the RandomSource with data included in the preunit
-func (rs *tcRandomSource) Update(pu gomel.Preunit, data []byte) error {
-	tc, cs, err := unmarshall(data, pu.Creator())
+func (rs *tcRandomSource) Update(pu gomel.Preunit) error {
+	tc, cs, err := unmarshall(pu.RandomSourceData(), pu.Creator())
 	if err != nil {
 		return err
 	}
+	if len(pu.Parents()) == 0 && tc == nil {
+		return errors.New("Dealing unit without threshold coin machine")
+	}
+	// TODO: checking if pu is a primeUnit
+	// and if so checking if it contains a coinShare
 	if cs != nil {
 		rs.coinShares.add(pu.Hash(), cs)
 	}
@@ -94,20 +101,24 @@ func (rs *tcRandomSource) Update(pu gomel.Preunit, data []byte) error {
 }
 
 // Rollback rolls back an update
-func (rs *tcRandomSource) Rollback(pu gomel.Preunit) error {
+func (rs *tcRandomSource) Rollback(pu gomel.Preunit) {
 	rs.coinShares.remove(pu.Hash())
 	rs.tcs.remove(pu.Hash())
-	return nil
 }
 
 // ToInclude returns data which should be included in the unit under creation
 // with given creator and set of parents.
 func (rs *tcRandomSource) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
-	nProc := rs.poset.NProc()
+	// dealing unit
 	if len(parents) == 0 {
+		nProc := rs.poset.NProc()
 		return marshall(tcoin.Deal(nProc, nProc/3+1), nil)
 	}
-	return marshall(nil, rs.createCoinShare(parents, level))
+	// prime non-dealing unit
+	if parents[0].Level() != level {
+		return marshall(nil, rs.createCoinShare(parents, level))
+	}
+	return nil
 }
 
 func (rs *tcRandomSource) createCoinShare(parents []gomel.Unit, level int) *tcoin.CoinShare {

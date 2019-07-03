@@ -7,9 +7,9 @@ type RandomSource interface {
 	// RandomBytes returns a random bits for a given unit and nonce
 	RandomBytes(Unit, int) []byte
 	// Update updates the RandomSource with data included in the preunit
-	Update(Preunit, []byte) error
+	Update(Preunit) error
 	// Rollback rolls back an update
-	Rollback(Preunit) error
+	Rollback(Preunit)
 	// DataToInclude returns data which should be included in the unit under
 	// creation with given creator and set of parents
 	DataToInclude(creator int, parents []Unit, level int) []byte
