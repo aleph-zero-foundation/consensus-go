@@ -73,7 +73,7 @@ func (d *dialer) Dial(uint16) (network.Connection, error) {
 	return d.conn, nil
 }
 
-func (d *dialer) DialAll() (network.Multicaster, error) {
+func (d *dialer) DialAll() (*network.Multicaster, error) {
 	return nil, nil
 }
 
