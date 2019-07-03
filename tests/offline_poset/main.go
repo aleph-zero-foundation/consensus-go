@@ -36,7 +36,7 @@ func runOfflineTest() {
 	// start goroutines waiting for a preunit and adding it to its' poset
 	for pid := 0; pid < nProcesses; pid++ {
 		posets[pid] = growing.NewPoset(config)
-		rses[pid] = random.NewTcRandomSource(posets[pid])
+		rses[pid] = random.NewTcSource(posets[pid])
 	}
 
 	for i := 0; i < nUnits; i++ {
@@ -65,19 +65,24 @@ func runOfflineTest() {
 		var wg sync.WaitGroup
 		wg.Add(nProcesses)
 		for j := 0; j < nProcesses; j++ {
-			rses[j].Update(pu, pu.RandomSourceData())
-			posets[j].AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
-				defer wg.Done()
-				if err != nil {
-					switch err.(type) {
-					case *gomel.DuplicateUnit:
-						fmt.Println(err)
-					default:
-						rses[j].Rollback(pu)
-						fmt.Println(err)
+			err := rses[j].Update(pu)
+			if err != nil {
+				fmt.Println(err)
+				wg.Done()
+			} else {
+				posets[j].AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
+					defer wg.Done()
+					if err != nil {
+						switch err.(type) {
+						case *gomel.DuplicateUnit:
+							fmt.Println(err)
+						default:
+							rses[j].Rollback(pu)
+							fmt.Println(err)
+						}
 					}
-				}
-			})
+				})
+			}
 		}
 		wg.Wait()
 	}
