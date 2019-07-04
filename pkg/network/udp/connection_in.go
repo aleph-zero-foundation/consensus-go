@@ -20,7 +20,6 @@ type connIn struct {
 func newConnIn(packet []byte, log zerolog.Logger) network.Connection {
 	return &connIn{
 		reader: bytes.NewReader(packet),
-		recv:   0,
 		log:    log,
 	}
 }

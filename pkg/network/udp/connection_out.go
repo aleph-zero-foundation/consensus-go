@@ -24,7 +24,6 @@ func newConnOut(link net.Conn, log zerolog.Logger) network.Connection {
 	return &connOut{
 		link:        link,
 		writeBuffer: make([]byte, 0),
-		sent:        0,
 		log:         log,
 	}
 }
