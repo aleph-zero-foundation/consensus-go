@@ -32,8 +32,9 @@ def multimean(datasets):
     full = []
     stats = []
     for name, data in datasets.items():
-        full += data
-        stats.append((mean(data), name))
+        if data:
+            full += data
+            stats.append((mean(data), name))
     stats.sort()
     glob = mean(full)
     ret =  '    Global Average: %13.2f\n' % glob
@@ -100,6 +101,8 @@ class Timer(Plugin):
 
     def report(self):
         t = self.get_data()
+        if not t:
+            return 'NO ENTRIES'
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         ret += '    Min: %10d    ms\n' % min(t)
         ret += '    Max: %10d    ms\n' % max(t)
@@ -132,6 +135,8 @@ class Counter(Plugin):
 
     def report(self):
         d = self.get_data()
+        if not d:
+            return 'NO ENTRIES'
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         ret += '    Min: %10d\n' % min(d)
         ret += '    Max: %10d\n' % max(d)
@@ -164,6 +169,8 @@ class Histogram(Plugin):
 
     def report(self):
         d = self.get_data()
+        if not d:
+            return 'NO ENTRIES'
         h = {}
         for i in d:
             if i not in h:
@@ -324,12 +331,16 @@ class SyncStats(Plugin):
         if entry[Event] == SyncStarted:
             d[key]['start'] = entry[Time]
         elif entry[Event] == SyncCompleted:
-            if self.ig and entry[Sent] == 0 and entry[Recv] == 0: #empty sync, remove
+            sent = entry[Sent] + entry.get(FreshSent,0)
+            recv = entry[Recv] + entry.get(FreshRecv,0)
+            if self.ig and sent == 0 and recv == 0: #empty sync, remove
                 del d[key]
                 return entry
             d[key]['end'] = entry[Time]
-            d[key]['sent'] = entry[Sent]
-            d[key]['recv'] = entry[Recv]
+            d[key]['sent'] = sent
+            d[key]['recv'] = recv
+            d[key]['fsent'] = entry.get(FreshSent,0)
+            d[key]['frecv'] = entry.get(FreshRecv,0)
         elif entry[Event] == AdditionalExchange:
             d[key]['addexc'] = True
         elif entry[Event] == DuplicatedUnit:
@@ -343,6 +354,8 @@ class SyncStats(Plugin):
         self.times = []
         self.sent = []
         self.recv = []
+        self.fsent = []
+        self.frecv = []
         self.dupl = []
         self.addexc, self.failed, self.unfinished = 0,0,0
         for d in values:
@@ -355,12 +368,16 @@ class SyncStats(Plugin):
                 self.times.append(d['end']-d['start'])
                 self.sent.append(d['sent'])
                 self.recv.append(d['recv'])
+                self.fsent.append(d['fsent'])
+                self.frecv.append(d['frecv'])
                 self.dupl.append((d['dupl']/d['recv'] if d['recv'] > 0 else 0, d['recv']))
             if d['addexc']:
                 self.addexc += 1
         self.times.sort()
         self.sent.sort()
         self.recv.sort()
+        self.fsent.sort()
+        self.frecv.sort()
         self.dupl.sort()
 
     def get_data(self):
@@ -373,20 +390,22 @@ class SyncStats(Plugin):
         ret +=  '    Outgoing:                 %5d\n'%len(self.out)
         ret +=  '    Failed:                   %5d\n'%self.failed
         ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
-        ret +=  '    Min time:            %10d    ms\n'%self.times[0]
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
         ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
         ret +=  '    Med time:            %13.2f ms\n\n'%median(self.times)
-        ret +=  '    Min units sent:      %10d\n'%self.sent[0]
         ret +=  '    Max units sent:      %10d\n'%self.sent[-1]
         ret +=  '    Avg units sent:      %13.2f\n'%mean(self.sent)
         ret +=  '    Med units sent:      %13.2f\n\n'%median(self.sent)
-        ret +=  '    Min units received:  %10d\n'%self.recv[0]
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
         ret +=  '    Avg units received:  %13.2f\n'%mean(self.recv)
         ret +=  '    Med units received:  %13.2f\n\n'%median(self.recv)
-        ret +=  '    Min duplicated ratio:%13.2f (%d units)\n'%self.dupl[0]
+        ret +=  '    Max fresh units sent:%10d\n'%self.fsent[-1]
+        ret +=  '    Avg fresh units sent:%13.2f\n'%mean(self.fsent)
+        ret +=  '    Med fresh units sent:%13.2f\n\n'%median(self.fsent)
+        ret +=  '    Max fresh units recv:%10d\n'%self.frecv[-1]
+        ret +=  '    Avg fresh units recv:%13.2f\n'%mean(self.frecv)
+        ret +=  '    Med fresh units recv:%13.2f\n\n'%median(self.frecv)
         ret +=  '    Max duplicated ratio:%13.2f (%d units)\n'%self.dupl[-1]
         ret +=  '    Avg duplicated ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
         ret +=  '    Med duplicated ratio:%13.2f\n'%median(i[0] for i in self.dupl)
@@ -482,7 +501,7 @@ class SyncPlots(Plotter):
             d[key]['start'] = entry[Time]
         elif entry[Event] == SyncCompleted:
             d[key]['end'] = entry[Time]
-            d[key]['units'] = entry[Sent] + entry[Recv]
+            d[key]['units'] = entry[Sent] + entry[Recv] + entry.get(FreshSent,0) + entry.get(FreshRecv,0)
         return entry
 
     def finalize(self):
@@ -581,7 +600,7 @@ class DuplUnitPlots(Plotter):
         if key not in d:
             d[key] = {'dupl':0}
         if entry[Event] == SyncCompleted:
-            d[key]['recv'] = entry[Recv]
+            d[key]['recv'] = entry[Recv] + entry.get(FreshRecv,0)
         elif entry[Event] == DuplicatedUnit:
             d[key]['dupl'] += 1
         return entry
