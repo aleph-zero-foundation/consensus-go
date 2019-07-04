@@ -73,7 +73,7 @@ func (p *Poset) dehashParents(ub *unitBuilt) error {
 	possibleParents := p.units.get(ub.preunit.Parents())
 	for _, parent := range possibleParents {
 		if parent == nil {
-			return gomel.NewDataError("Missing parent")
+			return gomel.NewUnknownParent()
 		}
 		ub.result.addParent(parent)
 	}

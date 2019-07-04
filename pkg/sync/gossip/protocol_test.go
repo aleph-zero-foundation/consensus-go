@@ -1,7 +1,6 @@
 package gossip_test
 
 import (
-	"io"
 	"sync"
 	"time"
 
@@ -27,70 +26,6 @@ func (p *poset) AddUnit(unit gomel.Preunit, callback func(gomel.Preunit, gomel.U
 	p.Poset.AddUnit(unit, callback)
 }
 
-type connection struct {
-	in  io.Reader
-	out io.Writer
-	log zerolog.Logger
-}
-
-func (c *connection) Read(buf []byte) (int, error) {
-	return c.in.Read(buf)
-}
-
-func (c *connection) Write(buf []byte) (int, error) {
-	return c.out.Write(buf)
-}
-
-func (c *connection) Flush() error {
-	return nil
-}
-
-func (c *connection) Close() error {
-	return nil
-}
-
-func (c *connection) TimeoutAfter(time.Duration) {}
-
-func (c *connection) Log() zerolog.Logger {
-	return c.log
-}
-
-func (c *connection) SetLogger(zerolog.Logger) {}
-
-func newConnection() (network.Connection, network.Connection) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
-	return &connection{r1, w2, zerolog.Logger{}}, &connection{r2, w1, zerolog.Logger{}}
-}
-
-type dialer struct {
-	conn network.Connection
-}
-
-// NOTE: this ignores the argument, which is not good.
-// However, for the tests below it should be sufficient.
-func (d *dialer) Dial(uint16) (network.Connection, error) {
-	return d.conn, nil
-}
-
-func (d *dialer) DialAll() (*network.Multicaster, error) {
-	return nil, nil
-}
-
-type listener struct {
-	conn network.Connection
-}
-
-func (l *listener) Listen(time.Duration) (network.Connection, error) {
-	return l.conn, nil
-}
-
-// NOTE: since we return 2, we should always only ask about the other peer, which makes the above note somewhat irrelevant.
-// Still only sufficient for the tests below.
-func (d *dialer) Length() int {
-	return 2
-}
-
 var _ = Describe("Protocol", func() {
 
 	var (
@@ -100,19 +35,19 @@ var _ = Describe("Protocol", func() {
 		rs2    gomel.RandomSource
 		proto1 gsync.Protocol
 		proto2 gsync.Protocol
-		l      network.Listener
+		ls     []network.Listener
 		d      network.Dialer
 	)
 
 	BeforeEach(func() {
-		c1, c2 := newConnection()
-		l = &listener{c1}
-		d = &dialer{c2}
+		// Length 2 because the tests below only check communication between the first two processes.
+		// The protocol chooses who to synchronise with at random, so this is the only way to be sure.
+		d, ls = tests.NewNetwork(2)
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, p1, rs1, d, l, time.Second, make(chan int), zerolog.Logger{})
-		proto2 = NewProtocol(1, p2, rs2, d, l, time.Second, make(chan int), zerolog.Logger{})
+		proto1 = NewProtocol(0, p1, rs1, d, ls[0], time.Second, make(chan int), zerolog.Logger{})
+		proto2 = NewProtocol(1, p2, rs2, d, ls[1], time.Second, make(chan int), zerolog.Logger{})
 	})
 
 	Describe("in a small poset", func() {
@@ -153,6 +88,10 @@ var _ = Describe("Protocol", func() {
 
 		Context("when the first copy contains a single dealing unit", func() {
 
+			var (
+				theUnit gomel.Unit
+			)
+
 			BeforeEach(func() {
 				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/one_unit.txt", tests.NewTestPosetFactory())
 				rs1 = tests.NewTestRandomSource(tp1)
@@ -160,6 +99,7 @@ var _ = Describe("Protocol", func() {
 					Poset:        tp1.(*tests.Poset),
 					attemptedAdd: nil,
 				}
+				theUnit = tp1.MaximalUnitsPerProcess().Get(0)[0]
 				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
 				rs2 = tests.NewTestRandomSource(tp2)
 				p2 = &poset{
@@ -184,6 +124,7 @@ var _ = Describe("Protocol", func() {
 				Expect(p2.attemptedAdd).To(HaveLen(1))
 				Expect(p2.attemptedAdd[0].Parents()).To(HaveLen(0))
 				Expect(p2.attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
+				Expect(p2.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 			})
 
 		})
