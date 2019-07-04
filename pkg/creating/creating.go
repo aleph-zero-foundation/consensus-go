@@ -5,7 +5,6 @@ import (
 	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 type noAvailableParents struct{}
@@ -52,9 +51,9 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 }
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
-func newDealingUnit(creator, NProc int, data []byte) gomel.Preunit {
-	tc := tcoin.Deal(NProc, NProc/3+1)
-	return NewPreunit(creator, []*gomel.Hash{}, data, nil, tc)
+func newDealingUnit(creator, NProc int, data []byte, rs gomel.RandomSource) gomel.Preunit {
+	rsData := rs.DataToInclude(creator, nil, 0)
+	return NewPreunit(creator, []*gomel.Hash{}, data, rsData)
 }
 
 // maxLevel returns the maximal level from units present in mu.
@@ -185,58 +184,16 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 	return result
 }
 
-// firstDealingUnitFromParents takes parents of the unit under construction
-// and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
-// that is below the unit under construction
-func firstDealingUnitFromParents(parents []gomel.Unit, level int, poset gomel.Poset) gomel.Unit {
-	dealingUnits := poset.PrimeUnits(0)
-	for _, dealer := range poset.GetCRP(level) {
-		// We are only checking if there are forked dealing units created by the dealer
-		// below the unit under construction.
-		// We could check if we have evidence that the dealer is forking
-		// but this is expensive without access to floors.
-		var result gomel.Unit
-		for _, u := range dealingUnits.Get(dealer) {
-			if gomel.BelowAny(u, parents) {
-				if result != nil {
-					// we see forked dealing unit
-					result = nil
-					break
-				} else {
-					result = u
-				}
-			}
-		}
-		if result != nil {
-			return result
-		}
-	}
-	return nil
-}
-
-// createCoinShare returns the coin shares that should be included in
-// a prime unit at a given level with the given parents
-func createCoinShare(parents []gomel.Unit, level int, poset gomel.Poset) *tcoin.CoinShare {
-	fdu := firstDealingUnitFromParents(parents, level, poset)
-	tc := poset.ThresholdCoin(fdu.Hash())
-	if tc == nil {
-		// This is only needed for tests where we don't currently have threshold coins.
-		// TODO: Add threshold coins to tests?
-		return nil
-	}
-	return tc.CreateCoinShare(level)
-}
-
 // NewUnit creates a preunit for a given process aiming at desiredParents parents.
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
 // It also returns an error if requirePrime is true and no prime can be produced.
-func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte, requirePrime bool) (gomel.Preunit, error) {
+func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte, rs gomel.RandomSource, requirePrime bool) (gomel.Preunit, error) {
 	mu := poset.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
 	if predecessor == nil {
-		return newDealingUnit(creator, poset.NProc(), data), nil
+		return newDealingUnit(creator, poset.NProc(), data, rs), nil
 	}
 	parents := []gomel.Unit{predecessor}
 	posetLevel := maxLevel(mu)
@@ -265,9 +222,6 @@ func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte, re
 	if posetLevel == predecessor.Level() && (len(parents) < 2 || (requirePrime && !isPrime)) {
 		return nil, &noAvailableParents{}
 	}
-	var cs *tcoin.CoinShare
-	if isPrime {
-		cs = createCoinShare(parents, resultLevel, poset)
-	}
-	return NewPreunit(creator, hashes(parents), data, cs, nil), nil
+	rsData := rs.DataToInclude(creator, parents, resultLevel)
+	return NewPreunit(creator, hashes(parents), data, rsData), nil
 }

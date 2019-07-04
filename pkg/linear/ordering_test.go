@@ -17,6 +17,7 @@ var _ = Describe("Ordering", func() {
 	var (
 		ordering gomel.LinearOrdering
 		p        gomel.Poset
+		rs       gomel.RandomSource
 		err      error
 	)
 	Describe("DecideTimingOnLevel", func() {
@@ -24,7 +25,8 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err = tests.CreatePosetFromTestFile("../testdata/empty.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -32,7 +34,8 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err = tests.CreatePosetFromTestFile("../testdata/only_dealing.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -40,7 +43,8 @@ var _ = Describe("Ordering", func() {
 			BeforeEach(func() {
 				p, err = tests.CreatePosetFromTestFile("../testdata/regular1.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
 			})
 			It("should decide up to 5th level", func() {
 				for level := 0; level < 5; level++ {
@@ -56,7 +60,8 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err = tests.CreatePosetFromTestFile("../testdata/empty.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
 				ordering.DecideTimingOnLevel(0)
 				Expect(ordering.TimingRound(0)).To(BeNil())
 			})
@@ -65,7 +70,8 @@ var _ = Describe("Ordering", func() {
 			BeforeEach(func() {
 				p, err = tests.CreatePosetFromTestFile("../testdata/regular1.txt", tests.NewTestPosetFactory())
 				Expect(err).NotTo(HaveOccurred())
-				ordering = NewOrdering(p, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
 				for level := 0; level < 5; level++ {
 					ordering.DecideTimingOnLevel(level)
 					thisRound := ordering.TimingRound(level)

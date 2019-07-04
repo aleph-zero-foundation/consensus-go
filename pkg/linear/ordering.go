@@ -9,6 +9,7 @@ import (
 // Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
 	poset               gomel.Poset
+	randomSource        gomel.RandomSource
 	timingUnits         *safeUnitSlice
 	unitPositionInOrder map[gomel.Hash]int
 	orderedUnits        []gomel.Unit
@@ -22,9 +23,10 @@ type ordering struct {
 }
 
 // NewOrdering creates an Ordering wrapper around a given poset.
-func NewOrdering(poset gomel.Poset, votingLevel int, PiDeltaLevel int) gomel.LinearOrdering {
+func NewOrdering(poset gomel.Poset, rs gomel.RandomSource, votingLevel int, PiDeltaLevel int) gomel.LinearOrdering {
 	return &ordering{
 		poset:               poset,
+		randomSource:        rs,
 		timingUnits:         newSafeUnitSlice(),
 		unitPositionInOrder: make(map[gomel.Hash]int),
 		orderedUnits:        []gomel.Unit{},
@@ -62,7 +64,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	if posetMaxLevel(o.poset) < level+o.votingLevel {
 		return nil
 	}
-	for _, pid := range o.poset.GetCRP(level) {
+	for _, pid := range o.randomSource.GetCRP(level) {
 		for _, uc := range o.poset.PrimeUnits(level).Get(pid) {
 			decision := o.decideUnitIsPopular(uc)
 			if decision == popular {

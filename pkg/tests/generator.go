@@ -5,7 +5,6 @@ import (
 	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
 // CreateRandomNonForking creates a random test poset when given
@@ -20,8 +19,7 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 	for created < nUnits {
 		pid := r.Intn(nProcesses)
 		if p.maximalHeight[pid] == -1 {
-			tcData := tcoin.Deal(nProcesses, nProcesses/3+1)
-			pu := NewPreunit(pid, []*gomel.Hash{}, []byte{}, nil, tcData)
+			pu := NewPreunit(pid, []*gomel.Hash{}, []byte{}, nil)
 			p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
 			created++
 		} else {
@@ -39,14 +37,14 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 					parents = append(parents, p.MaximalUnitsPerProcess().Get(parentID)[0].Hash())
 				}
 				// TODO: Add non empty coin shares here
-				pu := NewPreunit(pid, parents, []byte{}, nil, nil)
+				pu := NewPreunit(pid, parents, []byte{}, nil)
 				if !checkExpandPrimes(p, pu) {
 					break
 				}
 			}
 			if len(parents) >= minParents {
 				// TODO: Add non empty coin shares here
-				pu := NewPreunit(pid, parents, []byte{}, nil, nil)
+				pu := NewPreunit(pid, parents, []byte{}, nil)
 				if checkExpandPrimes(p, pu) {
 					p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
 					created++

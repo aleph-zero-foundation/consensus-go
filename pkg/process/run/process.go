@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
+	"gitlab.com/alephledger/consensus-go/pkg/random"
 )
 
 func stopAll(services []process.Service) {
@@ -49,15 +50,16 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 	poset := growing.NewPoset(config.Poset)
+	rs := random.NewTcSource(poset, config.Create.Pid)
 	defer poset.Stop()
 
-	service, err := create.NewService(poset, config.Create, posetFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	service, err := create.NewService(poset, rs, config.Create, posetFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return nil, err
 	}
 	services = append(services, service)
 
-	service, err = order.NewService(poset, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	service, err = order.NewService(poset, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +83,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	}
 	services = append(services, service)
 
-	service, err = sync.NewService(poset, config.Sync, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
+	service, err = sync.NewService(poset, rs, config.Sync, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
 	if err != nil {
 		return nil, err
 	}

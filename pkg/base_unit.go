@@ -1,7 +1,5 @@
 package gomel
 
-import "gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
-
 // BaseUnit defines the most general interface for units.
 type BaseUnit interface {
 	// Creator is the id of the process that created this unit
@@ -12,12 +10,9 @@ type BaseUnit interface {
 	Hash() *Hash
 	// Data is the slice of data contained in the unit
 	Data() []byte
-	// CoinShare returns coin share embedded in this unit
-	// it is nil for non-prime units
-	CoinShare() *tcoin.CoinShare
-	// ThresholdCoinData is a byte representation of threshold coin dealt by this unit.
-	// It is non empty only for dealing units
-	ThresholdCoinData() []byte
+	// RandomSourceData is a data contained in the unit needed to maintain
+	// the common random source among processes
+	RandomSourceData() []byte
 }
 
 // Nickname of a unit is a short name, for the purpose of quick identification by a human.

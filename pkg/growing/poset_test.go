@@ -8,7 +8,6 @@ import (
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	. "gitlab.com/alephledger/consensus-go/pkg/growing"
 )
 
@@ -18,16 +17,11 @@ type preunitMock struct {
 	hash      gomel.Hash
 	parents   []*gomel.Hash
 	data      []byte
-	cs        *tcoin.CoinShare
-	tcData    []byte
+	rsData    []byte
 }
 
-func (pu *preunitMock) ThresholdCoinData() []byte {
-	return pu.tcData
-}
-
-func (pu *preunitMock) CoinShare() *tcoin.CoinShare {
-	return pu.cs
+func (pu *preunitMock) RandomSourceData() []byte {
+	return pu.rsData
 }
 
 func (pu *preunitMock) Data() []byte {

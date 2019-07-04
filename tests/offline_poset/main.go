@@ -13,6 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
+	"gitlab.com/alephledger/consensus-go/pkg/random"
 )
 
 func runOfflineTest() {
@@ -30,10 +31,12 @@ func runOfflineTest() {
 
 	config := &gomel.PosetConfig{pubKeys}
 	posets := make([]gomel.Poset, nProcesses)
+	rses := make([]gomel.RandomSource, nProcesses)
 
 	// start goroutines waiting for a preunit and adding it to its' poset
 	for pid := 0; pid < nProcesses; pid++ {
 		posets[pid] = growing.NewPoset(config)
+		rses[pid] = random.NewTcSource(posets[pid], pid)
 	}
 
 	for i := 0; i < nUnits; i++ {
@@ -44,8 +47,9 @@ func runOfflineTest() {
 			// choose the unit creator and create a unit
 			creator := rand.Intn(nProcesses)
 			poset := posets[creator]
+			rs := rses[creator]
 			var err error
-			if pu, err = creating.NewUnit(poset, creator, maxParents, []byte{}, true); err != nil {
+			if pu, err = creating.NewUnit(poset, creator, maxParents, []byte{}, rs, true); err != nil {
 				continue
 			}
 			pu.SetSignature(privKeys[creator].Sign(pu))
@@ -61,12 +65,24 @@ func runOfflineTest() {
 		var wg sync.WaitGroup
 		wg.Add(nProcesses)
 		for j := 0; j < nProcesses; j++ {
-			posets[j].AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
-				defer wg.Done()
-				if err != nil {
-					fmt.Println(err)
-				}
-			})
+			err := rses[j].Update(pu)
+			if err != nil {
+				fmt.Println(err)
+				wg.Done()
+			} else {
+				posets[j].AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
+					defer wg.Done()
+					if err != nil {
+						switch err.(type) {
+						case *gomel.DuplicateUnit:
+							fmt.Println(err)
+						default:
+							rses[j].Rollback(pu)
+							fmt.Println(err)
+						}
+					}
+				})
+			}
 		}
 		wg.Wait()
 	}
