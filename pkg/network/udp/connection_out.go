@@ -19,12 +19,11 @@ type connOut struct {
 	log         zerolog.Logger
 }
 
-//NewConnOut initializes an outgoing UDP "connection"
+//newConnOut initializes an outgoing UDP "connection"
 func newConnOut(link net.Conn, log zerolog.Logger) network.Connection {
 	return &connOut{
 		link:        link,
 		writeBuffer: make([]byte, 0),
-		sent:        0,
 		log:         log,
 	}
 }

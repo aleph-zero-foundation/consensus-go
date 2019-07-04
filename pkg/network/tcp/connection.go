@@ -19,14 +19,12 @@ type conn struct {
 	log    zerolog.Logger
 }
 
-//NewConn creates a conn object wrapping a particular tcp connection link
-func NewConn(link net.Conn, sent, recv uint32, log zerolog.Logger) network.Connection {
+//newConn creates a Connection object wrapping a particular tcp connection link
+func newConn(link net.Conn, log zerolog.Logger) network.Connection {
 	return &conn{
 		link:   link,
 		reader: bufio.NewReader(link),
 		writer: bufio.NewWriter(link),
-		sent:   sent,
-		recv:   recv,
 		log:    log,
 	}
 }
