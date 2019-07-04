@@ -220,7 +220,7 @@ func (rs *tcRandomSource) firstDealingUnit(u gomel.Unit) gomel.Unit {
 					result = nil
 					break
 				} else {
-					result = u
+					result = v
 				}
 			}
 		}
