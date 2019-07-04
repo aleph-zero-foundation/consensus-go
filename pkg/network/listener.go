@@ -1,6 +1,8 @@
 package network
 
+import "time"
+
 // Listener waits for incoming connections
 type Listener interface {
-	Listen() (Connection, error)
+	Listen(time.Duration) (Connection, error)
 }

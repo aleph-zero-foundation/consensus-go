@@ -30,8 +30,8 @@ func newListener(localAddr string, log zerolog.Logger) (network.Listener, error)
 	}, nil
 }
 
-func (l *listener) Listen() (network.Connection, error) {
-	l.ln.SetDeadline(time.Now().Add(time.Second * 2))
+func (l *listener) Listen(deadline time.Duration) (network.Connection, error) {
+	l.ln.SetDeadline(time.Now().Add(deadline))
 	link, err := l.ln.AcceptTCP()
 	if err != nil {
 		l.log.Error().Str("where", "tcp.Listener.Listen").Msg(err.Error())

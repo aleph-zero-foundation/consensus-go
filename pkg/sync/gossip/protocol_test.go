@@ -81,7 +81,7 @@ type listener struct {
 	conn network.Connection
 }
 
-func (l *listener) Listen() (network.Connection, error) {
+func (l *listener) Listen(time.Duration) (network.Connection, error) {
 	return l.conn, nil
 }
 

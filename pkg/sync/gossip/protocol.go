@@ -49,7 +49,7 @@ func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource,
 }
 
 func (p *protocol) In() {
-	conn, err := p.listener.Listen()
+	conn, err := p.listener.Listen(p.timeout)
 	if err != nil {
 		return
 	}

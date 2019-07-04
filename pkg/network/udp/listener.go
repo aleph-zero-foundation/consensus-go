@@ -11,9 +11,8 @@ import (
 )
 
 type listener struct {
-	ln     *net.UDPConn
-	log    zerolog.Logger
-	buffer []byte
+	ln  *net.UDPConn
+	log zerolog.Logger
 }
 
 func newListener(localAddr string, log zerolog.Logger) (network.Listener, error) {
@@ -26,20 +25,20 @@ func newListener(localAddr string, log zerolog.Logger) (network.Listener, error)
 		return nil, err
 	}
 	return &listener{
-		ln:     ln,
-		log:    log,
-		buffer: make([]byte, (1 << 16)),
+		ln:  ln,
+		log: log,
 	}, nil
 }
 
-func (l *listener) Listen() (network.Connection, error) {
-	l.ln.SetDeadline(time.Now().Add(time.Second * 2))
-	n, _, err := l.ln.ReadFromUDP(l.buffer)
+func (l *listener) Listen(deadline time.Duration) (network.Connection, error) {
+	l.ln.SetDeadline(time.Now().Add(deadline))
+	buffer := make([]byte, (1 << 16))
+	n, _, err := l.ln.ReadFromUDP(buffer)
 	if err != nil {
 		l.log.Error().Str("where", "udp.Listener.Listen").Msg(err.Error())
 		return nil, err
 	}
-	conn := newConnIn(l.buffer[:n], l.log)
+	conn := newConnIn(buffer[:n], l.log)
 	l.log.Info().Msg(logging.ConnectionReceived)
 	return conn, nil
 }
