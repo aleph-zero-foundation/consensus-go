@@ -209,7 +209,7 @@ def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region_nam
         print(e)
 
 
-def run_cmd_in_region(cmd='tail -f proof-of-concept/experiments/aleph.log', region_name=default_region_name(), output=False):
+def run_cmd_in_region(cmd='tail -f ~/go/src/gitlab.com/alephledger/consensug-go/aleph.log', region_name=default_region_name(), output=False):
     '''
     Runs a shell command cmd on all instances in a given region.
     :param string cmd: a shell command that is run on instances
@@ -456,7 +456,6 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     generate_keys(ip_list, 8888)
 
     color_print('waiting till ports are open on machines')
-    # this is really slow, and actually machines are ready earlier! refactor
     wait('open 22', regions)
 
     color_print('pack the repo')
@@ -465,23 +464,18 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     call('zip -uq repo.zip ../../pkg/testdata/users.txt'.split())
     run_task('send-repo', regions, parallel)
 
-    #color_print('cloning repo')
-    #run_task('clone-repo', regions, parallel)
-
-    #color_print('TMP send new tcp/server.go')
-    #send_file('pkg/network/tcp/server.go', regions)
-
-    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel)
+    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel) 
 
     color_print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
 
     color_print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
+    delay = 120
     if profiler:
-        run_task('run-protocol-profiler', regions, parallel, False, pids, time()+60)
+        run_task('run-protocol-profiler', regions, parallel, False, pids, time()+delay)
     else:
-        run_task('run-protocol', regions, parallel, False, pids, time()+60)
+        run_task('run-protocol', regions, parallel, False, pids, time()+delay)
 
     return pids, ip2pid
 
@@ -574,43 +568,44 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
     if not os.path.exists('../results'):
         os.makedirs('../results')
 
-    l = len(os.listdir('../results'))
+    l = len(glob('../results/*.log'))
     if l:
         print('sth is in dir ../results; aborting')
         return
 
     for rn in regions:
-        print('collecting logs in ', rn)
+        color_print(f'collecting logs in {rn}')
         collected = 0
         for ip in instances_ip_in_region(rn):
             pid = ip2pid[ip]
             run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
-            run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
-            if int(pid) % 16 == 0:
+            if with_prof and int(pid) % 16 == 0:
                 run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
 
-            if len(glob('../results/*.log')) > l:
-                l = len(glob('../results/*.log'))
+            if len(glob('../results/*.log.zip')) > l:
+                l = len(glob('../results/*.log.zip'))
                 collected += 1
                 if collected == logs_per_region:
                     break
+    run_task_for_ip('get-poset', [ip], parallel=0, pids=[pid])
 
 
-    print(len(os.listdir('../results')), 'files in ../results')
-
+    color_print(f'{len(os.listdir("../results"))} files in ../results')
+    
     with open('data/config.json') as f:
         config = json.loads(''.join(f.readlines()))
 
     n_processes = len(ip2pid)
 
-    result_path = f'{n_processes}_'\
+    result_path = f'{name}_'\
+                  f'{n_processes}_'\
                   f'{config["NParents"]}_'\
                   f'{config["CreateDelay"]}_'\
-                  f'{config["SyncInitDelay"]}_'\
-                  f'{config["Txpu"]}_'\
-                  f'{name}'
+                  f'{config["NInSync"]}_'\
+                  f'{config["NOutSync"]}_'\
+                  f'{config["Txpu"]}'
 
-    print('move and rename dir')
+    color_print('move and rename dir')
     shutil.move('../results', result_path)
 
     for path in os.listdir(result_path):

@@ -121,8 +121,11 @@ def get_profile(conn, pid):
     ''' Retrieves aleph.log from the server.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
-    conn.get(f'{repo_path}/cpuprof', f'../results/{pid}.cpuprof')
-    conn.get(f'{repo_path}/memprof', f'../results/{pid}.memprof')
+    with conn.cd(repo_path):
+        conn.run(f'mv cpuprof {pid}.cpuprof')
+        conn.run(f'mv memprof {pid}.memprof')
+        conn.run(f'zip -q prof.zip {pid}.cpuprof {pid}.memprof')
+    conn.get(f'{repo_path}/prof.zip', f'../results/{pid}.prof.zip')
 
 @task
 def get_dag(conn, pid):

@@ -1,16 +1,15 @@
 {
+		"NParents": 128,
 
-		"NParents": 10,
+		"PrimeOnly": true,
 
-		"PrimeOnly": false,
+		"CreateDelay": 0.05,
 
-		"CreateDelay": 1.0,
+		"StepSize": 0.0,
 
-		"StepSize": 0.14,
+		"NInSync": 20,
 
-		"NInSync": 32,
-
-		"NOutSync": 32,
+		"NOutSync": 15,
 
 		"Txpu": 1,
 
@@ -29,4 +28,4 @@
 		"LogMemInterval": 10,
 
 		"LogHuman": false 
-	}
+}
