@@ -48,7 +48,7 @@ func Dealing(u Unit) bool {
 // BelowAny checks whether u is below any of the units in us.
 func BelowAny(u Unit, us []Unit) bool {
 	for _, v := range us {
-		if u.Below(v) {
+		if v != nil && u.Below(v) {
 			return true
 		}
 	}
@@ -58,7 +58,7 @@ func BelowAny(u Unit, us []Unit) bool {
 // AboveAny checks whether u is above any of the units in us.
 func AboveAny(u Unit, us []Unit) bool {
 	for _, v := range us {
-		if v.Below(u) {
+		if v != nil && v.Below(u) {
 			return true
 		}
 	}

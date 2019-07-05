@@ -129,6 +129,39 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 	}, nil
 }
 
+// CreateMulticoin generates a multiCoin for given ThresholdCoins
+// i.e. a ThresholdCoin which corresponds to the sum of polynomials
+// which are defining given ThresholdCoins
+// It assignes the multicoin to a given pid
+// We assume that:
+// (0) tcs is a non-empty slice
+// (1) the threshold is the same for all given thresholdCoins
+// (2) the thresholdCoins were created by different processes
+func CreateMulticoin(tcs []*ThresholdCoin, pid int) *ThresholdCoin {
+	n := len(tcs[0].vks)
+	var result = ThresholdCoin{
+		Threshold: tcs[0].Threshold,
+		pid:       pid,
+		sk:        secretKey{key: big.NewInt(0)},
+		globalVK:  verificationKey{key: new(bn256.G2)},
+	}
+	vks := make([]verificationKey, n)
+	for i := range vks {
+		vks[i] = verificationKey{key: new(bn256.G2)}
+	}
+	result.vks = vks
+	// TODO: we can use concurrency as we have multiple independent additions
+	for _, tc := range tcs {
+		result.sk.key.Add(result.sk.key, tc.sk.key)
+		result.globalVK.key.Add(result.globalVK.key, tc.globalVK.key)
+		for i, vk := range tc.vks {
+			result.vks[i].key.Add(result.vks[i].key, vk.key)
+		}
+	}
+	result.sk.key.Mod(result.sk.key, bn256.Order)
+	return &result
+}
+
 // generateThresholdCoin generates keys and secrets for ThresholdCoin
 func generateThresholdCoin(nProcesses, threshold int) *globalThresholdCoin {
 	var coeffs = make([]*big.Int, threshold)
@@ -232,6 +265,9 @@ func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int) bool {
 // CombineCoinShares combines given shares into a Coin
 // it returns a Coin and a bool value indicating wheather combining was successful or not
 func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
+	if len(shares) > tc.Threshold {
+		shares = shares[:tc.Threshold]
+	}
 	if tc.Threshold != len(shares) {
 		return nil, false
 	}
