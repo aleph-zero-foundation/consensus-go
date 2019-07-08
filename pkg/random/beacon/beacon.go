@@ -2,19 +2,19 @@ package beacon
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
+	"golang.org/x/crypto/sha3"
 )
 
 // Beacon code assumes that:
 // (1) there are no forks
 // (2) every unit is a prime unit
-// (3) a process can't skip a level
-// (current implementation of gomel allows skipping levels which may cause this code to panic)
+// (3) level = height for each unit
 
 const (
 	dealingLevel   = 0
@@ -23,7 +23,7 @@ const (
 	sharesLevel    = 8
 )
 
-// TODO: Add more sophisticated thread safety (replace the global lock)
+// TODO: Consider more sophisticated thread safety (replace the global lock)
 type beacon struct {
 	sync.RWMutex
 	pid        int
@@ -67,14 +67,46 @@ func NewBeacon(poset gomel.Poset, pid int) gomel.RandomSource {
 	return b
 }
 
-// GetCRP is a dummy implementation of a common random permutation
-// TODO: implement
+// GetCRP returns a random permutation of processes on a given level.
+// Proceses which haven't produce a unit on the requested level,
+// form a sufix of the permutation.
 func (b *beacon) GetCRP(level int) []int {
 	nProc := b.poset.NProc()
 	permutation := make([]int, nProc)
+	priority := make([][]byte, nProc)
 	for i := 0; i < nProc; i++ {
-		permutation[i] = (i + level) % nProc
+		permutation[i] = i
 	}
+
+	units := unitsOnLevel(b.poset, level)
+	for _, u := range units {
+		priority[u.Creator()] = make([]byte, 32)
+		rBytes := b.RandomBytes(u, level+3)
+		if rBytes == nil {
+			return nil
+		}
+		rBytes = append(rBytes, u.Hash()[:]...)
+		sha3.ShakeSum128(priority[u.Creator()], rBytes)
+	}
+
+	sort.Slice(permutation, func(i, j int) bool {
+		if priority[permutation[j]] == nil {
+			return true
+		}
+		if priority[permutation[i]] == nil {
+			return false
+		}
+		for x := 0; x < 32; x++ {
+			if priority[permutation[i]][x] < priority[permutation[j]][x] {
+				return true
+			}
+			if priority[permutation[i]][x] > priority[permutation[j]][x] {
+				return false
+			}
+		}
+		return (permutation[i] < permutation[j])
+	})
+
 	return permutation
 }
 
@@ -102,6 +134,10 @@ func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
 func (b *beacon) Update(pu gomel.Preunit) error {
 	b.Lock()
 	defer b.Unlock()
+
+	if u := b.poset.Get([]*gomel.Hash{pu.Hash()})[0]; u != nil {
+		return gomel.NewDuplicateUnit(u)
+	}
 
 	level, err := level(pu, b.poset)
 	if err != nil {
@@ -153,7 +189,6 @@ func (b *beacon) Update(pu gomel.Preunit) error {
 				coinsToMerge = append(coinsToMerge, b.tcoins[pid])
 			}
 		}
-		fmt.Println(len(coinsToMerge))
 		b.multicoins[pu.Creator()] = tcoin.CreateMulticoin(coinsToMerge, b.pid)
 		b.shareProviders[pu.Creator()] = providers
 	}
@@ -167,7 +202,7 @@ func (b *beacon) Update(pu gomel.Preunit) error {
 				if shares[pid] == nil {
 					return errors.New("Preunit without a share it should contain ")
 				}
-				// This verification is really slow
+				// This verification is slow
 				if !b.multicoins[pid].VerifyCoinShare(shares[pid], level) {
 					return errors.New("Preunit contains wrong coin share")
 				}
@@ -250,12 +285,15 @@ func (b *beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []b
 
 func unitsOnLevel(p gomel.Poset, level int) []gomel.Unit {
 	result := []gomel.Unit{}
-	p.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
-		if len(units) != 0 {
-			result = append(result, units[0])
-		}
-		return true
-	})
+	su := p.PrimeUnits(level)
+	if su != nil {
+		su.Iterate(func(units []gomel.Unit) bool {
+			if len(units) != 0 {
+				result = append(result, units[0])
+			}
+			return true
+		})
+	}
 	return result
 }
 

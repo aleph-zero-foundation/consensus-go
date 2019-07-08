@@ -184,6 +184,33 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 	return result
 }
 
+// NewNonSkippingUnit creates a preunit pu satisfying the following rules
+// (1) level(pu) = level(predecessor(pu)) + 1
+// (2) all the parents have the same level
+// If such a unit cannot be created it returns an error.
+func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.RandomSource) (gomel.Preunit, error) {
+	mu := poset.MaximalUnitsPerProcess()
+	predecessor := getPredecessor(mu, creator)
+	if predecessor == nil {
+		return newDealingUnit(creator, poset.NProc(), data, rs), nil
+	}
+	level := predecessor.Level()
+	parents := []gomel.Unit{}
+	poset.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
+		if len(units) == 1 {
+			parents = append(parents, units[0])
+		}
+		return true
+	})
+	if poset.IsQuorum(len(parents)) {
+
+		rsData := rs.DataToInclude(creator, parents, level+1)
+		return NewPreunit(creator, hashes(parents), data, rsData), nil
+	} else {
+		return nil, &noAvailableParents{}
+	}
+}
+
 // NewUnit creates a preunit for a given process aiming at desiredParents parents.
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
