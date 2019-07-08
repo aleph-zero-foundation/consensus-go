@@ -46,8 +46,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, p1, rs1, d, ls[0], time.Second, make(chan int), zerolog.Logger{})
-		proto2 = NewProtocol(1, p2, rs2, d, ls[1], time.Second, make(chan int), zerolog.Logger{})
+		proto1 = NewProtocol(0, p1, rs1, d, ls[0], NewDefaultPeerSource(2, 0), time.Second, make(chan int), zerolog.Nop())
+		proto2 = NewProtocol(1, p2, rs2, d, ls[1], NewDefaultPeerSource(2, 1), time.Second, make(chan int), zerolog.Nop())
 	})
 
 	Describe("in a small poset", func() {

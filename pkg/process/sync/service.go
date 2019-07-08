@@ -24,7 +24,8 @@ func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *proc
 	if err != nil {
 		return nil, err
 	}
-	gossipProto := gossip.NewProtocol(uint16(config.Pid), poset, randomSource, listener, dialer, config.Timeout, attemptTiming, log)
+	peerSource := gossip.NewDefaultPeerSource(uint16(poset.NProc()), uint16(config.Pid))
+	gossipProto := gossip.NewProtocol(uint16(config.Pid), poset, randomSource, listener, dialer, peerSource, config.Timeout, attemptTiming, log)
 	gossipServ := sync.NewServer(gossipProto, config.OutSyncLimit, config.InSyncLimit, log)
 
 	return &service{

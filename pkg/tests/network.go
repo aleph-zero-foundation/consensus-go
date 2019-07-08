@@ -37,7 +37,7 @@ func (c *connection) Close() error {
 func (c *connection) TimeoutAfter(time.Duration) {}
 
 func (c *connection) Log() zerolog.Logger {
-	return zerolog.Logger{}
+	return zerolog.Nop()
 }
 
 func (c *connection) SetLogger(zerolog.Logger) {}
@@ -49,26 +49,39 @@ func NewConnection() (network.Connection, network.Connection) {
 	return &connection{r1, w2}, &connection{r2, w1}
 }
 
-type dialer struct {
-	out      []network.Connection
-	in       []network.Connection
+// Dialer implements network.Dialer and has an additional method for closing it.
+type Dialer struct {
 	dialChan []chan<- network.Connection
 }
 
-func (d *dialer) Dial(k uint16) (network.Connection, error) {
-	d.dialChan[k] <- d.in[k]
-	return d.out[k], nil
+// Dial creates a new connection, pushes one end to the associated listener and return the other.
+func (d *Dialer) Dial(k uint16) (network.Connection, error) {
+	out, in := NewConnection()
+	d.dialChan[k] <- in
+	return out, nil
 }
 
-func (d *dialer) DialAll() (*network.Multicaster, error) {
-	for i, c := range d.in {
-		d.dialChan[i] <- c
+// DialAll creates connections, pushes one end of each to the associated listener and returns a multicaster on the other ends.
+func (d *Dialer) DialAll() (*network.Multicaster, error) {
+	allOut := make([]network.Connection, d.Length())
+	for _, ch := range d.dialChan {
+		out, in := NewConnection()
+		allOut = append(allOut, out)
+		ch <- in
 	}
-	return network.NewMulticaster(d.out), nil
+	return network.NewMulticaster(allOut), nil
 }
 
-func (d *dialer) Length() int {
-	return len(d.out)
+// Length specifies how many other processes we can dial.
+func (d *Dialer) Length() int {
+	return len(d.dialChan)
+}
+
+// Close makes all listeners associated with this dialer return errors.
+func (d *Dialer) Close() {
+	for _, ch := range d.dialChan {
+		close(ch)
+	}
 }
 
 type listener struct {
@@ -76,21 +89,23 @@ type listener struct {
 }
 
 func (l *listener) Listen(_ time.Duration) (network.Connection, error) {
-	return <-l.listenChan, nil
+	conn, ok := <-l.listenChan
+	if !ok {
+		return nil, errors.New("done")
+	}
+	return conn, nil
 }
 
 // NewNetwork returns a dialer and a slice of listeners. When the dialer is used,
 // it returns a connection corresponding to an endpoint that has been pushed to the corresponding listener.
 // This is not suitable for bigger tests, unfortunately, some form of combining listeners might be needed.
-func NewNetwork(length int) (network.Dialer, []network.Listener) {
-	outConn, inConn := make([]network.Connection, length), make([]network.Connection, length)
+func NewNetwork(length int) (*Dialer, []network.Listener) {
 	chans := make([]chan<- network.Connection, length)
 	listeners := make([]network.Listener, length)
-	for i := range outConn {
-		outConn[i], inConn[i] = NewConnection()
+	for i := range listeners {
 		locChan := make(chan network.Connection)
 		chans[i] = locChan
 		listeners[i] = &listener{locChan}
 	}
-	return &dialer{outConn, inConn, chans}, listeners
+	return &Dialer{chans}, listeners
 }

@@ -36,64 +36,19 @@ func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
 
 // AddUnit adds a unit in a thread safe manner without trying to be clever.
 func (p *Poset) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
-	p.Lock()
-	defer p.Unlock()
-
 	var u unit
-	// Dehashing parents
-	u.parents = []gomel.Unit{}
-	for _, parentHash := range pu.Parents() {
-		if _, ok := p.unitByHash[*parentHash]; !ok {
-			callback(pu, nil, gomel.NewUnknownParent())
-			return
-		}
-		u.parents = append(u.parents, p.unitByHash[*parentHash])
+	err := dehashParents(&u, p, pu)
+	if err != nil {
+		callback(pu, nil, gomel.NewUnknownParent())
+		return
 	}
 	// Setting height, creator, signature, version, hash
-	u.creator = pu.Creator()
-	if len(u.parents) == 0 {
-		u.height = 0
-	} else {
-		u.height = u.parents[0].Height() + 1
-	}
-	u.signature = pu.Signature()
-	u.hash = *pu.Hash()
-	u.data = pu.Data()
-	if len(p.unitsByHeight) <= u.height {
-		u.version = 0
-	} else {
-		u.version = len(p.unitsByHeight[u.height].Get(u.creator))
-	}
-	// Setting level and floor of u
+	setBasicInfo(&u, p, pu)
 	setLevel(&u, p)
 	setFloor(&u, p)
 
 	//Setting poset variables
-	if u.Height() == 0 {
-		if len(p.unitsByHeight) == 0 {
-			p.unitsByHeight = append(p.unitsByHeight, newSlottedUnits(p.nProcesses))
-		}
-		p.unitsByHeight[0].Set(u.Creator(), append(p.unitsByHeight[0].Get(u.Creator()), &u))
-		if len(p.primeUnits) == 0 {
-			p.primeUnits = append(p.primeUnits, newSlottedUnits(p.nProcesses))
-		}
-		p.primeUnits[0].Set(u.Creator(), append(p.primeUnits[0].Get(u.Creator()), &u))
-	} else {
-		if gomel.Prime(&u) {
-			if len(p.primeUnits) <= u.Level() {
-				p.primeUnits = append(p.primeUnits, newSlottedUnits(p.nProcesses))
-			}
-			p.primeUnits[u.Level()].Set(u.Creator(), append(p.primeUnits[u.Level()].Get(u.Creator()), &u))
-		}
-		if len(p.unitsByHeight) <= u.Height() {
-			p.unitsByHeight = append(p.unitsByHeight, newSlottedUnits(p.nProcesses))
-		}
-		p.unitsByHeight[u.Height()].Set(u.Creator(), append(p.unitsByHeight[u.Height()].Get(u.Creator()), &u))
-	}
-	if u.Height() > p.maximalHeight[u.Creator()] {
-		p.maximalHeight[u.Creator()] = u.Height()
-	}
-	p.unitByHash[*u.Hash()] = &u
+	updatePoset(&u, p)
 	callback(pu, &u, nil)
 }
 
@@ -140,7 +95,72 @@ func (p *Poset) IsQuorum(number int) bool {
 	return 3*number >= 2*p.nProcesses
 }
 
+func dehashParents(u *unit, p *Poset, pu gomel.Preunit) error {
+	p.RLock()
+	defer p.RUnlock()
+	u.parents = []gomel.Unit{}
+	for _, parentHash := range pu.Parents() {
+		if _, ok := p.unitByHash[*parentHash]; !ok {
+			return gomel.NewUnknownParent()
+		}
+		u.parents = append(u.parents, p.unitByHash[*parentHash])
+	}
+	return nil
+}
+
+func setBasicInfo(u *unit, p *Poset, pu gomel.Preunit) {
+	p.RLock()
+	defer p.RUnlock()
+	u.creator = pu.Creator()
+	if len(u.parents) == 0 {
+		u.height = 0
+	} else {
+		u.height = u.parents[0].Height() + 1
+	}
+	u.signature = pu.Signature()
+	u.hash = *pu.Hash()
+	u.data = pu.Data()
+	if len(p.unitsByHeight) <= u.height {
+		u.version = 0
+	} else {
+		u.version = len(p.unitsByHeight[u.height].Get(u.creator))
+	}
+}
+
+func updatePoset(u *unit, p *Poset) {
+	p.Lock()
+	defer p.Unlock()
+
+	if u.Height() == 0 {
+		if len(p.unitsByHeight) == 0 {
+			p.unitsByHeight = append(p.unitsByHeight, newSlottedUnits(p.nProcesses))
+		}
+		p.unitsByHeight[0].Set(u.Creator(), append(p.unitsByHeight[0].Get(u.Creator()), u))
+		if len(p.primeUnits) == 0 {
+			p.primeUnits = append(p.primeUnits, newSlottedUnits(p.nProcesses))
+		}
+		p.primeUnits[0].Set(u.Creator(), append(p.primeUnits[0].Get(u.Creator()), u))
+	} else {
+		if gomel.Prime(u) {
+			if len(p.primeUnits) <= u.Level() {
+				p.primeUnits = append(p.primeUnits, newSlottedUnits(p.nProcesses))
+			}
+			p.primeUnits[u.Level()].Set(u.Creator(), append(p.primeUnits[u.Level()].Get(u.Creator()), u))
+		}
+		if len(p.unitsByHeight) <= u.Height() {
+			p.unitsByHeight = append(p.unitsByHeight, newSlottedUnits(p.nProcesses))
+		}
+		p.unitsByHeight[u.Height()].Set(u.Creator(), append(p.unitsByHeight[u.Height()].Get(u.Creator()), u))
+	}
+	if u.Height() > p.maximalHeight[u.Creator()] {
+		p.maximalHeight[u.Creator()] = u.Height()
+	}
+	p.unitByHash[*u.Hash()] = u
+}
+
 func setFloor(u *unit, p *Poset) {
+	p.RLock()
+	defer p.RUnlock()
 	parentsFloorUnion := make([][]gomel.Unit, p.NProc())
 	parentsFloorUnion[u.Creator()] = []gomel.Unit{u}
 	for _, v := range u.Parents() {
@@ -170,6 +190,8 @@ func setFloor(u *unit, p *Poset) {
 }
 
 func setLevel(u *unit, p *Poset) {
+	p.RLock()
+	defer p.RUnlock()
 	if u.Height() == 0 {
 		u.level = 0
 		return
