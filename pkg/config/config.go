@@ -2,64 +2,54 @@ package config
 
 // Configuration represents project-wide configuration.
 type Configuration struct {
-	// maximal number of parents a unit can have
+	// How many parents we try to give every unit.
+	// Depending on other settings and circumstances, this might be ignored in either direction.
 	NParents uint
 
-	// whether only prime units should be created
+	// Whether only prime units should be created.
 	PrimeOnly bool
 
-	// delay after creating a new unit
+	// Delay after attempting to create a new unit, before another attempt is made.
 	CreateDelay float32
 
-	// a number in [0,1) describing how aggressive is the CreateDelay adjusting mechanism, large = aggressive, 0 = no adjustment at all
+	// A positive number describing how aggressive the CreateDelay adjusting mechanism is initially.
+	// A large value means aggressive adjustment, while 0 - no adjustment at all.
 	StepSize float64
 
-	// number of allowed parallel received syncs
+	// The number of parallel received syncs that are allowed to happen at once.
 	NInSync uint
 
-	// number of allowed parallel initiated syncs
+	// The number of parallel initiated syncs that are allowed to happen at once.
 	NOutSync uint
 
-	// number of transactions per unit
+	// The number of transactions included in a unit.
+	// Currently only simulated by including random bytes depending on this number.
+	// Will be removed completely in the future, whengomel becomes transaction-agnostic.
 	Txpu uint
 
-	// limit of all txs generated for one process
-	TxLimit uint
-
-	// maximal level after which process shuts down
+	// When a unit of this level is added to the poset, the process shuts down.
 	LevelLimit uint
 
-	// maximal number of units that are constructed
-	UnitsLimit *uint
-
-	// maximal number of syncs that are performed
-	SyncsLimit *uint
-
-	// whether to use threshold coin
-	UseTcoin bool
-
-	// whether to use the adaptive strategy of determining create_delay
-	AdaptiveDelay bool
-
-	// level at which the first voting round occurs, this is "t" from the write-up
+	// The level at which the first voting round occurs, this is "t" from the write-up.
 	VotingLevel uint
 
-	// level at which to switch from the "fast" to the pi_delta algorithm
+	// The level at which to switch from the "fast" to the pi_delta algorithm.
 	PiDeltaLevel uint
 
-	// level at which to start adding coin shares to units, it's safe to make it PI_DELTA_LEVEL - 1
+	// The level at which to start adding coin shares to units.
+	// It is safe to make it PiDeltaLevel - 1.
 	AddShares uint
 
-	// log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic
+	// Log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic.
 	LogLevel int
 
 	// The size of log diode buffer in bytes. 0 disables the diode. Recommended at least 100k.
 	LogBuffer int
 
-	// How often (in seconds) log the memory usage. 0 to disable.
+	// How often (in seconds) to log the memory usage. 0 to disable.
 	LogMemInterval int
 
-	// whether to write log in human readable form or in JSON.
+	// Whether to write the log in the human readable form or in JSON.
 	LogHuman bool
 }
 
@@ -81,17 +71,7 @@ func NewDefaultConfiguration() Configuration {
 
 		Txpu: 1,
 
-		TxLimit: 1000000,
-
 		LevelLimit: 20,
-
-		UnitsLimit: nil,
-
-		SyncsLimit: nil,
-
-		UseTcoin: true,
-
-		AdaptiveDelay: true,
 
 		VotingLevel: 3,
 

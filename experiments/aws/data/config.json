@@ -14,17 +14,7 @@
 
 		"Txpu": 1,
 
-		"TxLimit": 1000000,
-
 		"LevelLimit": 50,
-
-		"UnitsLimit": null,
-
-		"SyncsLimit": null,
-
-		"UseTcoin": true,
-
-		"AdaptiveDelay": true,
 
 		"VotingLevel": 3,
 

@@ -24,7 +24,6 @@ type service struct {
 	maxParents       int
 	primeOnly        bool
 	maxLevel         int
-	maxHeight        int
 	privKey          gomel.PrivateKey
 	adjustFactor     float64
 	previousSuccess  bool
@@ -54,7 +53,6 @@ func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *proc
 		maxParents:       config.MaxParents,
 		primeOnly:        config.PrimeOnly,
 		maxLevel:         config.MaxLevel,
-		maxHeight:        config.MaxHeight,
 		privKey:          config.PrivateKey,
 		adjustFactor:     config.AdjustFactor,
 		previousSuccess:  false,
@@ -159,7 +157,7 @@ func (s *service) createUnit() {
 			s.slower()
 		}
 
-		if added.Level() >= s.maxLevel || added.Height() >= s.maxHeight {
+		if added.Level() >= s.maxLevel {
 			s.ticker.Stop()
 			close(s.posetFinished)
 		}

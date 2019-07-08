@@ -606,7 +606,6 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
 
     result_path = f'{n_processes}_'\
                   f'{config["NParents"]}_'\
-                  f'{int(config["UseTcoin"])}_'\
                   f'{config["CreateDelay"]}_'\
                   f'{config["SyncInitDelay"]}_'\
                   f'{config["Txpu"]}_'\

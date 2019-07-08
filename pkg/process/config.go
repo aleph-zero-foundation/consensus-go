@@ -36,7 +36,6 @@ type Create struct {
 	InitialDelay time.Duration
 	AdjustFactor float64
 	MaxLevel     int
-	MaxHeight    int
 }
 
 // Order represents a complete configuration needed for an ordering service to start.
