@@ -2,6 +2,7 @@ package tcoin
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"math/big"
@@ -29,6 +30,8 @@ type ThresholdCoin struct {
 	globalVK  verificationKey
 	vks       []verificationKey
 	sk        secretKey
+	// TODO: sks should be encrypted
+	sks []secretKey
 }
 
 // Deal returns byte representation of a threshold coin
@@ -125,6 +128,7 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 		globalVK:  globalVK,
 		vks:       vks,
 		sk:        sks[pid],
+		sks:       sks,
 		pid:       pid,
 	}, nil
 }
@@ -260,6 +264,26 @@ func (tc *ThresholdCoin) VerifyCoinShare(share *CoinShare, nonce int) bool {
 // VerifyCoin verifies wheather the given coin is correct
 func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int) bool {
 	return tc.globalVK.verify(c.sgn, big.NewInt(int64(nonce)))
+}
+
+// VerifyWrongSecretKeyProof verifies proof given by a process that
+// his secretKey is incorrect
+func (tc *ThresholdCoin) VerifyWrongSecretKeyProof(pid int, proof *big.Int) bool {
+	// Checking if the proof is equal to the stored secret key.
+	// This is trival for now.
+	// In the final version we will store encrypted secret keys.
+	// Here we should encrypt proof and check
+	// if the encrypted proof is equal to the stored encrypted secret key
+	if proof.Cmp(tc.sks[pid].key) != 0 {
+		return false
+	}
+
+	// Checking the proof
+	vk := new(bn256.G2).ScalarBaseMult(proof)
+	if subtle.ConstantTimeCompare(vk.Marshal(), tc.vks[pid].key.Marshal()) != 1 {
+		return true
+	}
+	return false
 }
 
 // CombineCoinShares combines given shares into a Coin

@@ -157,7 +157,7 @@ func (b *beacon) Update(pu gomel.Preunit) error {
 		if err != nil {
 			return err
 		}
-		err = validateVotes(b.poset, pu, votes)
+		err = validateVotes(b, pu, votes)
 		if err != nil {
 			return err
 		}
@@ -213,8 +213,31 @@ func (b *beacon) Update(pu gomel.Preunit) error {
 	return nil
 }
 
-// TODO: implement
-func validateVotes(p gomel.Poset, pu gomel.Preunit, votes []*vote) error {
+func validateVotes(b *beacon, pu gomel.Preunit, votes []*vote) error {
+	dealingUnits := unitsOnLevel(b.poset, dealingLevel)
+	createdDealing := make([]bool, b.poset.NProc())
+	for _, u := range dealingUnits {
+		parents := b.poset.Get(pu.Parents())
+		shouldVote := gomel.BelowAny(u, parents)
+		if shouldVote && votes[u.Creator()] == nil {
+			return errors.New("Missing vote")
+		}
+		if !shouldVote && votes[u.Creator()] != nil {
+			return errors.New("Vote on dealing unit not below the preunit")
+		}
+		if shouldVote && votes[u.Creator()].isCorrect == false {
+			proof := votes[u.Creator()].proof
+			if !b.tcoins[u.Creator()].VerifyWrongSecretKeyProof(pu.Creator(), proof) {
+				return errors.New("The provided proof is incorrect")
+			}
+		}
+		createdDealing[u.Creator()] = true
+	}
+	for pid := range createdDealing {
+		if votes[pid] != nil && !createdDealing[pid] {
+			return errors.New("Vote on non-existing dealing units")
+		}
+	}
 	return nil
 }
 
