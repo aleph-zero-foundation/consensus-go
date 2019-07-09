@@ -44,7 +44,7 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	u.parents = []gomel.Unit{}
 	for _, parentHash := range pu.Parents() {
 		if _, ok := p.unitByHash[*parentHash]; !ok {
-			callback(pu, nil, gomel.NewDataError("unit with provided hash doesn't exist in our poset"))
+			callback(pu, nil, gomel.NewUnknownParent())
 			return
 		}
 		u.parents = append(u.parents, p.unitByHash[*parentHash])

@@ -33,6 +33,7 @@ const (
 	TooManyOutgoing       = "b"
 	SendFreshUnits        = "c"
 	SentFreshUnits        = "d"
+	UnknownParents        = "e"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -67,6 +68,7 @@ var eventTypeDict = map[string]string{
 	TooManyOutgoing:       "too many outgoing connections",
 	SendFreshUnits:        "sending fresh units started",
 	SentFreshUnits:        "succesfully sent fresh units",
+	UnknownParents:        "received unit with unknown parents",
 }
 
 // Field names
