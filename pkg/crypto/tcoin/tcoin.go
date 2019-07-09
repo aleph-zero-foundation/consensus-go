@@ -266,6 +266,29 @@ func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int) bool {
 	return tc.globalVK.verify(c.sgn, big.NewInt(int64(nonce)))
 }
 
+// PolyVerify uses given polyVerifier to verify if the vks form
+// a polynomial sequence
+func (tc *ThresholdCoin) PolyVerify(pv PolyVerifier) bool {
+	elems := make([]*bn256.G2, len(tc.vks))
+	for i, vk := range tc.vks {
+		elems[i] = vk.key
+	}
+	return pv.Verify(elems)
+}
+
+// VerifySecretKey checks if the verificationKey and secretKey form a valid pair
+// it returns
+// - the incorrect secret key when the pair of keys is invalid
+// or
+// - nil when the keys are valid
+func (tc *ThresholdCoin) VerifySecretKey() *big.Int {
+	vk := new(bn256.G2).ScalarBaseMult(tc.sk.key)
+	if subtle.ConstantTimeCompare(vk.Marshal(), tc.vks[tc.pid].key.Marshal()) != 1 {
+		return tc.sk.key
+	}
+	return nil
+}
+
 // VerifyWrongSecretKeyProof verifies proof given by a process that
 // his secretKey is incorrect
 func (tc *ThresholdCoin) VerifyWrongSecretKeyProof(pid int, proof *big.Int) bool {

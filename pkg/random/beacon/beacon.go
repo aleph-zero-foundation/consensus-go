@@ -40,7 +40,8 @@ type beacon struct {
 	shareProviders []map[int]bool
 	// shares[i] is a map of the form
 	// hash of a unit => the share for the i-th multicoin contained in the unit
-	shares []map[gomel.Hash]*tcoin.CoinShare
+	shares       []map[gomel.Hash]*tcoin.CoinShare
+	polyVerifier tcoin.PolyVerifier
 }
 
 type vote struct {
@@ -51,14 +52,16 @@ type vote struct {
 
 // NewBeacon returns a RandomSource based on a beacon
 func NewBeacon(poset gomel.Poset, pid int) gomel.RandomSource {
+	n := poset.NProc()
 	b := &beacon{
 		pid:            pid,
 		poset:          poset,
-		multicoins:     make([]*tcoin.ThresholdCoin, poset.NProc()),
-		votes:          make([][]*vote, poset.NProc()),
-		shareProviders: make([]map[int]bool, poset.NProc()),
-		tcoins:         make([]*tcoin.ThresholdCoin, poset.NProc()),
-		shares:         make([]map[gomel.Hash]*tcoin.CoinShare, poset.NProc()),
+		multicoins:     make([]*tcoin.ThresholdCoin, n),
+		votes:          make([][]*vote, n),
+		shareProviders: make([]map[int]bool, n),
+		tcoins:         make([]*tcoin.ThresholdCoin, n),
+		shares:         make([]map[gomel.Hash]*tcoin.CoinShare, n),
+		polyVerifier:   tcoin.NewPolyVerifier(n, n/3+1),
 	}
 	for i := 0; i < poset.NProc(); i++ {
 		b.votes[i] = make([]*vote, poset.NProc())
@@ -148,6 +151,9 @@ func (b *beacon) Update(pu gomel.Preunit) error {
 		tc, err := tcoin.Decode(tcEncoded, b.pid)
 		if err != nil {
 			return err
+		}
+		if !tc.PolyVerify(b.polyVerifier) {
+			return errors.New("Tcoin does not come from a polynomial sequence")
 		}
 		b.tcoins[pu.Creator()] = tc
 		b.votes[b.pid][pu.Creator()] = verifyTCoin(tc)
@@ -242,7 +248,13 @@ func validateVotes(b *beacon, pu gomel.Preunit, votes []*vote) error {
 }
 
 func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
-	// TODO: proper implementation
+	proof := tc.VerifySecretKey()
+	if proof != nil {
+		return &vote{
+			isCorrect: false,
+			proof:     proof,
+		}
+	}
 	return &vote{
 		isCorrect: true,
 		proof:     nil,
