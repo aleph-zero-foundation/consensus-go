@@ -26,11 +26,6 @@ func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 }
 
 func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
-	// TODO: magic number
-	maxHeight := 27091986
-	if conf.UnitsLimit != nil {
-		maxHeight = int(*conf.UnitsLimit)
-	}
 	return &process.Create{
 		Pid:          c.Pid,
 		MaxParents:   int(conf.NParents),
@@ -39,7 +34,6 @@ func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
 		MaxLevel:     int(conf.LevelLimit),
-		MaxHeight:    maxHeight,
 	}
 }
 

@@ -63,25 +63,5 @@ var _ = Describe("Configuration", func() {
 				Expect(err).To(HaveOccurred())
 			})
 		})
-
-		Describe("configuration with nil value", func() {
-			It("should be parsed correctly", func() {
-				config := NewDefaultConfiguration()
-				config.UnitsLimit = nil
-				config.SyncsLimit = Value(10)
-				configCopy := config
-
-				// store configuation using a buffer
-				var buf bytes.Buffer
-				err := NewJSONConfigWriter().StoreConfiguration(&buf, &config)
-				Expect(err).NotTo(HaveOccurred())
-
-				// load the configuration from the buffer
-				var newConfiguration Configuration
-				err = NewJSONConfigLoader().LoadConfiguration(&buf, &newConfiguration)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(newConfiguration).To(Equal(configCopy))
-			})
-		})
 	})
 })

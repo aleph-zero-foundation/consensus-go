@@ -40,8 +40,7 @@ func createAndStartProcess(
 	pubKeys []gomel.PublicKey,
 	privKey gomel.PrivateKey,
 	userDB string,
-	maxLevel,
-	maxHeight uint64,
+	maxLevel uint64,
 	finished *sync.WaitGroup,
 ) error {
 	committee := config.Committee{
@@ -55,7 +54,6 @@ func createAndStartProcess(
 	// TODO types
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
-	config.Create.MaxHeight = int(maxHeight)
 	log, err := logging.NewLogger("stdout", 0, 100000, false)
 	if err != nil {
 		return err
@@ -77,7 +75,6 @@ func main() {
 	userDB := flag.String("user_db", "../../pkg/testdata/users.txt",
 		"file containing testdata for user accounts; default is a file containing names of superheros")
 	maxLevel := flag.Uint64("max_level", 5, "number of levels after which a process should finish; default is 5")
-	maxHeight := flag.Uint64("max_height", 5, "maximal height after which a process should finish; default is 5")
 	flag.Parse()
 
 	addresses := generateLocalhostAdresses("localhost", *testSize)
@@ -86,7 +83,7 @@ func main() {
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, *maxHeight, &allDone)
+		err := createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone)
 		if err != nil {
 			panic(err)
 		}
