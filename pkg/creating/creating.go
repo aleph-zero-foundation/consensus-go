@@ -203,12 +203,10 @@ func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.Ra
 		return true
 	})
 	if poset.IsQuorum(len(parents)) {
-
 		rsData := rs.DataToInclude(creator, parents, level+1)
 		return NewPreunit(creator, hashes(parents), data, rsData), nil
-	} else {
-		return nil, &noAvailableParents{}
 	}
+	return nil, &noAvailableParents{}
 }
 
 // NewUnit creates a preunit for a given process aiming at desiredParents parents.

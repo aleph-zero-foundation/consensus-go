@@ -58,9 +58,8 @@ func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 	defer p.RUnlock()
 	if level < len(p.primeUnits) {
 		return p.primeUnits[level]
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // MaximalUnitsPerProcess returns the maximal units for all processes.
