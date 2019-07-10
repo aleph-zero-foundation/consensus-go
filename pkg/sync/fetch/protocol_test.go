@@ -20,9 +20,9 @@ type poset struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (p *poset) AddUnit(unit gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *poset) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	p.attemptedAdd = append(p.attemptedAdd, unit)
-	p.Poset.AddUnit(unit, callback)
+	p.Poset.AddUnit(unit, rs, callback)
 }
 
 var _ = Describe("Protocol", func() {

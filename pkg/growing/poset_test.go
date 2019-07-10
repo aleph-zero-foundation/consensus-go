@@ -9,6 +9,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/growing"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 type preunitMock struct {
@@ -53,15 +54,16 @@ var _ = Describe("Poset", func() {
 	var (
 		nProcesses int
 		poset      *Poset
+		rs         gomel.RandomSource
 		addFirst   [][]*preunitMock
 		wg         sync.WaitGroup
 		pubKeys    []gomel.PublicKey
 		privKeys   []gomel.PrivateKey
 	)
 
-	AwaitAddUnit := func(pu gomel.Preunit, wg *sync.WaitGroup) {
+	AwaitAddUnit := func(pu gomel.Preunit, rs gomel.RandomSource, wg *sync.WaitGroup) {
 		wg.Add(1)
-		poset.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		poset.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			defer GinkgoRecover()
 			defer wg.Done()
 			Expect(err).NotTo(HaveOccurred())
@@ -79,7 +81,7 @@ var _ = Describe("Poset", func() {
 		for _, pus := range addFirst {
 			for _, pu := range pus {
 				pu.SetSignature(privKeys[pu.creator].Sign(pu))
-				AwaitAddUnit(pu, &wg)
+				AwaitAddUnit(pu, rs, &wg)
 			}
 			wg.Wait()
 		}
@@ -95,6 +97,7 @@ var _ = Describe("Poset", func() {
 				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			}
 			poset = NewPoset(&gomel.PosetConfig{Keys: pubKeys})
+			rs = tests.NewTestRandomSource(poset)
 		})
 
 		AfterEach(func() {
@@ -133,7 +136,7 @@ var _ = Describe("Poset", func() {
 				Context("When the poset is empty", func() {
 
 					It("Should be added as a dealing unit", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
@@ -148,12 +151,12 @@ var _ = Describe("Poset", func() {
 				Context("When the poset already contains the unit", func() {
 
 					JustBeforeEach(func() {
-						AwaitAddUnit(addedUnit, &wg)
+						AwaitAddUnit(addedUnit, rs, &wg)
 						wg.Wait()
 					})
 
 					It("Should report that fact", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -173,7 +176,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should be added as a second dealing unit", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
@@ -199,7 +202,7 @@ var _ = Describe("Poset", func() {
 				Context("When the poset is empty", func() {
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -219,7 +222,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should fail because of too few parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -244,7 +247,7 @@ var _ = Describe("Poset", func() {
 				Context("When the poset is empty", func() {
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -264,7 +267,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -287,7 +290,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should add the unit successfully", func(done Done) {
-						poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
@@ -302,12 +305,12 @@ var _ = Describe("Poset", func() {
 					Context("When the poset already contains the unit", func() {
 
 						JustBeforeEach(func() {
-							AwaitAddUnit(addedUnit, &wg)
+							AwaitAddUnit(addedUnit, rs, &wg)
 							wg.Wait()
 						})
 
 						It("Should report that fact", func(done Done) {
-							poset.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 								Expect(result).To(BeNil())
@@ -587,7 +590,7 @@ var _ = Describe("Poset", func() {
 					validUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash}
 					(&validUnit).SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
 
-					poset.AddUnit(&validUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+					poset.AddUnit(&validUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 						defer GinkgoRecover()
 						Expect(err).NotTo(HaveOccurred())
 						close(done)
@@ -625,7 +628,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)
@@ -659,7 +662,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)
@@ -716,7 +719,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(muted, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(muted, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)
@@ -736,7 +739,7 @@ var _ = Describe("Poset", func() {
 						})
 
 						It("should reject a unit", func(done Done) {
-							poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 								close(done)
@@ -755,7 +758,7 @@ var _ = Describe("Poset", func() {
 
 						It("should reject a unit", func(done Done) {
 
-							poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 								close(done)
@@ -774,7 +777,7 @@ var _ = Describe("Poset", func() {
 
 						It("should reject a unit", func(done Done) {
 
-							poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 								close(done)
@@ -801,7 +804,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)

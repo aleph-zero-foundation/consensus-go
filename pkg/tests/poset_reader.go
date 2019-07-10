@@ -25,6 +25,7 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 	}
 
 	p := pf.CreatePoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, n)})
+	rs := NewTestRandomSource(p)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID uint32
@@ -58,7 +59,7 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 		var addingError error
 		var wg sync.WaitGroup
 		wg.Add(1)
-		p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		p.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
 				addingError = err
 			}

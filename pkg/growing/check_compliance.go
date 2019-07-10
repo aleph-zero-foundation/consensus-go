@@ -11,10 +11,10 @@ import (
 // 3. Satisfies forker-muting policy.
 // 4. Satisfies the expand primes rule.
 // 5. The coinshares are OK, i.e., U contains exactly the coinshares it is supposed to contain.
-func (p *Poset) checkCompliance(u gomel.Unit) error {
+func (p *Poset) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	if gomel.Dealing(u) {
-		// This is a dealing unit, and its signature is correct --> we only need to check whether threshold coin is included
-		return checkThresholdCoinIncluded(u)
+		// This is a dealing unit, and its signature is correct --> we only need to check whether random source data is ok
+		return rs.CheckCompliance(u)
 	}
 	// 1. Parents are created by pairwise different processes.
 	if err := checkParentsDiversity(u); err != nil {
@@ -36,8 +36,8 @@ func (p *Poset) checkCompliance(u gomel.Unit) error {
 		return err
 	}
 
-	// 5. Coinshares are OK
-	if err := p.verifyCoinShares(u); err != nil {
+	// 5. RandomSourceData is OK
+	if err := rs.CheckCompliance(u); err != nil {
 		return err
 	}
 	return nil
@@ -76,13 +76,6 @@ func checkParentsDiversity(u gomel.Unit) error {
 		}
 		processFilter[parent.Creator()] = true
 	}
-	return nil
-}
-
-// Checks whether the dealing unit U has a threshold coin included.
-func checkThresholdCoinIncluded(u gomel.Unit) error {
-	// TODO: implement
-
 	return nil
 }
 
@@ -153,19 +146,5 @@ func (p *Poset) checkExpandPrimes(u gomel.Unit) error {
 		}
 		notSeenPrimes, left = left, notSeenPrimes[:0]
 	}
-	return nil
-}
-
-func (p *Poset) verifyCoinShares(u gomel.Unit) error {
-	if !gomel.Prime(u) || gomel.Dealing(u) {
-		return nil
-	}
-	return p.checkCoinShares(u)
-}
-
-// Checks coin shares of a prime unit that is not a dealing unit.
-func (p *Poset) checkCoinShares(u gomel.Unit) error {
-	// TODO: implement
-
 	return nil
 }

@@ -32,6 +32,7 @@ func writeToFile(filename string, poset gomel.Poset) error {
 func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gomel.Poset {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	p := growing.NewPoset(&gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
+	rs := tests.NewTestRandomSource(p)
 	created := 0
 	pus := make([]gomel.Preunit, nProcesses)
 	for created < nUnits {
@@ -39,14 +40,14 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gom
 		if pus[pid] != nil {
 			var wg sync.WaitGroup
 			wg.Add(1)
-			p.AddUnit(pus[pid], func(_ gomel.Preunit, _ gomel.Unit, _ error) {
+			p.AddUnit(pus[pid], rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
 				wg.Done()
 			})
 			wg.Wait()
 			created++
 			pus[pid] = nil
 		} else {
-			pu, err := creating.NewUnit(p, pid, maxParents, []byte{})
+			pu, err := creating.NewUnit(p, pid, maxParents, []byte{}, rs, true)
 			if err != nil {
 				continue
 			}
@@ -59,8 +60,9 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gom
 // Use this to generate more test files
 func main() {
 	writeToFile("random_10p_100u_2par.txt", CreateRandomNonForkingUsingCreating(10, 2, 100))
-	writeToFile("random_100p_5000u_10par.txt", CreateRandomNonForkingUsingCreating(100, 10, 5000))
-	writeToFile("random_100p_5000u.txt", CreateRandomNonForkingUsingCreating(100, 100, 5000))
-	writeToFile("random_1000p_10000u_2par.txt", CreateRandomNonForkingUsingCreating(1000, 2, 10000))
-	writeToFile("random_1000p_50000u_100par.txt", CreateRandomNonForkingUsingCreating(1000, 100, 50000))
+	//	writeToFile("random_100p_5000u_10par.txt", CreateRandomNonForkingUsingCreating(100, 10, 5000))
+	//	writeToFile("random_100p_5000u.txt", CreateRandomNonForkingUsingCreating(100, 100, 5000))
+	//	writeToFile("random_1000p_10000u_2par.txt", CreateRandomNonForkingUsingCreating(1000, 2, 10000))
+	//	writeToFile("random_1000p_50000u_100par.txt", CreateRandomNonForkingUsingCreating(1000, 100, 50000))
+
 }

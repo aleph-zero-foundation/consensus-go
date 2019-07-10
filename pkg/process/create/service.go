@@ -133,17 +133,11 @@ func (s *service) createUnit() {
 	}
 	created.SetSignature(s.privKey.Sign(created))
 
-	err = s.randomSource.Update(created)
-	if err != nil {
-		s.log.Error().Str("where", "randomSource.Update").Msg(err.Error())
-		return
-	}
 	var wg sync.WaitGroup
 	wg.Add(1)
-	s.poset.AddUnit(created, func(_ gomel.Preunit, added gomel.Unit, err error) {
+	s.poset.AddUnit(created, s.randomSource, func(_ gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
-			s.randomSource.Rollback(created)
 			s.log.Error().Str("where", "poset.AddUnit callback").Msg(err.Error())
 			return
 		}

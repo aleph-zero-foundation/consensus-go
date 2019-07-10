@@ -35,7 +35,7 @@ func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
 }
 
 // AddUnit adds a unit in a thread safe manner without trying to be clever.
-func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *Poset) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	p.Lock()
 	defer p.Unlock()
 

@@ -6,10 +6,11 @@ type RandomSource interface {
 	GetCRP(int) []int
 	// RandomBytes returns a random bits for a given unit and nonce
 	RandomBytes(Unit, int) []byte
+	// CheckCompliance checks wheather the data included in the preunit
+	// is compliant
+	CheckCompliance(Unit) error
 	// Update updates the RandomSource with data included in the preunit
-	Update(Preunit) error
-	// Rollback rolls back an update
-	Rollback(Preunit)
+	Update(Unit)
 	// DataToInclude returns data which should be included in the unit under
 	// creation with given creator and set of parents
 	DataToInclude(creator int, parents []Unit, level int) []byte

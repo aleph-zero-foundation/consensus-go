@@ -202,22 +202,16 @@ func addUnits(poset gomel.Poset, randomSource gomel.RandomSource, preunits []gom
 	var problem error
 	primeAdded := false
 	for _, preunit := range preunits {
-		err := randomSource.Update(preunit)
-		if err != nil {
-			return false, err
-		}
 		wg.Add(1)
-		poset.AddUnit(preunit, func(pu gomel.Preunit, added gomel.Unit, err error) {
+		poset.AddUnit(preunit, randomSource, func(pu gomel.Preunit, added gomel.Unit, err error) {
 			if err != nil {
 				switch e := err.(type) {
 				case *gomel.DuplicateUnit:
 					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
 				case *gomel.UnknownParent:
 					log.Info().Int(logging.Creator, pu.Creator()).Msg(logging.UnknownParents)
-					randomSource.Rollback(pu)
 					fallback(pu)
 				default:
-					randomSource.Rollback(pu)
 					problem = err
 				}
 			} else {

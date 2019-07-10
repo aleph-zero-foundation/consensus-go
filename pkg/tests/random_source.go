@@ -30,13 +30,13 @@ func (rs *testRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 	return uTossing.Hash()[:]
 }
 
-// Update updates the RandomSource with data included in the preunit
-func (*testRandomSource) Update(gomel.Preunit) error {
-	return nil
+// Update updates the RandomSource with data included in the unit
+func (*testRandomSource) Update(gomel.Unit) {
 }
 
-// Rollback rolls back an update
-func (*testRandomSource) Rollback(gomel.Preunit) {
+// CheckCompliance checks wheather the random source data incldued in the unit is correct
+func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
+	return nil
 }
 
 // ToInclude returns data which should be included in the unit under creation

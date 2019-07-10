@@ -15,12 +15,13 @@ import (
 func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gomel.Poset {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	p := newPoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
+	rs := NewTestRandomSource(p)
 	created := 0
 	for created < nUnits {
 		pid := r.Intn(nProcesses)
 		if p.maximalHeight[pid] == -1 {
 			pu := NewPreunit(pid, []*gomel.Hash{}, []byte{}, nil)
-			p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
+			p.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
 			created++
 		} else {
 			h := p.maximalHeight[pid]
@@ -46,7 +47,7 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 				// TODO: Add non empty coin shares here
 				pu := NewPreunit(pid, parents, []byte{}, nil)
 				if checkExpandPrimes(p, pu) {
-					p.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
+					p.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
 					created++
 				}
 			}
