@@ -23,7 +23,6 @@ func NewPoset(config *gomel.PosetConfig) *Poset {
 	n := len(pubKeys)
 	adders := make([]chan *unitBuilt, n, n)
 	for k := range adders {
-		// TODO: magic number
 		adders[k] = make(chan *unitBuilt, 10)
 	}
 	newPoset := &Poset{

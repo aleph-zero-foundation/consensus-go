@@ -36,7 +36,6 @@ func (l jsonConfigLoader) LoadConfiguration(reader io.Reader, config *Configurat
 		return err
 	}
 	// check if the provided JSON representation has the same number of fields as the Configuration type
-	// TODO try to find a simpler and cleaner solution for validating JSON configurations
 	var parsedJSON map[string]interface{}
 	err = json.NewDecoder(&buffer).Decode(&parsedJSON)
 	if err != nil {

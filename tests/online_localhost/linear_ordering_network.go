@@ -51,7 +51,6 @@ func createAndStartProcess(
 	}
 	defaultAppConfig := config.NewDefaultConfiguration()
 	config := defaultAppConfig.GenerateConfig(&committee, userDB)
-	// TODO types
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
 	log, err := logging.NewLogger("stdout", 0, 100000, false)
@@ -91,5 +90,4 @@ func main() {
 
 	// wait for all processes to finish
 	allDone.Wait()
-	// TODO add some poset verification after all processes finished
 }

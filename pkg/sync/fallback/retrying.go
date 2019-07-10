@@ -141,5 +141,4 @@ func (f *Retrying) addUnit(pu gomel.Preunit) {
 	if err != nil {
 		log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}
-	// TODO: attempt timing?
 }

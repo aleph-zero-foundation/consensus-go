@@ -26,7 +26,7 @@ type Unit interface {
 func Predecessor(u Unit) (Unit, error) {
 	pars := u.Parents()
 	if len(pars) == 0 {
-		return nil, errors.New("Todo: Make better error for parentless")
+		return nil, errors.New("no parents")
 	}
 	return pars[0], nil
 }

@@ -497,7 +497,6 @@ def create_images(regions=badger_regions()):
     print('waiting till ports are open on machines')
     # this is really slow, and actually machines are ready earlier! refactor
     #wait('ssh ready', regions)
-    # TODO make it faster
     sleep(120)
 
     print('installing dependencies')

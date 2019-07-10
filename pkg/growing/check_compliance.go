@@ -10,7 +10,7 @@ import (
 // 2. U does not provide evidence of its creator forking
 // 3. Satisfies forker-muting policy.
 // 4. Satisfies the expand primes rule.
-// 5. The coinshares are OK, i.e., U contains exactly the coinshares it is supposed to contain.
+// 5. The random source data is OK.
 func (p *Poset) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	// 1. Parents are created by pairwise different processes.
 	if err := checkParentsDiversity(u); err != nil {
@@ -32,7 +32,7 @@ func (p *Poset) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 		return err
 	}
 
-	// 5. RandomSourceData is OK
+	// 5. The random source data is OK.
 	if err := rs.CheckCompliance(u); err != nil {
 		return err
 	}

@@ -25,7 +25,6 @@ func NewTcSource(poset gomel.Poset, pid int) gomel.RandomSource {
 }
 
 // GetCRP is a dummy implementation of a common random permutation
-// TODO: implement
 func (rs *tcRandomSource) GetCRP(nonce int) []int {
 	nProc := rs.poset.NProc()
 	permutation := make([]int, nProc)

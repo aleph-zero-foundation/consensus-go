@@ -281,12 +281,6 @@ func lagrange(points []int, x int) *big.Int {
 		if p == x {
 			continue
 		}
-		// TODO: Add some optimization here
-		// every couple of iterations we should do
-		// num = num % bn256.Order
-		// den = den % bn256.Order
-		// We can also try to split the computation of the
-		// product between goroutines
 		num.Mul(num, big.NewInt(int64(0-p-1)))
 		den.Mul(den, big.NewInt(int64(x-p)))
 	}
