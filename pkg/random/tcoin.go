@@ -194,7 +194,7 @@ func hasForkingEvidenceFromParents(parents []gomel.Unit, creator int) bool {
 					if !heighest.Below(u) {
 						return true
 					}
-					u = heighest
+					heighest = u
 				} else {
 					if !u.Below(heighest) {
 						return true
