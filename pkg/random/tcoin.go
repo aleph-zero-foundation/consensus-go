@@ -177,30 +177,48 @@ func unmarshall(data []byte, pid int) (*tcoin.ThresholdCoin, *tcoin.CoinShare, e
 	return nil, nil, nil
 }
 
+// hasForkingEvidenceFromParents checks whether parents have evidence that
+// the creator is forking.
+func hasForkingEvidenceFromParents(parents []gomel.Unit, creator int) bool {
+	var heighest gomel.Unit
+	for _, p := range parents {
+		if p.HasForkingEvidence(creator) {
+			return true
+		}
+		if len(p.Floor()[creator]) == 1 {
+			u := p.Floor()[creator][0]
+			if heighest == nil {
+				heighest = u
+			} else {
+				if heighest.Height() <= u.Height() {
+					if !heighest.Below(u) {
+						return true
+					}
+					u = heighest
+				} else {
+					if !u.Below(heighest) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
 // firstDealingUnitFromParents takes parents of the unit under construction
 // and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
 // that is below the unit under construction
 func (rs *tcRandomSource) firstDealingUnitFromParents(parents []gomel.Unit, level int) gomel.Unit {
 	dealingUnits := rs.poset.PrimeUnits(0)
 	for _, dealer := range rs.GetCRP(level) {
-		// We are only checking if there are forked dealing units created by the dealer
-		// below the unit under construction.
-		// We could check if we have evidence that the dealer is forking
-		// but this is expensive without access to floors.
-		var result gomel.Unit
+		if hasForkingEvidenceFromParents(parents, dealer) {
+			continue
+		}
 		for _, u := range dealingUnits.Get(dealer) {
 			if gomel.BelowAny(u, parents) {
-				if result != nil {
-					// we see forked dealing unit
-					result = nil
-					break
-				} else {
-					result = u
-				}
+				return u
 			}
-		}
-		if result != nil {
-			return result
 		}
 	}
 	return nil
@@ -209,23 +227,13 @@ func (rs *tcRandomSource) firstDealingUnitFromParents(parents []gomel.Unit, leve
 func (rs *tcRandomSource) firstDealingUnit(u gomel.Unit) gomel.Unit {
 	dealingUnits := rs.poset.PrimeUnits(0)
 	for _, dealer := range rs.GetCRP(u.Level()) {
-		var result gomel.Unit
-		// We are only checking if there are forked dealing units created by the dealer below u.
-		// We can change it to hasForkingEvidence, but we would have to also implement
-		// this in creating.
+		if u.HasForkingEvidence(dealer) {
+			continue
+		}
 		for _, v := range dealingUnits.Get(dealer) {
 			if v.Below(u) {
-				if result != nil {
-					// we see forked dealing unit
-					result = nil
-					break
-				} else {
-					result = v
-				}
+				return v
 			}
-		}
-		if result != nil {
-			return result
 		}
 	}
 	return nil
