@@ -12,10 +12,6 @@ import (
 // 4. Satisfies the expand primes rule.
 // 5. The coinshares are OK, i.e., U contains exactly the coinshares it is supposed to contain.
 func (p *Poset) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
-	if gomel.Dealing(u) {
-		// This is a dealing unit, and its signature is correct --> we only need to check whether random source data is ok
-		return rs.CheckCompliance(u)
-	}
 	// 1. Parents are created by pairwise different processes.
 	if err := checkParentsDiversity(u); err != nil {
 		return err
@@ -68,7 +64,6 @@ func (p *Poset) checkBasicParentsCorrectness(u gomel.Unit) error {
 
 // Check if all parents are created by pairwise different processes.
 func checkParentsDiversity(u gomel.Unit) error {
-
 	processFilter := map[int]bool{}
 	for _, parent := range u.Parents() {
 		if processFilter[parent.Creator()] {
@@ -111,6 +106,9 @@ func checkForkerMuting(u gomel.Unit) error {
 // checked up to now. The next parent must must either have prime units of level L below it that are created by processes
 //  not in P, or have level greater than L.
 func (p *Poset) checkExpandPrimes(u gomel.Unit) error {
+	if len(u.Parents()) == 0 {
+		return nil
+	}
 	wholeSet := make([]int, p.NProc())
 	for pid := 0; pid < len(wholeSet); pid++ {
 		wholeSet[pid] = pid
