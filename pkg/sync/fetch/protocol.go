@@ -86,7 +86,6 @@ func (p *protocol) In() {
 		log.Error().Str("where", "fetchProtocol.in.sendUnits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
