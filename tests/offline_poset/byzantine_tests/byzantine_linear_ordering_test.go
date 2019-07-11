@@ -752,7 +752,7 @@ func syncAllPosets(posets []gomel.Poset) error {
 }
 
 func countUnitsOnLevelOrHigher(poset gomel.Poset, level uint64) map[uint16]bool {
-	fmt.Println("level we are checking", level)
+	// fmt.Println("level we are checking", level)
 	seen := make(map[uint16]bool, poset.NProc())
 	poset.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, unit := range units {
@@ -1052,8 +1052,8 @@ func buildOneLevelUp(posets []gomel.Poset, privKeys []gomel.PrivateKey, ids []ui
 			}
 			preunit, err := creating.NewUnit(poset, int(ids[ix]), int(ones), helpers.NewDefaultDataContent())
 			if err != nil {
-				seen := len(countUnitsOnLevelOrHigher(poset, level-1))
-				fmt.Println("but I've seen", seen)
+				// seen := len(countUnitsOnLevelOrHigher(poset, level-1))
+				// fmt.Println("but I've seen", seen)
 				return nil, fmt.Errorf("error while creating a unit for poset no %d: %s", ids[ix], err.Error())
 			}
 			// add only to its creator's poset
@@ -1064,10 +1064,10 @@ func buildOneLevelUp(posets []gomel.Poset, privKeys []gomel.PrivateKey, ids []ui
 
 			createdUnits = append(createdUnits, preunit)
 			if uint64(addedUnit.Level()) == level {
-				fmt.Println("yupi")
+				// fmt.Println("yupi")
 				createdOnLevel = true
 			} else {
-				fmt.Println(uint64(addedUnit.Level()))
+				// fmt.Println(uint64(addedUnit.Level()))
 			}
 		}
 	}
@@ -1103,17 +1103,17 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			if uint64(unit.Level()) == (startLevel - 1) {
 				seen[uint16(unit.Creator())] = true
 			}
-			// if posets[0].IsQuorum(len(seen)) && unit.Creator() != posets[0].GetCRP(int(startLevel))[0] {
-			// 	return true
-			// }
-			if posets[0].IsQuorum(len(seen)) {
-				if unit.Creator() != posets[0].GetCRP(int(startLevel))[0] {
-					return true
-				}
-				// try on the next level
-				seen = make(map[uint16]bool, len(posets))
-				startLevel++
+			if posets[0].IsQuorum(len(seen)) && unit.Creator() != posets[0].GetCRP(int(startLevel))[0] {
+				return true
 			}
+			// if posets[0].IsQuorum(len(seen)) {
+			// 	if unit.Creator() != posets[0].GetCRP(int(startLevel))[0] {
+			// 		return true
+			// 	}
+			// 	// try on the next level
+			// 	seen = make(map[uint16]bool, len(posets))
+			// 	startLevel++
+			// }
 			return false
 		}
 
