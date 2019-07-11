@@ -101,10 +101,10 @@ func (p *Poset) addUnit(ub *unitBuilt) {
 		ub.done(ub.preunit, nil, err)
 		return
 	}
+	ub.rs.Update(ub.result)
 	if gomel.Prime(ub.result) {
 		p.addPrime(ub.result)
 	}
-	ub.rs.Update(ub.result)
 	p.units.add(ub.result)
 	p.updateMaximal(ub.result)
 	ub.done(ub.preunit, ub.result, nil)
