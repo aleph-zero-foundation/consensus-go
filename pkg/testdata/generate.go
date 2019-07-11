@@ -59,10 +59,5 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gom
 
 // Use this to generate more test files
 func main() {
-	writeToFile("random_10p_100u_2par.txt", CreateRandomNonForkingUsingCreating(10, 2, 100))
-	//	writeToFile("random_100p_5000u_10par.txt", CreateRandomNonForkingUsingCreating(100, 10, 5000))
-	//	writeToFile("random_100p_5000u.txt", CreateRandomNonForkingUsingCreating(100, 100, 5000))
-	//	writeToFile("random_1000p_10000u_2par.txt", CreateRandomNonForkingUsingCreating(1000, 2, 10000))
-	//	writeToFile("random_1000p_50000u_100par.txt", CreateRandomNonForkingUsingCreating(1000, 100, 50000))
-
+	writeToFile("poset.out", CreateRandomNonForkingUsingCreating(10, 2, 100))
 }
