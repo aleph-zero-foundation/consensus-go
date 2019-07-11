@@ -120,15 +120,20 @@ func (f *Retrying) update() {
 
 func (f *Retrying) gotHash(h *gomel.Hash) {
 	toUpdate := f.neededFor[*h]
+	hashesAdded := []*gomel.Hash{}
 	for _, hh := range toUpdate {
 		f.required[*hh]--
 		if f.required[*hh] == 0 {
 			f.addUnit(f.backlog[*hh])
 			delete(f.required, *hh)
 			delete(f.backlog, *hh)
+			hashesAdded = append(hashesAdded, hh)
 		}
 	}
 	delete(f.neededFor, *h)
+	for _, hh := range hashesAdded {
+		f.gotHash(hh)
+	}
 }
 
 func (f *Retrying) addUnit(pu gomel.Preunit) {
