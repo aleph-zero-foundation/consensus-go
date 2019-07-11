@@ -43,6 +43,8 @@ var _ = Describe("Beacon", func() {
 						added = u
 						Expect(err).NotTo(HaveOccurred())
 					})
+					errComp := rs[pid].CheckCompliance(added)
+					Expect(errComp).NotTo(HaveOccurred())
 					rs[pid].Update(added)
 					wg.Wait()
 				}

@@ -309,6 +309,23 @@ func (tc *ThresholdCoin) VerifyWrongSecretKeyProof(pid int, proof *big.Int) bool
 	return false
 }
 
+// SumShares return a share to a multicoin given shares to
+// tcoins forming the multicoin. All the shares should be created by
+// the same process.
+// Given slice of CoinShares have to be non empty.
+func SumShares(cses []*CoinShare) *CoinShare {
+	sum := new(bn256.G1)
+	for _, cs := range cses {
+		elem := new(bn256.G1)
+		elem.Unmarshal(cs.sgn)
+		sum.Add(sum, elem)
+	}
+	return &CoinShare{
+		pid: cses[0].pid,
+		sgn: sum.Marshal(),
+	}
+}
+
 // CombineCoinShares combines given shares into a Coin
 // it returns a Coin and a bool value indicating wheather combining was successful or not
 func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {

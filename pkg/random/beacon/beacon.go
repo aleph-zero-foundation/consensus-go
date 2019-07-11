@@ -32,12 +32,13 @@ type beacon struct {
 	// it is nil when j-th dealing unit is not below
 	// the unit of i-th process on votingLevel
 	votes [][]*vote
-	// shareProviders[i] is the set of the processes that voted "yes"
-	// for all the tcoins which forms the i-th multicion
-	// those processes should provide shares for the i-th multicoin
+	// shareProviders[i] is the set of the processes which have a unit on
+	// votingLevel below the unit created by the i-th process on multicoinLevel
 	shareProviders []map[int]bool
+	// subcoins[i] is the set of coins which forms the i-th multicoin
+	subcoins []map[int]bool
 	// shares[i] is a map of the form
-	// hash of a unit => the share for the i-th multicoin contained in the unit
+	// hash of a unit => the share for the i-th tcoin contained in the unit
 	shares       []*random.SyncCSMap
 	polyVerifier tcoin.PolyVerifier
 }
@@ -57,6 +58,7 @@ func NewBeacon(poset gomel.Poset, pid int) gomel.RandomSource {
 		multicoins:     make([]*tcoin.ThresholdCoin, n),
 		votes:          make([][]*vote, n),
 		shareProviders: make([]map[int]bool, n),
+		subcoins:       make([]map[int]bool, n),
 		tcoins:         make([]*tcoin.ThresholdCoin, n),
 		shares:         make([]*random.SyncCSMap, n),
 		polyVerifier:   tcoin.NewPolyVerifier(n, n/3+1),
@@ -64,6 +66,7 @@ func NewBeacon(poset gomel.Poset, pid int) gomel.RandomSource {
 	for i := 0; i < poset.NProc(); i++ {
 		b.votes[i] = make([]*vote, poset.NProc())
 		b.shares[i] = random.NewSyncCSMap()
+		b.subcoins[i] = make(map[int]bool)
 	}
 	return b
 }
@@ -121,8 +124,12 @@ func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	shares := []*tcoin.CoinShare{}
 	units := unitsOnLevel(b.poset, level)
 	for _, u := range units {
-		if cs := b.shares[uTossing.Creator()].Get(u.Hash()); cs != nil {
-			shares = append(shares, cs)
+		if b.shareProviders[uTossing.Creator()][u.Creator()] {
+			uShares := []*tcoin.CoinShare{}
+			for sc := range b.subcoins[uTossing.Creator()] {
+				uShares = append(uShares, b.shares[sc].Get(u.Hash()))
+			}
+			shares = append(shares, tcoin.SumShares(uShares))
 		}
 	}
 	coin, ok := b.multicoins[uTossing.Creator()].CombineCoinShares(shares)
@@ -160,14 +167,13 @@ func (b *beacon) CheckCompliance(u gomel.Unit) error {
 		if err != nil {
 			return err
 		}
-		mcUnits := unitsOnLevel(b.poset, multicoinLevel)
-		for _, mcu := range mcUnits {
-			if mcu.Below(u) && b.shareProviders[mcu.Creator()][u.Creator()] {
-				if shares[mcu.Creator()] == nil {
+		for pid := 0; pid < b.poset.NProc(); pid++ {
+			if b.votes[u.Creator()][pid] != nil && b.votes[u.Creator()][pid].isCorrect {
+				if shares[pid] == nil {
 					return errors.New("Preunit without a share it should contain ")
 				}
 				// This verification is slow
-				if !b.multicoins[mcu.Creator()].VerifyCoinShare(shares[mcu.Creator()], u.Level()) {
+				if !b.tcoins[pid].VerifyCoinShare(shares[pid], u.Level()) {
 					return errors.New("Invalid coin share")
 				}
 			}
@@ -211,6 +217,7 @@ func (b *beacon) Update(u gomel.Unit) {
 		for pid := 0; pid < b.poset.NProc(); pid++ {
 			if coinsApprovedBy[pid] == nBelowUOnVotingLevel {
 				coinsToMerge = append(coinsToMerge, b.tcoins[pid])
+				b.subcoins[u.Creator()][pid] = true
 			}
 		}
 		b.multicoins[u.Creator()] = tcoin.CreateMulticoin(coinsToMerge, b.pid)
@@ -284,10 +291,9 @@ func (b *beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []b
 	}
 	if level >= sharesLevel {
 		cses := make([]*tcoin.CoinShare, b.poset.NProc())
-		mcUnits := unitsOnLevel(b.poset, multicoinLevel)
-		for _, u := range mcUnits {
-			if gomel.BelowAny(u, parents) && b.shareProviders[u.Creator()][creator] {
-				cses[u.Creator()] = b.multicoins[u.Creator()].CreateCoinShare(level)
+		for pid := 0; pid < b.poset.NProc(); pid++ {
+			if b.votes[creator][pid] != nil && b.votes[creator][pid].isCorrect {
+				cses[pid] = b.tcoins[pid].CreateCoinShare(level)
 			}
 		}
 		return marshallShares(cses)
