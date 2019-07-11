@@ -123,6 +123,7 @@ func setBasicInfo(u *unit, p *Poset, pu gomel.Preunit) {
 	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
 	u.data = pu.Data()
+	u.rsData = pu.RandomSourceData()
 	if len(p.unitsByHeight) <= u.height {
 		u.version = 0
 	} else {

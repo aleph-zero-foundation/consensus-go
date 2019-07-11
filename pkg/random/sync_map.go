@@ -7,28 +7,22 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
-type syncCSMap struct {
+type SyncCSMap struct {
 	sync.RWMutex
 	contents map[gomel.Hash]*tcoin.CoinShare
 }
 
-func newSyncCSMap() *syncCSMap {
-	return &syncCSMap{contents: make(map[gomel.Hash]*tcoin.CoinShare)}
+func NewSyncCSMap() *SyncCSMap {
+	return &SyncCSMap{contents: make(map[gomel.Hash]*tcoin.CoinShare)}
 }
 
-func (sm *syncCSMap) remove(h *gomel.Hash) {
-	sm.Lock()
-	defer sm.Unlock()
-	delete(sm.contents, *h)
-}
-
-func (sm *syncCSMap) add(h *gomel.Hash, elem *tcoin.CoinShare) {
+func (sm *SyncCSMap) Add(h *gomel.Hash, elem *tcoin.CoinShare) {
 	sm.Lock()
 	defer sm.Unlock()
 	sm.contents[*h] = elem
 }
 
-func (sm *syncCSMap) get(h *gomel.Hash) *tcoin.CoinShare {
+func (sm *SyncCSMap) Get(h *gomel.Hash) *tcoin.CoinShare {
 	sm.RLock()
 	defer sm.RUnlock()
 	return sm.contents[*h]

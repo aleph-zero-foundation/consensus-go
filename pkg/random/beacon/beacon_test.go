@@ -1,6 +1,8 @@
 package beacon_test
 
 import (
+	"sync"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -33,11 +35,16 @@ var _ = Describe("Beacon", func() {
 				pu, err := creating.NewNonSkippingUnit(poset[creator], creator, []byte{}, rs[creator])
 				Expect(err).NotTo(HaveOccurred())
 				for pid := 0; pid < n; pid++ {
-					err = rs[pid].Update(pu)
-					Expect(err).NotTo(HaveOccurred())
-					poset[pid].AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+					var wg sync.WaitGroup
+					wg.Add(1)
+					var added gomel.Unit
+					poset[pid].AddUnit(pu, rs[pid], func(_ gomel.Preunit, u gomel.Unit, err error) {
+						defer wg.Done()
+						added = u
 						Expect(err).NotTo(HaveOccurred())
 					})
+					rs[pid].Update(added)
+					wg.Wait()
 				}
 			}
 		}
