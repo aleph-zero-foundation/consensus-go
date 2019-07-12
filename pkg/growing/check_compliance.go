@@ -82,7 +82,7 @@ func checkNoSelfForkingEvidence(u gomel.Unit) error {
 	return nil
 }
 
-// Checks if the set of units respects the forker-muting policy, i.e.:
+// CheckForkerMuting checks if the set of units respects the forker-muting policy, i.e.:
 // The following situation is not allowed:
 //   - There exists a process j, s.t. one of parents was created by j
 //   AND
