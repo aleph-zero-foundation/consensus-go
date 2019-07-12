@@ -544,7 +544,7 @@ func testForkingChangingParents(forker forker) error {
 }
 
 // TODO this a copy/paste from voting
-func SimpleCoin(u gomel.Unit, level int) int {
+func simpleCoin(u gomel.Unit, level int) int {
 	index := level % (8 * len(u.Hash()))
 	byteIndex, bitIndex := index/8, index%8
 	if u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0 {
@@ -562,7 +562,7 @@ func newDefaultCommonVote(uc gomel.Unit, initialVotingRound uint64, lastDetermin
 		// use the simplecoin to predict future common votes
 		lastLevel := uc.Level() + int(initialVotingRound) + int(lastDeterministicRound)
 		for level := uc.Level() + int(initialVotingRound) + 3; level < lastLevel; level++ {
-			if SimpleCoin(uc, level) == 0 {
+			if simpleCoin(uc, level) == 0 {
 				commonVotes <- true
 			} else {
 				commonVotes <- false
@@ -614,24 +614,16 @@ func testLongTimeUndecidedStrategy() error {
 		return nil
 	}
 
-	verifier := helpers.NewDefaultVerifier()
-	resultVerifier := func(posets []gomel.Poset, privKeys []gomel.PrivateKey) helpers.PosetVerifier {
-		verifier1 := verifier(posets, privKeys)
-		return helpers.ComposeVerifiers(checkIfUndecidedVerifier, verifier1)
-		// return checkIfUndecidedVerifier
-	}
-
 	testingRoutine := helpers.NewTestingRoutineWithStopCondition(
 		func([]gomel.Poset, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
 		unitAdder,
-		resultVerifier,
+		func([]gomel.Poset, []gomel.PrivateKey) helpers.PosetVerifier { return checkIfUndecidedVerifier },
 		stopCondition,
 	)
 
 	return helpers.Test(pubKeys, privKeys, testingRoutine)
 }
 
-// TODO fix this version
 func syncPosets(p1, p2 gomel.Poset) (bool, error) {
 	p1Max := p1.MaximalUnitsPerProcess()
 	p2Max := p2.MaximalUnitsPerProcess()
@@ -756,7 +748,6 @@ func syncAllPosets(posets []gomel.Poset) error {
 }
 
 func countUnitsOnLevelOrHigher(poset gomel.Poset, level uint64) map[uint16]bool {
-	// fmt.Println("level we are checking", level)
 	seen := make(map[uint16]bool, poset.NProc())
 	poset.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, unit := range units {
@@ -914,7 +905,7 @@ func makePosetsUndecidedForLongTime(
 		return true
 	})
 
-	// main loop that tries to grow two towers, one targeting 1 and the other 0 (1=I saw the 'decisionUnit')
+	// main loop that tries to grow two towers, one targeting 1 and the other 0 (1 means "I vote 1 for the 'decisionUnit'")
 	for {
 		// use minimal amount of units from the other side to build up by a new level
 
@@ -1069,10 +1060,7 @@ func buildOneLevelUp(posets []gomel.Poset, privKeys []gomel.PrivateKey, ids []ui
 
 			createdUnits = append(createdUnits, preunit)
 			if uint64(addedUnit.Level()) == level {
-				// fmt.Println("yupi")
 				createdOnLevel = true
-			} else {
-				// fmt.Println(uint64(addedUnit.Level()))
 			}
 		}
 	}
