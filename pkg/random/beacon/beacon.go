@@ -43,10 +43,15 @@ type beacon struct {
 	polyVerifier tcoin.PolyVerifier
 }
 
+// vote is a vote for a tcoin
+// proof = nil means that the tcoin is correct
+// proof != nil means gives proof that the tcoin is incorrect
 type vote struct {
-	isCorrect bool
-	// proof != nil only when isCorrect = false
 	proof *big.Int
+}
+
+func (v *vote) isCorrect() bool {
+	return v.proof != nil
 }
 
 // NewBeacon returns a RandomSource based on a beacon
@@ -168,7 +173,7 @@ func (b *beacon) CheckCompliance(u gomel.Unit) error {
 			return err
 		}
 		for pid := 0; pid < b.poset.NProc(); pid++ {
-			if b.votes[u.Creator()][pid] != nil && b.votes[u.Creator()][pid].isCorrect {
+			if b.votes[u.Creator()][pid].isCorrect() {
 				if shares[pid] == nil {
 					return errors.New("Preunit without a share it should contain ")
 				}
@@ -207,7 +212,7 @@ func (b *beacon) Update(u gomel.Unit) {
 				providers[v.Creator()] = true
 				nBelowUOnVotingLevel++
 				for pid := 0; pid < b.poset.NProc(); pid++ {
-					if b.votes[v.Creator()][pid] != nil && b.votes[v.Creator()][pid].isCorrect {
+					if b.votes[v.Creator()][pid].isCorrect() {
 						coinsApprovedBy[pid]++
 					}
 				}
@@ -244,7 +249,7 @@ func validateVotes(b *beacon, u gomel.Unit, votes []*vote) error {
 		if !shouldVote && votes[v.Creator()] != nil {
 			return errors.New("Vote on dealing unit not below the unit")
 		}
-		if shouldVote && votes[v.Creator()].isCorrect == false {
+		if shouldVote && !votes[v.Creator()].isCorrect() {
 			proof := votes[v.Creator()].proof
 			if !b.tcoins[v.Creator()].VerifyWrongSecretKeyProof(u.Creator(), proof) {
 				return errors.New("The provided proof is incorrect")
@@ -261,16 +266,8 @@ func validateVotes(b *beacon, u gomel.Unit, votes []*vote) error {
 }
 
 func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
-	proof := tc.VerifySecretKey()
-	if proof != nil {
-		return &vote{
-			isCorrect: false,
-			proof:     proof,
-		}
-	}
 	return &vote{
-		isCorrect: true,
-		proof:     nil,
+		proof: tc.VerifySecretKey(),
 	}
 }
 
@@ -292,7 +289,7 @@ func (b *beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []b
 	if level >= sharesLevel {
 		cses := make([]*tcoin.CoinShare, b.poset.NProc())
 		for pid := 0; pid < b.poset.NProc(); pid++ {
-			if b.votes[creator][pid] != nil && b.votes[creator][pid].isCorrect {
+			if b.votes[creator][pid].isCorrect() {
 				cses[pid] = b.tcoins[pid].CreateCoinShare(level)
 			}
 		}

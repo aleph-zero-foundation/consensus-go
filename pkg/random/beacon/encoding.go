@@ -23,7 +23,7 @@ func marshallVotes(votes []*vote) []byte {
 	for _, v := range votes {
 		if v == nil {
 			buf.Write([]byte{0})
-		} else if v.isCorrect == true {
+		} else if v.isCorrect() == true {
 			buf.Write([]byte{1})
 		} else {
 			buf.Write([]byte{2})
@@ -47,8 +47,7 @@ func unmarshallVotes(data []byte, nProc int) ([]*vote, error) {
 		} else if data[0] == 1 {
 			data = data[1:]
 			votes[pid] = &vote{
-				isCorrect: true,
-				proof:     nil,
+				proof: nil,
 			}
 		} else {
 			data = data[1:]
@@ -67,8 +66,7 @@ func unmarshallVotes(data []byte, nProc int) ([]*vote, error) {
 				return nil, err
 			}
 			votes[pid] = &vote{
-				isCorrect: false,
-				proof:     proof,
+				proof: proof,
 			}
 		}
 	}
