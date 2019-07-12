@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
+	"gitlab.com/alephledger/consensus-go/pkg/random"
 )
 
 const (
@@ -19,29 +20,29 @@ const (
 )
 
 // UnitCreator is a type of a function that given a list of posets attempts to create a new unit or returns an error otherwise.
-type UnitCreator func([]gomel.Poset, []gomel.PrivateKey) (gomel.Preunit, error)
+type UnitCreator func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) (gomel.Preunit, error)
 
 // Creator is a type of a function that given a poset and some 'creator' attempts to build a valid unit.
-type Creator func(poset gomel.Poset, creator uint16, privKey gomel.PrivateKey) (gomel.Preunit, error)
+type Creator func(poset gomel.Poset, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error)
 
 // AddingHandler is a type of a function that given a list of posets and a unit handles adding of that unit with accordance to
 // used strategy.
-type AddingHandler func(posets []gomel.Poset, preunit gomel.Preunit) error
+type AddingHandler func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit) error
 
 // PosetVerifier is a type of a function that is responsible for verifying if a given list of posests is in valid state.
-type PosetVerifier func([]gomel.Poset) error
+type PosetVerifier func([]gomel.Poset, []uint16, []config.Configuration) error
 
 // TestingRoutine describes a strategy for performing a test on a given set of posets.
 type TestingRoutine interface {
 	CreateUnitCreator(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator
-	CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler
+	CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler
 	CreatePosetVerifier(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier
 	StopCondition() func(posets []gomel.Poset) bool
 }
 
 type testingRoutine struct {
 	creator       func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator
-	adder         func(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler
+	adder         func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler
 	verifier      func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier
 	stopCondition func(posets []gomel.Poset) bool
 }
@@ -50,8 +51,8 @@ func (test *testingRoutine) CreateUnitCreator(posets []gomel.Poset, privKeys []g
 	return test.creator(posets, privKeys)
 }
 
-func (test *testingRoutine) CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler {
-	return test.adder(posets, privKeys)
+func (test *testingRoutine) CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler {
+	return test.adder(posets, privKeys, rss)
 }
 
 func (test *testingRoutine) CreatePosetVerifier(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier {
@@ -73,7 +74,7 @@ const nUnits = 1000
 // NewDefaultTestingRoutine creates an instance of TestingRoutine.
 func NewDefaultTestingRoutine(
 	creator func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator,
-	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler,
+	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler,
 	verifier func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier,
 ) TestingRoutine {
 	unitsCreated := 0
@@ -86,7 +87,7 @@ func NewDefaultTestingRoutine(
 // NewDefaultTestingRoutine creates an instance of TestingRoutine.
 func NewTestingRoutineWithStopCondition(
 	creator func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator,
-	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey) AddingHandler,
+	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler,
 	verifier func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier,
 	stopCondition func([]gomel.Poset) bool,
 ) TestingRoutine {
@@ -95,7 +96,7 @@ func NewTestingRoutineWithStopCondition(
 
 // NewDefaultAdder creates an instance of AddingHandler that ads a given unit to all posets under test.
 func NewDefaultAdder() AddingHandler {
-	return func(posets []gomel.Poset, preunit gomel.Preunit) error {
+	return func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit) error {
 		_, err := AddToPosets(preunit, posets)
 		return err
 	}
@@ -103,7 +104,7 @@ func NewDefaultAdder() AddingHandler {
 
 // NewNoOpAdder return an instance of 'AddingHandler' type that performs no operation.
 func NewNoOpAdder() AddingHandler {
-	return func(posets []gomel.Poset, preunit gomel.Preunit) error {
+	return func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit) error {
 		return nil
 	}
 }
@@ -218,42 +219,40 @@ func GenerateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.P
 
 // NewDefaultUnitCreator returns an implementation of the UnitCreator type that tries to build a unit using a randomly selected
 // poset.
-func NewDefaultUnitCreator(unitFactory Creator) func([]gomel.Poset, []gomel.PrivateKey) UnitCreator {
-	return func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator {
-		return func(posets []gomel.Poset, privKeys []gomel.PrivateKey) (gomel.Preunit, error) {
-			attempts := 0
-			for {
-				attempts++
-				if attempts%50 == 0 {
-					fmt.Println("Attempt no", attempts, "of creating a new unit")
-				}
-
-				creator := rand.Intn(len(posets))
-				poset := posets[creator]
-
-				// pu, err := creating.NewUnit(poset, creator, maxParents, NewDefaultDataContent())
-				pu, err := unitFactory(poset, uint16(creator), privKeys[creator])
-				if err != nil {
-					fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
-					continue
-				}
-				if pu == nil {
-					fmt.Fprintf(os.Stderr, "Creator %d was unable to build a unit\n", creator)
-					continue
-				}
-				pu.SetSignature(privKeys[creator].Sign(pu))
-				return pu, nil
+func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
+	return func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Preunit, error) {
+		attempts := 0
+		for {
+			attempts++
+			if attempts%50 == 0 {
+				fmt.Println("Attempt no", attempts, "of creating a new unit")
 			}
+
+			creator := rand.Intn(len(posets))
+			poset := posets[creator]
+
+			// pu, err := creating.NewUnit(poset, creator, maxParents, NewDefaultDataContent())
+			pu, err := unitFactory(poset, uint16(creator), privKeys[creator], rss[creator])
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
+				continue
+			}
+			if pu == nil {
+				fmt.Fprintf(os.Stderr, "Creator %d was unable to build a unit\n", creator)
+				continue
+			}
+			pu.SetSignature(privKeys[creator].Sign(pu))
+			return pu, nil
 		}
 	}
 }
 
-func getOrderedUnits(poset gomel.Poset) chan gomel.Unit {
+func getOrderedUnits(poset gomel.Poset, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
-		config := config.NewDefaultConfiguration()
 		// TODO types
-		ordering := linear.NewOrdering(poset, int(config.VotingLevel), int(config.PiDeltaLevel))
+		rs := random.NewTcSource(poset, int(pid))
+		ordering := linear.NewOrdering(poset, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel))
 		level := 0
 		orderedUnits := ordering.TimingRound(level)
 		for orderedUnits != nil {
@@ -268,12 +267,13 @@ func getOrderedUnits(poset gomel.Poset) chan gomel.Unit {
 	return units
 }
 
-func getAllTimingUnits(poset gomel.Poset) chan gomel.Unit {
+func getAllTimingUnits(poset gomel.Poset, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
-		config := config.NewDefaultConfiguration()
+
 		// TODO types
-		ordering := linear.NewOrdering(poset, int(config.VotingLevel), int(config.PiDeltaLevel))
+		rs := random.NewTcSource(poset, int(pid))
+		ordering := linear.NewOrdering(poset, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel))
 		level := 0
 		timingUnit := ordering.DecideTimingOnLevel(level)
 		for timingUnit != nil {
@@ -286,7 +286,7 @@ func getAllTimingUnits(poset gomel.Poset) chan gomel.Unit {
 	return units
 }
 
-func getMaximalUnitsSorted(poset gomel.Poset) chan gomel.Unit {
+func getMaximalUnitsSorted(poset gomel.Poset, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 		poset.MaximalUnitsPerProcess().Iterate(func(forks []gomel.Unit) bool {
@@ -310,9 +310,9 @@ func getMaximalUnitsSorted(poset gomel.Poset) chan gomel.Unit {
 // ComposeVerifiers composes provided verifiers into a single verifier. Created verifier fails immediately after it discovers a failure of one of
 // its verifiers.
 func ComposeVerifiers(verifiers ...PosetVerifier) PosetVerifier {
-	return func(posets []gomel.Poset) error {
+	return func(posets []gomel.Poset, pids []uint16, generalConfigs []config.Configuration) error {
 		for _, verifier := range verifiers {
-			if err := verifier(posets); err != nil {
+			if err := verifier(posets, pids, generalConfigs); err != nil {
 				return err
 			}
 		}
@@ -324,9 +324,9 @@ func ComposeVerifiers(verifiers ...PosetVerifier) PosetVerifier {
 // failure of one of its 'adders'.
 func ComposeAdders(adders ...AddingHandler) AddingHandler {
 
-	return func(posets []gomel.Poset, preunit gomel.Preunit) error {
+	return func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit) error {
 		for _, adder := range adders {
-			if err := adder(posets, preunit); err != nil {
+			if err := adder(posets, rss, preunit); err != nil {
 				return err
 			}
 		}
@@ -334,17 +334,17 @@ func ComposeAdders(adders ...AddingHandler) AddingHandler {
 	}
 }
 
-func verifyUnitsUsingOrdering(ordering func(gomel.Poset) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) PosetVerifier {
-	return func(posets []gomel.Poset) error {
+func verifyUnitsUsingOrdering(ordering func(gomel.Poset, uint16, config.Configuration) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) PosetVerifier {
+	return func(posets []gomel.Poset, pids []uint16, generalConfigs []config.Configuration) error {
 		if len(posets) < 2 {
 			return nil
 		}
 		var units1 []gomel.Unit
-		for unit := range ordering(posets[0]) {
+		for unit := range ordering(posets[0], pids[0], generalConfigs[0]) {
 			units1 = append(units1, unit)
 		}
 		for ix, poset := range posets {
-			units2 := ordering(poset)
+			units2 := ordering(poset, pids[ix], generalConfigs[ix])
 
 			for _, unit1 := range units1 {
 				unit2, open := <-units2
@@ -377,9 +377,9 @@ func VerifyTimingUnits() PosetVerifier {
 		func(u1, u2 gomel.Unit) error {
 			level := u1.Level()
 			if level != prevLevel+1 {
-				// return gomel.NewDataError(
-				// 	fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
-				// )
+				return gomel.NewDataError(
+					fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
+				)
 			}
 			prevLevel = level
 
@@ -432,7 +432,7 @@ func NewDefaultVerifier() func([]gomel.Poset, []gomel.PrivateKey) PosetVerifier 
 
 // NewNoOpVerifier returns a PosetVerifier that does not check provided posets and immediately answers that they are correct.
 func NewNoOpVerifier() PosetVerifier {
-	return func([]gomel.Poset) error {
+	return func([]gomel.Poset, []uint16, []config.Configuration) error {
 		fmt.Println("No verification step")
 		return nil
 	}
@@ -447,16 +447,25 @@ func Test(
 
 	nProcesses := len(pubKeys)
 	posets := make([]gomel.Poset, 0, nProcesses)
+	pids := make([]uint16, 0, nProcesses)
+	generalConfig := config.NewDefaultConfiguration()
+	configurations := make([]config.Configuration, 0, nProcesses)
+	rss := make([]gomel.RandomSource, 0, nProcesses)
 
-	for len(posets) < nProcesses {
+	for pid := uint16(0); len(posets) < nProcesses; pid++ {
 		poset := growing.NewPoset(&gomel.PosetConfig{Keys: pubKeys})
 		defer poset.Stop()
 		posets = append(posets, poset)
+
+		pids = append(pids, pid)
+		configurations = append(configurations, generalConfig)
+		rs := random.NewTcSource(poset, int(pid))
+		rss = append(rss, rs)
 	}
 
 	unitCreator, addingHandler, verifier, stopCondition :=
 		testingRoutine.CreateUnitCreator(posets, privKeys),
-		testingRoutine.CreateAddingHandler(posets, privKeys),
+		testingRoutine.CreateAddingHandler(posets, privKeys, rss),
 		testingRoutine.CreatePosetVerifier(posets, privKeys),
 		testingRoutine.StopCondition()
 
@@ -465,13 +474,13 @@ func Test(
 
 		var newUnit gomel.Preunit
 		var err error
-		if newUnit, err = unitCreator(posets, privKeys); err != nil {
+		if newUnit, err = unitCreator(posets, privKeys, rss); err != nil {
 			fmt.Fprintln(os.Stderr, "Unable to create a new unit")
 			return err
 		}
 
 		// send the unit to all posets
-		if err := addingHandler(posets, newUnit); err != nil {
+		if err := addingHandler(posets, rss, newUnit); err != nil {
 			fmt.Fprintln(os.Stderr, "Error while adding a unit to some poset:", err)
 			return err
 		}
@@ -479,7 +488,7 @@ func Test(
 	fmt.Println("Testing routine finished")
 
 	fmt.Println("Verification step")
-	err := verifier(posets)
+	err := verifier(posets, pids, configurations)
 	if err != nil {
 		fmt.Println("Posets verfication failed", err.Error())
 		return err
