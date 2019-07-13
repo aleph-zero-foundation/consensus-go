@@ -1099,14 +1099,6 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			if posets[0].IsQuorum(len(seen)) && unit.Creator() != rss[0].GetCRP(int(startLevel))[0] {
 				return true
 			}
-			// if posets[0].IsQuorum(len(seen)) {
-			// 	if unit.Creator() != posets[0].GetCRP(int(startLevel))[0] {
-			// 		return true
-			// 	}
-			// 	// try on the next level
-			// 	seen = make(map[uint16]bool, len(posets))
-			// 	startLevel++
-			// }
 			return false
 		}
 
