@@ -81,7 +81,17 @@ func NewDefaultTestingRoutine(
 	stopCondition := func([]gomel.Poset) bool {
 		return unitsCreated >= nUnits
 	}
-	return &testingRoutine{creator, adder, verifier, stopCondition}
+	wrappedCreator := func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator {
+		origCreator := creator(posets, privKeys)
+		return func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Preunit, error) {
+			pu, err := origCreator(posets, privKeys, rss)
+			if err == nil {
+				unitsCreated++
+			}
+			return pu, err
+		}
+	}
+	return &testingRoutine{wrappedCreator, adder, verifier, stopCondition}
 }
 
 // NewTestingRoutineWithStopCondition creates an instance of TestingRoutine.
@@ -242,6 +252,8 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 				continue
 			}
 			pu.SetSignature(privKeys[creator].Sign(pu))
+			fmt.Fprintf(os.Stderr, "Unit created by poset no %d", creator)
+			fmt.Fprintln(os.Stderr, "")
 			return pu, nil
 		}
 	}
