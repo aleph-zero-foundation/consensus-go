@@ -308,8 +308,12 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 	}
 
 	return func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
+		allExecuted := false
 		return newTriggeredAdder(
 			func(unit gomel.Unit) bool {
+				if allExecuted {
+					return false
+				}
 				val, ok := alreadyForked[uint16(unit.Creator())]
 				if ok && !val && unit.Level() >= forkingLevel {
 					return true
@@ -328,6 +332,9 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 					return err
 				}
 				alreadyForked[uint16(unit.Creator())] = true
+				if len(alreadyForked) == len(byzantinePosets) {
+					allExecuted = true
+				}
 				fmt.Println("simple fork created at level", forkingLevel)
 				return nil
 			},
@@ -1112,7 +1119,13 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			}
 			triggeringPoset := uint16(rss[0].GetCRP(int(startLevel))[0])
 			fmt.Println("triggering poset no", triggeringPoset)
-			triggeringPreunit, err := creating.NewUnit(posets[triggeringPoset], int(triggeringPoset), len(posets), helpers.NewDefaultDataContent(), rss[triggeringPoset], false)
+			triggeringPreunit, err := creating.NewUnit(
+				posets[triggeringPoset],
+				int(triggeringPoset),
+				len(posets),
+				helpers.NewDefaultDataContent(),
+				rss[triggeringPoset], false,
+			)
 			if err != nil {
 				return err
 			}
