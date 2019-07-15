@@ -1199,7 +1199,7 @@ var _ = Describe("Byzantine Poset Test", func() {
 	})
 
 	Describe("Cheat the deterministic part of the algorithm", func() {
-		FIt("it should not be able to decide regarding a selected unit", func() {
+		It("it should not be able to decide regarding a selected unit", func() {
 			err := testLongTimeUndecidedStrategy()
 			Expect(err).NotTo(HaveOccurred())
 		})
