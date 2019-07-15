@@ -65,24 +65,17 @@ func runOfflineTest() {
 		var wg sync.WaitGroup
 		wg.Add(nProcesses)
 		for j := 0; j < nProcesses; j++ {
-			err := rses[j].Update(pu)
-			if err != nil {
-				fmt.Println(err)
-				wg.Done()
-			} else {
-				posets[j].AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
-					defer wg.Done()
-					if err != nil {
-						switch err.(type) {
-						case *gomel.DuplicateUnit:
-							fmt.Println(err)
-						default:
-							rses[j].Rollback(pu)
-							fmt.Println(err)
-						}
+			posets[j].AddUnit(pu, rses[j], func(pu gomel.Preunit, u gomel.Unit, err error) {
+				defer wg.Done()
+				if err != nil {
+					switch err.(type) {
+					case *gomel.DuplicateUnit:
+						fmt.Println(err)
+					default:
+						fmt.Println(err)
 					}
-				})
-			}
+				}
+			})
 		}
 		wg.Wait()
 	}

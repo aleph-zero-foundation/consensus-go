@@ -63,28 +63,22 @@ func addAntichain(poset gomel.Poset, randomSource gomel.RandomSource, preunits [
 	var problem error
 	primeAdded := false
 	for _, preunit := range preunits {
-		err := randomSource.Update(preunit)
-		if err != nil {
-			problem = err
-		} else {
-			wg.Add(1)
-			poset.AddUnit(preunit, func(pu gomel.Preunit, added gomel.Unit, err error) {
-				if err != nil {
-					switch e := err.(type) {
-					case *gomel.DuplicateUnit:
-						log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
-					default:
-						randomSource.Rollback(pu)
-						problem = err
-					}
-				} else {
-					if gomel.Prime(added) {
-						primeAdded = true
-					}
+		wg.Add(1)
+		poset.AddUnit(preunit, randomSource, func(pu gomel.Preunit, added gomel.Unit, err error) {
+			if err != nil {
+				switch e := err.(type) {
+				case *gomel.DuplicateUnit:
+					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
+				default:
+					problem = err
 				}
-				wg.Done()
-			})
-		}
+			} else {
+				if gomel.Prime(added) {
+					primeAdded = true
+				}
+			}
+			wg.Done()
+		})
 	}
 	wg.Wait()
 	return primeAdded, problem

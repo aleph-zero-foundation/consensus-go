@@ -9,12 +9,13 @@ import (
 type unitBuilt struct {
 	preunit gomel.Preunit
 	result  *unit
+	rs      gomel.RandomSource
 	done    func(gomel.Preunit, gomel.Unit, error)
 }
 
 // AddUnit adds the provided Preunit to the poset as a Unit.
 // When done calls the callback.
-func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *Poset) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	if pu.Creator() < 0 || pu.Creator() >= p.nProcesses {
 		callback(pu, nil, gomel.NewDataError("Invalid creator."))
 		return
@@ -22,6 +23,7 @@ func (p *Poset) AddUnit(pu gomel.Preunit, callback func(gomel.Preunit, gomel.Uni
 	toAdd := &unitBuilt{
 		preunit: pu,
 		result:  newUnit(pu),
+		rs:      rs,
 		done:    callback,
 	}
 	p.adders[pu.Creator()] <- toAdd
@@ -90,7 +92,7 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 		return err
 	}
 	ub.result.initialize(p)
-	return p.checkCompliance(ub.result)
+	return p.checkCompliance(ub.result, ub.rs)
 }
 
 func (p *Poset) addUnit(ub *unitBuilt) {
@@ -99,6 +101,7 @@ func (p *Poset) addUnit(ub *unitBuilt) {
 		ub.done(ub.preunit, nil, err)
 		return
 	}
+	ub.rs.Update(ub.result)
 	if gomel.Prime(ub.result) {
 		p.addPrime(ub.result)
 	}
