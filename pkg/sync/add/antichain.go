@@ -2,6 +2,7 @@ package add
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/rs/zerolog"
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -16,7 +17,7 @@ func Antichain(poset gomel.Poset, randomSource gomel.RandomSource, preunits []go
 	problem := &AggregateError{
 		errs: make([]error, len(preunits)),
 	}
-	primeAdded := false
+	var primeAdded int32
 	for i, preunit := range preunits {
 		i := i
 		wg.Add(1)
@@ -34,12 +35,12 @@ func Antichain(poset gomel.Poset, randomSource gomel.RandomSource, preunits []go
 				}
 			} else {
 				if gomel.Prime(added) {
-					primeAdded = true
+					atomic.StoreInt32(&primeAdded, 1)
 				}
 			}
 			wg.Done()
 		})
 	}
 	wg.Wait()
-	return primeAdded, problem.Pruned(false)
+	return primeAdded == 1, problem.Pruned(false)
 }
