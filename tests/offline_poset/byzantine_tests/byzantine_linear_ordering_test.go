@@ -260,7 +260,7 @@ func newForkAndHideAdder(
 		}
 
 		// after some time try to create a unit
-		if forkingRoot != nil && uint64(unit.Level()) >= buildLevel && createdForks == nil {
+		if forkingRoot != nil && uint64(unit.Level()) >= buildLevel && createdForks == nil && uint16(unit.Creator()) != forker {
 			createdForks = forkingStrategy(forkingRoot, posets[forker], privKey, rss[forker], numberOfForks)
 		}
 
@@ -481,7 +481,7 @@ func testForkingChangingParents(forker forker) error {
 		maxParents      = 2
 		votingLevel     = 4
 		createLevel     = 10
-		buildLevel      = createLevel + 3
+		buildLevel      = createLevel + 4
 		showOffLevel    = buildLevel + 2
 		numberOfForks   = 2
 		numberOfParents = 2
@@ -493,10 +493,11 @@ func testForkingChangingParents(forker forker) error {
 	fmt.Println("byzantine posets:", byzantinePosets)
 
 	type byzAddingHandler func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error
-	byzPosets := map[uint16]struct {
+	type byzPair struct {
 		byzCreator helpers.Creator
 		byzAdder   byzAddingHandler
-	}{}
+	}
+	byzPosets := map[uint16]byzPair{}
 	for _, byzPoset := range byzantinePosets {
 
 		unitCreator, addingHandler := newForkAndHideAdder(
@@ -509,10 +510,7 @@ func testForkingChangingParents(forker forker) error {
 			maxParents,
 		)
 
-		byzPosets[uint16(byzPoset)] = struct {
-			byzCreator helpers.Creator
-			byzAdder   byzAddingHandler
-		}{unitCreator, addingHandler}
+		byzPosets[uint16(byzPoset)] = byzPair{unitCreator, addingHandler}
 	}
 
 	defaultUnitCreator := newDefaultUnitCreator(maxParents)
