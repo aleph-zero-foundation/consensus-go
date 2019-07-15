@@ -25,22 +25,24 @@ func (p *poset) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func
 	p.Poset.AddUnit(unit, rs, callback)
 }
 
+type fallback bool
+
+func (f *fallback) Run(_ gomel.Preunit) {
+	*f = true
+}
+
 var _ = Describe("Protocol", func() {
 
 	var (
 		p1         *poset
 		p2         *poset
 		reqs       chan Request
-		fallenBack bool
+		fallenBack fallback
 		proto1     gsync.Protocol
 		proto2     gsync.Protocol
 		d          network.Dialer
 		ls         []network.Listener
 	)
-
-	Fallback := func(_ gomel.Preunit) {
-		fallenBack = true
-	}
 
 	BeforeEach(func() {
 		d, ls = tests.NewNetwork(10)
@@ -49,8 +51,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, p1, tests.NewTestRandomSource(p1), reqs, d, ls[0], time.Second, Fallback, make(chan int), zerolog.Logger{})
-		proto2 = NewProtocol(1, p2, tests.NewTestRandomSource(p2), reqs, d, ls[1], time.Second, Fallback, make(chan int), zerolog.Logger{})
+		proto1 = NewProtocol(0, p1, tests.NewTestRandomSource(p1), reqs, d, ls[0], time.Second, &fallenBack, make(chan int), zerolog.Nop())
+		proto2 = NewProtocol(1, p2, tests.NewTestRandomSource(p2), reqs, d, ls[1], time.Second, &fallenBack, make(chan int), zerolog.Nop())
 	})
 
 	Describe("with only two participants", func() {
@@ -93,7 +95,7 @@ var _ = Describe("Protocol", func() {
 				reqs <- req
 				wg.Wait()
 				Expect(p1.attemptedAdd).To(BeEmpty())
-				Expect(fallenBack).To(BeFalse())
+				Expect(bool(fallenBack)).To(BeFalse())
 			})
 
 		})
@@ -145,7 +147,7 @@ var _ = Describe("Protocol", func() {
 				Expect(p1.attemptedAdd[0].Data()).To(Equal(theUnit.Data()))
 				Expect(p1.attemptedAdd[0].RandomSourceData()).To(Equal(theUnit.RandomSourceData()))
 				Expect(p1.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
-				Expect(fallenBack).To(BeFalse())
+				Expect(bool(fallenBack)).To(BeFalse())
 			})
 
 		})
@@ -157,7 +159,6 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				// TODO: actually need two posets here, so fix that somehow
 				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
 				p1 = &poset{
 					Poset:        tp1.(*tests.Poset),
@@ -202,12 +203,11 @@ var _ = Describe("Protocol", func() {
 				Expect(p1.attemptedAdd[0].Data()).To(Equal(theUnit.Data()))
 				Expect(p1.attemptedAdd[0].RandomSourceData()).To(Equal(theUnit.RandomSourceData()))
 				Expect(p1.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
-				Expect(fallenBack).To(BeTrue())
+				Expect(bool(fallenBack)).To(BeTrue())
 			})
 
 		})
 
 	})
-	// TODO: More tests and fix what is already here.
 
 })

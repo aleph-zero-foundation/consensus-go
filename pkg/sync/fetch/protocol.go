@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -13,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
@@ -25,7 +25,7 @@ type protocol struct {
 	listener      network.Listener
 	syncIds       []uint32
 	timeout       time.Duration
-	fallback      func(gomel.Preunit)
+	fallback      gsync.Fallback
 	attemptTiming chan<- int
 	log           zerolog.Logger
 }
@@ -33,7 +33,7 @@ type protocol struct {
 // NewProtocol returns a new fetching protocol.
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
-func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback func(gomel.Preunit), attemptTiming chan<- int, log zerolog.Logger) gsync.Protocol {
+func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback gsync.Fallback, attemptTiming chan<- int, log zerolog.Logger) gsync.Protocol {
 	nProc := uint16(dialer.Length())
 	return &protocol{
 		pid:           pid,
@@ -67,8 +67,9 @@ func (p *protocol) In() {
 		return
 	}
 	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
+	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
-	//TODO: loggign
+	log.Debug().Msg(logging.GetRequests)
 	hashes, err := receiveRequests(conn)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.in.receiveRequests").Msg(err.Error())
@@ -79,15 +80,20 @@ func (p *protocol) In() {
 		log.Error().Str("where", "fetchProtocol.in.getUnits").Msg(err.Error())
 		return
 	}
+	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(conn, units)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.in.sendUnits").Msg(err.Error())
 		return
 	}
+	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
 func (p *protocol) Out() {
-	r := <-p.reqs
+	r, ok := <-p.reqs
+	if !ok {
+		return
+	}
 	remotePid := r.Pid
 	conn, err := p.dialer.Dial(remotePid)
 	if err != nil {
@@ -104,21 +110,25 @@ func (p *protocol) Out() {
 		return
 	}
 	log := p.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, sid).Logger()
+	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
-	//TODO: logging
+	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(conn, r.Hashes)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.out.sendRequests").Msg(err.Error())
 		return
 	}
+	log.Debug().Msg(logging.GetPreunits)
 	units, err := receivePreunits(conn, len(r.Hashes))
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
 		return
 	}
-	primeAdded, err := addUnits(p.poset, p.randomSource, units, p.fallback, log)
-	if err != nil {
-		log.Error().Str("where", "fetchProtocol.out.addUnits").Msg(err.Error())
+	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
+	primeAdded, aggErr := add.Antichain(p.poset, p.randomSource, units, p.fallback, log)
+	aggErr = aggErr.Pruned(true)
+	if aggErr != nil {
+		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())
 		return
 	}
 	if primeAdded {
@@ -127,6 +137,7 @@ func (p *protocol) Out() {
 		default:
 		}
 	}
+	log.Info().Int(logging.Recv, len(units)).Msg(logging.SyncCompleted)
 }
 
 func sendRequests(conn network.Connection, hashes []*gomel.Hash) error {
@@ -194,34 +205,4 @@ func getUnits(poset gomel.Poset, hashes []*gomel.Hash) ([]gomel.Unit, error) {
 		}
 	}
 	return units, nil
-}
-
-func addUnits(poset gomel.Poset, randomSource gomel.RandomSource, preunits []gomel.Preunit, fallback func(gomel.Preunit), log zerolog.Logger) (bool, error) {
-	var wg sync.WaitGroup
-	// TODO: We only report one error, we might want to change it when we deal with Byzantine processes.
-	var problem error
-	primeAdded := false
-	for _, preunit := range preunits {
-		wg.Add(1)
-		poset.AddUnit(preunit, randomSource, func(pu gomel.Preunit, added gomel.Unit, err error) {
-			if err != nil {
-				switch e := err.(type) {
-				case *gomel.DuplicateUnit:
-					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
-				case *gomel.UnknownParent:
-					log.Info().Int(logging.Creator, pu.Creator()).Msg(logging.UnknownParents)
-					fallback(pu)
-				default:
-					problem = err
-				}
-			} else {
-				if gomel.Prime(added) {
-					primeAdded = true
-				}
-			}
-			wg.Done()
-		})
-	}
-	wg.Wait()
-	return primeAdded, problem
 }

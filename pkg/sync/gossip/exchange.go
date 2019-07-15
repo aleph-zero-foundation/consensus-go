@@ -1,13 +1,13 @@
 package gossip
 
 import (
-	"sync"
-
 	"github.com/rs/zerolog"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
 func sendPosetInfo(info posetInfo, conn network.Connection) error {
@@ -57,37 +57,10 @@ func getRequests(nProc int, myPosetInfo posetInfo, conn network.Connection) (req
 	return result, err
 }
 
-func addAntichain(poset gomel.Poset, randomSource gomel.RandomSource, preunits []gomel.Preunit, log zerolog.Logger) (bool, error) {
-	var wg sync.WaitGroup
-	// TODO: We only report one error, we might want to change it when we deal with Byzantine processes.
-	var problem error
-	primeAdded := false
-	for _, preunit := range preunits {
-		wg.Add(1)
-		poset.AddUnit(preunit, randomSource, func(pu gomel.Preunit, added gomel.Unit, err error) {
-			if err != nil {
-				switch e := err.(type) {
-				case *gomel.DuplicateUnit:
-					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
-				default:
-					problem = err
-				}
-			} else {
-				if gomel.Prime(added) {
-					primeAdded = true
-				}
-			}
-			wg.Done()
-		})
-	}
-	wg.Wait()
-	return primeAdded, problem
-}
-
 // addUnits adds the provided units to the poset, assuming they are divided into antichains as described in toLayers
 func addUnits(poset gomel.Poset, randomSource gomel.RandomSource, preunits [][]gomel.Preunit, attemptTiming chan<- int, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		primeAdded, err := addAntichain(poset, randomSource, pus, log)
+		primeAdded, err := add.Antichain(poset, randomSource, pus, sync.Noop(), log)
 		if err != nil {
 			return err
 		}
