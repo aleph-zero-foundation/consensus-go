@@ -1013,6 +1013,9 @@ func makePosetsUndecidedForLongTime(
 			for left, right := 0, len(*currentKeys)-1; left < right; left, right = left+1, right-1 {
 				(*currentKeys)[left], (*currentKeys)[right] = (*currentKeys)[right], (*currentKeys)[left]
 			}
+			for left, right := 0, len(*currentRss)-1; left < right; left, right = left+1, right-1 {
+				(*currentRss)[left], (*currentRss)[right] = (*currentRss)[right], (*currentRss)[left]
+			}
 		}
 	}
 
@@ -1122,6 +1125,7 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			posetsCopy := append([]gomel.Poset{}, posets...)
 			privKeysCopy := append([]gomel.PrivateKey{}, privKeys...)
 			ids := make([]uint16, len(posets))
+			rssCopy := append([]gomel.RandomSource{}, rss...)
 			for ix := range posets {
 				ids[ix] = uint16(ix)
 			}
@@ -1146,8 +1150,9 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			posetsCopy[triggeringPoset], posetsCopy[0] = posetsCopy[0], posetsCopy[triggeringPoset]
 			privKeysCopy[triggeringPoset], privKeysCopy[0] = privKeysCopy[0], privKeysCopy[triggeringPoset]
 			ids[triggeringPoset], ids[0] = ids[0], ids[triggeringPoset]
+			rssCopy[triggeringPoset], rssCopy[0] = rssCopy[0], rssCopy[triggeringPoset]
 
-			result := makePosetsUndecidedForLongTime(posetsCopy, privKeysCopy, ids, rss, triggeringPreunit, triggeringUnit, commonVotes, initialVotingRound)
+			result := makePosetsUndecidedForLongTime(posetsCopy, privKeysCopy, ids, rssCopy, triggeringPreunit, triggeringUnit, commonVotes, initialVotingRound)
 			if result != nil {
 				return result
 			}
