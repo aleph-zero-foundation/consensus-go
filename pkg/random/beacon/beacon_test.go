@@ -65,7 +65,7 @@ var _ = Describe("Beacon", func() {
 			It("Should return the same permutation for all pid", func() {
 				perm := make([][]int, n)
 				for pid := 0; pid < n; pid++ {
-					perm[pid] = rs[pid].GetCRP(10)
+					perm[pid] = rs[pid].GetCRP(9)
 				}
 				for pid := 1; pid < n; pid++ {
 					for i := range perm[pid] {

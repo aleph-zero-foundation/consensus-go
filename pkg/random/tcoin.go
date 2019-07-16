@@ -36,7 +36,7 @@ func (rs *tcRandomSource) GetCRP(nonce int) []int {
 
 // RandomBytes returns a sequence of random bits for a given process and nonce
 // in the case of fail it returns nil
-func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
+func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit) []byte {
 	level := uTossing.Level() - 1
 	var dealer gomel.Unit
 	var tc *tcoin.ThresholdCoin

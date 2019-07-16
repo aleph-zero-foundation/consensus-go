@@ -88,9 +88,20 @@ func (b *beacon) GetCRP(level int) []int {
 	}
 
 	units := unitsOnLevel(b.poset, level)
+	su := b.poset.PrimeUnits(level + 3)
+	if su == nil {
+		return nil
+	}
+
 	for _, u := range units {
 		priority[u.Creator()] = make([]byte, 32)
-		rBytes := b.RandomBytes(u, level+3)
+
+		if len(su.Get(u.Creator())) == 0 {
+			// unit on level + 3 has not been created yet
+			return nil
+		}
+
+		rBytes := b.RandomBytes(su.Get(u.Creator())[0])
 		if rBytes == nil {
 			return nil
 		}
@@ -119,16 +130,17 @@ func (b *beacon) GetCRP(level int) []int {
 	return permutation
 }
 
-// RandomBytes returns a sequence of random bits for a given process and nonce
-// in the case of fail it returns nil
-func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
+// RandomBytes returns a sequence of random bits for a given unit
+// in the case of failure it returns nil.
+// Becuase we are verifying coinShares before adding any unit to the poset,
+// this function returns nil only when the tossing unit has too low level.
+func (b *beacon) RandomBytes(uTossing gomel.Unit) []byte {
 	if uTossing.Level() < sharesLevel {
 		return nil
 	}
 
 	shares := []*tcoin.CoinShare{}
-	units := unitsOnLevel(b.poset, level)
-	for _, u := range units {
+	for _, u := range uTossing.Parents() {
 		if b.shareProviders[uTossing.Creator()][u.Creator()] {
 			uShares := []*tcoin.CoinShare{}
 			for sc := range b.subcoins[uTossing.Creator()] {
