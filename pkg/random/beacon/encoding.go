@@ -9,7 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
-// TODO: This could be encoded in a more optimal way.
+// This could be encoded in a more optimal way.
 // For exmaple we could have use a bitset
 // We start with very simple but inefficient implementation
 //

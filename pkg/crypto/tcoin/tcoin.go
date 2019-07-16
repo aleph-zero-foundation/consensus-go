@@ -30,8 +30,7 @@ type ThresholdCoin struct {
 	globalVK  verificationKey
 	vks       []verificationKey
 	sk        secretKey
-	// TODO: sks should be encrypted
-	sks []secretKey
+	sks       []secretKey
 }
 
 // Deal returns byte representation of a threshold coin
@@ -154,7 +153,6 @@ func CreateMulticoin(tcs []*ThresholdCoin) *ThresholdCoin {
 		vks[i] = verificationKey{key: new(bn256.G2)}
 	}
 	result.vks = vks
-	// TODO: we can use concurrency as we have multiple independent additions
 	for _, tc := range tcs {
 		result.sk.key.Add(result.sk.key, tc.sk.key)
 		result.globalVK.key.Add(result.globalVK.key, tc.globalVK.key)
