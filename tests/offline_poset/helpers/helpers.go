@@ -216,9 +216,9 @@ func AddUnitsToPosetsInRandomOrder(units []gomel.Preunit, posets []gomel.Poset, 
 }
 
 // GenerateKeys is a helper function that creates a list of pairs of public-private keys.
-func GenerateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
-	pubKeys = make([]gomel.PublicKey, 0, nProcesses)
-	privKeys = make([]gomel.PrivateKey, 0, nProcesses)
+func GenerateKeys(nProcesses int) ([]gomel.PublicKey, []gomel.PrivateKey) {
+	pubKeys := make([]gomel.PublicKey, 0, nProcesses)
+	privKeys := make([]gomel.PrivateKey, 0, nProcesses)
 	for i := 0; i < nProcesses; i++ {
 		pubKey, privKey, _ := signing.GenerateKeys()
 		pubKeys = append(pubKeys, pubKey)
@@ -262,7 +262,6 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 func getOrderedUnits(poset gomel.Poset, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
-		// TODO types
 		rs := random.NewTcSource(poset, int(pid))
 		ordering := linear.NewOrdering(poset, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel))
 		level := 0
@@ -283,7 +282,6 @@ func getAllTimingUnits(poset gomel.Poset, pid uint16, generalConfig config.Confi
 	units := make(chan gomel.Unit)
 	go func() {
 
-		// TODO types
 		rs := random.NewTcSource(poset, int(pid))
 		ordering := linear.NewOrdering(poset, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel))
 		level := 0
