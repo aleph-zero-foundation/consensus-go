@@ -768,6 +768,45 @@ func countUnitsOnLevelOrHigher(poset gomel.Poset, level uint64) map[uint16]bool 
 	return seen
 }
 
+// Description of the algorithm:
+// In order to 'cheat' the decision procedure we maintain the following invariant: if the common vote for the next round
+// equals v, then during the current round there must be at most f units voting for v (or equivalently there is N-f units voting
+// for the value 1-v). The following algorithm attempts to maintain this invariant for all of the provided values of the common
+// vote.
+
+// High-level description (without initialization):
+
+// Maintain two independent 'towers'*, first consisting of process voting for '1' and the other voting for '0'. Depending on the
+// value of the next common vote, their sizes are 'f' and 'N-f' respectively. For example, when the value of the next common
+// vote equals 1, then 1's tower consist of 'f' processes and the 0's tower of 'N-f'. This way the decision procedure is unable
+// to commit its value - common vote is different from the value that votes 1 (other side votes 'undecided' and so chooses the
+// common vote as its value). For simplicity, lets assume we are currently building units for one of the towers consisting of
+// 'N-f' processes. We keep building new levels on the same side until the value of the next common vote forces us to switch
+// sides, i.e. during the last round we created only 'f' prime units and so we are unable to create a new level without looking
+// at units from the other 'tower'. While building consecutive levels we enqueue all of the created units for the opposite side,
+// so after current side finishes or switches, the other one can reveal them one by one till it is able to jump on some level.
+// We also enqueue all read votes, since the other side will not be able to read them from the provided channel after we
+// processed them.
+
+// The initialization process, that is a few levels before the initial voting, is little bit tricky. We need to ensure that a
+// unit U_c for which we are deciding becomes popular before the initial voting starts, but also allow at most 2f processes to
+// record that it is popular on the voting level. This way it will not be decided 0 (as well as 1) at the round no
+// initialVoting+1.
+
+// *tower:            1(votes 1) tower     0 tower
+//
+//               1 |   ? (d+)               ? (v+)
+//                 |
+//               1 |   f (d)                2f+1**(v)
+//                 |
+// common vote   0 |   f (v)                2f+1 (d)
+//                 |
+//               1 |   2f+1                 f
+//               ------------------------------------
+//                            process
+
+// ** to build new level we only use units from this tower (previous round consists of 2f+1 processes which is a quorum)
+// + type of vote, i.e. d is voting using the value of the common vote, v is voting using supermajority
 func makePosetsUndecidedForLongTime(
 	posets []gomel.Poset,
 	privateKeys []gomel.PrivateKey,
