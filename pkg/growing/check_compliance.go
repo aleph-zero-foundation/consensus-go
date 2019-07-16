@@ -1,7 +1,7 @@
 package growing
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
 // Assumes that prepare_unit(U) has been already called.
@@ -11,7 +11,7 @@ import (
 // 3. Satisfies forker-muting policy.
 // 4. Satisfies the expand primes rule.
 // 5. The random source data is OK.
-func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
+func (p *Poset) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	// 1. Parents are created by pairwise different processes.
 	if err := checkParentsDiversity(u); err != nil {
 		return err
@@ -28,7 +28,7 @@ func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	}
 
 	// 4. Satisfies the expand primes rule
-	if err := CheckExpandPrimes(dag, u.Parents()); err != nil {
+	if err := CheckExpandPrimes(p, u.Parents()); err != nil {
 		return err
 	}
 
@@ -105,8 +105,12 @@ func CheckForkerMuting(parents []gomel.Unit) error {
 // just accepted. Then let L be the level of the last checked parent and P the set of creators of prime units of level L below
 // all the parents checked up to now. The next parent must either have prime units of level L below it that are created by
 // processes not in P, or have level greater than L.
-func CheckExpandPrimes(dag gomel.Dag, parents []gomel.Unit) error {
-	wholeSet := make([]int, dag.NProc())
+func CheckExpandPrimes(p gomel.Poset, parents []gomel.Unit) error {
+	if len(parents) == 0 {
+		return nil
+	}
+
+	wholeSet := make([]int, p.NProc())
 	for pid := 0; pid < len(wholeSet); pid++ {
 		wholeSet[pid] = pid
 	}

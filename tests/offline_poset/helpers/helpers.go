@@ -107,7 +107,7 @@ func NewTestingRoutineWithStopCondition(
 // NewDefaultAdder creates an instance of AddingHandler that ads a given unit to all posets under test.
 func NewDefaultAdder() AddingHandler {
 	return func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit) error {
-		_, err := AddToPosets(preunit, posets)
+		_, err := AddToPosets(preunit, rss, posets)
 		return err
 	}
 }
@@ -120,12 +120,12 @@ func NewNoOpAdder() AddingHandler {
 }
 
 // AddToPoset is a helper method for synchronous addition of a unit to a given poset.
-func AddToPoset(poset gomel.Poset, pu gomel.Preunit) (gomel.Unit, error) {
+func AddToPoset(poset gomel.Poset, pu gomel.Preunit, rs gomel.RandomSource) (gomel.Unit, error) {
 	var result gomel.Unit
 	var caughtError error
 	var wg sync.WaitGroup
 	wg.Add(1)
-	poset.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
+	poset.AddUnit(pu, rs, func(pu gomel.Preunit, u gomel.Unit, err error) {
 		result = u
 		caughtError = err
 		wg.Done()
@@ -135,10 +135,10 @@ func AddToPoset(poset gomel.Poset, pu gomel.Preunit) (gomel.Unit, error) {
 }
 
 // AddToPosets is a helper function that adds a given unit to all provided posets.
-func AddToPosets(unit gomel.Preunit, posets []gomel.Poset) (gomel.Unit, error) {
+func AddToPosets(unit gomel.Preunit, rss []gomel.RandomSource, posets []gomel.Poset) (gomel.Unit, error) {
 	var resultUnit gomel.Unit
 	for ix, poset := range posets {
-		result, err := AddToPoset(poset, unit)
+		result, err := AddToPoset(poset, unit, rss[ix])
 		if err != nil {
 			return nil, err
 		}
@@ -150,10 +150,10 @@ func AddToPosets(unit gomel.Preunit, posets []gomel.Poset) (gomel.Unit, error) {
 }
 
 // AddToPosetsIngoringErrors adds a unit to all posets ignoring all errors while doing it. It returns, if possible, a Unit added the owning poset (assuming that order of 'posets' lists corresponds with their ids).
-func AddToPosetsIngoringErrors(unit gomel.Preunit, posets []gomel.Poset) gomel.Unit {
+func AddToPosetsIngoringErrors(unit gomel.Preunit, rss []gomel.RandomSource, posets []gomel.Poset) gomel.Unit {
 	var resultUnit gomel.Unit
-	for _, poset := range posets {
-		result, err := AddToPoset(poset, unit)
+	for ix, poset := range posets {
+		result, err := AddToPoset(poset, unit, rss[ix])
 		if resultUnit == nil {
 			if result != nil {
 				resultUnit = result
@@ -200,14 +200,14 @@ func AddToPosetsIngoringErrors(unit gomel.Preunit, posets []gomel.Poset) gomel.U
 }
 
 // AddUnitsToPosetsInRandomOrder adds a set of units in random order (per each poset) to all provided posets.
-func AddUnitsToPosetsInRandomOrder(units []gomel.Preunit, posets []gomel.Poset) error {
-	for _, poset := range posets {
+func AddUnitsToPosetsInRandomOrder(units []gomel.Preunit, posets []gomel.Poset, rss []gomel.RandomSource) error {
+	for ix, poset := range posets {
 		rand.Shuffle(len(units), func(i, j int) {
 			units[i], units[j] = units[j], units[i]
 		})
 
 		for _, pu := range units {
-			if _, err := AddToPoset(poset, pu); err != nil {
+			if _, err := AddToPoset(poset, pu, rss[ix]); err != nil {
 				return err
 			}
 		}
@@ -451,6 +451,33 @@ func NewNoOpVerifier() PosetVerifier {
 	}
 }
 
+type MockRandomSource struct {
+	rs gomel.RandomSource
+}
+
+func (m *MockRandomSource) GetCRP(level int) []int {
+	return m.rs.GetCRP(level)
+}
+
+func (*MockRandomSource) RandomBytes(gomel.Unit, int) []byte {
+	var result [1]byte
+	result[0] = 0
+	return result[:]
+}
+
+func (*MockRandomSource) CheckCompliance(gomel.Unit) error {
+	return nil
+}
+
+func (*MockRandomSource) Update(gomel.Unit) {
+}
+
+func (*MockRandomSource) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
+	var result [1]byte
+	result[0] = 1
+	return result[:]
+}
+
 // Test is a helper function that performs a single test using provided TestingRoutineFactory.
 func Test(
 	pubKeys []gomel.PublicKey,
@@ -472,7 +499,7 @@ func Test(
 
 		pids = append(pids, pid)
 		configurations = append(configurations, generalConfig)
-		rs := random.NewTcSource(poset, int(pid))
+		rs := &MockRandomSource{random.NewTcSource(poset, int(pid))}
 		rss = append(rss, rs)
 	}
 
