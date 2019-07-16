@@ -237,7 +237,7 @@ func (b *beacon) Update(u gomel.Unit) {
 				b.subcoins[u.Creator()][pid] = true
 			}
 		}
-		b.multicoins[u.Creator()] = tcoin.CreateMulticoin(coinsToMerge, b.pid)
+		b.multicoins[u.Creator()] = tcoin.CreateMulticoin(coinsToMerge)
 		b.shareProviders[u.Creator()] = providers
 	}
 	if u.Level() >= sharesLevel {

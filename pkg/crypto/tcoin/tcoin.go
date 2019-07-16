@@ -136,16 +136,16 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 // CreateMulticoin generates a multiCoin for given ThresholdCoins
 // i.e. a ThresholdCoin which corresponds to the sum of polynomials
 // which are defining given ThresholdCoins
-// It assignes the multicoin to a given pid
 // We assume that:
 // (0) tcs is a non-empty slice
 // (1) the threshold is the same for all given thresholdCoins
 // (2) the thresholdCoins were created by different processes
-func CreateMulticoin(tcs []*ThresholdCoin, pid int) *ThresholdCoin {
+// (3) the thresholdCoins have the same owner
+func CreateMulticoin(tcs []*ThresholdCoin) *ThresholdCoin {
 	n := len(tcs[0].vks)
 	var result = ThresholdCoin{
 		Threshold: tcs[0].Threshold,
-		pid:       pid,
+		pid:       tcs[0].pid,
 		sk:        secretKey{key: big.NewInt(0)},
 		globalVK:  verificationKey{key: new(bn256.G2)},
 	}
