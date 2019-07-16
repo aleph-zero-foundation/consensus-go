@@ -27,16 +27,14 @@ func (vk *verificationKey) verify(s signature, msg *big.Int) bool {
 	}
 
 	p1 := bn256.Pair(sHash, gen).Marshal()
-	// TODO: Use some proper hashing
-	// hashing of the form msg => msg * gen is not secure
+	// hashing of the form msg => msg * gen is NOT secure
 	p2 := bn256.Pair(new(bn256.G1).ScalarBaseMult(msg), vk.key).Marshal()
 
 	return subtle.ConstantTimeCompare(p1, p2) == 1
 }
 
 func (sk *secretKey) sign(msg *big.Int) signature {
-	// TODO: Use some proper hashing
-	// hashing of the form msg => msg * gen is not secure
+	// hashing of the form msg => msg * gen is NOT secure
 	msgHash := new(bn256.G1).ScalarBaseMult(msg)
 	sgn := new(bn256.G1).ScalarMult(msgHash, sk.key)
 	return sgn.Marshal()

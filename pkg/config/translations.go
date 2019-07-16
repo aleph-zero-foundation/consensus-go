@@ -14,7 +14,6 @@ func generatePosetConfig(c *Committee) *gomel.PosetConfig {
 }
 
 func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
-	// TODO: Timeout should also be read from config.
 	return &process.Sync{
 		Pid:             c.Pid,
 		LocalAddress:    c.Addresses[c.Pid],

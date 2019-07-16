@@ -80,6 +80,5 @@ func (u *unit) Above(v gomel.Unit) bool {
 }
 
 func (u *unit) HasForkingEvidence(creator int) bool {
-	// TODO: implement
 	return false
 }

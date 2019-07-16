@@ -72,8 +72,6 @@ func posetMaxSnapshot(poset gomel.Poset) [][]gomel.Unit {
 		return true
 	})
 	// The maximal units constructed through iterate might be inconsistent, i.e. contain units with parents that are not below any of their creators "maximal units".
-	// Because of that, we fix this in a potentially expensive procedure. We don't expect this to be particularly bad in most cases, but we should make sure in some experiments.
-	// TODO: Make sure in some experiments.
 	return consistentMaximal(maxUnits)
 }
 

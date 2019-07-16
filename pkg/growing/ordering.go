@@ -46,7 +46,7 @@ func (u *unit) Below(v gomel.Unit) bool {
 	var V *unit
 	var ok bool
 	if V, ok = v.(*unit); !ok {
-		// TODO: this might be needed in the far future when there are special units that separate existing and nonexistent units
+		// this might be needed in the future when there are special units that separate existing and nonexistent units
 	}
 	for _, w := range V.floor[u.creator] {
 
