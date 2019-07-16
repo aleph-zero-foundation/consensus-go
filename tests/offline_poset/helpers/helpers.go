@@ -384,15 +384,17 @@ func VerifyTimingUnits() PosetVerifier {
 	prevLevel := -1
 	return verifyUnitsUsingOrdering(
 
-		getAllTimingUnits,
+		func(poset gomel.Poset, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
+			prevLevel = -1
+			return getAllTimingUnits(poset, pid, generalConfig)
+		},
 
 		func(u1, u2 gomel.Unit) error {
 			level := u1.Level()
 			if level != prevLevel+1 {
-				fmt.Println("broken ordering")
-				// return gomel.NewDataError(
-				// 	fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
-				// )
+				return gomel.NewDataError(
+					fmt.Sprintf("Missing timing unit for level %d - obtained %d. Unit: %+v", prevLevel+1, level, u1),
+				)
 			}
 			prevLevel = level
 
