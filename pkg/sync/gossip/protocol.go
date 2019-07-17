@@ -27,7 +27,7 @@ type protocol struct {
 
 // NewProtocol returns a new gossiping protocol.
 func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, peerSource PeerSource, timeout time.Duration, attemptTiming chan<- int, log zerolog.Logger) sync.Protocol {
-	nProc := uint16(dialer.Length())
+	nProc := uint16(dag.NProc())
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
 		inUse[i] = newMutex()

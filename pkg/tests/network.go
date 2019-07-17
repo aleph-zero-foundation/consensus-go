@@ -61,17 +61,6 @@ func (d *Dialer) Dial(k uint16) (network.Connection, error) {
 	return out, nil
 }
 
-// DialAll creates connections, pushes one end of each to the associated listener and returns a multicaster on the other ends.
-func (d *Dialer) DialAll() (*network.Multicaster, error) {
-	allOut := make([]network.Connection, d.Length())
-	for _, ch := range d.dialChan {
-		out, in := NewConnection()
-		allOut = append(allOut, out)
-		ch <- in
-	}
-	return network.NewMulticaster(allOut), nil
-}
-
 // Length specifies how many other processes we can dial.
 func (d *Dialer) Length() int {
 	return len(d.dialChan)

@@ -34,7 +34,7 @@ type protocol struct {
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
 func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback gsync.Fallback, attemptTiming chan<- int, log zerolog.Logger) gsync.Protocol {
-	nProc := uint16(dialer.Length())
+	nProc := uint16(dag.NProc())
 	return &protocol{
 		pid:           pid,
 		dag:           dag,
@@ -62,7 +62,7 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "fetchProtocol.in.greeting").Msg(err.Error())
 		return
 	}
-	if pid >= uint16(p.dialer.Length()) {
+	if pid >= uint16(p.poset.NProc()) {
 		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
 		return
 	}
