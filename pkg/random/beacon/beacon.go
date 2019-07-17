@@ -84,7 +84,7 @@ func NewBeacon(poset gomel.Poset, pid int) gomel.RandomSource {
 // It returns nil when
 // (1) there are no units on the given level
 // or
-// (2) the level is too low (i.e. (level+3)-1 < sharesLevel)
+// (2) the level is too low (i.e. (level+3) < sharesLevel)
 // or
 // (3) there are no enough shares on level+3 yet to generate the priority
 // of some unit on a given level.
@@ -136,13 +136,13 @@ func (b *beacon) GetCRP(level int) []int {
 
 // RandomBytes returns a sequence of random bits for a given unit.
 // It returns nil when
-// (1) asked on too low level i.e. level < sharesLevel + 1
+// (1) asked on too low level i.e. level < sharesLevel
 // or
 // (2) there are no enough shares. i.e.
 // The number of units on a given level created by share providers
 // to the multicoin of uTossing.Creator() is less than f+1
 func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
-	if level-1 < sharesLevel {
+	if level < sharesLevel {
 		// RandomBytes asked on too low level
 		return nil
 	}
