@@ -15,7 +15,7 @@ import (
 //
 // Votes are encoded one by one. Byte representation of a vote is
 // (1) vote type (1 byte), 0 - nil, 1 - yes, 2 - no
-// if the vote type is 2
+// in the case when vote type is 2 then follows
 // (2) length of proof (2 bytes)
 // (3) proof itself encoed in Gob (as much as declared in 2)
 func marshallVotes(votes []*vote) []byte {
@@ -74,8 +74,8 @@ func unmarshallVotes(data []byte, nProc int) ([]*vote, error) {
 }
 
 // Shares are encoded in the following way:
-// (1) 0 or 1 (1 byte) indicating if the shrae is nil
-// if the share is not nil
+// (1) 0 or 1 (1 byte) indicating if the share is nil or not nil respectively
+// in the case when share is not nil then follows
 // (2) length of the marshalled share (2 bytes)
 // (3) marshalled share (as much as declared in 2)
 func marshallShares(cses []*tcoin.CoinShare) []byte {
