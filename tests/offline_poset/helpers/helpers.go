@@ -33,33 +33,26 @@ type AddingHandler func(posets []gomel.Poset, rss []gomel.RandomSource, preunit 
 type PosetVerifier func([]gomel.Poset, []uint16, []config.Configuration) error
 
 // TestingRoutine describes a strategy for performing a test on a given set of posets.
-type TestingRoutine interface {
-	CreateUnitCreator(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator
-	CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler
-	CreatePosetVerifier(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier
-	StopCondition() func(posets []gomel.Poset) bool
-}
-
-type testingRoutine struct {
+type TestingRoutine struct {
 	creator       func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator
 	adder         func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler
 	verifier      func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier
 	stopCondition func(posets []gomel.Poset) bool
 }
 
-func (test *testingRoutine) CreateUnitCreator(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator {
+func (test *TestingRoutine) CreateUnitCreator(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator {
 	return test.creator(posets, privKeys)
 }
 
-func (test *testingRoutine) CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler {
+func (test *TestingRoutine) CreateAddingHandler(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler {
 	return test.adder(posets, privKeys, rss)
 }
 
-func (test *testingRoutine) CreatePosetVerifier(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier {
+func (test *TestingRoutine) CreatePosetVerifier(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier {
 	return test.verifier(posets, privKeys)
 }
 
-func (test *testingRoutine) StopCondition() func(posets []gomel.Poset) bool {
+func (test *TestingRoutine) StopCondition() func(posets []gomel.Poset) bool {
 	return test.stopCondition
 }
 
@@ -76,7 +69,7 @@ func NewDefaultTestingRoutine(
 	creator func(posets []gomel.Poset, privKeys []gomel.PrivateKey) UnitCreator,
 	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler,
 	verifier func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier,
-) TestingRoutine {
+) *TestingRoutine {
 	unitsCreated := 0
 	stopCondition := func([]gomel.Poset) bool {
 		return unitsCreated >= nUnits
@@ -91,7 +84,7 @@ func NewDefaultTestingRoutine(
 			return pu, err
 		}
 	}
-	return &testingRoutine{wrappedCreator, adder, verifier, stopCondition}
+	return &TestingRoutine{wrappedCreator, adder, verifier, stopCondition}
 }
 
 // NewTestingRoutineWithStopCondition creates an instance of TestingRoutine.
@@ -100,8 +93,8 @@ func NewTestingRoutineWithStopCondition(
 	adder func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler,
 	verifier func(posets []gomel.Poset, privKeys []gomel.PrivateKey) PosetVerifier,
 	stopCondition func([]gomel.Poset) bool,
-) TestingRoutine {
-	return &testingRoutine{creator, adder, verifier, stopCondition}
+) *TestingRoutine {
+	return &TestingRoutine{creator, adder, verifier, stopCondition}
 }
 
 // NewDefaultAdder creates an instance of AddingHandler that ads a given unit to all posets under test.
@@ -482,7 +475,7 @@ func (*MockRandomSource) DataToInclude(creator int, parents []gomel.Unit, level 
 func Test(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	testingRoutine TestingRoutine,
+	testingRoutine *TestingRoutine,
 ) error {
 
 	nProcesses := len(pubKeys)
