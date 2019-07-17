@@ -62,7 +62,10 @@ func createForkUsingNewUnit(parentsCount int) forker {
 		parents := pu.Parents()
 		parents[0] = preunit.Parents()[0]
 		freshData := generateFreshData(preunit.Data())
-		return creating.NewPreunit(pu.Creator(), parents, freshData, preunit.RandomSourceData()), nil
+		parentUnits := poset.Get(parents)
+		level := computeLevel(poset, parentUnits)
+		rsData := rs.DataToInclude(pu.Creator(), parentUnits, int(level))
+		return creating.NewPreunit(pu.Creator(), parents, freshData, rsData), nil
 	}
 }
 
@@ -156,8 +159,33 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 			return nil, errors.New("unable to collect enough parents")
 		}
 		freshData := generateFreshData(preunit.Data())
-		return creating.NewPreunit(preunit.Creator(), parents, freshData, nil), nil
+		level := computeLevel(poset, parentUnits)
+		rsData := rs.DataToInclude(preunit.Creator(), parentUnits, int(level))
+		return creating.NewPreunit(preunit.Creator(), parents, freshData, rsData), nil
 	}
+}
+
+func computeLevel(poset gomel.Poset, parents []gomel.Unit) uint64 {
+	level := uint64(0)
+	for _, parent := range parents {
+		if pl := parent.Level(); uint64(pl) > level {
+			level = uint64(pl)
+		}
+	}
+	onLevel := map[uint16]bool{}
+	for _, parent := range parents {
+		for pid, floor := range parent.Floor() {
+			for _, unit := range floor {
+				if uint64(unit.Level()) == level {
+					onLevel[uint16(pid)] = true
+					if poset.IsQuorum(len(onLevel)) {
+						return level + 1
+					}
+				}
+			}
+		}
+	}
+	return level
 }
 
 func createForksUsingForker(forker forker) forkingStrategy {

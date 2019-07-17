@@ -234,7 +234,6 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 			creator := rand.Intn(len(posets))
 			poset := posets[creator]
 
-			// pu, err := creating.NewUnit(poset, creator, maxParents, NewDefaultDataContent())
 			pu, err := unitFactory(poset, uint16(creator), privKeys[creator], rss[creator])
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
@@ -452,20 +451,20 @@ func (m *MockRandomSource) GetCRP(level int) []int {
 	return m.rs.GetCRP(level)
 }
 
-func (*MockRandomSource) RandomBytes(gomel.Unit, int) []byte {
+func (m *MockRandomSource) RandomBytes(u gomel.Unit, l int) []byte {
 	var result [1]byte
 	result[0] = 0
 	return result[:]
 }
 
-func (*MockRandomSource) CheckCompliance(gomel.Unit) error {
+func (m *MockRandomSource) CheckCompliance(u gomel.Unit) error {
 	return nil
 }
 
-func (*MockRandomSource) Update(gomel.Unit) {
+func (m *MockRandomSource) Update(u gomel.Unit) {
 }
 
-func (*MockRandomSource) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
+func (m *MockRandomSource) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
 	var result [1]byte
 	result[0] = 1
 	return result[:]
@@ -492,7 +491,7 @@ func Test(
 
 		pids = append(pids, pid)
 		configurations = append(configurations, generalConfig)
-		rs := &MockRandomSource{random.NewTcSource(poset, int(pid))}
+		rs := random.NewTcSource(poset, int(pid))
 		rss = append(rss, rs)
 	}
 
