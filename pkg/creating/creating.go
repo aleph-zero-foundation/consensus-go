@@ -199,9 +199,12 @@ func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.Ra
 		return newDealingUnit(creator, poset.NProc(), data, rs), nil
 	}
 	level := predecessor.Level()
-	parentsOnLevel := 0
-	parents := []gomel.Unit{}
+	parentsOnLevel := 1
+	parents := []gomel.Unit{predecessor}
 	for pid := 0; pid < poset.NProc(); pid++ {
+		if pid == creator {
+			continue
+		}
 		if len(mu.Get(pid)) != 0 {
 			u := mu.Get(pid)[0]
 			if u.Level() < level {
@@ -215,7 +218,7 @@ func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.Ra
 	}
 	if poset.IsQuorum(parentsOnLevel) {
 		// parents should be sorted by increasing level
-		sort.Slice(parents, func(i, j int) bool {
+		sort.Slice(parents[1:], func(i, j int) bool {
 			return parents[i].Level() < parents[j].Level()
 		})
 		rsData := rs.DataToInclude(creator, parents, level+1)
