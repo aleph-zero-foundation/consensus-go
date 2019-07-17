@@ -33,7 +33,9 @@ const (
 	TooManyOutgoing       = "b"
 	SendFreshUnits        = "c"
 	SentFreshUnits        = "d"
-	UnknownParents        = "e"
+	UnitBroadcasted       = "e"
+	UnknownParents        = "f"
+	AddedBCUnit           = "g"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -67,8 +69,9 @@ var eventTypeDict = map[string]string{
 	TooManyIncoming:       "too many incoming connections",
 	TooManyOutgoing:       "too many outgoing connections",
 	SendFreshUnits:        "sending fresh units started",
-	SentFreshUnits:        "succesfully sent fresh units",
-	UnknownParents:        "received unit with unknown parents",
+	UnitBroadcasted:       "successfully multicasted a unit",
+	UnknownParents:        "unable to add unit due to missing parents",
+	AddedBCUnit:           "successfully added to poset unit received from multicast",
 }
 
 // Field names
