@@ -15,12 +15,15 @@ func generateDagConfig(c *Committee) *gomel.DagConfig {
 
 func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 	return &process.Sync{
-		Pid:             c.Pid,
-		LocalAddress:    c.Addresses[c.Pid],
-		RemoteAddresses: c.Addresses,
-		OutSyncLimit:    conf.NOutSync,
-		InSyncLimit:     conf.NInSync,
-		Timeout:         2 * time.Second,
+		Pid:               c.Pid,
+		LocalAddress:      c.Addresses[c.Pid],
+		RemoteAddresses:   c.Addresses,
+		LocalMCAddress:    c.MCAddresses[c.Pid],
+		RemoteMCAddresses: c.MCAddresses,
+		OutSyncLimit:      conf.NOutSync,
+		InSyncLimit:       conf.NInSync,
+		Timeout:           time.Duration(conf.Timeout * float32(time.Second)),
+		UDPMulticast:      conf.UDPMulticast,
 	}
 }
 

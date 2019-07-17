@@ -11,7 +11,7 @@ import (
 
 // Committee represents the public data about the committee known before the algorithm starts.
 type Committee struct {
-	// The process id of this memeber.
+	// The process id of this member.
 	Pid int
 
 	// The private key of this committee member.
@@ -22,6 +22,9 @@ type Committee struct {
 
 	// Addresses of all committee members, ordered according to process ids.
 	Addresses []string
+
+	// Addresses use for multicast, ordered as above.
+	MCAddresses []string
 }
 
 const malformedData = "malformed committee data"
@@ -43,6 +46,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 	address := scanner.Text()
 	publicKeys := []gomel.PublicKey{}
 	remoteAddresses := []string{}
+	MCAddresses := []string{}
 	for scanner.Scan() {
 		publicKey, err := signing.DecodePublicKey(scanner.Text())
 		if err != nil {
@@ -53,6 +57,10 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 			return nil, errors.New(malformedData)
 		}
 		remoteAddresses = append(remoteAddresses, scanner.Text())
+		if !scanner.Scan() {
+			return nil, errors.New(malformedData)
+		}
+		MCAddresses = append(MCAddresses, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -71,10 +79,11 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		return nil, errors.New(malformedData)
 	}
 	return &Committee{
-		Pid:        pid,
-		PrivateKey: privateKey,
-		PublicKeys: publicKeys,
-		Addresses:  remoteAddresses,
+		Pid:         pid,
+		PrivateKey:  privateKey,
+		PublicKeys:  publicKeys,
+		Addresses:   remoteAddresses,
+		MCAddresses: MCAddresses,
 	}, nil
 }
 
@@ -106,6 +115,14 @@ func StoreCommittee(w io.Writer, c *Committee) error {
 			return err
 		}
 		_, err = io.WriteString(w, c.Addresses[i])
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, " ")
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, c.MCAddresses[i])
 		if err != nil {
 			return err
 		}
