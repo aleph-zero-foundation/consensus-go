@@ -35,7 +35,9 @@ func (rs *tcRandomSource) GetCRP(nonce int) []int {
 }
 
 // RandomBytes returns a sequence of random bits for a given process and nonce
-// in the case of fail it returns nil
+// in the case of fail it returns nil.
+// This function can always fail, typically because of adversarial behaviour
+// of some processes.
 func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	if level+1 != uTossing.Level() {
 		return nil

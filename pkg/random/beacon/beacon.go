@@ -141,6 +141,9 @@ func (b *beacon) GetCRP(level int) []int {
 // (2) there are no enough shares. i.e.
 // The number of units on a given level created by share providers
 // to the multicoin of uTossing.Creator() is less than f+1
+//
+// When there is at least one unit of level+1 in the poset
+// then the (2) condition doesn't hold.
 func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	if level < sharesLevel {
 		// RandomBytes asked on too low level
