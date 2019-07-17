@@ -49,7 +49,6 @@ type Order struct {
 // For now UserDb is a filename with list of users (we can use ../testdata/users.txt),
 // it should be replaced with some actual Db handler
 type TxValidate struct {
-	UserDb string
 }
 
 // TxGenerate represents a complete configuration needed for a tx generation service to start.
@@ -57,6 +56,5 @@ type TxValidate struct {
 // Db handler
 type TxGenerate struct {
 	CompressionLevel int
-	UserDb           string
 	Txpu             uint32
 }
