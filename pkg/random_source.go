@@ -4,8 +4,8 @@ package gomel
 type RandomSource interface {
 	// GetCRP returns common random permutation for a given nonce
 	GetCRP(int) []int
-	// RandomBytes returns a random bits for a given unit
-	RandomBytes(Unit) []byte
+	// RandomBytes returns a random bits for a given unit and nonce
+	RandomBytes(Unit, int) []byte
 	// CheckCompliance checks wheather the data included in the preunit
 	// is compliant
 	CheckCompliance(Unit) error

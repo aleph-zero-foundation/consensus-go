@@ -15,6 +15,7 @@ import (
 // (1) there are no forks
 // (2) every unit is a prime unit
 // (3) level = height for each unit
+// (4) each unit has at least 2f + 1 parents
 
 const (
 	dealingLevel   = 0
@@ -55,6 +56,7 @@ func (v *vote) isCorrect() bool {
 }
 
 // NewBeacon returns a RandomSource based on a beacon
+// It is meant to be used in the setup stage only.
 func NewBeacon(poset gomel.Poset, pid int) gomel.RandomSource {
 	n := poset.NProc()
 	b := &beacon{
@@ -79,6 +81,13 @@ func NewBeacon(poset gomel.Poset, pid int) gomel.RandomSource {
 // GetCRP returns a random permutation of processes on a given level.
 // Proceses which haven't produce a unit on the requested level,
 // form a sufix of the permutation.
+// It returns nil when
+// (1) there are no units on the given level
+// or
+// (2) the level is too low (i.e. (level+3)-1 < sharesLevel)
+// or
+// (3) there are no enough shares on level+3 yet to generate the priority
+// of some unit on a given level.
 func (b *beacon) GetCRP(level int) []int {
 	nProc := b.poset.NProc()
 	permutation := make([]int, nProc)
@@ -88,20 +97,14 @@ func (b *beacon) GetCRP(level int) []int {
 	}
 
 	units := unitsOnLevel(b.poset, level)
-	su := b.poset.PrimeUnits(level + 3)
-	if su == nil {
+	if len(units) == 0 {
 		return nil
 	}
 
 	for _, u := range units {
 		priority[u.Creator()] = make([]byte, 32)
 
-		if len(su.Get(u.Creator())) == 0 {
-			// unit on level + 3 has not been created yet
-			return nil
-		}
-
-		rBytes := b.RandomBytes(su.Get(u.Creator())[0])
+		rBytes := b.RandomBytes(u, level+3)
 		if rBytes == nil {
 			return nil
 		}
@@ -124,33 +127,41 @@ func (b *beacon) GetCRP(level int) []int {
 				return false
 			}
 		}
+		panic("hash collision")
 		return (permutation[i] < permutation[j])
 	})
 
 	return permutation
 }
 
-// RandomBytes returns a sequence of random bits for a given unit
-// in the case of failure it returns nil.
-// Becuase we are verifying coinShares before adding any unit to the poset,
-// this function returns nil only when the tossing unit has too low level.
-func (b *beacon) RandomBytes(uTossing gomel.Unit) []byte {
-	if uTossing.Level() < sharesLevel {
+// RandomBytes returns a sequence of random bits for a given unit.
+// It returns nil when
+// (1) asked on too low level i.e. level < sharesLevel + 1
+// or
+// (2) there are no enough shares. i.e.
+// The number of units on a given level created by share providers
+// to the multicoin of uTossing.Creator() is less than f+1
+func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
+	if level-1 < sharesLevel {
+		// RandomBytes asked on too low level
 		return nil
 	}
 
+	mcID := uTossing.Creator()
 	shares := []*tcoin.CoinShare{}
-	for _, u := range uTossing.Parents() {
-		if b.shareProviders[uTossing.Creator()][u.Creator()] {
+	units := unitsOnLevel(b.poset, level)
+	for _, u := range units {
+		if b.shareProviders[mcID][u.Creator()] {
 			uShares := []*tcoin.CoinShare{}
-			for sc := range b.subcoins[uTossing.Creator()] {
+			for sc := range b.subcoins[mcID] {
 				uShares = append(uShares, b.shares[sc].Get(u.Hash()))
 			}
 			shares = append(shares, tcoin.SumShares(uShares))
 		}
 	}
-	coin, ok := b.multicoins[uTossing.Creator()].CombineCoinShares(shares)
+	coin, ok := b.multicoins[mcID].CombineCoinShares(shares)
 	if !ok {
+		// Not enough shares
 		return nil
 	}
 	return coin.RandomBytes()

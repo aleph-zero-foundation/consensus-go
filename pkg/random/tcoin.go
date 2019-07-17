@@ -36,14 +36,16 @@ func (rs *tcRandomSource) GetCRP(nonce int) []int {
 
 // RandomBytes returns a sequence of random bits for a given process and nonce
 // in the case of fail it returns nil
-func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit) []byte {
-	level := uTossing.Level() - 1
+func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, level int) []byte {
+	if level != uTossing.Level() {
+		return nil
+	}
 	var dealer gomel.Unit
 	var tc *tcoin.ThresholdCoin
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 
-	rs.poset.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
+	rs.poset.PrimeUnits(level - 1).Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			if !v.Below(uTossing) {
 				continue
@@ -61,7 +63,7 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit) []byte {
 			}
 			cs := rs.coinShares.Get(v.Hash())
 			if cs != nil {
-				if tc.VerifyCoinShare(cs, level) {
+				if tc.VerifyCoinShare(cs, level-1) {
 					shares = append(shares, cs)
 					shareCollected[v.Creator()] = true
 					if len(shares) == tc.Threshold {
@@ -75,7 +77,7 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit) []byte {
 	})
 
 	coin, ok := tc.CombineCoinShares(shares)
-	if !ok || !tc.VerifyCoin(coin, level) {
+	if !ok || !tc.VerifyCoin(coin, level-1) {
 		return nil
 	}
 	return coin.RandomBytes()
