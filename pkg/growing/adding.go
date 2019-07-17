@@ -72,13 +72,11 @@ func (dag *Dag) dehashParents(ub *unitBuilt) error {
 	if u := dag.Get([]*gomel.Hash{ub.preunit.Hash()}); u[0] != nil {
 		return gomel.NewDuplicateUnit(u[0])
 	}
-	possibleParents := dag.units.get(ub.preunit.Parents())
-	for _, parent := range possibleParents {
-		if parent == nil {
-			return gomel.NewUnknownParent()
-		}
-		ub.result.addParent(parent)
+	possibleParents, unknown := dag.units.get(ub.preunit.Parents())
+	if unknown > 0 {
+		return gomel.NewUnknownParents(unknown)
 	}
+	ub.result.parents = possibleParents
 	return nil
 }
 

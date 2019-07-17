@@ -39,7 +39,7 @@ func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(g
 	var u unit
 	err := dehashParents(&u, dag, pu)
 	if err != nil {
-		callback(pu, nil, gomel.NewUnknownParent())
+		callback(pu, nil, gomel.NewUnknownParents(1))
 		return
 	}
 	// Setting height, creator, signature, version, hash
@@ -75,8 +75,8 @@ func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return su
 }
 
-// Get retunrs the units with the given hashes or nil, when it doesn't find them.
-func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
+// Get returns the units with the given hashes or nil, when it doesn't find them.
+func (dag *Poset) Get(hashes []*gomel.Hash) []gomel.Unit {
 	dag.RLock()
 	defer dag.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
@@ -102,11 +102,16 @@ func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
 	dag.RLock()
 	defer dag.RUnlock()
 	u.parents = []gomel.Unit{}
+	unknown := 0
 	for _, parentHash := range pu.Parents() {
 		if _, ok := dag.unitByHash[*parentHash]; !ok {
-			return gomel.NewUnknownParent()
+			unknown++
+		} else {
+			u.parents = append(u.parents, dag.unitByHash[*parentHash])
 		}
-		u.parents = append(u.parents, dag.unitByHash[*parentHash])
+	}
+	if unknown > 0 {
+		return gomel.NewUnknownParents(unknown)
 	}
 	return nil
 }

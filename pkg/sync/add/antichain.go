@@ -26,8 +26,8 @@ func Antichain(dag gomel.Dag, randomSource gomel.RandomSource, preunits []gomel.
 				switch e := err.(type) {
 				case *gomel.DuplicateUnit:
 					log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
-				case *gomel.UnknownParent:
-					log.Info().Int(logging.Creator, pu.Creator()).Msg(logging.UnknownParents)
+				case *gomel.UnknownParents:
+					log.Info().Int(logging.Creator, pu.Creator()).Int(logging.Size, e.Amount).Msg(logging.UnknownParents)
 					fallback.Run(pu)
 					problem.errs[i] = err
 				default:

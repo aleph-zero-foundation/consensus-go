@@ -30,7 +30,7 @@ func (ae *AggregateError) Pruned(ignoreUnknownParents bool) *AggregateError {
 	var result AggregateError
 	for _, e := range ae.errs {
 		if e != nil {
-			if _, ok := e.(*gomel.UnknownParent); !ok || !ignoreUnknownParents {
+			if _, ok := e.(*gomel.UnknownParents); !ok || !ignoreUnknownParents {
 				result.errs = append(result.errs, e)
 			}
 		}

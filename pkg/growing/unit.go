@@ -86,10 +86,6 @@ func (u *unit) initialize(dag *Dag) {
 	u.computeForkingHeight(dag)
 }
 
-func (u *unit) addParent(parent gomel.Unit) {
-	u.parents = append(u.parents, parent)
-}
-
 func (u *unit) setLevel(level int) {
 	u.level = level
 }
