@@ -52,7 +52,7 @@ type vote struct {
 }
 
 func (v *vote) isCorrect() bool {
-	return v.proof != nil
+	return v.proof == nil
 }
 
 // NewBeacon returns a RandomSource based on a beacon
@@ -201,11 +201,11 @@ func (b *beacon) CheckCompliance(u gomel.Unit) error {
 		for pid := 0; pid < b.poset.NProc(); pid++ {
 			if b.votes[u.Creator()][pid].isCorrect() {
 				if shares[pid] == nil {
-					return errors.New("Preunit without a share it should contain ")
+					return errors.New("missing share")
 				}
 				// This verification is slow
 				if !b.tcoins[pid].VerifyCoinShare(shares[pid], u.Level()) {
-					return errors.New("Invalid coin share")
+					return errors.New("invalid share")
 				}
 			}
 		}
@@ -270,22 +270,22 @@ func validateVotes(b *beacon, u gomel.Unit, votes []*vote) error {
 	for _, v := range dealingUnits {
 		shouldVote := v.Below(u)
 		if shouldVote && votes[v.Creator()] == nil {
-			return errors.New("Missing vote")
+			return errors.New("missing vote")
 		}
 		if !shouldVote && votes[v.Creator()] != nil {
-			return errors.New("Vote on dealing unit not below the unit")
+			return errors.New("vote on dealing unit not below the unit")
 		}
 		if shouldVote && !votes[v.Creator()].isCorrect() {
 			proof := votes[v.Creator()].proof
 			if !b.tcoins[v.Creator()].VerifyWrongSecretKeyProof(u.Creator(), proof) {
-				return errors.New("The provided proof is incorrect")
+				return errors.New("the provided proof is incorrect")
 			}
 		}
 		createdDealing[v.Creator()] = true
 	}
 	for pid := range createdDealing {
 		if votes[pid] != nil && !createdDealing[pid] {
-			return errors.New("Vote on non-existing dealing unit")
+			return errors.New("vote on non-existing dealing unit")
 		}
 	}
 	return nil
@@ -344,7 +344,7 @@ func level(pu gomel.Preunit, poset gomel.Poset) (int, error) {
 	}
 	predecessor := poset.Get(pu.Parents()[:1])
 	if predecessor[0] == nil {
-		return 0, errors.New("Predecessor doesn't exist in the poset")
+		return 0, errors.New("predecessor doesn't exist in the poset")
 	}
 	return predecessor[0].Level() + 1, nil
 }
