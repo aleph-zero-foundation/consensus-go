@@ -2,6 +2,7 @@ package creating
 
 import (
 	"math/rand"
+	"sort"
 	"time"
 
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
@@ -182,6 +183,48 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 		result[i] = u.Hash()
 	}
 	return result
+}
+
+// NewNonSkippingUnit creates a preunit pu satisfying the following rules
+// (1) level(pu) = level(predecessor(pu)) + 1
+// (2) all the parents have level <= level(predecessor(pu))
+// If such a unit cannot be created it returns an error.
+//
+// The procedure assumes no forks
+// and should be used only in the setup phase.
+func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.RandomSource) (gomel.Preunit, error) {
+	mu := poset.MaximalUnitsPerProcess()
+	predecessor := getPredecessor(mu, creator)
+	if predecessor == nil {
+		return newDealingUnit(creator, poset.NProc(), data, rs), nil
+	}
+	level := predecessor.Level()
+	parentsOnLevel := 1
+	parents := []gomel.Unit{predecessor}
+	for pid := 0; pid < poset.NProc(); pid++ {
+		if pid == creator {
+			continue
+		}
+		if len(mu.Get(pid)) != 0 {
+			u := mu.Get(pid)[0]
+			if u.Level() < level {
+				parents = append(parents, u)
+			} else {
+				v := poset.PrimeUnits(level).Get(pid)[0]
+				parents = append(parents, v)
+				parentsOnLevel++
+			}
+		}
+	}
+	if poset.IsQuorum(parentsOnLevel) {
+		// parents should be sorted by increasing level
+		sort.Slice(parents[1:], func(i, j int) bool {
+			return parents[i].Level() < parents[j].Level()
+		})
+		rsData := rs.DataToInclude(creator, parents, level+1)
+		return NewPreunit(creator, hashes(parents), data, rsData), nil
+	}
+	return nil, &noAvailableParents{}
 }
 
 // NewUnit creates a preunit for a given process aiming at desiredParents parents.

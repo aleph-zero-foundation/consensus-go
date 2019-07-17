@@ -11,7 +11,7 @@ type tcRandomSource struct {
 	pid        int
 	poset      gomel.Poset
 	tcs        *syncTCMap
-	coinShares *syncCSMap
+	coinShares *SyncCSMap
 }
 
 // NewTcSource returns a RandomSource based on threshold coins
@@ -20,7 +20,7 @@ func NewTcSource(poset gomel.Poset, pid int) gomel.RandomSource {
 		pid:        pid,
 		poset:      poset,
 		tcs:        newSyncTCMap(),
-		coinShares: newSyncCSMap(),
+		coinShares: NewSyncCSMap(),
 	}
 }
 
@@ -35,9 +35,13 @@ func (rs *tcRandomSource) GetCRP(nonce int) []int {
 }
 
 // RandomBytes returns a sequence of random bits for a given process and nonce
-// in the case of fail it returns nil
-func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
-	level := uTossing.Level() - 1
+// in the case of fail it returns nil.
+// This function can always fail, typically because of adversarial behaviour
+// of some processes.
+func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, level int) []byte {
+	if level+1 != uTossing.Level() {
+		return nil
+	}
 	var dealer gomel.Unit
 	var tc *tcoin.ThresholdCoin
 	shares := []*tcoin.CoinShare{}
@@ -59,7 +63,7 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
 			if dealer != fduV {
 				continue
 			}
-			cs := rs.coinShares.get(v.Hash())
+			cs := rs.coinShares.Get(v.Hash())
 			if cs != nil {
 				if tc.VerifyCoinShare(cs, level) {
 					shares = append(shares, cs)
@@ -89,7 +93,7 @@ func (rs *tcRandomSource) Update(u gomel.Unit) {
 	} else if gomel.Prime(u) {
 		cs := new(tcoin.CoinShare)
 		cs.Unmarshal(u.RandomSourceData())
-		rs.coinShares.add(u.Hash(), cs)
+		rs.coinShares.Add(u.Hash(), cs)
 	}
 }
 

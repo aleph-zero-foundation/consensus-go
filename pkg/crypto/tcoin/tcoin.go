@@ -2,6 +2,7 @@ package tcoin
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"math/big"
@@ -29,6 +30,7 @@ type ThresholdCoin struct {
 	globalVK  verificationKey
 	vks       []verificationKey
 	sk        secretKey
+	sks       []secretKey
 }
 
 // Deal returns byte representation of a threshold coin
@@ -79,12 +81,22 @@ func (gtc *globalThresholdCoin) encode() []byte {
 // Decode creates tc for given pid from byte representation of gtc.
 func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 	ind := 0
+	dataTooShort := errors.New("Decoding tcoin failed. Given bytes slice is too short")
+	if len(data) < ind+4 {
+		return nil, dataTooShort
+	}
 	threshold := int(binary.LittleEndian.Uint32(data[:(ind + 4)]))
 	ind += 4
 
+	if len(data) < ind+4 {
+		return nil, dataTooShort
+	}
 	gvkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 	ind += 4
 	key := new(bn256.G2)
+	if len(data) < ind+gvkLen {
+		return nil, dataTooShort
+	}
 	_, err := key.Unmarshal(data[ind:(ind + gvkLen)])
 	if err != nil {
 		return nil, errors.New("unmarshal of globalVK failed")
@@ -94,13 +106,22 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 		key: key,
 	}
 
+	if len(data) < ind+4 {
+		return nil, dataTooShort
+	}
 	nProcesses := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 	ind += 4
 	vks := make([]verificationKey, nProcesses)
 	for i := range vks {
+		if len(data) < ind+4 {
+			return nil, dataTooShort
+		}
 		vkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 		ind += 4
 		key := new(bn256.G2)
+		if len(data) < ind+vkLen {
+			return nil, dataTooShort
+		}
 		_, err := key.Unmarshal(data[ind:(ind + vkLen)])
 		if err != nil {
 			return nil, errors.New("unmarshal of vk failed")
@@ -112,8 +133,14 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 	}
 	sks := make([]secretKey, nProcesses)
 	for i := range sks {
+		if len(data) < ind+4 {
+			return nil, dataTooShort
+		}
 		skLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 		ind += 4
+		if len(data) < ind+skLen {
+			return nil, dataTooShort
+		}
 		key := big.NewInt(int64(0)).SetBytes(data[ind:(ind + skLen)])
 		ind += skLen
 		sks[i] = secretKey{
@@ -125,8 +152,41 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 		globalVK:  globalVK,
 		vks:       vks,
 		sk:        sks[pid],
+		sks:       sks,
 		pid:       pid,
 	}, nil
+}
+
+// CreateMulticoin generates a multiCoin for given ThresholdCoins
+// i.e. a ThresholdCoin which corresponds to the sum of polynomials
+// which are defining given ThresholdCoins
+// We assume that:
+// (0) tcs is a non-empty slice
+// (1) the threshold is the same for all given thresholdCoins
+// (2) the thresholdCoins were created by different processes
+// (3) the thresholdCoins have the same owner
+func CreateMulticoin(tcs []*ThresholdCoin) *ThresholdCoin {
+	n := len(tcs[0].vks)
+	var result = ThresholdCoin{
+		Threshold: tcs[0].Threshold,
+		pid:       tcs[0].pid,
+		sk:        secretKey{key: big.NewInt(0)},
+		globalVK:  verificationKey{key: new(bn256.G2)},
+	}
+	vks := make([]verificationKey, n)
+	for i := range vks {
+		vks[i] = verificationKey{key: new(bn256.G2)}
+	}
+	result.vks = vks
+	for _, tc := range tcs {
+		result.sk.key.Add(result.sk.key, tc.sk.key)
+		result.globalVK.key.Add(result.globalVK.key, tc.globalVK.key)
+		for i, vk := range tc.vks {
+			result.vks[i].key.Add(result.vks[i].key, vk.key)
+		}
+	}
+	result.sk.key.Mod(result.sk.key, bn256.Order)
+	return &result
 }
 
 // generateThresholdCoin generates keys and secrets for ThresholdCoin
@@ -229,9 +289,72 @@ func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int) bool {
 	return tc.globalVK.verify(c.sgn, big.NewInt(int64(nonce)))
 }
 
+// PolyVerify uses given polyVerifier to verify if the vks form
+// a polynomial sequence
+func (tc *ThresholdCoin) PolyVerify(pv PolyVerifier) bool {
+	elems := make([]*bn256.G2, len(tc.vks))
+	for i, vk := range tc.vks {
+		elems[i] = vk.key
+	}
+	return pv.Verify(elems)
+}
+
+// VerifySecretKey checks if the verificationKey and secretKey form a valid pair
+// it returns
+// - the incorrect secret key when the pair of keys is invalid
+// or
+// - nil when the keys are valid
+func (tc *ThresholdCoin) VerifySecretKey() *big.Int {
+	vk := new(bn256.G2).ScalarBaseMult(tc.sk.key)
+	if subtle.ConstantTimeCompare(vk.Marshal(), tc.vks[tc.pid].key.Marshal()) != 1 {
+		return tc.sk.key
+	}
+	return nil
+}
+
+// VerifyWrongSecretKeyProof verifies proof given by a process that
+// his secretKey is incorrect
+func (tc *ThresholdCoin) VerifyWrongSecretKeyProof(pid int, proof *big.Int) bool {
+	// Checking if the proof is equal to the stored secret key.
+	// This is trival for now.
+	// In the final version we will store encrypted secret keys.
+	// Here we should encrypt proof and check
+	// if the encrypted proof is equal to the stored encrypted secret key
+	if proof.Cmp(tc.sks[pid].key) != 0 {
+		return false
+	}
+
+	// Checking the proof
+	vk := new(bn256.G2).ScalarBaseMult(proof)
+	if subtle.ConstantTimeCompare(vk.Marshal(), tc.vks[pid].key.Marshal()) != 1 {
+		return true
+	}
+	return false
+}
+
+// SumShares return a share to a multicoin given shares to
+// tcoins forming the multicoin. All the shares should be created by
+// the same process.
+// Given slice of CoinShares have to be non empty.
+func SumShares(cses []*CoinShare) *CoinShare {
+	sum := new(bn256.G1)
+	for _, cs := range cses {
+		elem := new(bn256.G1)
+		elem.Unmarshal(cs.sgn)
+		sum.Add(sum, elem)
+	}
+	return &CoinShare{
+		pid: cses[0].pid,
+		sgn: sum.Marshal(),
+	}
+}
+
 // CombineCoinShares combines given shares into a Coin
 // it returns a Coin and a bool value indicating wheather combining was successful or not
 func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
+	if len(shares) > tc.Threshold {
+		shares = shares[:tc.Threshold]
+	}
 	if tc.Threshold != len(shares) {
 		return nil, false
 	}
