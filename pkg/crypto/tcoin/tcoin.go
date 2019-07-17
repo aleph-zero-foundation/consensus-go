@@ -81,20 +81,21 @@ func (gtc *globalThresholdCoin) encode() []byte {
 // Decode creates tc for given pid from byte representation of gtc.
 func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 	ind := 0
+	dataTooShort := errors.New("Decoding tcoin failed. Given bytes slice is too short")
 	if len(data) < ind+4 {
-		return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+		return nil, dataTooShort
 	}
 	threshold := int(binary.LittleEndian.Uint32(data[:(ind + 4)]))
 	ind += 4
 
 	if len(data) < ind+4 {
-		return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+		return nil, dataTooShort
 	}
 	gvkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 	ind += 4
 	key := new(bn256.G2)
 	if len(data) < ind+gvkLen {
-		return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+		return nil, dataTooShort
 	}
 	_, err := key.Unmarshal(data[ind:(ind + gvkLen)])
 	if err != nil {
@@ -106,20 +107,20 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 	}
 
 	if len(data) < ind+4 {
-		return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+		return nil, dataTooShort
 	}
 	nProcesses := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 	ind += 4
 	vks := make([]verificationKey, nProcesses)
 	for i := range vks {
 		if len(data) < ind+4 {
-			return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+			return nil, dataTooShort
 		}
 		vkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 		ind += 4
 		key := new(bn256.G2)
 		if len(data) < ind+vkLen {
-			return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+			return nil, dataTooShort
 		}
 		_, err := key.Unmarshal(data[ind:(ind + vkLen)])
 		if err != nil {
@@ -133,12 +134,12 @@ func Decode(data []byte, pid int) (*ThresholdCoin, error) {
 	sks := make([]secretKey, nProcesses)
 	for i := range sks {
 		if len(data) < ind+4 {
-			return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+			return nil, dataTooShort
 		}
 		skLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 		ind += 4
 		if len(data) < ind+skLen {
-			return nil, errors.New("Decoding tcoin failed. Given bytes slice is too short")
+			return nil, dataTooShort
 		}
 		key := big.NewInt(int64(0)).SetBytes(data[ind:(ind + skLen)])
 		ind += skLen
