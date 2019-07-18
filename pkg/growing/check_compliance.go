@@ -105,7 +105,7 @@ func checkForkerMuting(u gomel.Unit) error {
 // just accepted. Then let L be the level of the last checked parent and P the set of creators of prime units of level L below
 // all the parents checked up to now. The next parent must either have prime units of level L below it that are created by
 // processes not in P, or have level greater than L.
-func (dag *Poset) checkExpandPrimes(u gomel.Unit) error {
+func (dag *Dag) checkExpandPrimes(u gomel.Unit) error {
 	if len(u.Parents()) == 0 {
 		return nil
 	}
