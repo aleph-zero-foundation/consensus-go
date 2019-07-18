@@ -238,13 +238,14 @@ func NewUnit(dag gomel.Dag, creator int, desiredParents int, data []byte, rs gom
 	if predecessor == nil {
 		return newDealingUnit(creator, dag.NProc(), data, rs), nil
 	}
+	predecessorLevel := predecessor.Level()
 	parents := []gomel.Unit{predecessor}
 	dagLevel := maxLevel(mu)
-	resultLevel := dagLevel
-	isPrime := resultLevel > predecessor.Level()
+	resultLevel := predecessorLevel
+	isPrime := false
 	// We try picking units of the highest possible level as parents, going down if we haven't filled all the parent slots.
 	// Usually this loop spans over at most two levels.
-	for level := dagLevel; level >= predecessor.Level() && (len(parents) < desiredParents || (requirePrime && !isPrime)); level-- {
+	for level := dagLevel; level >= predecessorLevel && (len(parents) < desiredParents || (requirePrime && !isPrime)); level-- {
 		candidates := getCandidatesAtLevel(mu, parents, level)
 		vs := splitByBelow(dag.PrimeUnits(level), parents)
 		newParents := pickMoreParents(candidates, vs, func(np []gomel.Unit) bool {
@@ -255,6 +256,10 @@ func NewUnit(dag gomel.Dag, creator int, desiredParents int, data []byte, rs gom
 			return (!requirePrime || isPrime) && totalLen >= desiredParents
 		})
 		parents = combineParents(parents, newParents)
+		if resultLevel == predecessorLevel && len(parents) > 1 {
+			resultLevel = level
+			isPrime = resultLevel > predecessorLevel
+		}
 		if vs.hasQuorumIn(dag) {
 			isPrime = true
 			if level == resultLevel {
