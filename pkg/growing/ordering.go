@@ -1,7 +1,7 @@
 package growing
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 func commonForkingHeight(u, v *unit) int {

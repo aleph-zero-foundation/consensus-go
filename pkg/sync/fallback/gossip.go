@@ -1,7 +1,7 @@
 package fallback
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 

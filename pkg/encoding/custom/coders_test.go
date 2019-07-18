@@ -5,9 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 

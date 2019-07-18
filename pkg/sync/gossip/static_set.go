@@ -3,7 +3,7 @@ package gossip
 import (
 	"sort"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 func hashesFromAcquiredUnits(acquiredUnits [][]gomel.Preunit) []*gomel.Hash {

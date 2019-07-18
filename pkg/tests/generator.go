@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // CreateRandomNonForking creates a random test dag when given

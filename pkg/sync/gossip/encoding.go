@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"io"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 func encodeUint32(w io.Writer, i uint32) error {

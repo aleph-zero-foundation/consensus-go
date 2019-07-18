@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"golang.org/x/crypto/sha3"
 )
 

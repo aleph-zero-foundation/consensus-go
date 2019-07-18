@@ -1,7 +1,7 @@
 package network
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Multicaster allows to send out messages to multiple recipients

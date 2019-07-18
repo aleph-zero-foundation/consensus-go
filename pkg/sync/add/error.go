@@ -3,7 +3,7 @@ package add
 import (
 	"strings"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // AggregateError represents a set of errors returned from adding an antichain of units.

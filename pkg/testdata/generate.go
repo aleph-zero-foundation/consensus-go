@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )

@@ -1,7 +1,7 @@
 package growing
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Assumes that prepare_unit(U) has been already called.

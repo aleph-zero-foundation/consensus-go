@@ -3,7 +3,7 @@ package growing
 import (
 	"sync"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Dag that is intended to be used during dag creation.

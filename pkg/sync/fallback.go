@@ -1,6 +1,6 @@
 package sync
 
-import gomel "gitlab.com/alephledger/consensus-go/pkg"
+import "gitlab.com/alephledger/consensus-go/pkg/gomel"
 
 // Fallback describes what should be done when encountering a unit with unknown parents.
 type Fallback interface {

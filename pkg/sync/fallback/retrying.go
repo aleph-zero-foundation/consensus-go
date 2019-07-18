@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )

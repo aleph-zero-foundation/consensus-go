@@ -3,7 +3,7 @@ package process
 import (
 	"time"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Config represents a complete configuration needed for a process to start.
