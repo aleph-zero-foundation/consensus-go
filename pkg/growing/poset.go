@@ -46,46 +46,46 @@ func IsQuorum(nProcesses int, subsetSize int) bool {
 }
 
 // IsQuorum checks if the given number of processes forms a quorum amongst all processes.
-func (p *Dag) IsQuorum(number int) bool {
-	return IsQuorum(p.nProcesses, number)
+func (dag *Dag) IsQuorum(number int) bool {
+	return IsQuorum(dag.nProcesses, number)
 }
 
 // NProc returns number of processes which uses the dag
-func (p *Dag) NProc() int {
-	return p.nProcesses
+func (dag *Dag) NProc() int {
+	return dag.nProcesses
 }
 
 // PrimeUnits returns the prime units at the requested level, indexed by their creator ids.
-func (p *Dag) PrimeUnits(level int) gomel.SlottedUnits {
-	res, err := p.primeUnits.getLevel(level)
+func (dag *Dag) PrimeUnits(level int) gomel.SlottedUnits {
+	res, err := dag.primeUnits.getLevel(level)
 	if err != nil {
-		return newSlottedUnits(p.nProcesses)
+		return newSlottedUnits(dag.nProcesses)
 	}
 	return res
 }
 
 // MaximalUnitsPerProcess returns the maximal units created by respective processes.
-func (p *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
-	return p.maxUnits
+func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
+	return dag.maxUnits
 }
 
 // Get returns a slice of units corresponding to the hashes provided.
 // If a unit of a given hash is not present in the dag, the value at the same index in the result is nil.
-func (p *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
-	return p.units.get(hashes)
+func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
+	return dag.units.get(hashes)
 }
 
 // Stop stops all the goroutines spawned by this dag.
-func (p *Dag) Stop() {
-	for _, c := range p.adders {
+func (dag *Dag) Stop() {
+	for _, c := range dag.adders {
 		close(c)
 	}
-	p.tasks.Wait()
+	dag.tasks.Wait()
 }
 
-func (p *Dag) getPrimeUnitsAtLevelBelowUnit(level int, u gomel.Unit) []gomel.Unit {
+func (dag *Dag) getPrimeUnitsAtLevelBelowUnit(level int, u gomel.Unit) []gomel.Unit {
 	var result []gomel.Unit
-	primes := p.PrimeUnits(level)
+	primes := dag.PrimeUnits(level)
 	primes.Iterate(func(units []gomel.Unit) bool {
 		for _, prime := range units {
 			if prime.Below(u) {

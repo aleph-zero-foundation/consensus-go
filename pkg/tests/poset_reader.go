@@ -13,7 +13,7 @@ import (
 )
 
 // ReadDag reads dag from the given reader and creates it using given dag factory
-func ReadDag(reader io.Reader, pf gomel.DagFactory) (gomel.Dag, error) {
+func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	text := scanner.Text()
@@ -24,7 +24,7 @@ func ReadDag(reader io.Reader, pf gomel.DagFactory) (gomel.Dag, error) {
 		return nil, err
 	}
 
-	p := pf.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
+	p := df.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
 	rs := NewTestRandomSource(p)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
@@ -74,12 +74,12 @@ func ReadDag(reader io.Reader, pf gomel.DagFactory) (gomel.Dag, error) {
 }
 
 // CreateDagFromTestFile reads dag from given test file and uses factory to create the dag
-func CreateDagFromTestFile(filename string, pf gomel.DagFactory) (gomel.Dag, error) {
+func CreateDagFromTestFile(filename string, df gomel.DagFactory) (gomel.Dag, error) {
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
 		return nil, err
 	}
 	reader := bufio.NewReader(file)
-	return ReadDag(reader, pf)
+	return ReadDag(reader, df)
 }

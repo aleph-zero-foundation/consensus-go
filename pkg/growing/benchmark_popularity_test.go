@@ -78,7 +78,7 @@ func BenchmarkPopularity(b *testing.B) {
 	var (
 		dag        gomel.Dag
 		readingErr error
-		pf         dagFactory
+		df         dagFactory
 		units      map[int]map[int][]gomel.Unit
 	)
 	testfiles := []string{
@@ -86,7 +86,7 @@ func BenchmarkPopularity(b *testing.B) {
 		"random_100p_5000u.txt",
 	}
 	for _, testfile := range testfiles {
-		dag, readingErr = tests.CreateDagFromTestFile("../testdata/"+testfile, pf)
+		dag, readingErr = tests.CreateDagFromTestFile("../testdata/"+testfile, df)
 
 		if readingErr != nil {
 			panic(readingErr)

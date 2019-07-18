@@ -20,9 +20,9 @@ type dag struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (p *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
-	p.attemptedAdd = append(p.attemptedAdd, unit)
-	p.Dag.AddUnit(unit, rs, callback)
+func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+	dag.attemptedAdd = append(dag.attemptedAdd, unit)
+	dag.Dag.AddUnit(unit, rs, callback)
 }
 
 type fallback bool
@@ -34,8 +34,8 @@ func (f *fallback) Run(_ gomel.Preunit) {
 var _ = Describe("Protocol", func() {
 
 	var (
-		p1         *dag
-		p2         *dag
+		dag1       *dag
+		dag2       *dag
 		reqs       chan Request
 		fallenBack fallback
 		proto1     gsync.Protocol
@@ -51,8 +51,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, p1, tests.NewTestRandomSource(p1), reqs, d, ls[0], time.Second, &fallenBack, make(chan int), zerolog.Nop())
-		proto2 = NewProtocol(1, p2, tests.NewTestRandomSource(p2), reqs, d, ls[1], time.Second, &fallenBack, make(chan int), zerolog.Nop())
+		proto1 = NewProtocol(0, dag1, tests.NewTestRandomSource(dag1), reqs, d, ls[0], time.Second, &fallenBack, make(chan int), zerolog.Nop())
+		proto2 = NewProtocol(1, dag2, tests.NewTestRandomSource(dag2), reqs, d, ls[1], time.Second, &fallenBack, make(chan int), zerolog.Nop())
 	})
 
 	Describe("with only two participants", func() {
@@ -69,11 +69,11 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tp, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				p1 = &dag{
+				dag1 = &dag{
 					Dag:          tp.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				p2 = p1
+				dag2 = dag1
 			})
 
 			It("should not add anything", func() {
@@ -94,7 +94,7 @@ var _ = Describe("Protocol", func() {
 				req.Hashes[0][0] = 1
 				reqs <- req
 				wg.Wait()
-				Expect(p1.attemptedAdd).To(BeEmpty())
+				Expect(dag1.attemptedAdd).To(BeEmpty())
 				Expect(bool(fallenBack)).To(BeFalse())
 			})
 
@@ -108,12 +108,12 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tp, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
-				p1 = &dag{
+				dag1 = &dag{
 					Dag:          tp.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				p2 = p1
-				maxes := p1.MaximalUnitsPerProcess()
+				dag2 = dag1
+				maxes := dag1.MaximalUnitsPerProcess()
 				// Pick the hash of the only unit.
 				maxes.Iterate(func(units []gomel.Unit) bool {
 					for _, u := range units {
@@ -141,12 +141,12 @@ var _ = Describe("Protocol", func() {
 				}
 				reqs <- req
 				wg.Wait()
-				Expect(p1.attemptedAdd).To(HaveLen(1))
-				Expect(p1.attemptedAdd[0].Creator()).To(Equal(theUnit.Creator()))
-				Expect(p1.attemptedAdd[0].Signature()).To(Equal(theUnit.Signature()))
-				Expect(p1.attemptedAdd[0].Data()).To(Equal(theUnit.Data()))
-				Expect(p1.attemptedAdd[0].RandomSourceData()).To(Equal(theUnit.RandomSourceData()))
-				Expect(p1.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+				Expect(dag1.attemptedAdd).To(HaveLen(1))
+				Expect(dag1.attemptedAdd[0].Creator()).To(Equal(theUnit.Creator()))
+				Expect(dag1.attemptedAdd[0].Signature()).To(Equal(theUnit.Signature()))
+				Expect(dag1.attemptedAdd[0].Data()).To(Equal(theUnit.Data()))
+				Expect(dag1.attemptedAdd[0].RandomSourceData()).To(Equal(theUnit.RandomSourceData()))
+				Expect(dag1.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 				Expect(bool(fallenBack)).To(BeFalse())
 			})
 
@@ -159,17 +159,17 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				p1 = &dag{
-					Dag:          tp1.(*tests.Dag),
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag1 = &dag{
+					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				tp2, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par.txt", tests.NewTestDagFactory())
-				p2 = &dag{
-					Dag:          tp2.(*tests.Dag),
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par.txt", tests.NewTestDagFactory())
+				dag2 = &dag{
+					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				maxes := p2.MaximalUnitsPerProcess()
+				maxes := dag2.MaximalUnitsPerProcess()
 				// Pick the hash of any maximal unit.
 				maxes.Iterate(func(units []gomel.Unit) bool {
 					for _, u := range units {
@@ -197,12 +197,12 @@ var _ = Describe("Protocol", func() {
 				}
 				reqs <- req
 				wg.Wait()
-				Expect(p1.attemptedAdd).To(HaveLen(1))
-				Expect(p1.attemptedAdd[0].Creator()).To(Equal(theUnit.Creator()))
-				Expect(p1.attemptedAdd[0].Signature()).To(Equal(theUnit.Signature()))
-				Expect(p1.attemptedAdd[0].Data()).To(Equal(theUnit.Data()))
-				Expect(p1.attemptedAdd[0].RandomSourceData()).To(Equal(theUnit.RandomSourceData()))
-				Expect(p1.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+				Expect(dag1.attemptedAdd).To(HaveLen(1))
+				Expect(dag1.attemptedAdd[0].Creator()).To(Equal(theUnit.Creator()))
+				Expect(dag1.attemptedAdd[0].Signature()).To(Equal(theUnit.Signature()))
+				Expect(dag1.attemptedAdd[0].Data()).To(Equal(theUnit.Data()))
+				Expect(dag1.attemptedAdd[0].RandomSourceData()).To(Equal(theUnit.RandomSourceData()))
+				Expect(dag1.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 				Expect(bool(fallenBack)).To(BeTrue())
 			})
 

@@ -41,9 +41,9 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, PiDeltaL
 }
 
 // dagMaxLevel returns the maximal level of a unit in a dag.
-func dagMaxLevel(p gomel.Dag) int {
+func dagMaxLevel(dag gomel.Dag) int {
 	maxLevel := -1
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			if v.Level() > maxLevel {
 				maxLevel = v.Level()

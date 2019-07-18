@@ -9,35 +9,35 @@ import (
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(pc gomel.DagConfig) gomel.Dag {
-	return NewDag(&pc)
+func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
+	return NewDag(&dc)
 }
 
-func levelByIteratingPrimes(u gomel.Unit, p gomel.Dag) int {
+func levelByIteratingPrimes(u gomel.Unit, dag gomel.Dag) int {
 	if gomel.Dealing(u) {
 		return 0
 	}
 	level := u.Parents()[0].Level()
-	primes := p.PrimeUnits(level)
+	primes := dag.PrimeUnits(level)
 	nSeen := 0
-	nNotSeen := p.NProc()
+	nNotSeen := dag.NProc()
 	primes.Iterate(func(units []gomel.Unit) bool {
 		nNotSeen--
 		for _, v := range units {
 			if v.Below(u) {
 				nSeen++
-				if p.IsQuorum(nSeen) {
+				if dag.IsQuorum(nSeen) {
 					return false
 				}
 				break
 			}
 		}
-		if !p.IsQuorum(nSeen + nNotSeen) {
+		if !dag.IsQuorum(nSeen + nNotSeen) {
 			return false
 		}
 		return true
 	})
-	if p.IsQuorum(nSeen) {
+	if dag.IsQuorum(nSeen) {
 		return level + 1
 	}
 	return level
@@ -101,10 +101,10 @@ func levelByBFS(u gomel.Unit, dag gomel.Dag) int {
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
 // creator => (height => slice of units by this creator on this height)
-func collectUnits(p gomel.Dag) map[int]map[int][]gomel.Unit {
+func collectUnits(dag gomel.Dag) map[int]map[int][]gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
 	result := make(map[int]map[int][]gomel.Unit)
-	for pid := 0; pid < p.NProc(); pid++ {
+	for pid := 0; pid < dag.NProc(); pid++ {
 		result[pid] = make(map[int][]gomel.Unit)
 	}
 
@@ -121,7 +121,7 @@ func collectUnits(p gomel.Dag) map[int]map[int][]gomel.Unit {
 			}
 		}
 	}
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
 			if !seenUnits[*u.Hash()] {
 				dfs(u)
@@ -136,7 +136,7 @@ func BenchmarkLevelComputing(b *testing.B) {
 	var (
 		dag        gomel.Dag
 		readingErr error
-		pf         dagFactory
+		df         dagFactory
 		units      map[int]map[int][]gomel.Unit
 	)
 	testfiles := []string{
@@ -145,7 +145,7 @@ func BenchmarkLevelComputing(b *testing.B) {
 		"random_100p_5000u.txt",
 	}
 	for _, testfile := range testfiles {
-		dag, readingErr = tests.CreateDagFromTestFile("../testdata/"+testfile, pf)
+		dag, readingErr = tests.CreateDagFromTestFile("../testdata/"+testfile, df)
 
 		if readingErr != nil {
 			panic(readingErr)

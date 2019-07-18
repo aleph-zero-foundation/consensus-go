@@ -21,16 +21,16 @@ type dag struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (p *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
-	p.attemptedAdd = append(p.attemptedAdd, unit)
-	p.Dag.AddUnit(unit, rs, callback)
+func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+	dag.attemptedAdd = append(dag.attemptedAdd, unit)
+	dag.Dag.AddUnit(unit, rs, callback)
 }
 
 var _ = Describe("Protocol", func() {
 
 	var (
-		p1     *dag
-		p2     *dag
+		dag1   *dag
+		dag2   *dag
 		rs1    gomel.RandomSource
 		rs2    gomel.RandomSource
 		proto1 gsync.Protocol
@@ -46,8 +46,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, p1, rs1, d, ls[0], NewDefaultPeerSource(2, 0), time.Second, make(chan int), zerolog.Nop())
-		proto2 = NewProtocol(1, p2, rs2, d, ls[1], NewDefaultPeerSource(2, 1), time.Second, make(chan int), zerolog.Nop())
+		proto1 = NewProtocol(0, dag1, rs1, d, ls[0], NewDefaultPeerSource(2, 0), time.Second, make(chan int), zerolog.Nop())
+		proto2 = NewProtocol(1, dag2, rs2, d, ls[1], NewDefaultPeerSource(2, 1), time.Second, make(chan int), zerolog.Nop())
 	})
 
 	Describe("in a small dag", func() {
@@ -55,16 +55,16 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies are empty", func() {
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &dag{
-					Dag:          tp1.(*tests.Dag),
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				rs1 = tests.NewTestRandomSource(tdag1)
+				dag1 = &dag{
+					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				tp2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &dag{
-					Dag:          tp2.(*tests.Dag),
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				rs2 = tests.NewTestRandomSource(tdag2)
+				dag2 = &dag{
+					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})
@@ -81,8 +81,8 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(p1.attemptedAdd).To(BeEmpty())
-				Expect(p2.attemptedAdd).To(BeEmpty())
+				Expect(dag1.attemptedAdd).To(BeEmpty())
+				Expect(dag2.attemptedAdd).To(BeEmpty())
 			})
 		})
 
@@ -93,17 +93,17 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &dag{
-					Dag:          tp1.(*tests.Dag),
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				rs1 = tests.NewTestRandomSource(tdag1)
+				dag1 = &dag{
+					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				theUnit = tp1.MaximalUnitsPerProcess().Get(0)[0]
-				tp2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &dag{
-					Dag:          tp2.(*tests.Dag),
+				theUnit = tdag1.MaximalUnitsPerProcess().Get(0)[0]
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				rs2 = tests.NewTestRandomSource(tdag2)
+				dag2 = &dag{
+					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})
@@ -120,11 +120,11 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(p1.attemptedAdd).To(BeEmpty())
-				Expect(p2.attemptedAdd).To(HaveLen(1))
-				Expect(p2.attemptedAdd[0].Parents()).To(HaveLen(0))
-				Expect(p2.attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-				Expect(p2.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+				Expect(dag1.attemptedAdd).To(BeEmpty())
+				Expect(dag2.attemptedAdd).To(HaveLen(1))
+				Expect(dag2.attemptedAdd[0].Parents()).To(HaveLen(0))
+				Expect(dag2.attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
+				Expect(dag2.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 			})
 
 		})
@@ -132,16 +132,16 @@ var _ = Describe("Protocol", func() {
 		Context("when the second copy contains a single dealing unit", func() {
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &dag{
-					Dag:          tp1.(*tests.Dag),
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				rs1 = tests.NewTestRandomSource(tdag1)
+				dag1 = &dag{
+					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				tp2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &dag{
-					Dag:          tp2.(*tests.Dag),
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
+				rs2 = tests.NewTestRandomSource(tdag2)
+				dag2 = &dag{
+					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})
@@ -158,10 +158,10 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(p2.attemptedAdd).To(BeEmpty())
-				Expect(p1.attemptedAdd).To(HaveLen(1))
-				Expect(p1.attemptedAdd[0].Parents()).To(HaveLen(0))
-				Expect(p1.attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
+				Expect(dag2.attemptedAdd).To(BeEmpty())
+				Expect(dag1.attemptedAdd).To(HaveLen(1))
+				Expect(dag1.attemptedAdd[0].Parents()).To(HaveLen(0))
+				Expect(dag1.attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
 			})
 
 		})
@@ -169,16 +169,16 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies contain all the dealing units", func() {
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &dag{
-					Dag:          tp1.(*tests.Dag),
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
+				rs1 = tests.NewTestRandomSource(tdag1)
+				dag1 = &dag{
+					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				tp2 := tp1
-				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &dag{
-					Dag:          tp2.(*tests.Dag),
+				tdag2 := tdag1
+				rs2 = tests.NewTestRandomSource(tdag2)
+				dag2 = &dag{
+					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})
@@ -195,8 +195,8 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(p1.attemptedAdd).To(BeEmpty())
-				Expect(p2.attemptedAdd).To(BeEmpty())
+				Expect(dag1.attemptedAdd).To(BeEmpty())
+				Expect(dag2.attemptedAdd).To(BeEmpty())
 			})
 
 		})

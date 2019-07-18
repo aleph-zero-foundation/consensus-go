@@ -20,8 +20,8 @@ import (
 var _ = Describe("Retrying", func() {
 
 	var (
-		p        gomel.Dag
-		ps       []gomel.Dag
+		dag      gomel.Dag
+		dags     []gomel.Dag
 		reqs     chan fetch.Request
 		fallback *Retrying
 		proto    gsync.Protocol
@@ -37,12 +37,12 @@ var _ = Describe("Retrying", func() {
 	})
 
 	JustBeforeEach(func() {
-		baseFallback := NewFetch(p, reqs)
-		rs1 := tests.NewTestRandomSource(p)
-		fallback = NewRetrying(baseFallback, p, rs1, interval, zerolog.Nop())
+		baseFallback := NewFetch(dag, reqs)
+		rs1 := tests.NewTestRandomSource(dag)
+		fallback = NewRetrying(baseFallback, dag, rs1, interval, zerolog.Nop())
 		fallback.Start()
-		proto = fetch.NewProtocol(0, p, rs1, reqs, d, ls[0], time.Second, fallback, make(chan int), zerolog.Nop())
-		for i, op := range ps {
+		proto = fetch.NewProtocol(0, dag, rs1, reqs, d, ls[0], time.Second, fallback, make(chan int), zerolog.Nop())
+		for i, op := range dags {
 			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, tests.NewTestRandomSource(op), reqs, d, ls[i+1], time.Second, nil, make(chan int), zerolog.Nop()))
 		}
 	})
@@ -69,12 +69,12 @@ var _ = Describe("Retrying", func() {
 
 			BeforeEach(func() {
 				interval = 10 * time.Millisecond
-				p, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 				op, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
 				for range ls {
-					ps = append(ps, op)
+					dags = append(dags, op)
 				}
-				ps = ps[1:]
+				dags = dags[1:]
 				maxes := op.MaximalUnitsPerProcess()
 				// Pick the hash of any maximal unit.
 				maxes.Iterate(func(units []gomel.Unit) bool {
@@ -114,7 +114,7 @@ var _ = Describe("Retrying", func() {
 				uh := []*gomel.Hash{theUnit.Hash()}
 				for !added {
 					time.Sleep(4 * interval)
-					theUnitTransferred := p.Get(uh)[0]
+					theUnitTransferred := dag.Get(uh)[0]
 					if theUnitTransferred != nil {
 						added = true
 						Expect(theUnitTransferred.Creator()).To(Equal(theUnit.Creator()))

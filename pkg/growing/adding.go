@@ -15,8 +15,8 @@ type unitBuilt struct {
 
 // AddUnit adds the provided Preunit to the dag as a Unit.
 // When done calls the callback.
-func (p *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
-	if pu.Creator() < 0 || pu.Creator() >= p.nProcesses {
+func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+	if pu.Creator() < 0 || pu.Creator() >= dag.nProcesses {
 		callback(pu, nil, gomel.NewDataError("Invalid creator."))
 		return
 	}
@@ -26,21 +26,21 @@ func (p *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gom
 		rs:      rs,
 		done:    callback,
 	}
-	p.adders[pu.Creator()] <- toAdd
+	dag.adders[pu.Creator()] <- toAdd
 }
 
-func (p *Dag) verifySignature(pu gomel.Preunit) error {
-	if !p.pubKeys[pu.Creator()].Verify(pu) {
+func (dag *Dag) verifySignature(pu gomel.Preunit) error {
+	if !dag.pubKeys[pu.Creator()].Verify(pu) {
 		return gomel.NewDataError("Invalid Signature")
 	}
 	return nil
 }
 
-func (p *Dag) addPrime(u gomel.Unit) {
-	if u.Level() >= p.primeUnits.Len() {
-		p.primeUnits.extendBy(10)
+func (dag *Dag) addPrime(u gomel.Unit) {
+	if u.Level() >= dag.primeUnits.Len() {
+		dag.primeUnits.extendBy(10)
 	}
-	su, _ := p.primeUnits.getLevel(u.Level())
+	su, _ := dag.primeUnits.getLevel(u.Level())
 	creator := u.Creator()
 	oldPrimes := su.Get(creator)
 	primesByCreator := make([]gomel.Unit, len(oldPrimes), len(oldPrimes)+1)
@@ -54,9 +54,9 @@ func (p *Dag) addPrime(u gomel.Unit) {
 	su.Set(creator, primesByCreator)
 }
 
-func (p *Dag) updateMaximal(u gomel.Unit) {
+func (dag *Dag) updateMaximal(u gomel.Unit) {
 	creator := u.Creator()
-	maxByCreator := p.maxUnits.Get(creator)
+	maxByCreator := dag.maxUnits.Get(creator)
 	newMaxByCreator := make([]gomel.Unit, 0)
 	// The below code works properly assuming that no unit in the Dag created by creator is >= u
 	for _, v := range maxByCreator {
@@ -65,14 +65,14 @@ func (p *Dag) updateMaximal(u gomel.Unit) {
 		}
 	}
 	newMaxByCreator = append(newMaxByCreator, u)
-	p.maxUnits.Set(creator, newMaxByCreator)
+	dag.maxUnits.Set(creator, newMaxByCreator)
 }
 
-func (p *Dag) dehashParents(ub *unitBuilt) error {
-	if u := p.Get([]*gomel.Hash{ub.preunit.Hash()}); u[0] != nil {
+func (dag *Dag) dehashParents(ub *unitBuilt) error {
+	if u := dag.Get([]*gomel.Hash{ub.preunit.Hash()}); u[0] != nil {
 		return gomel.NewDuplicateUnit(u[0])
 	}
-	possibleParents := p.units.get(ub.preunit.Parents())
+	possibleParents := dag.units.get(ub.preunit.Parents())
 	for _, parent := range possibleParents {
 		if parent == nil {
 			return gomel.NewUnknownParent()
@@ -82,37 +82,37 @@ func (p *Dag) dehashParents(ub *unitBuilt) error {
 	return nil
 }
 
-func (p *Dag) prepareUnit(ub *unitBuilt) error {
-	err := p.dehashParents(ub)
+func (dag *Dag) prepareUnit(ub *unitBuilt) error {
+	err := dag.dehashParents(ub)
 	if err != nil {
 		return err
 	}
-	err = p.checkBasicParentsCorrectness(ub.result)
+	err = dag.checkBasicParentsCorrectness(ub.result)
 	if err != nil {
 		return err
 	}
-	ub.result.initialize(p)
-	return p.checkCompliance(ub.result, ub.rs)
+	ub.result.initialize(dag)
+	return dag.checkCompliance(ub.result, ub.rs)
 }
 
-func (p *Dag) addUnit(ub *unitBuilt) {
-	err := p.prepareUnit(ub)
+func (dag *Dag) addUnit(ub *unitBuilt) {
+	err := dag.prepareUnit(ub)
 	if err != nil {
 		ub.done(ub.preunit, nil, err)
 		return
 	}
 	ub.rs.Update(ub.result)
 	if gomel.Prime(ub.result) {
-		p.addPrime(ub.result)
+		dag.addPrime(ub.result)
 	}
-	p.units.add(ub.result)
-	p.updateMaximal(ub.result)
+	dag.units.add(ub.result)
+	dag.updateMaximal(ub.result)
 	ub.done(ub.preunit, ub.result, nil)
 }
 
-func (p *Dag) adder(incoming chan *unitBuilt) {
-	defer p.tasks.Done()
+func (dag *Dag) adder(incoming chan *unitBuilt) {
+	defer dag.tasks.Done()
 	for ub := range incoming {
-		p.addUnit(ub)
+		dag.addUnit(ub)
 	}
 }

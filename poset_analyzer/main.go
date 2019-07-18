@@ -12,8 +12,8 @@ import (
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(pc gomel.DagConfig) gomel.Dag {
-	return growing.NewDag(&pc)
+func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
+	return growing.NewDag(&dc)
 }
 
 type cliOptions struct {
@@ -29,7 +29,7 @@ func getOptions() cliOptions {
 
 // collectUnits for a given dag returns a slice containing all the units from the dag.
 // It uses dfs from maximal units.
-func collectUnits(p gomel.Dag) []gomel.Unit {
+func collectUnits(dag gomel.Dag) []gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
 	units := []gomel.Unit{}
 	var dfs func(gomel.Unit)
@@ -42,7 +42,7 @@ func collectUnits(p gomel.Dag) []gomel.Unit {
 			}
 		}
 	}
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
 			if !seenUnits[*u.Hash()] {
 				dfs(u)
@@ -56,14 +56,14 @@ func collectUnits(p gomel.Dag) []gomel.Unit {
 // popularityStats for a given dag calculates for each prime unit
 // the number of levels until the unit becomes popular.
 // Unpopular units are ignored. The result is sliced by the prime level.
-func popularityStats(p gomel.Dag, maxLevel int) [][]int {
+func popularityStats(dag gomel.Dag, maxLevel int) [][]int {
 	result := make([][]int, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
-		primes := p.PrimeUnits(level)
+		primes := dag.PrimeUnits(level)
 		primes.Iterate(func(units []gomel.Unit) bool {
 			for _, u := range units {
 				for up := 0; up+level <= maxLevel; up++ {
-					primesAbove := p.PrimeUnits(level + up)
+					primesAbove := dag.PrimeUnits(level + up)
 					ok := true
 					primesAbove.Iterate(func(prs []gomel.Unit) bool {
 						for _, v := range prs {
@@ -156,9 +156,9 @@ func cntVisibleBelow(u gomel.Unit, su gomel.SlottedUnits) int {
 // (1) number of prime units on the level
 // (2) number of minimal (in DAG order) prime units on the level
 // (3) for each prime unit number of primes on level - 1 which are below the unit
-func getPrimeUnitStatsOnLevel(p gomel.Dag, level int) levelPrimeUnitStat {
-	primes := p.PrimeUnits(level)
-	primesBelow := p.PrimeUnits(level - 1)
+func getPrimeUnitStatsOnLevel(dag gomel.Dag, level int) levelPrimeUnitStat {
+	primes := dag.PrimeUnits(level)
+	primesBelow := dag.PrimeUnits(level - 1)
 	var lps levelPrimeUnitStat
 	primes.Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
@@ -181,10 +181,10 @@ func getPrimeUnitStatsOnLevel(p gomel.Dag, level int) levelPrimeUnitStat {
 }
 
 // getPrimeUnitsStats for a given dag caluclates primeUnitStats on each level
-func getPrimeUnitsStats(p gomel.Dag, maxLevel int) []levelPrimeUnitStat {
+func getPrimeUnitsStats(dag gomel.Dag, maxLevel int) []levelPrimeUnitStat {
 	result := []levelPrimeUnitStat{}
 	for level := 0; level <= maxLevel; level++ {
-		result = append(result, getPrimeUnitStatsOnLevel(p, level))
+		result = append(result, getPrimeUnitStatsOnLevel(dag, level))
 	}
 	return result
 }
@@ -203,8 +203,8 @@ type levelUnitStat struct {
 // (1) the number of prime units on the level
 // (2) the number of regular (not prime) units on the level
 // (3) the number of processes which skipped the level
-func getUnitStats(p gomel.Dag, units []gomel.Unit, maxLevel int) []levelUnitStat {
-	result := make([]levelUnitStat, p.NProc())
+func getUnitStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) []levelUnitStat {
+	result := make([]levelUnitStat, dag.NProc())
 	pSeen := make([]map[int]bool, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
 		pSeen[level] = make(map[int]bool)
@@ -218,15 +218,15 @@ func getUnitStats(p gomel.Dag, units []gomel.Unit, maxLevel int) []levelUnitStat
 		pSeen[u.Level()][u.Creator()] = true
 	}
 	for level := 0; level <= maxLevel; level++ {
-		result[level].skipped = p.NProc() - len(pSeen[level])
+		result[level].skipped = dag.NProc() - len(pSeen[level])
 	}
 	return result
 }
 
 func main() {
 	options := getOptions()
-	var pf dagFactory
-	dag, err := tests.CreateDagFromTestFile(options.dagFilename, pf)
+	var df dagFactory
+	dag, err := tests.CreateDagFromTestFile(options.dagFilename, df)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error while reading dag %s: %s\n", options.dagFilename, err.Error())
 		return

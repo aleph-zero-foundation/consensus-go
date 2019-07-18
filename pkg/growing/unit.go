@@ -209,11 +209,11 @@ func (u *unit) computeLevel() {
 	u.setLevel(level)
 }
 
-func (u *unit) computeForkingHeight(p *Dag) {
-	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
+func (u *unit) computeForkingHeight(dag *Dag) {
+	// this implementation works as long as there is no race for writing/reading to dag.maxUnits, i.e.
 	// as long as units created by one process are added atomically
 	if gomel.Dealing(u) {
-		if len(p.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
+		if len(dag.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
 			//this is a forking dealing unit
 			u.forkingHeight = -1
 		} else {
@@ -224,7 +224,7 @@ func (u *unit) computeForkingHeight(p *Dag) {
 	predTmp, _ := gomel.Predecessor(u)
 	predecessor := predTmp.(*unit)
 	found := false
-	for _, v := range p.MaximalUnitsPerProcess().Get(u.creator) {
+	for _, v := range dag.MaximalUnitsPerProcess().Get(u.creator) {
 		if v == predecessor {
 			found = true
 			break

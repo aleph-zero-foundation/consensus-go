@@ -15,8 +15,8 @@ import (
 // (2) H is the Height of a unit,
 // (3) V is the Version of a unit (0 for non-forked units, forks created by the same process on the same height are enumerated with consecutive integers)
 // (4) Parents is the list of units separated by a single space encoded in the same C-H-V format
-func WriteDag(writer io.Writer, p gomel.Dag) error {
-	fmt.Fprintf(writer, "%d\n", p.NProc())
+func WriteDag(writer io.Writer, dag gomel.Dag) error {
+	fmt.Fprintf(writer, "%d\n", dag.NProc())
 
 	seenUnits := make(map[gomel.Hash]bool)
 	unitToVersion := make(map[gomel.Hash]int)
@@ -40,7 +40,7 @@ func WriteDag(writer io.Writer, p gomel.Dag) error {
 			fmt.Fprintf(writer, "\n")
 		}
 	}
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			dfs(v)
 		}

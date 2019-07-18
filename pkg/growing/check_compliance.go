@@ -11,7 +11,7 @@ import (
 // 3. Satisfies forker-muting policy.
 // 4. Satisfies the expand primes rule.
 // 5. The random source data is OK.
-func (p *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
+func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	// 1. Parents are created by pairwise different processes.
 	if err := checkParentsDiversity(u); err != nil {
 		return err
@@ -28,7 +28,7 @@ func (p *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	}
 
 	// 4. Satisfies the expand primes rule
-	if err := p.checkExpandPrimes(u); err != nil {
+	if err := dag.checkExpandPrimes(u); err != nil {
 		return err
 	}
 
@@ -39,7 +39,7 @@ func (p *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	return nil
 }
 
-func (p *Dag) checkBasicParentsCorrectness(u gomel.Unit) error {
+func (dag *Dag) checkBasicParentsCorrectness(u gomel.Unit) error {
 	if len(u.Parents()) == 0 && gomel.Dealing(u) {
 		return nil
 	}

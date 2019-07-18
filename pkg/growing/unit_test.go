@@ -11,8 +11,8 @@ import (
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(pc gomel.DagConfig) gomel.Dag {
-	return NewDag(&pc)
+func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
+	return NewDag(&dc)
 }
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
@@ -52,7 +52,7 @@ var _ = Describe("Units", func() {
 	var (
 		dag        gomel.Dag
 		readingErr error
-		pf         dagFactory
+		df         dagFactory
 		units      map[int]map[int][]gomel.Unit
 	)
 
@@ -65,7 +65,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking reflexivity of Below", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/one_unit.txt", pf)
+				dag, readingErr = tests.CreateDagFromTestFile("../testdata/one_unit.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should return true", func() {
@@ -75,7 +75,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking lack of symmetry of Below", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/single_unit_with_two_parents.txt", pf)
+				dag, readingErr = tests.CreateDagFromTestFile("../testdata/single_unit_with_two_parents.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should be true in one direction and false in the other", func() {
@@ -90,7 +90,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking transitivity of Below", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/six_units.txt", pf)
+				dag, readingErr = tests.CreateDagFromTestFile("../testdata/six_units.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should be true if two relations are true", func() {
@@ -108,7 +108,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking Below works properly for forked dealing units.", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/forked_dealing.txt", pf)
+				dag, readingErr = tests.CreateDagFromTestFile("../testdata/forked_dealing.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should return false for both below queries.", func() {
@@ -120,7 +120,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking Below works properly for two forks going out of one unit.", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/fork_4u.txt", pf)
+				dag, readingErr = tests.CreateDagFromTestFile("../testdata/fork_4u.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should correctly answer all pairs of below queries.", func() {
@@ -139,7 +139,7 @@ var _ = Describe("Units", func() {
 		Describe("Checking floors", func() {
 			Describe("On dealing", func() {
 				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/only_dealing.txt", pf)
+					dag, readingErr = tests.CreateDagFromTestFile("../testdata/only_dealing.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should return floors containing one unit each", func() {
@@ -158,7 +158,7 @@ var _ = Describe("Units", func() {
 			})
 			Describe("On a single unit with two parents", func() {
 				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/single_unit_with_two_parents.txt", pf)
+					dag, readingErr = tests.CreateDagFromTestFile("../testdata/single_unit_with_two_parents.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should contain correct floor", func() {
@@ -171,7 +171,7 @@ var _ = Describe("Units", func() {
 			})
 			Describe("When seeing a fork", func() {
 				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/fork_accepted.txt", pf)
+					dag, readingErr = tests.CreateDagFromTestFile("../testdata/fork_accepted.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should contain both versions", func() {
@@ -190,7 +190,7 @@ var _ = Describe("Units", func() {
 			})
 			Describe("On a chain with 9 consecutive dealing units as the other parent ", func() {
 				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/chain.txt", pf)
+					dag, readingErr = tests.CreateDagFromTestFile("../testdata/chain.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should contain all dealing units in floor", func() {
