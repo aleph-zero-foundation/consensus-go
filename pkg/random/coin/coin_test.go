@@ -17,7 +17,7 @@ var _ = Describe("Coin", func() {
 		pid            int
 		n              int
 		maxLevel       int
-		poset          []gomel.Poset
+		dag            []gomel.Dag
 		rs             []gomel.RandomSource
 		shareProviders map[int]bool
 		delt           []byte
@@ -27,7 +27,7 @@ var _ = Describe("Coin", func() {
 		n = 4
 		maxLevel = 7
 		pid = 0
-		poset = make([]gomel.Poset, n)
+		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
 		shareProviders = make(map[int]bool)
 		for pid := 0; pid < n-n/3; pid++ {
@@ -36,22 +36,22 @@ var _ = Describe("Coin", func() {
 		delt = tcoin.Deal(n, n/3+1)
 
 		for pid := 0; pid < n; pid++ {
-			poset[pid], err = tests.CreatePosetFromTestFile("../../testdata/empty4.txt", tests.NewTestPosetFactory())
+			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			tc, tcErr := tcoin.Decode(delt, pid)
 			Expect(tcErr).NotTo(HaveOccurred())
-			rs[pid] = NewCoin(poset[pid], pid, tc, shareProviders)
+			rs[pid] = NewCoin(dag[pid], pid, tc, shareProviders)
 		}
-		// Generating very regular poset
+		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
 			for creator := 0; creator < n; creator++ {
-				pu, err := creating.NewUnit(poset[creator], creator, 2*(n/3)+1, []byte{}, rs[creator], false)
+				pu, err := creating.NewUnit(dag[creator], creator, 2*(n/3)+1, []byte{}, rs[creator], false)
 				Expect(err).NotTo(HaveOccurred())
 				for pid := 0; pid < n; pid++ {
 					var wg sync.WaitGroup
 					wg.Add(1)
 					var added gomel.Unit
-					poset[pid].AddUnit(pu, rs[pid], func(_ gomel.Preunit, u gomel.Unit, err error) {
+					dag[pid].AddUnit(pu, rs[pid], func(_ gomel.Preunit, u gomel.Unit, err error) {
 						defer wg.Done()
 						added = u
 						Expect(err).NotTo(HaveOccurred())
@@ -68,12 +68,12 @@ var _ = Describe("Coin", func() {
 		Context("On a given level", func() {
 			It("Should return a permutation of pids", func() {
 				perm := rs[0].GetCRP(3)
-				Expect(len(perm)).To(Equal(poset[0].NProc()))
+				Expect(len(perm)).To(Equal(dag[0].NProc()))
 				elems := make(map[int]bool)
 				for _, pid := range perm {
 					elems[pid] = true
 				}
-				Expect(len(elems)).To(Equal(poset[0].NProc()))
+				Expect(len(elems)).To(Equal(dag[0].NProc()))
 			})
 			It("Should return the same permutation for all pid", func() {
 				perm := make([][]int, n)
@@ -98,7 +98,7 @@ var _ = Describe("Coin", func() {
 		Context("on a prime unit created by a share provider", func() {
 			Context("without random source data", func() {
 				It("should return an error", func() {
-					u := poset[0].PrimeUnits(2).Get(0)[0]
+					u := dag[0].PrimeUnits(2).Get(0)[0]
 					um := newUnitMock(u, []byte{})
 					err := rs[0].CheckCompliance(um)
 					Expect(err).To(HaveOccurred())
@@ -106,8 +106,8 @@ var _ = Describe("Coin", func() {
 			})
 			Context("with inncorrect share", func() {
 				It("should return an error", func() {
-					u := poset[0].PrimeUnits(2).Get(0)[0]
-					v := poset[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].PrimeUnits(2).Get(0)[0]
+					v := dag[0].PrimeUnits(3).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
 					err := rs[0].CheckCompliance(um)
 					Expect(err).To(HaveOccurred())
@@ -117,7 +117,7 @@ var _ = Describe("Coin", func() {
 		Context("on a unit not created by a share provider", func() {
 			Context("with random source data", func() {
 				It("should return an error", func() {
-					u := poset[0].PrimeUnits(2).Get(n - 1)[0]
+					u := dag[0].PrimeUnits(2).Get(n - 1)[0]
 					um := newUnitMock(u, []byte{1, 2, 3})
 					err := rs[0].CheckCompliance(um)
 					Expect(err).To(HaveOccurred())

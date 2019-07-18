@@ -10,7 +10,7 @@ import (
 
 type coin struct {
 	pid           int
-	poset         gomel.Poset
+	dag           gomel.Dag
 	tc            *tcoin.ThresholdCoin
 	coinShares    *random.SyncCSMap
 	shareProvider []bool
@@ -18,8 +18,8 @@ type coin struct {
 
 // NewCoin returns a RandomSource based on fixed thresholdCoin with given
 // set of share providers.
-func NewCoin(poset gomel.Poset, pid int, tcoin *tcoin.ThresholdCoin, shareProviders map[int]bool) gomel.RandomSource {
-	providesShare := make([]bool, poset.NProc())
+func NewCoin(dag gomel.Dag, pid int, tcoin *tcoin.ThresholdCoin, shareProviders map[int]bool) gomel.RandomSource {
+	providesShare := make([]bool, dag.NProc())
 
 	for provider := range shareProviders {
 		providesShare[provider] = true
@@ -27,7 +27,7 @@ func NewCoin(poset gomel.Poset, pid int, tcoin *tcoin.ThresholdCoin, shareProvid
 
 	return &coin{
 		pid:           pid,
-		poset:         poset,
+		dag:           dag,
 		tc:            tcoin,
 		coinShares:    random.NewSyncCSMap(),
 		shareProvider: providesShare,
@@ -36,18 +36,18 @@ func NewCoin(poset gomel.Poset, pid int, tcoin *tcoin.ThresholdCoin, shareProvid
 
 // GetCRP implements a common random permutation
 func (rs *coin) GetCRP(level int) []int {
-	return random.CRP(rs, rs.poset, level)
+	return random.CRP(rs, rs.dag, level)
 }
 
 // RandomBytes returns a sequence of random bits for a given level.
 // The first argument is irrelevant for this random source.
 // If there are not enough shares on the level it returns nil.
-// If the poset reached level+1 the existence of enough shares is guaranteed.
+// If the dag reached level+1 the existence of enough shares is guaranteed.
 func (rs *coin) RandomBytes(_ gomel.Unit, level int) []byte {
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 
-	su := rs.poset.PrimeUnits(level)
+	su := rs.dag.PrimeUnits(level)
 	if su == nil {
 		return nil
 	}

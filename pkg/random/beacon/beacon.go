@@ -108,7 +108,7 @@ func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
 
 	mcID := uTossing.Creator()
 	shares := []*tcoin.CoinShare{}
-	units := UnitsOnLevel(b.dag, level)
+	units := random.UnitsOnLevel(b.dag, level)
 	for _, u := range units {
 		if b.shareProviders[mcID][u.Creator()] {
 			uShares := []*tcoin.CoinShare{}
