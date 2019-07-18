@@ -198,7 +198,7 @@ def run_task_in_region(task='test', region_name=default_region_name(), parallel=
 def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region_name()):
     local = '../../' + path
     remote = 'go/src/gitlab.com/alephledger/consensus-go/' + path
-    
+
     ip_list = instances_ip_in_region(region_name)
     hosts = " ".join(["ubuntu@"+ip for ip in ip_list])
     scp = 'scp -o StrictHostKeyChecking=no -i key_pairs/aleph.pem'
@@ -452,7 +452,7 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
         ip2pid.update({ip:pid for (ip, pid) in zip(ipl, pids[r])})
         c += len(ipl)
         ip_list.extend(ipl)
-        
+
     generate_keys(ip_list, 8888)
 
     color_print('waiting till ports are open on machines')
@@ -471,7 +471,7 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     #color_print('TMP send new tcp/server.go')
     #send_file('pkg/network/tcp/server.go', regions)
 
-    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel) 
+    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel)
 
     color_print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
@@ -507,24 +507,24 @@ def create_images(regions=badger_regions()):
     # wait till installing finishes
     sleep(60)
     wait_install(regions[:1])
-    
+
     print('clone repo')
     run_task_in_region('clone-repo', regions[0])
 
     print('creating image in region', regions[0])
-    image = instance.create_image( 
-        BlockDeviceMappings=[ 
-            { 
-                'DeviceName': '/dev/sda1', 
-                'Ebs': { 
-                    'DeleteOnTermination': True, 
-                    'VolumeSize': 8, 
-                    'VolumeType': 'gp2', 
-                }, 
-            }, 
-        ], 
-        Description='image for running gomel experiments', 
-        Name='gomel', 
+    image = instance.create_image(
+        BlockDeviceMappings=[
+            {
+                'DeviceName': '/dev/sda1',
+                'Ebs': {
+                    'DeleteOnTermination': True,
+                    'VolumeSize': 8,
+                    'VolumeType': 'gp2',
+                },
+            },
+        ],
+        Description='image for running gomel experiments',
+        Name='gomel',
     )
 
     print('waiting for image to be available')
@@ -541,9 +541,9 @@ def create_images(regions=badger_regions()):
     for region in regions[1:]:
         print(region, end=' ')
         boto3.client('ec2', region).copy_image(
-            Name=image.name, 
-            Description=image.description, 
-            SourceImageId=image.image_id, 
+            Name=image.name,
+            Description=image.description,
+            SourceImageId=image.image_id,
             SourceRegion=regions[0]
         )
 
@@ -585,7 +585,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
         for ip in instances_ip_in_region(rn):
             pid = ip2pid[ip]
             run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
-            run_task_for_ip('get-poset', [ip], parallel=0, pids=[pid])
+            run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
             if int(pid) % 16 == 0:
                 run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
 
@@ -597,7 +597,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
 
 
     print(len(os.listdir('../results')), 'files in ../results')
-    
+
     with open('data/config.json') as f:
         config = json.loads(''.join(f.readlines()))
 

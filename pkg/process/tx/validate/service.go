@@ -17,8 +17,8 @@ type service struct {
 	wg         sync.WaitGroup
 }
 
-// NewService creates a new transaction validation service for the given poset, with the given configuration.
-func NewService(poset gomel.Poset, config *process.TxValidate, unitSource <-chan gomel.Unit, log zerolog.Logger) (process.Service, error) {
+// NewService creates a new transaction validation service for the given dag, with the given configuration.
+func NewService(dag gomel.Dag, config *process.TxValidate, unitSource <-chan gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),

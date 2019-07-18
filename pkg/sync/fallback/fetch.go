@@ -7,13 +7,13 @@ import (
 )
 
 type fetchFallback struct {
-	poset    gomel.Poset
+	dag      gomel.Dag
 	requests chan<- fetch.Request
 }
 
 func (f *fetchFallback) Run(pu gomel.Preunit) {
 	hashes := pu.Parents()
-	parents := f.poset.Get(hashes)
+	parents := f.dag.Get(hashes)
 	toRequest := []*gomel.Hash{}
 	for i, h := range hashes {
 		if parents[i] == nil {
@@ -29,9 +29,9 @@ func (f *fetchFallback) Run(pu gomel.Preunit) {
 }
 
 // NewFetch creates a fallback that pushes fetch requests for unknown parents to the provided channel.
-func NewFetch(poset gomel.Poset, requests chan<- fetch.Request) sync.Fallback {
+func NewFetch(dag gomel.Dag, requests chan<- fetch.Request) sync.Fallback {
 	return &fetchFallback{
-		poset:    poset,
+		dag:      dag,
 		requests: requests,
 	}
 }

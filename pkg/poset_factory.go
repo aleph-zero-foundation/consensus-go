@@ -1,17 +1,17 @@
 package gomel
 
-// PosetConfig contains required information to create a poset
-type PosetConfig struct {
+// DagConfig contains required information to create a dag
+type DagConfig struct {
 	Keys []PublicKey
 }
 
-// NProc returns the number of processes in a given posetConfiguration
-func (pc PosetConfig) NProc() int {
+// NProc returns the number of processes in a given dagConfiguration
+func (pc DagConfig) NProc() int {
 	return len(pc.Keys)
 }
 
-// PosetFactory is an interface to create posets
-type PosetFactory interface {
-	// CreatePoset creates empty poset with a given configuration
-	CreatePoset(pc PosetConfig) Poset
+// DagFactory is an interface to create dags
+type DagFactory interface {
+	// CreateDag creates empty dag with a given configuration
+	CreateDag(pc DagConfig) Dag
 }

@@ -2,14 +2,14 @@ package gomel
 
 import "errors"
 
-// Unit that belongs to the poset.
+// Unit that belongs to the dag.
 type Unit interface {
 	BaseUnit
-	// Height of a unit is the length of the path between this unit and a dealing unit in the (induced) sub-poset containing all units produced by the same creator.
+	// Height of a unit is the length of the path between this unit and a dealing unit in the (induced) sub-dag containing all units produced by the same creator.
 	Height() int
 	// Parents of this unit, with predecessor being the first element of returned slice.
 	Parents() []Unit
-	// Level of this unit in the poset, as defined in the Aleph protocol whitepaper.
+	// Level of this unit in the dag, as defined in the Aleph protocol whitepaper.
 	Level() int
 	// Below tells if this unit is below the given unit.
 	Below(Unit) bool

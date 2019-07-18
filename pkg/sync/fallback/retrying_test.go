@@ -20,8 +20,8 @@ import (
 var _ = Describe("Retrying", func() {
 
 	var (
-		p        gomel.Poset
-		ps       []gomel.Poset
+		p        gomel.Dag
+		ps       []gomel.Dag
 		reqs     chan fetch.Request
 		fallback *Retrying
 		proto    gsync.Protocol
@@ -69,8 +69,8 @@ var _ = Describe("Retrying", func() {
 
 			BeforeEach(func() {
 				interval = 10 * time.Millisecond
-				p, _ = tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
-				op, _ := tests.CreatePosetFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestPosetFactory())
+				p, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				op, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
 				for range ls {
 					ps = append(ps, op)
 				}

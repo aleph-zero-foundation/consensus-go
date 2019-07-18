@@ -13,7 +13,7 @@ type unitInfo struct {
 
 type processInfo []unitInfo
 
-type posetInfo []processInfo
+type dagInfo []processInfo
 
 type processRequests []*gomel.Hash
 
@@ -23,8 +23,8 @@ func toInfo(unit gomel.Unit) unitInfo {
 	return unitInfo{unit.Hash(), uint32(unit.Height())}
 }
 
-func toPosetInfo(maxSnapshot [][]gomel.Unit) posetInfo {
-	result := make(posetInfo, len(maxSnapshot))
+func toDagInfo(maxSnapshot [][]gomel.Unit) dagInfo {
+	result := make(dagInfo, len(maxSnapshot))
 	for i, units := range maxSnapshot {
 		infoHere := make(processInfo, len(units))
 		for j, u := range units {
@@ -63,9 +63,9 @@ func consistentMaximal(maxes [][]gomel.Unit) [][]gomel.Unit {
 	return maxes
 }
 
-func posetMaxSnapshot(poset gomel.Poset) [][]gomel.Unit {
+func dagMaxSnapshot(dag gomel.Dag) [][]gomel.Unit {
 	maxUnits := [][]gomel.Unit{}
-	poset.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		unitsCopy := make([]gomel.Unit, len(units))
 		copy(unitsCopy, units)
 		maxUnits = append(maxUnits, unitsCopy)
@@ -122,8 +122,8 @@ func unitsToSendByProcess(tops processInfo, maxes []gomel.Unit) []gomel.Unit {
 	return result
 }
 
-func knownUnits(poset gomel.Poset, info processInfo) map[gomel.Unit]bool {
-	allUnits := poset.Get(hashesFromInfo(info))
+func knownUnits(dag gomel.Dag, info processInfo) map[gomel.Unit]bool {
+	allUnits := dag.Get(hashesFromInfo(info))
 	result := map[gomel.Unit]bool{}
 	for _, u := range allUnits {
 		if u != nil {
@@ -159,14 +159,14 @@ func splitOffHeight(units []gomel.Unit, height int) ([]gomel.Unit, []gomel.Unit)
 	return atHeight, rest
 }
 
-func requestedToSend(poset gomel.Poset, info processInfo, req processRequests) ([]gomel.Unit, error) {
+func requestedToSend(dag gomel.Dag, info processInfo, req processRequests) ([]gomel.Unit, error) {
 	result := []gomel.Unit{}
 	if len(req) == 0 {
 		return result, nil
 	}
-	units := poset.Get(req)
+	units := dag.Get(req)
 	operationHeight := maximalHeight(units)
-	knownRemotes := knownUnits(poset, info)
+	knownRemotes := knownUnits(dag, info)
 	knownRemotes = dropToHeight(knownRemotes, operationHeight)
 	for len(units) > 0 {
 		consideredUnits, units := splitOffHeight(units, operationHeight)
@@ -218,8 +218,8 @@ func toLayers(units []gomel.Unit) [][]gomel.Unit {
 	return result
 }
 
-func unitsToSend(poset gomel.Poset, maxSnapshot [][]gomel.Unit, info posetInfo, req requests) ([]gomel.Unit, error) {
-	nProc := poset.NProc()
+func unitsToSend(dag gomel.Dag, maxSnapshot [][]gomel.Unit, info dagInfo, req requests) ([]gomel.Unit, error) {
+	nProc := dag.NProc()
 	toSendPid := make([][]gomel.Unit, nProc)
 	var err error
 	var wg sync.WaitGroup
@@ -229,7 +229,7 @@ func unitsToSend(poset gomel.Poset, maxSnapshot [][]gomel.Unit, info posetInfo, 
 			toSendPid[id] = unitsToSendByProcess(info[id], maxSnapshot[id])
 			if req != nil {
 				unfulfilledRequests := newStaticHashSet(hashesFromUnits(toSendPid[id])).fiterOutKnown(req[id])
-				requested, e := requestedToSend(poset, info[id], unfulfilledRequests)
+				requested, e := requestedToSend(dag, info[id], unfulfilledRequests)
 				if e != nil {
 					err = e
 				}
@@ -249,9 +249,9 @@ func unitsToSend(poset gomel.Poset, maxSnapshot [][]gomel.Unit, info posetInfo, 
 	return toSend, nil
 }
 
-func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown staticHashSet) processRequests {
+func unknownHashes(dag gomel.Dag, info processInfo, alsoKnown staticHashSet) processRequests {
 	result := processRequests{}
-	units := poset.Get(hashesFromInfo(info))
+	units := dag.Get(hashesFromInfo(info))
 	for i, u := range units {
 		if u == nil {
 			if !alsoKnown.contains(info[i].hash) {
@@ -262,13 +262,13 @@ func unknownHashes(poset gomel.Poset, info processInfo, alsoKnown staticHashSet)
 	return result
 }
 
-func requestsToSend(poset gomel.Poset, info posetInfo, alsoKnown staticHashSet) requests {
+func requestsToSend(dag gomel.Dag, info dagInfo, alsoKnown staticHashSet) requests {
 	result := make(requests, len(info))
 	var wg sync.WaitGroup
 	wg.Add(len(info))
 	for i := range info {
 		go func(id int) {
-			result[id] = unknownHashes(poset, info[id], alsoKnown)
+			result[id] = unknownHashes(dag, info[id], alsoKnown)
 			wg.Done()
 		}(i)
 	}

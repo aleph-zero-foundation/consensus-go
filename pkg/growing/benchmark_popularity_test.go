@@ -7,12 +7,12 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) bool {
+func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, dag gomel.Dag) bool {
 	if uc.Level() >= v.Level() || !uc.Below(v) {
 		return false
 	}
 	// simple BFS from v
-	seenProcesses := make([]bool, poset.NProc())
+	seenProcesses := make([]bool, dag.NProc())
 	nSeenProcesses := 0
 	seenUnits := make(map[gomel.Hash]bool)
 	seenUnits[*v.Hash()] = true
@@ -24,7 +24,7 @@ func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) bool {
 			if !seenProcesses[w.Creator()] {
 				seenProcesses[w.Creator()] = true
 				nSeenProcesses++
-				if poset.IsQuorum(nSeenProcesses) {
+				if dag.IsQuorum(nSeenProcesses) {
 					return true
 				}
 			}
@@ -36,17 +36,17 @@ func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) bool {
 			}
 		}
 	}
-	result := poset.IsQuorum(nSeenProcesses)
+	result := dag.IsQuorum(nSeenProcesses)
 	return result
 }
 
-func provesPopularityWithFloors(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) bool {
+func provesPopularityWithFloors(uc gomel.Unit, v gomel.Unit, dag gomel.Dag) bool {
 	if uc.Level() >= v.Level() || !uc.Below(v) {
 		return false
 	}
 	level := v.Level()
 	nSeen := 0
-	nNotSeen := poset.NProc()
+	nNotSeen := dag.NProc()
 	for _, myFloor := range v.(*unit).floor {
 		nNotSeen--
 		for _, w := range myFloor {
@@ -61,24 +61,24 @@ func provesPopularityWithFloors(uc gomel.Unit, v gomel.Unit, poset gomel.Poset) 
 			}
 			if reachedBottom == nil && w.Above(uc) && ((w.Level() == level-2) || ((w.Level() == level-1) && gomel.Prime(w))) {
 				nSeen++
-				if poset.IsQuorum(nSeen) {
+				if dag.IsQuorum(nSeen) {
 					return true
 				}
 				break
 			}
 		}
-		if !poset.IsQuorum(nSeen + nNotSeen) {
+		if !dag.IsQuorum(nSeen + nNotSeen) {
 			return false
 		}
 	}
-	return poset.IsQuorum(nSeen)
+	return dag.IsQuorum(nSeen)
 }
 
 func BenchmarkPopularity(b *testing.B) {
 	var (
-		poset      gomel.Poset
+		dag        gomel.Dag
 		readingErr error
-		pf         posetFactory
+		pf         dagFactory
 		units      map[int]map[int][]gomel.Unit
 	)
 	testfiles := []string{
@@ -86,13 +86,13 @@ func BenchmarkPopularity(b *testing.B) {
 		"random_100p_5000u.txt",
 	}
 	for _, testfile := range testfiles {
-		poset, readingErr = tests.CreatePosetFromTestFile("../testdata/"+testfile, pf)
+		dag, readingErr = tests.CreateDagFromTestFile("../testdata/"+testfile, pf)
 
 		if readingErr != nil {
 			panic(readingErr)
 			return
 		}
-		units = collectUnits(poset)
+		units = collectUnits(dag)
 		unitsByLevel := make(map[int][]gomel.Unit)
 		maxLevel := 0
 		for pid := range units {
@@ -114,7 +114,7 @@ func BenchmarkPopularity(b *testing.B) {
 					for l := level - 2; l >= level-4; l-- {
 						for _, uc := range unitsByLevel[l] {
 							for _, u := range units {
-								provesPopularityBFS(uc, u, poset)
+								provesPopularityBFS(uc, u, dag)
 							}
 						}
 					}
@@ -128,7 +128,7 @@ func BenchmarkPopularity(b *testing.B) {
 					for l := level - 2; l >= level-4; l-- {
 						for _, uc := range unitsByLevel[l] {
 							for _, u := range units {
-								provesPopularityWithFloors(uc, u, poset)
+								provesPopularityWithFloors(uc, u, dag)
 							}
 						}
 					}

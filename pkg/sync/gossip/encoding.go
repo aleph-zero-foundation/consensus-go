@@ -75,10 +75,10 @@ func decodeProcessInfo(r io.Reader) (processInfo, error) {
 	return result, nil
 }
 
-func encodeRequests(w io.Writer, r requests, theirPosetInfo posetInfo) error {
+func encodeRequests(w io.Writer, r requests, theirDagInfo dagInfo) error {
 	k := uint32(0)
 	nReq := uint32(0)
-	for pid, processInfo := range theirPosetInfo {
+	for pid, processInfo := range theirDagInfo {
 		k += uint32(len(processInfo))
 		nReq += uint32(len(r[pid]))
 	}
@@ -90,9 +90,9 @@ func encodeRequests(w io.Writer, r requests, theirPosetInfo posetInfo) error {
 		bs := newBitSet(k)
 		position := uint32(0)
 
-		for pid := range theirPosetInfo {
+		for pid := range theirDagInfo {
 			hashSet := newStaticHashSet((r)[pid])
-			for _, uInfo := range theirPosetInfo[pid] {
+			for _, uInfo := range theirDagInfo[pid] {
 				if hashSet.contains(uInfo.hash) {
 					bs.set(position)
 				}
@@ -107,10 +107,10 @@ func encodeRequests(w io.Writer, r requests, theirPosetInfo posetInfo) error {
 	return nil
 }
 
-func decodeRequests(r io.Reader, myPosetInfo posetInfo) (requests, error) {
-	nProc := len(myPosetInfo)
+func decodeRequests(r io.Reader, myDagInfo dagInfo) (requests, error) {
+	nProc := len(myDagInfo)
 	k := uint32(0)
-	for _, processInfo := range myPosetInfo {
+	for _, processInfo := range myDagInfo {
 		k += uint32(len(processInfo))
 	}
 	nReq, err := decodeUint32(r)
@@ -127,7 +127,7 @@ func decodeRequests(r io.Reader, myPosetInfo posetInfo) (requests, error) {
 		bs := bitSetFromSlice(array)
 
 		position := uint32(0)
-		for pid, processInfo := range myPosetInfo {
+		for pid, processInfo := range myDagInfo {
 			for _, uInfo := range processInfo {
 				if bs.test(position) {
 					result[pid] = append(result[pid], uInfo.hash)

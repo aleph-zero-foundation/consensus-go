@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// WritePoset writes the given poset in the following format
+// WriteDag writes the given dag in the following format
 // 1st line contains integer N - the number of processes
 // Then there is one line per unit in the following format
 // C-H-V [Parents]
@@ -15,7 +15,7 @@ import (
 // (2) H is the Height of a unit,
 // (3) V is the Version of a unit (0 for non-forked units, forks created by the same process on the same height are enumerated with consecutive integers)
 // (4) Parents is the list of units separated by a single space encoded in the same C-H-V format
-func WritePoset(writer io.Writer, p gomel.Poset) error {
+func WriteDag(writer io.Writer, p gomel.Dag) error {
 	fmt.Fprintf(writer, "%d\n", p.NProc())
 
 	seenUnits := make(map[gomel.Hash]bool)

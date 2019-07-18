@@ -49,11 +49,11 @@ func (pu *preunitMock) Parents() []*gomel.Hash {
 	return pu.parents
 }
 
-var _ = Describe("Poset", func() {
+var _ = Describe("Dag", func() {
 
 	var (
 		nProcesses int
-		poset      *Poset
+		dag        *Dag
 		rs         gomel.RandomSource
 		addFirst   [][]*preunitMock
 		wg         sync.WaitGroup
@@ -63,7 +63,7 @@ var _ = Describe("Poset", func() {
 
 	AwaitAddUnit := func(pu gomel.Preunit, rs gomel.RandomSource, wg *sync.WaitGroup) {
 		wg.Add(1)
-		poset.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		dag.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			defer GinkgoRecover()
 			defer wg.Done()
 			Expect(err).NotTo(HaveOccurred())
@@ -72,7 +72,7 @@ var _ = Describe("Poset", func() {
 
 	BeforeEach(func() {
 		nProcesses = 0
-		poset = nil
+		dag = nil
 		addFirst = nil
 		wg = sync.WaitGroup{}
 	})
@@ -96,12 +96,12 @@ var _ = Describe("Poset", func() {
 			for i := 0; i < nProcesses; i++ {
 				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			}
-			poset = NewPoset(&gomel.PosetConfig{Keys: pubKeys})
-			rs = tests.NewTestRandomSource(poset)
+			dag = NewDag(&gomel.DagConfig{Keys: pubKeys})
+			rs = tests.NewTestRandomSource(dag)
 		})
 
 		AfterEach(func() {
-			poset.Stop()
+			dag.Stop()
 		})
 
 		Describe("Adding units", func() {
@@ -133,10 +133,10 @@ var _ = Describe("Poset", func() {
 					addedHash[0] = 43
 				})
 
-				Context("When the poset is empty", func() {
+				Context("When the dag is empty", func() {
 
 					It("Should be added as a dealing unit", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
@@ -148,7 +148,7 @@ var _ = Describe("Poset", func() {
 
 				})
 
-				Context("When the poset already contains the unit", func() {
+				Context("When the dag already contains the unit", func() {
 
 					JustBeforeEach(func() {
 						AwaitAddUnit(addedUnit, rs, &wg)
@@ -156,18 +156,18 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should report that fact", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewDuplicateUnit(poset.Get([]*gomel.Hash{pu.Hash()})[0])))
+							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{pu.Hash()})[0])))
 							close(done)
 						})
 					})
 
 				})
 
-				Context("When the poset contains another parentless unit for this process", func() {
+				Context("When the dag contains another parentless unit for this process", func() {
 
 					BeforeEach(func() {
 						pu := &preunitMock{}
@@ -176,7 +176,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should be added as a second dealing unit", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
@@ -199,10 +199,10 @@ var _ = Describe("Poset", func() {
 					parentHashes[0] = &gomel.Hash{1}
 				})
 
-				Context("When the poset is empty", func() {
+				Context("When the dag is empty", func() {
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -213,7 +213,7 @@ var _ = Describe("Poset", func() {
 
 				})
 
-				Context("When the poset contains the parent", func() {
+				Context("When the dag contains the parent", func() {
 
 					BeforeEach(func() {
 						pu := &preunitMock{}
@@ -222,7 +222,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should fail because of too few parents", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -244,10 +244,10 @@ var _ = Describe("Poset", func() {
 					parentHashes[1] = &gomel.Hash{2}
 				})
 
-				Context("When the poset is empty", func() {
+				Context("When the dag is empty", func() {
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -258,7 +258,7 @@ var _ = Describe("Poset", func() {
 
 				})
 
-				Context("When the poset contains one of the parents", func() {
+				Context("When the dag contains one of the parents", func() {
 
 					BeforeEach(func() {
 						pu := &preunitMock{}
@@ -267,7 +267,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should fail because of lack of parents", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result).To(BeNil())
@@ -278,7 +278,7 @@ var _ = Describe("Poset", func() {
 
 				})
 
-				Context("When the poset contains all the parents", func() {
+				Context("When the dag contains all the parents", func() {
 
 					BeforeEach(func() {
 						pu1 := &preunitMock{}
@@ -290,7 +290,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("Should add the unit successfully", func(done Done) {
-						poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
@@ -302,7 +302,7 @@ var _ = Describe("Poset", func() {
 						})
 					})
 
-					Context("When the poset already contains the unit", func() {
+					Context("When the dag already contains the unit", func() {
 
 						JustBeforeEach(func() {
 							AwaitAddUnit(addedUnit, rs, &wg)
@@ -310,11 +310,11 @@ var _ = Describe("Poset", func() {
 						})
 
 						It("Should report that fact", func(done Done) {
-							poset.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							dag.AddUnit(addedUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 								Expect(result).To(BeNil())
-								Expect(err).To(MatchError(gomel.NewDuplicateUnit(poset.Get([]*gomel.Hash{pu.Hash()})[0])))
+								Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{pu.Hash()})[0])))
 								close(done)
 							})
 						})
@@ -329,10 +329,10 @@ var _ = Describe("Poset", func() {
 
 		Describe("Retrieving units", func() {
 
-			Context("When the poset is empty", func() {
+			Context("When the dag is empty", func() {
 
 				It("Should not return any maximal units", func() {
-					maxUnits := poset.MaximalUnitsPerProcess()
+					maxUnits := dag.MaximalUnitsPerProcess()
 					Expect(maxUnits).NotTo(BeNil())
 					for i := 0; i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
@@ -341,7 +341,7 @@ var _ = Describe("Poset", func() {
 
 				It("Should not return any prime units", func() {
 					for l := 0; l < 10; l++ {
-						primeUnits := poset.PrimeUnits(l)
+						primeUnits := dag.PrimeUnits(l)
 						Expect(primeUnits).NotTo(BeNil())
 						for i := 0; i < nProcesses; i++ {
 							Expect(len(primeUnits.Get(i))).To(BeZero())
@@ -351,7 +351,7 @@ var _ = Describe("Poset", func() {
 
 			})
 
-			Context("When the poset already contains one unit", func() {
+			Context("When the dag already contains one unit", func() {
 
 				BeforeEach(func() {
 					pu := &preunitMock{}
@@ -361,7 +361,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return it as the only maximal unit", func() {
-					maxUnits := poset.MaximalUnitsPerProcess()
+					maxUnits := dag.MaximalUnitsPerProcess()
 					Expect(maxUnits).NotTo(BeNil())
 					Expect(len(maxUnits.Get(0))).To(Equal(1))
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
@@ -371,7 +371,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return it as the only prime unit", func() {
-					primeUnits := poset.PrimeUnits(0)
+					primeUnits := dag.PrimeUnits(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
@@ -382,7 +382,7 @@ var _ = Describe("Poset", func() {
 
 			})
 
-			Context("When the poset contains two units created by different processes", func() {
+			Context("When the dag contains two units created by different processes", func() {
 
 				BeforeEach(func() {
 					pu1 := &preunitMock{}
@@ -395,7 +395,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return both of them as maximal units", func() {
-					maxUnits := poset.MaximalUnitsPerProcess()
+					maxUnits := dag.MaximalUnitsPerProcess()
 					Expect(maxUnits).NotTo(BeNil())
 					Expect(len(maxUnits.Get(0))).To(Equal(1))
 					Expect(len(maxUnits.Get(1))).To(Equal(1))
@@ -407,7 +407,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return both of them as the respective prime units", func() {
-					primeUnits := poset.PrimeUnits(0)
+					primeUnits := dag.PrimeUnits(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(len(primeUnits.Get(1))).To(Equal(1))
@@ -420,7 +420,7 @@ var _ = Describe("Poset", func() {
 
 			})
 
-			Context("When the poset contains two units created by the same process", func() {
+			Context("When the dag contains two units created by the same process", func() {
 
 				BeforeEach(func() {
 					pu1 := &preunitMock{}
@@ -433,7 +433,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return both of them as maximal units", func() {
-					maxUnits := poset.MaximalUnitsPerProcess()
+					maxUnits := dag.MaximalUnitsPerProcess()
 					Expect(maxUnits).NotTo(BeNil())
 					Expect(len(maxUnits.Get(0))).To(Equal(2))
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
@@ -444,7 +444,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return both of them as the respective prime units", func() {
-					primeUnits := poset.PrimeUnits(0)
+					primeUnits := dag.PrimeUnits(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(2))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
@@ -456,7 +456,7 @@ var _ = Describe("Poset", func() {
 
 			})
 
-			Context("When the poset contains a unit above another one", func() {
+			Context("When the dag contains a unit above another one", func() {
 
 				BeforeEach(func() {
 					pu1 := &preunitMock{}
@@ -473,7 +473,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return it and one of its parents as maximal units", func() {
-					maxUnits := poset.MaximalUnitsPerProcess()
+					maxUnits := dag.MaximalUnitsPerProcess()
 					Expect(maxUnits).NotTo(BeNil())
 					Expect(len(maxUnits.Get(0))).To(Equal(1))
 					Expect(len(maxUnits.Get(1))).To(Equal(1))
@@ -485,7 +485,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return both of the parents as the respective prime units and not the top unit", func() {
-					primeUnits := poset.PrimeUnits(0)
+					primeUnits := dag.PrimeUnits(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(len(primeUnits.Get(1))).To(Equal(1))
@@ -494,7 +494,7 @@ var _ = Describe("Poset", func() {
 					for i := 2; i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
-					primeUnits = poset.PrimeUnits(1)
+					primeUnits = dag.PrimeUnits(1)
 					Expect(primeUnits).NotTo(BeNil())
 					for i := 0; i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
@@ -507,7 +507,7 @@ var _ = Describe("Poset", func() {
 
 		Describe("Growing level", func() {
 
-			Context("When the poset contains dealing units and 3 additional units", func() {
+			Context("When the dag contains dealing units and 3 additional units", func() {
 
 				BeforeEach(func() {
 					pu0 := &preunitMock{}
@@ -542,7 +542,7 @@ var _ = Describe("Poset", func() {
 				})
 
 				It("Should return exactly two prime units at level 1 (processes 0, 1).", func() {
-					primeUnits := poset.PrimeUnits(1)
+					primeUnits := dag.PrimeUnits(1)
 					Expect(primeUnits).NotTo(BeNil())
 
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
@@ -590,7 +590,7 @@ var _ = Describe("Poset", func() {
 					validUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash}
 					(&validUnit).SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
 
-					poset.AddUnit(&validUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+					dag.AddUnit(&validUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 						defer GinkgoRecover()
 						Expect(err).NotTo(HaveOccurred())
 						close(done)
@@ -628,7 +628,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)
@@ -662,7 +662,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)
@@ -719,7 +719,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(muted, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(muted, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)
@@ -739,7 +739,7 @@ var _ = Describe("Poset", func() {
 						})
 
 						It("should reject a unit", func(done Done) {
-							poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							dag.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 								close(done)
@@ -758,7 +758,7 @@ var _ = Describe("Poset", func() {
 
 						It("should reject a unit", func(done Done) {
 
-							poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							dag.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 								close(done)
@@ -777,7 +777,7 @@ var _ = Describe("Poset", func() {
 
 						It("should reject a unit", func(done Done) {
 
-							poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+							dag.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 								defer GinkgoRecover()
 								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 								close(done)
@@ -804,7 +804,7 @@ var _ = Describe("Poset", func() {
 					})
 
 					It("should reject a unit", func(done Done) {
-						poset.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
+						dag.AddUnit(&invalidUnit, rs, func(pu gomel.Preunit, result gomel.Unit, err error) {
 							defer GinkgoRecover()
 							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 							close(done)

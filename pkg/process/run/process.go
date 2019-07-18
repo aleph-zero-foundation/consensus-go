@@ -34,11 +34,11 @@ func startAll(services []process.Service) error {
 
 // Process runs all the services with the configuration provided.
 // It blocks until all of them are done.
-func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
-	posetFinished := make(chan struct{})
+func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
+	dagFinished := make(chan struct{})
 	var services []process.Service
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
-	// creator/syncer should send a notification to the channel when a new prime unit is added to the poset
+	// creator/syncer should send a notification to the channel when a new prime unit is added to the dag
 	// orderer attempts timing decision after receiving the notification
 	attemptTimingRequests := make(chan int)
 	// orderedUnits is a channel shared between orderer and validator
@@ -46,32 +46,32 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	// validator reads the units from the channel and validates transactions contained in the unit
 	// We expect to order about one level of units at once, which should be around the size of the committee.
 	// The buffer has size taking that into account with some leeway.
-	orderedUnits := make(chan gomel.Unit, 2*config.Poset.NProc())
+	orderedUnits := make(chan gomel.Unit, 2*config.Dag.NProc())
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
-	poset := growing.NewPoset(config.Poset)
-	rs := random.NewTcSource(poset, config.Create.Pid)
-	defer poset.Stop()
+	dag := growing.NewDag(config.Dag)
+	rs := random.NewTcSource(dag, config.Create.Pid)
+	defer dag.Stop()
 
-	service, err := create.NewService(poset, rs, config.Create, posetFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	service, err := create.NewService(dag, rs, config.Create, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return nil, err
 	}
 	services = append(services, service)
 
-	service, err = order.NewService(poset, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	service, err = order.NewService(dag, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
 		return nil, err
 	}
 	services = append(services, service)
 
-	service, err = validate.NewService(poset, config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
+	service, err = validate.NewService(dag, config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
 	if err != nil {
 		return nil, err
 	}
 	services = append(services, service)
 
-	service, err = generate.NewService(poset, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
+	service, err = generate.NewService(dag, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 	}
 	services = append(services, service)
 
-	service, err = sync.NewService(poset, rs, config.Sync, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
+	service, err = sync.NewService(dag, rs, config.Sync, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +94,6 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Poset, error) {
 		return nil, err
 	}
 	defer stopAll(services)
-	<-posetFinished
-	return poset, nil
+	<-dagFinished
+	return dag, nil
 }

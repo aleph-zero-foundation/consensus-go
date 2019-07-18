@@ -7,8 +7,8 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
-// Poset is a basic implementation of poset for testing
-type Poset struct {
+// Dag is a basic implementation of dag for testing
+type Dag struct {
 	sync.RWMutex
 	nProcesses int
 	primeUnits []gomel.SlottedUnits
@@ -18,24 +18,24 @@ type Poset struct {
 	unitByHash    map[gomel.Hash]gomel.Unit
 }
 
-func newPoset(posetConfiguration gomel.PosetConfig) *Poset {
-	n := posetConfiguration.NProc()
+func newDag(dagConfiguration gomel.DagConfig) *Dag {
+	n := dagConfiguration.NProc()
 	maxHeight := make([]int, n)
 	for pid := 0; pid < n; pid++ {
 		maxHeight[pid] = -1
 	}
-	newPoset := &Poset{
+	newDag := &Dag{
 		nProcesses:    n,
 		primeUnits:    []gomel.SlottedUnits{},
 		unitsByHeight: []gomel.SlottedUnits{},
 		maximalHeight: maxHeight,
 		unitByHash:    make(map[gomel.Hash]gomel.Unit),
 	}
-	return newPoset
+	return newDag
 }
 
 // AddUnit adds a unit in a thread safe manner without trying to be clever.
-func (p *Poset) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	var u unit
 	err := dehashParents(&u, p, pu)
 	if err != nil {
@@ -47,13 +47,13 @@ func (p *Poset) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(g
 	setLevel(&u, p)
 	setFloor(&u, p)
 
-	//Setting poset variables
-	updatePoset(&u, p)
+	//Setting dag variables
+	updateDag(&u, p)
 	callback(pu, &u, nil)
 }
 
 // PrimeUnits returns the prime units at the given level.
-func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
+func (p *Dag) PrimeUnits(level int) gomel.SlottedUnits {
 	p.RLock()
 	defer p.RUnlock()
 	if level < len(p.primeUnits) {
@@ -63,7 +63,7 @@ func (p *Poset) PrimeUnits(level int) gomel.SlottedUnits {
 }
 
 // MaximalUnitsPerProcess returns the maximal units for all processes.
-func (p *Poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
+func (p *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	p.RLock()
 	defer p.RUnlock()
 	su := newSlottedUnits(p.nProcesses)
@@ -76,7 +76,7 @@ func (p *Poset) MaximalUnitsPerProcess() gomel.SlottedUnits {
 }
 
 // Get retunrs the units with the given hashes or nil, when it doesn't find them.
-func (p *Poset) Get(hashes []*gomel.Hash) []gomel.Unit {
+func (p *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
 	p.RLock()
 	defer p.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
@@ -86,19 +86,19 @@ func (p *Poset) Get(hashes []*gomel.Hash) []gomel.Unit {
 	return result
 }
 
-// NProc returns the number of processes in this poset.
-func (p *Poset) NProc() int {
+// NProc returns the number of processes in this dag.
+func (p *Dag) NProc() int {
 	// nProcesses doesn't change so no lock needed
 	return p.nProcesses
 }
 
 // IsQuorum checks whether the provided number of processes constitutes a quorum.
-func (p *Poset) IsQuorum(number int) bool {
+func (p *Dag) IsQuorum(number int) bool {
 	// nProcesses doesn't change so no lock needed
 	return 3*number >= 2*p.nProcesses
 }
 
-func dehashParents(u *unit, p *Poset, pu gomel.Preunit) error {
+func dehashParents(u *unit, p *Dag, pu gomel.Preunit) error {
 	p.RLock()
 	defer p.RUnlock()
 	u.parents = []gomel.Unit{}
@@ -111,7 +111,7 @@ func dehashParents(u *unit, p *Poset, pu gomel.Preunit) error {
 	return nil
 }
 
-func setBasicInfo(u *unit, p *Poset, pu gomel.Preunit) {
+func setBasicInfo(u *unit, p *Dag, pu gomel.Preunit) {
 	p.RLock()
 	defer p.RUnlock()
 	u.creator = pu.Creator()
@@ -131,7 +131,7 @@ func setBasicInfo(u *unit, p *Poset, pu gomel.Preunit) {
 	}
 }
 
-func updatePoset(u *unit, p *Poset) {
+func updateDag(u *unit, p *Dag) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -162,7 +162,7 @@ func updatePoset(u *unit, p *Poset) {
 	p.unitByHash[*u.Hash()] = u
 }
 
-func setFloor(u *unit, p *Poset) {
+func setFloor(u *unit, p *Dag) {
 	p.RLock()
 	defer p.RUnlock()
 	parentsFloorUnion := make([][]gomel.Unit, p.NProc())
@@ -193,7 +193,7 @@ func setFloor(u *unit, p *Poset) {
 	u.floor = result
 }
 
-func setLevel(u *unit, p *Poset) {
+func setLevel(u *unit, p *Dag) {
 	p.RLock()
 	defer p.RUnlock()
 	if u.Height() == 0 {
@@ -231,7 +231,7 @@ func setLevel(u *unit, p *Poset) {
 	}
 }
 
-func (p *Poset) getPrimeUnitsOnLevel(level int) []gomel.Unit {
+func (p *Dag) getPrimeUnitsOnLevel(level int) []gomel.Unit {
 	result := []gomel.Unit{}
 	for pid := 0; pid < p.NProc(); pid++ {
 		result = append(result, p.primeUnits[level].Get(pid)...)

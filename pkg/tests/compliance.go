@@ -4,7 +4,7 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
-func checkExpandPrimes(p *Poset, pu gomel.Preunit) bool {
+func checkExpandPrimes(p *Dag, pu gomel.Preunit) bool {
 	parents := p.Get(pu.Parents())
 	lastLevel := -1
 	var primesSeen map[gomel.Hash]bool

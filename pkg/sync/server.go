@@ -13,7 +13,7 @@ type Server struct {
 	log     zerolog.Logger
 }
 
-// NewServer constructs a server for the given poset, channels of incoming and outgoing connections, protocols for connection handling,
+// NewServer constructs a server for the given dag, channels of incoming and outgoing connections, protocols for connection handling,
 // and maximal numbers of syncs to initialize and receive.
 func NewServer(proto Protocol, nOut, nIn uint, log zerolog.Logger) *Server {
 	return &Server{

@@ -29,43 +29,43 @@ func runOfflineTest() {
 		pubKeys[pid], privKeys[pid], _ = signing.GenerateKeys()
 	}
 
-	config := &gomel.PosetConfig{pubKeys}
-	posets := make([]gomel.Poset, nProcesses)
+	config := &gomel.DagConfig{pubKeys}
+	dags := make([]gomel.Dag, nProcesses)
 	rses := make([]gomel.RandomSource, nProcesses)
 
-	// start goroutines waiting for a preunit and adding it to its' poset
+	// start goroutines waiting for a preunit and adding it to its' dag
 	for pid := 0; pid < nProcesses; pid++ {
-		posets[pid] = growing.NewPoset(config)
-		rses[pid] = random.NewTcSource(posets[pid], pid)
+		dags[pid] = growing.NewDag(config)
+		rses[pid] = random.NewTcSource(dags[pid], pid)
 	}
 
 	for i := 0; i < nUnits; i++ {
 		// the following loop tries to create a one unit and after a success
-		// it sends it to other posets and stops
+		// it sends it to other dags and stops
 		var pu gomel.Preunit
 		for {
 			// choose the unit creator and create a unit
 			creator := rand.Intn(nProcesses)
-			poset := posets[creator]
+			dag := dags[creator]
 			rs := rses[creator]
 			var err error
-			if pu, err = creating.NewUnit(poset, creator, maxParents, []byte{}, rs, true); err != nil {
+			if pu, err = creating.NewUnit(dag, creator, maxParents, []byte{}, rs, true); err != nil {
 				continue
 			}
 			pu.SetSignature(privKeys[creator].Sign(pu))
 
-			// add the unit to creator's poset
+			// add the unit to creator's dag
 			if i%50 == 0 {
 				fmt.Println("Adding unit no", i, "out of", nUnits)
 			}
 			break
 		}
 
-		// send the unit to other posets
+		// send the unit to other dags
 		var wg sync.WaitGroup
 		wg.Add(nProcesses)
 		for j := 0; j < nProcesses; j++ {
-			posets[j].AddUnit(pu, rses[j], func(pu gomel.Preunit, u gomel.Unit, err error) {
+			dags[j].AddUnit(pu, rses[j], func(pu gomel.Preunit, u gomel.Unit, err error) {
 				defer wg.Done()
 				if err != nil {
 					switch err.(type) {

@@ -10,9 +10,9 @@ import (
 )
 
 var _ = Describe("Creating", func() {
-	Describe("in a small poset", func() {
+	Describe("in a small dag", func() {
 		var (
-			p  gomel.Poset
+			p  gomel.Dag
 			rs gomel.RandomSource
 			h1 gomel.Hash
 			h2 gomel.Hash
@@ -22,7 +22,7 @@ var _ = Describe("Creating", func() {
 		})
 		Context("that is empty", func() {
 			BeforeEach(func() {
-				p, _ = tests.CreatePosetFromTestFile("../testdata/empty.txt", tests.NewTestPosetFactory())
+				p, _ = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
 			})
 			It("should return a dealing unit", func() {
 				pu, err := NewUnit(p, 0, p.NProc(), []byte{}, rs, false)
@@ -40,7 +40,7 @@ var _ = Describe("Creating", func() {
 
 		Context("that contains a single dealing unit", func() {
 			BeforeEach(func() {
-				p, _ = tests.CreatePosetFromTestFile("../testdata/one_unit.txt", tests.NewTestPosetFactory())
+				p, _ = tests.CreateDagFromTestFile("../testdata/one_unit.txt", tests.NewTestDagFactory())
 			})
 			It("should return a dealing unit for a different creator", func() {
 				pu, err := NewUnit(p, 3, p.NProc(), []byte{}, rs, false)
@@ -57,7 +57,7 @@ var _ = Describe("Creating", func() {
 
 		Context("that contains two dealing units", func() {
 			BeforeEach(func() {
-				p, _ = tests.CreatePosetFromTestFile("../testdata/two_dealing.txt", tests.NewTestPosetFactory())
+				p, _ = tests.CreateDagFromTestFile("../testdata/two_dealing.txt", tests.NewTestDagFactory())
 				h1 = *p.PrimeUnits(0).Get(0)[0].Hash()
 				h2 = *p.PrimeUnits(0).Get(1)[0].Hash()
 			})
@@ -79,7 +79,7 @@ var _ = Describe("Creating", func() {
 
 		Context("that contains all the dealing units", func() {
 			BeforeEach(func() {
-				p, _ = tests.CreatePosetFromTestFile("../testdata/only_dealing.txt", tests.NewTestPosetFactory())
+				p, _ = tests.CreateDagFromTestFile("../testdata/only_dealing.txt", tests.NewTestDagFactory())
 				h1 = *p.PrimeUnits(0).Get(0)[0].Hash()
 			})
 			It("should return a unit with some parents", func() {

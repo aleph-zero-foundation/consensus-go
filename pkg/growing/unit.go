@@ -79,11 +79,11 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	return len(u.floor[creator]) > 1
 }
 
-func (u *unit) initialize(poset *Poset) {
+func (u *unit) initialize(dag *Dag) {
 	u.computeHeight()
-	u.computeFloor(poset.nProcesses)
+	u.computeFloor(dag.nProcesses)
 	u.computeLevel()
-	u.computeForkingHeight(poset)
+	u.computeForkingHeight(dag)
 }
 
 func (u *unit) addParent(parent gomel.Unit) {
@@ -209,7 +209,7 @@ func (u *unit) computeLevel() {
 	u.setLevel(level)
 }
 
-func (u *unit) computeForkingHeight(p *Poset) {
+func (u *unit) computeForkingHeight(p *Dag) {
 	// this implementation works as long as there is no race for writing/reading to p.maxUnits, i.e.
 	// as long as units created by one process are added atomically
 	if gomel.Dealing(u) {

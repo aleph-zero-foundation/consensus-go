@@ -13,9 +13,9 @@ type unitBuilt struct {
 	done    func(gomel.Preunit, gomel.Unit, error)
 }
 
-// AddUnit adds the provided Preunit to the poset as a Unit.
+// AddUnit adds the provided Preunit to the dag as a Unit.
 // When done calls the callback.
-func (p *Poset) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	if pu.Creator() < 0 || pu.Creator() >= p.nProcesses {
 		callback(pu, nil, gomel.NewDataError("Invalid creator."))
 		return
@@ -29,14 +29,14 @@ func (p *Poset) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(g
 	p.adders[pu.Creator()] <- toAdd
 }
 
-func (p *Poset) verifySignature(pu gomel.Preunit) error {
+func (p *Dag) verifySignature(pu gomel.Preunit) error {
 	if !p.pubKeys[pu.Creator()].Verify(pu) {
 		return gomel.NewDataError("Invalid Signature")
 	}
 	return nil
 }
 
-func (p *Poset) addPrime(u gomel.Unit) {
+func (p *Dag) addPrime(u gomel.Unit) {
 	if u.Level() >= p.primeUnits.Len() {
 		p.primeUnits.extendBy(10)
 	}
@@ -54,11 +54,11 @@ func (p *Poset) addPrime(u gomel.Unit) {
 	su.Set(creator, primesByCreator)
 }
 
-func (p *Poset) updateMaximal(u gomel.Unit) {
+func (p *Dag) updateMaximal(u gomel.Unit) {
 	creator := u.Creator()
 	maxByCreator := p.maxUnits.Get(creator)
 	newMaxByCreator := make([]gomel.Unit, 0)
-	// The below code works properly assuming that no unit in the Poset created by creator is >= u
+	// The below code works properly assuming that no unit in the Dag created by creator is >= u
 	for _, v := range maxByCreator {
 		if !v.Below(u) {
 			newMaxByCreator = append(newMaxByCreator, v)
@@ -68,7 +68,7 @@ func (p *Poset) updateMaximal(u gomel.Unit) {
 	p.maxUnits.Set(creator, newMaxByCreator)
 }
 
-func (p *Poset) dehashParents(ub *unitBuilt) error {
+func (p *Dag) dehashParents(ub *unitBuilt) error {
 	if u := p.Get([]*gomel.Hash{ub.preunit.Hash()}); u[0] != nil {
 		return gomel.NewDuplicateUnit(u[0])
 	}
@@ -82,7 +82,7 @@ func (p *Poset) dehashParents(ub *unitBuilt) error {
 	return nil
 }
 
-func (p *Poset) prepareUnit(ub *unitBuilt) error {
+func (p *Dag) prepareUnit(ub *unitBuilt) error {
 	err := p.dehashParents(ub)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (p *Poset) prepareUnit(ub *unitBuilt) error {
 	return p.checkCompliance(ub.result, ub.rs)
 }
 
-func (p *Poset) addUnit(ub *unitBuilt) {
+func (p *Dag) addUnit(ub *unitBuilt) {
 	err := p.prepareUnit(ub)
 	if err != nil {
 		ub.done(ub.preunit, nil, err)
@@ -110,7 +110,7 @@ func (p *Poset) addUnit(ub *unitBuilt) {
 	ub.done(ub.preunit, ub.result, nil)
 }
 
-func (p *Poset) adder(incoming chan *unitBuilt) {
+func (p *Dag) adder(incoming chan *unitBuilt) {
 	defer p.tasks.Done()
 	for ub := range incoming {
 		p.addUnit(ub)

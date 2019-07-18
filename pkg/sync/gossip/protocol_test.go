@@ -16,21 +16,21 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type poset struct {
-	*tests.Poset
+type dag struct {
+	*tests.Dag
 	attemptedAdd []gomel.Preunit
 }
 
-func (p *poset) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	p.attemptedAdd = append(p.attemptedAdd, unit)
-	p.Poset.AddUnit(unit, rs, callback)
+	p.Dag.AddUnit(unit, rs, callback)
 }
 
 var _ = Describe("Protocol", func() {
 
 	var (
-		p1     *poset
-		p2     *poset
+		p1     *dag
+		p2     *dag
 		rs1    gomel.RandomSource
 		rs2    gomel.RandomSource
 		proto1 gsync.Protocol
@@ -50,21 +50,21 @@ var _ = Describe("Protocol", func() {
 		proto2 = NewProtocol(1, p2, rs2, d, ls[1], NewDefaultPeerSource(2, 1), time.Second, make(chan int), zerolog.Nop())
 	})
 
-	Describe("in a small poset", func() {
+	Describe("in a small dag", func() {
 
 		Context("when both copies are empty", func() {
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				tp1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &poset{
-					Poset:        tp1.(*tests.Poset),
+				p1 = &dag{
+					Dag:          tp1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				tp2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &poset{
-					Poset:        tp2.(*tests.Poset),
+				p2 = &dag{
+					Dag:          tp2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})
@@ -93,17 +93,17 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/one_unit.txt", tests.NewTestPosetFactory())
+				tp1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &poset{
-					Poset:        tp1.(*tests.Poset),
+				p1 = &dag{
+					Dag:          tp1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				theUnit = tp1.MaximalUnitsPerProcess().Get(0)[0]
-				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				tp2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &poset{
-					Poset:        tp2.(*tests.Poset),
+				p2 = &dag{
+					Dag:          tp2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})
@@ -132,16 +132,16 @@ var _ = Describe("Protocol", func() {
 		Context("when the second copy contains a single dealing unit", func() {
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
+				tp1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &poset{
-					Poset:        tp1.(*tests.Poset),
+				p1 = &dag{
+					Dag:          tp1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/other_unit.txt", tests.NewTestPosetFactory())
+				tp2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
 				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &poset{
-					Poset:        tp2.(*tests.Poset),
+				p2 = &dag{
+					Dag:          tp2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})
@@ -169,16 +169,16 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies contain all the dealing units", func() {
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/only_dealing.txt", tests.NewTestPosetFactory())
+				tp1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource(tp1)
-				p1 = &poset{
-					Poset:        tp1.(*tests.Poset),
+				p1 = &dag{
+					Dag:          tp1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				tp2 := tp1
 				rs2 = tests.NewTestRandomSource(tp2)
-				p2 = &poset{
-					Poset:        tp2.(*tests.Poset),
+				p2 = &dag{
+					Dag:          tp2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 			})

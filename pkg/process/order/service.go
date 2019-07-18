@@ -30,10 +30,10 @@ type service struct {
 }
 
 // NewService is a constructor of an ordering service
-func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		pid:                   config.Pid,
-		linearOrdering:        linear.NewOrdering(poset, randomSource, config.VotingLevel, config.PiDeltaLevel),
+		linearOrdering:        linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel),
 		attemptTimingRequests: attemptTimingRequests,
 		orderedUnits:          orderedUnits,
 		extendOrderRequests:   make(chan int, 10),

@@ -18,7 +18,7 @@ const (
 )
 
 type service struct {
-	poset            gomel.Poset
+	dag              gomel.Dag
 	randomSource     gomel.RandomSource
 	pid              int
 	maxParents       int
@@ -31,23 +31,23 @@ type service struct {
 	ticker           *time.Ticker
 	dataSource       <-chan []byte
 	primeUnitCreated chan<- int
-	posetFinished    chan<- struct{}
+	dagFinished      chan<- struct{}
 	done             chan struct{}
 	log              zerolog.Logger
 	wg               sync.WaitGroup
 }
 
-// NewService constructs a creating service for the given poset with the given configuration.
+// NewService constructs a creating service for the given dag with the given configuration.
 // The service creates units with self-adjusting delay. It aims to create units as quickly as possible, while creating only prime units.
 // Whenever a prime unit is created, the delay is decreased (multiplying by an adjustment factor).
 // Whenever a non-prime unit is created, the delay is increased (dividing by an adjustment factor).
 // Whenever two consecutive units are not prime, the adjustment factor is increased (by a constant ratio positiveJerk)
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
-// The service will close posetFinished channel when it stops.
-func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *process.Create, posetFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
+// The service will close dagFinished channel when it stops.
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
-		poset:            poset,
+		dag:              dag,
 		randomSource:     randomSource,
 		pid:              config.Pid,
 		maxParents:       config.MaxParents,
@@ -60,7 +60,7 @@ func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *proc
 		ticker:           time.NewTicker(config.InitialDelay),
 		dataSource:       dataSource,
 		primeUnitCreated: primeUnitCreated,
-		posetFinished:    posetFinished,
+		dagFinished:      dagFinished,
 		done:             make(chan struct{}),
 		log:              log,
 	}, nil
@@ -124,7 +124,7 @@ func (s *service) getData() []byte {
 }
 
 func (s *service) createUnit() {
-	created, err := creating.NewUnit(s.poset, s.pid, s.maxParents, s.getData(),
+	created, err := creating.NewUnit(s.dag, s.pid, s.maxParents, s.getData(),
 		s.randomSource, s.primeOnly)
 	if err != nil {
 		s.slower()
@@ -135,10 +135,10 @@ func (s *service) createUnit() {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	s.poset.AddUnit(created, s.randomSource, func(_ gomel.Preunit, added gomel.Unit, err error) {
+	s.dag.AddUnit(created, s.randomSource, func(_ gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
-			s.log.Error().Str("where", "poset.AddUnit callback").Msg(err.Error())
+			s.log.Error().Str("where", "dag.AddUnit callback").Msg(err.Error())
 			return
 		}
 
@@ -153,7 +153,7 @@ func (s *service) createUnit() {
 
 		if added.Level() >= s.maxLevel {
 			s.ticker.Stop()
-			close(s.posetFinished)
+			close(s.dagFinished)
 		}
 	})
 	wg.Wait()

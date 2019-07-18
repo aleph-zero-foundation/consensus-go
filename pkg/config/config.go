@@ -27,7 +27,7 @@ type Configuration struct {
 	// Will be removed completely in the future, whengomel becomes transaction-agnostic.
 	Txpu uint
 
-	// When a unit of this level is added to the poset, the process shuts down.
+	// When a unit of this level is added to the dag, the process shuts down.
 	LevelLimit uint
 
 	// The level at which the first voting round occurs, this is "t" from the write-up.

@@ -7,14 +7,14 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
-// CreateRandomNonForking creates a random test poset when given
+// CreateRandomNonForking creates a random test dag when given
 // nProcesses - number of processes
 // minParents - minimal number of unit parents (valid for non-dealing units)
 // maxParents - maximal number of unit parents (valid for non-dealing units)
-// nUnits     - number of units to include in the poset
-func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gomel.Poset {
+// nUnits     - number of units to include in the dag
+func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	p := newPoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
+	p := newDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
 	rs := NewTestRandomSource(p)
 	created := 0
 	for created < nUnits {

@@ -9,15 +9,15 @@ import (
 	"strings"
 )
 
-var _ = Describe("PosetReader", func() {
-	var p gomel.Poset
+var _ = Describe("DagReader", func() {
+	var p gomel.Dag
 	var err error
-	Describe("CreatePosetFromTestFile", func() {
+	Describe("CreateDagFromTestFile", func() {
 		Context("On random_10_100u_2par file", func() {
 			BeforeEach(func() {
-				p, err = CreatePosetFromTestFile("../testdata/random_10p_100u_2par.txt", NewTestPosetFactory())
+				p, err = CreateDagFromTestFile("../testdata/random_10p_100u_2par.txt", NewTestDagFactory())
 			})
-			It("Should return poset with 10 parents and 100 units", func() {
+			It("Should return dag with 10 parents and 100 units", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(p.NProc()).To(Equal(10))
 				Expect(countUnits(p)).To(Equal(100))
@@ -25,18 +25,18 @@ var _ = Describe("PosetReader", func() {
 		})
 		Context("On non existing file", func() {
 			BeforeEach(func() {
-				p, err = CreatePosetFromTestFile("blabla", NewTestPosetFactory())
+				p, err = CreateDagFromTestFile("blabla", NewTestDagFactory())
 			})
-			It("Should return poset with 10 parents and 100 units", func() {
+			It("Should return dag with 10 parents and 100 units", func() {
 				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
-	Describe("ReadPoset", func() {
+	Describe("ReadDag", func() {
 		Context("On some trash", func() {
 			It("Should return an error", func() {
 				trashString := "fdjalskjfdalkjfa"
-				p, err = ReadPoset(strings.NewReader(trashString), NewTestPosetFactory())
+				p, err = ReadDag(strings.NewReader(trashString), NewTestDagFactory())
 				Expect(err).To(HaveOccurred())
 			})
 		})

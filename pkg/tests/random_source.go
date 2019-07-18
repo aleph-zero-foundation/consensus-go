@@ -9,9 +9,9 @@ type testRandomSource struct {
 }
 
 // NewTestRandomSource returns a simple RandomSource for testing
-func NewTestRandomSource(poset gomel.Poset) gomel.RandomSource {
+func NewTestRandomSource(dag gomel.Dag) gomel.RandomSource {
 	return &testRandomSource{
-		nProc: poset.NProc(),
+		nProc: dag.NProc(),
 	}
 }
 

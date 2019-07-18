@@ -13,14 +13,14 @@ import (
 
 var _ = Describe("Encoding/Decoding", func() {
 	var (
-		p          gomel.Poset
+		p          gomel.Dag
 		readingErr error
 		encoder    Encoder
 		decoder    Decoder
 		network    *bytes.Buffer
 	)
 	BeforeEach(func() {
-		p, readingErr = tests.CreatePosetFromTestFile("../../testdata/regular1.txt", tests.NewTestPosetFactory())
+		p, readingErr = tests.CreateDagFromTestFile("../../testdata/regular1.txt", tests.NewTestDagFactory())
 		Expect(readingErr).NotTo(HaveOccurred())
 		network = &bytes.Buffer{}
 		encoder = NewEncoder(network)

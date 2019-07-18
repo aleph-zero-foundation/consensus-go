@@ -8,7 +8,7 @@ import (
 
 // Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
-	poset               gomel.Poset
+	dag                 gomel.Dag
 	randomSource        gomel.RandomSource
 	timingUnits         *safeUnitSlice
 	unitPositionInOrder map[gomel.Hash]int
@@ -22,10 +22,10 @@ type ordering struct {
 	decisionMemo        map[gomel.Hash]vote
 }
 
-// NewOrdering creates an Ordering wrapper around a given poset.
-func NewOrdering(poset gomel.Poset, rs gomel.RandomSource, votingLevel int, PiDeltaLevel int) gomel.LinearOrdering {
+// NewOrdering creates an Ordering wrapper around a given dag.
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, PiDeltaLevel int) gomel.LinearOrdering {
 	return &ordering{
-		poset:               poset,
+		dag:                 dag,
 		randomSource:        rs,
 		timingUnits:         newSafeUnitSlice(),
 		unitPositionInOrder: make(map[gomel.Hash]int),
@@ -40,8 +40,8 @@ func NewOrdering(poset gomel.Poset, rs gomel.RandomSource, votingLevel int, PiDe
 	}
 }
 
-// posetMaxLevel returns the maximal level of a unit in a poset.
-func posetMaxLevel(p gomel.Poset) int {
+// dagMaxLevel returns the maximal level of a unit in a dag.
+func dagMaxLevel(p gomel.Dag) int {
 	maxLevel := -1
 	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
@@ -61,11 +61,11 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		return o.timingUnits.get(level)
 	}
 
-	if posetMaxLevel(o.poset) < level+o.votingLevel {
+	if dagMaxLevel(o.dag) < level+o.votingLevel {
 		return nil
 	}
 	for _, pid := range o.randomSource.GetCRP(level) {
-		for _, uc := range o.poset.PrimeUnits(level).Get(pid) {
+		for _, uc := range o.dag.PrimeUnits(level).Get(pid) {
 			decision := o.decideUnitIsPopular(uc)
 			if decision == popular {
 				o.timingUnits.pushBack(uc)

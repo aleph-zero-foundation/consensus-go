@@ -57,7 +57,7 @@ type cliOptions struct {
 	cpuProfFilename string
 	memProfFilename string
 	traceFilename   string
-	posetFilename   string
+	dagFilename     string
 	localAddress    string
 	delay           int64
 }
@@ -71,7 +71,7 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
-	flag.StringVar(&result.posetFilename, "poset", "", "the name of the file to save resulting poset")
+	flag.StringVar(&result.dagFilename, "dag", "", "the name of the file to save resulting dag")
 	flag.StringVar(&result.localAddress, "address", "", "the address on which to run the process, if ommitted will be read from the key file")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
@@ -133,8 +133,8 @@ func main() {
 		defer trace.Stop()
 	}
 
-	var poset gomel.Poset
-	poset, err = run.Process(processConfig, log)
+	var dag gomel.Dag
+	dag, err = run.Process(processConfig, log)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
@@ -151,14 +151,14 @@ func main() {
 		}
 	}
 
-	if options.posetFilename != "" {
-		f, err := os.Create(options.posetFilename)
+	if options.dagFilename != "" {
+		f, err := os.Create(options.dagFilename)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Creating poset file \"%s\" failed because: %s.\n", options.posetFilename, err.Error())
+			fmt.Fprintf(os.Stderr, "Creating dag file \"%s\" failed because: %s.\n", options.dagFilename, err.Error())
 		}
 		defer f.Close()
 		out := bufio.NewWriter(f)
-		tests.WritePoset(out, poset)
+		tests.WriteDag(out, dag)
 		out.Flush()
 	}
 }

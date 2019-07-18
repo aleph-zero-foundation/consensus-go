@@ -20,7 +20,7 @@ type service struct {
 }
 
 // NewService creates a new service generating transactions
-func NewService(poset gomel.Poset, config *process.TxGenerate, txChan chan<- []byte, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, config *process.TxGenerate, txChan chan<- []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		txpu:     config.Txpu,
 		txChan:   txChan,

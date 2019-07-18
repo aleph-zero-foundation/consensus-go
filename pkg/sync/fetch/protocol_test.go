@@ -15,14 +15,14 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type poset struct {
-	*tests.Poset
+type dag struct {
+	*tests.Dag
 	attemptedAdd []gomel.Preunit
 }
 
-func (p *poset) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (p *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	p.attemptedAdd = append(p.attemptedAdd, unit)
-	p.Poset.AddUnit(unit, rs, callback)
+	p.Dag.AddUnit(unit, rs, callback)
 }
 
 type fallback bool
@@ -34,8 +34,8 @@ func (f *fallback) Run(_ gomel.Preunit) {
 var _ = Describe("Protocol", func() {
 
 	var (
-		p1         *poset
-		p2         *poset
+		p1         *dag
+		p2         *dag
 		reqs       chan Request
 		fallenBack fallback
 		proto1     gsync.Protocol
@@ -68,9 +68,9 @@ var _ = Describe("Protocol", func() {
 		Context("when requesting a nonexistent unit", func() {
 
 			BeforeEach(func() {
-				tp, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
-				p1 = &poset{
-					Poset:        tp.(*tests.Poset),
+				tp, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				p1 = &dag{
+					Dag:          tp.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				p2 = p1
@@ -107,9 +107,9 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tp, _ := tests.CreatePosetFromTestFile("../../testdata/one_unit.txt", tests.NewTestPosetFactory())
-				p1 = &poset{
-					Poset:        tp.(*tests.Poset),
+				tp, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				p1 = &dag{
+					Dag:          tp.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				p2 = p1
@@ -159,14 +159,14 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tp1, _ := tests.CreatePosetFromTestFile("../../testdata/empty.txt", tests.NewTestPosetFactory())
-				p1 = &poset{
-					Poset:        tp1.(*tests.Poset),
+				tp1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				p1 = &dag{
+					Dag:          tp1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
-				tp2, _ := tests.CreatePosetFromTestFile("../../testdata/random_10p_100u_2par.txt", tests.NewTestPosetFactory())
-				p2 = &poset{
-					Poset:        tp2.(*tests.Poset),
+				tp2, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par.txt", tests.NewTestDagFactory())
+				p2 = &dag{
+					Dag:          tp2.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				maxes := p2.MaximalUnitsPerProcess()
