@@ -68,9 +68,9 @@ var _ = Describe("Protocol", func() {
 		Context("when requesting a nonexistent unit", func() {
 
 			BeforeEach(func() {
-				tp, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				td, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 				dag1 = &dag{
-					Dag:          tp.(*tests.Dag),
+					Dag:          td.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				dag2 = dag1
@@ -107,9 +107,9 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tp, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				td, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
 				dag1 = &dag{
-					Dag:          tp.(*tests.Dag),
+					Dag:          td.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				dag2 = dag1
