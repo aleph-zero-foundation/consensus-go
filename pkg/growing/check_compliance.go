@@ -101,10 +101,10 @@ func checkForkerMuting(u gomel.Unit) error {
 	return nil
 }
 
-// Checks if the unit U respects the "expand primes" rule. Parents are checked consecutively. The first is just accepted.
-// Then let L be the level of the last checked parent and P the set of creators of prime units of level L below all the parents
-// checked up to now. The next parent must must either have prime units of level L below it that are created by processes
-//  not in P, or have level greater than L.
+// CheckExpandPrimes checks if the unit U respects the "expand primes" rule. Parents are checked consecutively. The first is
+// just accepted. Then let L be the level of the last checked parent and P the set of creators of prime units of level L below
+// all the parents checked up to now. The next parent must either have prime units of level L below it that are created by
+// processes not in P, or have level greater than L.
 func (p *Poset) checkExpandPrimes(u gomel.Unit) error {
 	if len(u.Parents()) == 0 {
 		return nil
@@ -117,7 +117,9 @@ func (p *Poset) checkExpandPrimes(u gomel.Unit) error {
 	left := notSeenPrimes[:0]
 	level := u.Parents()[0].Level()
 	for _, parent := range u.Parents() {
-		if currentLevel := parent.Level(); currentLevel > level {
+		if currentLevel := parent.Level(); currentLevel < level {
+			return gomel.NewComplianceError("Expand primes rule violated - parents are not sorted in ascending order of levels")
+		} else if currentLevel > level {
 			level = currentLevel
 			notSeenPrimes = wholeSet
 			left = notSeenPrimes[:0]
