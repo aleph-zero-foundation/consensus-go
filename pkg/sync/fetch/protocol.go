@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"

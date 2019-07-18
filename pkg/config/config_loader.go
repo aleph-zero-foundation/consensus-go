@@ -1,7 +1,7 @@
 package config
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 
 	"bytes"
 	"encoding/json"

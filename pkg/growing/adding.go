@@ -3,7 +3,7 @@ package growing
 import (
 	"sort"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type unitBuilt struct {

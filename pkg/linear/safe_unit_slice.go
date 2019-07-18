@@ -3,7 +3,7 @@ package linear
 import (
 	"sync"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type safeUnitSlice struct {

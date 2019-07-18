@@ -5,8 +5,8 @@ import (
 	"errors"
 	"io"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Committee represents the public data about the committee known before the algorithm starts.

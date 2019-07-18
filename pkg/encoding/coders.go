@@ -1,7 +1,7 @@
 package encoding
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Encoder encodes data for sending it over the network.

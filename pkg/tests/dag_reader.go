@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 

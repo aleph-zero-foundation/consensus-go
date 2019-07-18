@@ -1,7 +1,7 @@
 package tests
 
 import (
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 func checkExpandPrimes(dag *Dag, pu gomel.Preunit) bool {

@@ -6,9 +6,9 @@ import (
 	"os"
 	"strconv"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type proc struct {

@@ -2,7 +2,7 @@ package tests
 
 import (
 	"fmt"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"io"
 )
 

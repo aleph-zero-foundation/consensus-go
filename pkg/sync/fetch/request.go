@@ -1,6 +1,6 @@
 package fetch
 
-import gomel "gitlab.com/alephledger/consensus-go/pkg"
+import "gitlab.com/alephledger/consensus-go/pkg/gomel"
 
 // Request represents a request to ask Pid about Hashes.
 type Request struct {

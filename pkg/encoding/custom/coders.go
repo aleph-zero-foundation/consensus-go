@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"io"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type encoder struct {

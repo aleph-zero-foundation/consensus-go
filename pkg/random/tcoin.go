@@ -3,8 +3,8 @@ package random
 import (
 	"errors"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type tcRandomSource struct {

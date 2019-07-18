@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type levelMap struct {

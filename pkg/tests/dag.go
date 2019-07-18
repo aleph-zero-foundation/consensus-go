@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Dag is a basic implementation of dag for testing

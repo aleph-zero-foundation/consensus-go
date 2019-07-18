@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"golang.org/x/crypto/nacl/sign"
 )
 

@@ -3,7 +3,7 @@ package gossip
 import (
 	"sync"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type unitInfo struct {
