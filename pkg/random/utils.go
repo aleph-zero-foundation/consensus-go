@@ -55,7 +55,7 @@ func CRP(rs gomel.RandomSource, dag gomel.Dag, level int) []int {
 	return permutation
 }
 
-// Units on level returns all the prime units in dag on a given level
+// UnitsOnLevel returns all the prime units in dag on a given level
 func UnitsOnLevel(dag gomel.Dag, level int) []gomel.Unit {
 	result := []gomel.Unit{}
 	su := dag.PrimeUnits(level)
