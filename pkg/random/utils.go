@@ -7,15 +7,15 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func CRP(rs gomel.RandomSource, p gomel.Poset, level int) []int {
-	nProc := p.NProc()
+func CRP(rs gomel.RandomSource, dag gomel.Dag, level int) []int {
+	nProc := dag.NProc()
 	permutation := make([]int, nProc)
 	priority := make([][]byte, nProc)
 	for i := 0; i < nProc; i++ {
 		permutation[i] = i
 	}
 
-	units := UnitsOnLevel(p, level)
+	units := UnitsOnLevel(dag, level)
 	if len(units) == 0 {
 		return nil
 	}
@@ -53,9 +53,9 @@ func CRP(rs gomel.RandomSource, p gomel.Poset, level int) []int {
 	return permutation
 }
 
-func UnitsOnLevel(p gomel.Poset, level int) []gomel.Unit {
+func UnitsOnLevel(dag gomel.Dag, level int) []gomel.Unit {
 	result := []gomel.Unit{}
-	su := p.PrimeUnits(level)
+	su := dag.PrimeUnits(level)
 	if su != nil {
 		su.Iterate(func(units []gomel.Unit) bool {
 			if len(units) != 0 {
