@@ -1,32 +1,38 @@
-package random
+package urn
 
 import (
 	"errors"
 
+	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/random"
 )
 
-type tcRandomSource struct {
+type urn struct {
 	pid        int
-	dag        gomel.Dag
-	tcs        *syncTCMap
-	coinShares *SyncCSMap
+	poset      gomel.Poset
+	tcs        *random.SyncTCMap
+	coinShares *random.SyncCSMap
 }
 
-// NewTcSource returns a RandomSource based on threshold coins
-func NewTcSource(dag gomel.Dag, pid int) gomel.RandomSource {
-	return &tcRandomSource{
+// NewUrn returns a RandomSource based on multiple threshold coins
+// as explained in the first version of the whitepaper.
+// (i.e. we choose the dealer using the random permutation which is defined
+// as pseudo-random function of processes public keys.
+// The permutation is known to the adversary in advance and this knowledge
+// can be used in a potential attack).
+func NewUrn(poset gomel.Poset, pid int) gomel.RandomSource {
+	return &urn{
 		pid:        pid,
-		dag:        dag,
-		tcs:        newSyncTCMap(),
-		coinShares: NewSyncCSMap(),
+		poset:      poset,
+		tcs:        random.NewSyncTCMap(),
+		coinShares: random.NewSyncCSMap(),
 	}
 }
 
 // GetCRP is a dummy implementation of a common random permutation
-func (rs *tcRandomSource) GetCRP(nonce int) []int {
-	nProc := rs.dag.NProc()
+func (rs *urn) GetCRP(nonce int) []int {
+	nProc := rs.poset.NProc()
 	permutation := make([]int, nProc)
 	for i := 0; i < nProc; i++ {
 		permutation[i] = (i + nonce) % nProc
@@ -35,19 +41,15 @@ func (rs *tcRandomSource) GetCRP(nonce int) []int {
 }
 
 // RandomBytes returns a sequence of random bits for a given process and nonce
-// in the case of fail it returns nil.
-// This function can always fail, typically because of adversarial behaviour
-// of some processes.
-func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, level int) []byte {
-	if level+1 != uTossing.Level() {
-		return nil
-	}
+// in the case of fail it returns nil
+func (rs *urn) RandomBytes(uTossing gomel.Unit, nonce int) []byte {
+	level := uTossing.Level() - 1
 	var dealer gomel.Unit
 	var tc *tcoin.ThresholdCoin
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 
-	rs.dag.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
+	rs.poset.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			if !v.Below(uTossing) {
 				continue
@@ -86,7 +88,7 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, level int) []byte {
 }
 
 // Update updates the RandomSource with data included in the preunit
-func (rs *tcRandomSource) Update(u gomel.Unit) {
+func (rs *urn) Update(u gomel.Unit) {
 	if gomel.Dealing(u) {
 		tc, _ := tcoin.Decode(u.RandomSourceData(), rs.pid)
 		rs.tcs.Add(u.Hash(), tc)
@@ -99,7 +101,7 @@ func (rs *tcRandomSource) Update(u gomel.Unit) {
 
 // CheckCompliance checks if the random source data included in the unit
 // is correct
-func (rs *tcRandomSource) CheckCompliance(u gomel.Unit) error {
+func (rs *urn) CheckCompliance(u gomel.Unit) error {
 	if gomel.Dealing(u) {
 		_, err := tcoin.Decode(u.RandomSourceData(), rs.pid)
 		if err != nil {
@@ -122,10 +124,10 @@ func (rs *tcRandomSource) CheckCompliance(u gomel.Unit) error {
 
 // DataToInclude returns data which should be included in the unit under creation
 // with given creator and set of parents.
-func (rs *tcRandomSource) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
+func (rs *urn) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
 	// dealing unit
 	if len(parents) == 0 {
-		nProc := rs.dag.NProc()
+		nProc := rs.poset.NProc()
 		return tcoin.Deal(nProc, nProc/3+1)
 	}
 	// prime non-dealing unit
@@ -135,69 +137,61 @@ func (rs *tcRandomSource) DataToInclude(creator int, parents []gomel.Unit, level
 	return nil
 }
 
-func (rs *tcRandomSource) createCoinShare(parents []gomel.Unit, level int) *tcoin.CoinShare {
+func (rs *urn) createCoinShare(parents []gomel.Unit, level int) *tcoin.CoinShare {
 	fdu := rs.firstDealingUnitFromParents(parents, level)
 	tc := rs.tcs.Get(fdu.Hash())
 	return tc.CreateCoinShare(level)
 }
 
-// hasForkingEvidenceFromParents checks whether parents have evidence that
-// the creator is forking.
-func hasForkingEvidenceFromParents(parents []gomel.Unit, creator int) bool {
-	var heighest gomel.Unit
-	for _, p := range parents {
-		if p.HasForkingEvidence(creator) {
-			return true
-		}
-		if len(p.Floor()[creator]) == 1 {
-			u := p.Floor()[creator][0]
-			if heighest == nil {
-				heighest = u
-			} else {
-				if heighest.Height() <= u.Height() {
-					if !heighest.Below(u) {
-						return true
-					}
-					heighest = u
-				} else {
-					if !u.Below(heighest) {
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
-}
-
 // firstDealingUnitFromParents takes parents of the unit under construction
 // and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
 // that is below the unit under construction
-func (rs *tcRandomSource) firstDealingUnitFromParents(parents []gomel.Unit, level int) gomel.Unit {
-	dealingUnits := rs.dag.PrimeUnits(0)
+func (rs *urn) firstDealingUnitFromParents(parents []gomel.Unit, level int) gomel.Unit {
+	dealingUnits := rs.poset.PrimeUnits(0)
 	for _, dealer := range rs.GetCRP(level) {
-		if hasForkingEvidenceFromParents(parents, dealer) {
-			continue
-		}
+		// We are only checking if there are forked dealing units created by the dealer
+		// below the unit under construction.
+		// We could check if we have evidence that the dealer is forking
+		// but this is expensive without access to floors.
+		var result gomel.Unit
 		for _, u := range dealingUnits.Get(dealer) {
 			if gomel.BelowAny(u, parents) {
-				return u
+				if result != nil {
+					// we see forked dealing unit
+					result = nil
+					break
+				} else {
+					result = u
+				}
 			}
+		}
+		if result != nil {
+			return result
 		}
 	}
 	return nil
 }
 
-func (rs *tcRandomSource) firstDealingUnit(u gomel.Unit) gomel.Unit {
-	dealingUnits := rs.dag.PrimeUnits(0)
+func (rs *urn) firstDealingUnit(u gomel.Unit) gomel.Unit {
+	dealingUnits := rs.poset.PrimeUnits(0)
 	for _, dealer := range rs.GetCRP(u.Level()) {
-		if u.HasForkingEvidence(dealer) {
-			continue
-		}
+		var result gomel.Unit
+		// We are only checking if there are forked dealing units created by the dealer below u.
+		// We can change it to hasForkingEvidence, but we would have to also implement
+		// this in creating.
 		for _, v := range dealingUnits.Get(dealer) {
 			if v.Below(u) {
-				return v
+				if result != nil {
+					// we see forked dealing unit
+					result = nil
+					break
+				} else {
+					result = v
+				}
 			}
+		}
+		if result != nil {
+			return result
 		}
 	}
 	return nil
