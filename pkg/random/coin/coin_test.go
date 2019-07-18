@@ -67,7 +67,7 @@ var _ = Describe("Coin", func() {
 	Describe("GetCRP", func() {
 		Context("On a given level", func() {
 			It("Should return a permutation of pids", func() {
-				perm := rs[0].GetCRP(8)
+				perm := rs[0].GetCRP(3)
 				Expect(len(perm)).To(Equal(poset[0].NProc()))
 				elems := make(map[int]bool)
 				for _, pid := range perm {
@@ -78,7 +78,7 @@ var _ = Describe("Coin", func() {
 			It("Should return the same permutation for all pid", func() {
 				perm := make([][]int, n)
 				for pid := 0; pid < n; pid++ {
-					perm[pid] = rs[pid].GetCRP(10)
+					perm[pid] = rs[pid].GetCRP(2)
 				}
 				for pid := 1; pid < n; pid++ {
 					for i := range perm[pid] {
@@ -94,4 +94,95 @@ var _ = Describe("Coin", func() {
 			})
 		})
 	})
+	Describe("CheckCompliance", func() {
+		Context("on a prime unit created by a share provider", func() {
+			Context("without random source data", func() {
+				It("should return an error", func() {
+					u := poset[0].PrimeUnits(2).Get(0)[0]
+					um := newUnitMock(u, []byte{})
+					err := rs[0].CheckCompliance(um)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+			Context("with inncorrect share", func() {
+				It("should return an error", func() {
+					u := poset[0].PrimeUnits(2).Get(0)[0]
+					v := poset[0].PrimeUnits(3).Get(0)[0]
+					um := newUnitMock(u, v.RandomSourceData())
+					err := rs[0].CheckCompliance(um)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		})
+		Context("on a unit not created by a share provider", func() {
+			Context("with random source data", func() {
+				It("should return an error", func() {
+					u := poset[0].PrimeUnits(2).Get(n - 1)[0]
+					um := newUnitMock(u, []byte{1, 2, 3})
+					err := rs[0].CheckCompliance(um)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		})
+	})
 })
+
+type unitMock struct {
+	u      gomel.Unit
+	rsData []byte
+}
+
+func newUnitMock(u gomel.Unit, rsData []byte) *unitMock {
+	return &unitMock{
+		u:      u,
+		rsData: rsData,
+	}
+}
+
+func (um *unitMock) Creator() int {
+	return um.u.Creator()
+}
+
+func (um *unitMock) Signature() gomel.Signature {
+	return um.u.Signature()
+}
+
+func (um *unitMock) Hash() *gomel.Hash {
+	return um.u.Hash()
+}
+
+func (um *unitMock) Data() []byte {
+	return um.u.Data()
+}
+
+func (um *unitMock) RandomSourceData() []byte {
+	return um.rsData
+}
+
+func (um *unitMock) Height() int {
+	return um.u.Height()
+}
+
+func (um *unitMock) Parents() []gomel.Unit {
+	return um.u.Parents()
+}
+
+func (um *unitMock) Level() int {
+	return um.u.Level()
+}
+
+func (um *unitMock) Below(v gomel.Unit) bool {
+	return um.u.Below(v)
+}
+
+func (um *unitMock) Above(v gomel.Unit) bool {
+	return um.u.Above(v)
+}
+
+func (um *unitMock) HasForkingEvidence(creator int) bool {
+	return um.u.HasForkingEvidence(creator)
+}
+
+func (um *unitMock) Floor() [][]gomel.Unit {
+	return um.u.Floor()
+}

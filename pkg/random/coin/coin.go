@@ -42,12 +42,16 @@ func (rs *coin) GetCRP(level int) []int {
 // RandomBytes returns a sequence of random bits for a given level.
 // The first argument is irrelevant for this random source.
 // If there are not enough shares on the level it returns nil.
-// If the poset reached level+1 the existence of enough shares is guaranted.
+// If the poset reached level+1 the existence of enough shares is guaranteed.
 func (rs *coin) RandomBytes(_ gomel.Unit, level int) []byte {
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 
-	rs.poset.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
+	su := rs.poset.PrimeUnits(level)
+	if su == nil {
+		return nil
+	}
+	su.Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			if !rs.shareProvider[v.Creator()] || shareCollected[v.Creator()] {
 				continue

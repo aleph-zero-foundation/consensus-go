@@ -16,8 +16,13 @@ func CRP(rs gomel.RandomSource, p gomel.Poset, level int) []int {
 	}
 
 	units := UnitsOnLevel(p, level)
+	if len(units) == 0 {
+		return nil
+	}
+
 	for _, u := range units {
 		priority[u.Creator()] = make([]byte, 32)
+
 		rBytes := rs.RandomBytes(u, level+3)
 		if rBytes == nil {
 			return nil
@@ -41,6 +46,7 @@ func CRP(rs gomel.RandomSource, p gomel.Poset, level int) []int {
 				return false
 			}
 		}
+		panic("hash collision")
 		return (permutation[i] < permutation[j])
 	})
 
