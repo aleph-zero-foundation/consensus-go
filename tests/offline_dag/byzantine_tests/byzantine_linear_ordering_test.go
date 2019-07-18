@@ -11,18 +11,18 @@ import (
 	"os"
 	"time"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
-	"gitlab.com/alephledger/consensus-go/tests/offline_poset/helpers"
+	"gitlab.com/alephledger/consensus-go/tests/offline_dag/helpers"
 )
 
-type forkingStrategy func(gomel.Preunit, gomel.Poset, gomel.PrivateKey, gomel.RandomSource, int) []gomel.Preunit
+type forkingStrategy func(gomel.Preunit, gomel.Dag, gomel.PrivateKey, gomel.RandomSource, int) []gomel.Preunit
 
-type forker func(gomel.Preunit, gomel.Poset, gomel.PrivateKey, gomel.RandomSource) (gomel.Preunit, error)
+type forker func(gomel.Preunit, gomel.Dag, gomel.PrivateKey, gomel.RandomSource) (gomel.Preunit, error)
 
 func generateFreshData(preunitData []byte) []byte {
 	var data []byte
@@ -46,15 +46,15 @@ func newForkWithDifferentData(preunit gomel.Preunit) gomel.Preunit {
 }
 
 func newForkerUsingDifferentDataStrategy() forker {
-	return func(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 		return newForkWithDifferentData(preunit), nil
 	}
 }
 
 func createForkUsingNewUnit(parentsCount int) forker {
-	return func(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		pu, err := creating.NewUnit(poset, int(preunit.Creator()), parentsCount, helpers.NewDefaultDataContent(), rs, false)
+		pu, err := creating.NewUnit(dag, int(preunit.Creator()), parentsCount, helpers.NewDefaultDataContent(), rs, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
@@ -62,8 +62,8 @@ func createForkUsingNewUnit(parentsCount int) forker {
 		parents := pu.Parents()
 		parents[0] = preunit.Parents()[0]
 		freshData := generateFreshData(preunit.Data())
-		parentUnits := poset.Get(parents)
-		level := computeLevel(poset, parentUnits)
+		parentUnits := dag.Get(parents)
+		level := computeLevel(dag, parentUnits)
 		rsData := rs.DataToInclude(pu.Creator(), parentUnits, int(level))
 		return creating.NewPreunit(pu.Creator(), parents, freshData, rsData), nil
 	}
@@ -101,14 +101,14 @@ func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
 	return true
 }
 
-func checkCompliance(poset gomel.Poset, creator uint16, parents []gomel.Unit) error {
+func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error {
 	if !checkSelfForkingEvidence(parents, creator) {
 		return gomel.NewComplianceError("parents contain evidence of self forking")
 	}
 	if growing.CheckForkerMuting(parents) != nil {
 		return gomel.NewComplianceError("parents do not satisfy the forker-muting rule")
 	}
-	if growing.CheckExpandPrimes(poset, parents) != nil {
+	if growing.CheckExpandPrimes(dag, parents) != nil {
 		return gomel.NewComplianceError("parents violate the expand-primes rule")
 	}
 	return nil
@@ -116,15 +116,15 @@ func checkCompliance(poset gomel.Poset, creator uint16, parents []gomel.Unit) er
 
 func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 
-	return func(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
 		parents := make([]*gomel.Hash, 0, parentsCount)
 		parentUnits := make([]gomel.Unit, 0, parentsCount)
-		selfPredecessor := poset.Get([]*gomel.Hash{preunit.Parents()[0]})[0]
+		selfPredecessor := dag.Get([]*gomel.Hash{preunit.Parents()[0]})[0]
 		parents = append(parents, selfPredecessor.Hash())
 		parentUnits = append(parentUnits, selfPredecessor)
 
-		for _, pid := range rand.Perm(poset.NProc()) {
+		for _, pid := range rand.Perm(dag.NProc()) {
 			if len(parents) >= parentsCount {
 				break
 			}
@@ -133,7 +133,7 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 			}
 
 			var availableParents []gomel.Unit
-			availableParents = append(availableParents, poset.MaximalUnitsPerProcess().Get(pid)...)
+			availableParents = append(availableParents, dag.MaximalUnitsPerProcess().Get(pid)...)
 
 			for len(availableParents) > 0 {
 				randIx := rand.Intn(len(availableParents))
@@ -141,7 +141,7 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 				availableParents[len(availableParents)-1], availableParents[randIx] =
 					availableParents[randIx], availableParents[len(availableParents)-1]
 				parentUnits = append(parentUnits, selectedParent)
-				if err := checkCompliance(poset, uint16(preunit.Creator()), parentUnits); err != nil {
+				if err := checkCompliance(dag, uint16(preunit.Creator()), parentUnits); err != nil {
 					parentUnits = parentUnits[:len(parentUnits)-1]
 					predecessor, err := gomel.Predecessor(selectedParent)
 					if err != nil || predecessor.Below(selfPredecessor) {
@@ -159,13 +159,13 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 			return nil, errors.New("unable to collect enough parents")
 		}
 		freshData := generateFreshData(preunit.Data())
-		level := computeLevel(poset, parentUnits)
+		level := computeLevel(dag, parentUnits)
 		rsData := rs.DataToInclude(preunit.Creator(), parentUnits, int(level))
 		return creating.NewPreunit(preunit.Creator(), parents, freshData, rsData), nil
 	}
 }
 
-func computeLevel(poset gomel.Poset, parents []gomel.Unit) uint64 {
+func computeLevel(dag gomel.Dag, parents []gomel.Unit) uint64 {
 	level := uint64(0)
 	for _, parent := range parents {
 		if pl := parent.Level(); uint64(pl) > level {
@@ -178,7 +178,7 @@ func computeLevel(poset gomel.Poset, parents []gomel.Unit) uint64 {
 			for _, unit := range floor {
 				if uint64(unit.Level()) == level {
 					onLevel[uint16(pid)] = true
-					if poset.IsQuorum(len(onLevel)) {
+					if dag.IsQuorum(len(onLevel)) {
 						return level + 1
 					}
 				}
@@ -190,13 +190,13 @@ func computeLevel(poset gomel.Poset, parents []gomel.Unit) uint64 {
 
 func createForksUsingForker(forker forker) forkingStrategy {
 
-	return func(preunit gomel.Preunit, poset gomel.Poset, privKey gomel.PrivateKey, rs gomel.RandomSource, count int) []gomel.Preunit {
+	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource, count int) []gomel.Preunit {
 
 		created := make(map[gomel.Hash]bool, count)
 		result := make([]gomel.Preunit, 0, count)
 
 		for len(result) < count {
-			fork, err := forker(preunit, poset, privKey, rs)
+			fork, err := forker(preunit, dag, privKey, rs)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				continue
@@ -216,8 +216,8 @@ func createForksUsingForker(forker forker) forkingStrategy {
 }
 
 func newDefaultUnitCreator(maxParents uint16) helpers.Creator {
-	return func(poset gomel.Poset, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		pu, err := creating.NewUnit(poset, int(creator), int(maxParents), helpers.NewDefaultDataContent(), rs, false)
+	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+		pu, err := creating.NewUnit(dag, int(creator), int(maxParents), helpers.NewDefaultDataContent(), rs, false)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
 			return nil, err
@@ -234,7 +234,7 @@ func newForkAndHideAdder(
 	forkingStrategy forkingStrategy,
 	numberOfForks int,
 	maxParents uint16,
-) (helpers.Creator, func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error, error) {
+) (helpers.Creator, func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error, error) {
 	if createLevel > buildLevel {
 		return nil, nil, errors.New("'createLevel' should be not larger than 'buildLevel'")
 	}
@@ -250,19 +250,19 @@ func newForkAndHideAdder(
 	switchCounter := 0
 
 	defaultUnitCreator := newDefaultUnitCreator(maxParents)
-	unitCreator := func(poset gomel.Poset, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	unitCreator := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 		// do not create new units after we showed some fork
 		if alreadyAdded {
 			return nil, nil
 		}
-		pu, err := defaultUnitCreator(poset, forker, privKey, rs)
+		pu, err := defaultUnitCreator(dag, forker, privKey, rs)
 		if err != nil {
 			return nil, err
 		}
 		return pu, nil
 	}
 
-	addingHandler := func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error {
+	addingHandler := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error {
 		if alreadyAdded {
 			return nil
 		}
@@ -286,13 +286,13 @@ func newForkAndHideAdder(
 
 		// after some time try to create a unit
 		if forkingRoot != nil && uint64(unit.Level()) >= buildLevel && createdForks == nil && uint16(unit.Creator()) != forker {
-			createdForks = forkingStrategy(forkingRoot, posets[forker], privKey, rss[forker], numberOfForks)
+			createdForks = forkingStrategy(forkingRoot, dags[forker], privKey, rss[forker], numberOfForks)
 		}
 
-		// add forking units to all posets
+		// add forking units to all dags
 		if len(createdForks) > 0 && uint64(unit.Level()) >= showOffLevel {
 			// show all created forks to all participants
-			if err := helpers.AddUnitsToPosetsInRandomOrder(createdForks, posets, rss); err != nil {
+			if err := helpers.AddUnitsToDagsInRandomOrder(createdForks, dags, rss); err != nil {
 				return err
 			}
 			fmt.Println("Byzantine node added a fork:", createdForks[0].Creator())
@@ -307,31 +307,31 @@ func computeMaxPossibleNumberOfByzantineProcesses(nProc int) int {
 	return (nProc - 1) / 3
 }
 
-func getRandomListOfByzantinePosets(n int) []int {
+func getRandomListOfByzantineDags(n int) []int {
 	byzProcesses := computeMaxPossibleNumberOfByzantineProcesses(n)
 	return rand.Perm(byzProcesses)[:byzProcesses]
 }
 
 func newTriggeredAdder(triggerCondition func(unit gomel.Unit) bool, wrappedHandler helpers.AddingHandler) helpers.AddingHandler {
 
-	return func(posets []gomel.Poset, rss []gomel.RandomSource, unit gomel.Preunit) error {
-		newUnit, err := helpers.AddToPosets(unit, rss, posets)
+	return func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
+		newUnit, err := helpers.AddToDags(unit, rss, dags)
 		if err != nil {
 			return err
 		}
 		if triggerCondition(newUnit) {
-			return wrappedHandler(posets, rss, unit)
+			return wrappedHandler(dags, rss, unit)
 		}
 		return nil
 	}
 }
 
-func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzantinePosets []int, forkingStrategy forkingStrategy) func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
+func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzantineDags []int, forkingStrategy forkingStrategy) func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
 
-	return func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
-		alreadyForked := make(map[uint16]bool, len(byzantinePosets))
-		for _, posetID := range byzantinePosets {
-			alreadyForked[uint16(posetID)] = false
+	return func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
+		alreadyForked := make(map[uint16]bool, len(byzantineDags))
+		for _, dagID := range byzantineDags {
+			alreadyForked[uint16(dagID)] = false
 		}
 		allExecuted := false
 		forkedProcesses := 0
@@ -347,19 +347,19 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 				return false
 			},
 
-			func(posets []gomel.Poset, rss []gomel.RandomSource, unit gomel.Preunit) error {
+			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
 				fmt.Println("simple forking behavior triggered")
-				units := forkingStrategy(unit, posets[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], 2)
+				units := forkingStrategy(unit, dags[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], 2)
 				if len(units) == 0 {
 					return nil
 				}
-				err := helpers.AddUnitsToPosetsInRandomOrder(units, posets, rss)
+				err := helpers.AddUnitsToDagsInRandomOrder(units, dags, rss)
 				if err != nil {
 					return err
 				}
 				alreadyForked[uint16(unit.Creator())] = true
 				forkedProcesses++
-				if forkedProcesses == len(byzantinePosets) {
+				if forkedProcesses == len(byzantineDags) {
 					allExecuted = true
 				}
 				fmt.Println("simple fork created at level", forkingLevel)
@@ -369,12 +369,12 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 	}
 }
 
-func newPrimeFloodingAdder(floodingLevel int, numberOfPrimes int, privKeys []gomel.PrivateKey, byzantinePosets []int, forkingStrategy forkingStrategy) func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
+func newPrimeFloodingAdder(floodingLevel int, numberOfPrimes int, privKeys []gomel.PrivateKey, byzantineDags []int, forkingStrategy forkingStrategy) func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
 
-	return func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) helpers.AddingHandler {
-		alreadyFlooded := make(map[int]bool, len(byzantinePosets))
-		for _, posetID := range byzantinePosets {
-			alreadyFlooded[posetID] = false
+	return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) helpers.AddingHandler {
+		alreadyFlooded := make(map[int]bool, len(byzantineDags))
+		for _, dagID := range byzantineDags {
+			alreadyFlooded[dagID] = false
 		}
 		allExecuted := false
 		forkedProcesses := 0
@@ -390,16 +390,16 @@ func newPrimeFloodingAdder(floodingLevel int, numberOfPrimes int, privKeys []gom
 				return false
 			},
 
-			func(posets []gomel.Poset, rss []gomel.RandomSource, unit gomel.Preunit) error {
+			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
 				fmt.Println("Prime flooding started")
-				for _, unit := range forkingStrategy(unit, posets[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], numberOfPrimes) {
-					if _, err := helpers.AddToPosets(unit, rss, posets); err != nil {
+				for _, unit := range forkingStrategy(unit, dags[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], numberOfPrimes) {
+					if _, err := helpers.AddToDags(unit, rss, dags); err != nil {
 						return err
 					}
 				}
 				alreadyFlooded[unit.Creator()] = true
 				forkedProcesses++
-				if forkedProcesses == len(byzantinePosets) {
+				if forkedProcesses == len(byzantineDags) {
 					allExecuted = true
 				}
 				fmt.Println("Prime flooding finished")
@@ -409,11 +409,11 @@ func newPrimeFloodingAdder(floodingLevel int, numberOfPrimes int, privKeys []gom
 	}
 }
 
-func newRandomForkingAdder(byzantinePosets []int, forkProbability int, privKeys []gomel.PrivateKey, forkingStrategy forkingStrategy) func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
+func newRandomForkingAdder(byzantineDags []int, forkProbability int, privKeys []gomel.PrivateKey, forkingStrategy forkingStrategy) func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
 
-	return func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
-		forkers := make(map[int]bool, len(byzantinePosets))
-		for _, creator := range byzantinePosets {
+	return func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
+		forkers := make(map[int]bool, len(byzantineDags))
+		for _, creator := range byzantineDags {
 			forkers[creator] = true
 		}
 
@@ -426,11 +426,11 @@ func newRandomForkingAdder(byzantinePosets []int, forkProbability int, privKeys 
 				return false
 			},
 
-			func(posets []gomel.Poset, rss []gomel.RandomSource, unit gomel.Preunit) error {
+			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
 				fmt.Println("random forking")
 				const forkSize = 2
-				for _, unit := range forkingStrategy(unit, posets[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], forkSize) {
-					if _, err := helpers.AddToPosets(unit, rss, posets); err != nil {
+				for _, unit := range forkingStrategy(unit, dags[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], forkSize) {
+					if _, err := helpers.AddToDags(unit, rss, dags); err != nil {
 						return err
 					}
 				}
@@ -452,11 +452,11 @@ func testPrimeFloodingScenario(forkingStrategy forkingStrategy) error {
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 	unitCreator := helpers.NewDefaultUnitCreator(newDefaultUnitCreator(maxParents))
-	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
-	unitAdder := newPrimeFloodingAdder(floodingLevel, forkingPrimes, privKeys, byzantinePosets, forkingStrategy)
+	byzantineDags := getRandomListOfByzantineDags(nProcesses)
+	unitAdder := newPrimeFloodingAdder(floodingLevel, forkingPrimes, privKeys, byzantineDags, forkingStrategy)
 	verifier := helpers.NewDefaultVerifier()
 	testingRoutine := helpers.NewDefaultTestingRoutine(
-		func([]gomel.Poset, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
+		func([]gomel.Dag, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
 		unitAdder,
 		verifier,
 	)
@@ -473,11 +473,11 @@ func testSimpleForkingScenario(forkingStrategy forkingStrategy) error {
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 	unitCreator := helpers.NewDefaultUnitCreator(newDefaultUnitCreator(maxParents))
-	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
-	unitAdder := newSimpleForkingAdder(10, privKeys, byzantinePosets, forkingStrategy)
+	byzantineDags := getRandomListOfByzantineDags(nProcesses)
+	unitAdder := newSimpleForkingAdder(10, privKeys, byzantineDags, forkingStrategy)
 	verifier := helpers.NewDefaultVerifier()
 	testingRoutine := helpers.NewDefaultTestingRoutine(
-		func([]gomel.Poset, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
+		func([]gomel.Dag, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
 		unitAdder,
 		verifier,
 	)
@@ -495,11 +495,11 @@ func testRandomForking(forkingStrategy forkingStrategy) error {
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
 	unitCreator := helpers.NewDefaultUnitCreator(newDefaultUnitCreator(maxParents))
-	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
-	unitAdder := newRandomForkingAdder(byzantinePosets, 50, privKeys, forkingStrategy)
+	byzantineDags := getRandomListOfByzantineDags(nProcesses)
+	unitAdder := newRandomForkingAdder(byzantineDags, 50, privKeys, forkingStrategy)
 	verifier := helpers.NewDefaultVerifier()
 	testingRoutine := helpers.NewDefaultTestingRoutine(
-		func([]gomel.Poset, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
+		func([]gomel.Dag, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
 		unitAdder,
 		verifier,
 	)
@@ -521,22 +521,22 @@ func testForkingChangingParents(forker forker) error {
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	byzantinePosets := getRandomListOfByzantinePosets(nProcesses)
-	fmt.Println("byzantine posets:", byzantinePosets)
+	byzantineDags := getRandomListOfByzantineDags(nProcesses)
+	fmt.Println("byzantine dags:", byzantineDags)
 
-	type byzAddingHandler func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error
+	type byzAddingHandler func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error
 	type byzPair struct {
 		byzCreator helpers.Creator
 		byzAdder   byzAddingHandler
 	}
-	byzPosets := map[uint16]byzPair{}
-	for _, byzPoset := range byzantinePosets {
+	byzDags := map[uint16]byzPair{}
+	for _, byzDag := range byzantineDags {
 
 		unitCreator, addingHandler, err := newForkAndHideAdder(
 			createLevel, buildLevel, showOffLevel,
 
-			uint16(byzPoset),
-			privKeys[byzPoset],
+			uint16(byzDag),
+			privKeys[byzDag],
 			createForksUsingForker(forker),
 			numberOfForks,
 			maxParents,
@@ -546,27 +546,27 @@ func testForkingChangingParents(forker forker) error {
 			return err
 		}
 
-		byzPosets[uint16(byzPoset)] = byzPair{unitCreator, addingHandler}
+		byzDags[uint16(byzDag)] = byzPair{unitCreator, addingHandler}
 	}
 
 	defaultUnitCreator := newDefaultUnitCreator(maxParents)
-	unitFactory := func(poset gomel.Poset, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		if byzPoset, ok := byzPosets[creator]; ok {
-			return byzPoset.byzCreator(poset, creator, privKey, rs)
+	unitFactory := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+		if byzDag, ok := byzDags[creator]; ok {
+			return byzDag.byzCreator(dag, creator, privKey, rs)
 
 		}
-		return defaultUnitCreator(poset, creator, privKey, rs)
+		return defaultUnitCreator(dag, creator, privKey, rs)
 	}
 	unitCreator := helpers.NewDefaultUnitCreator(unitFactory)
 
-	unitAdder := func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
-		return func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit) error {
-			unit, err := helpers.AddToPosets(preunit, rss, posets)
+	unitAdder := func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
+		return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+			unit, err := helpers.AddToDags(preunit, rss, dags)
 			if err != nil {
 				return err
 			}
-			for _, byzPoset := range byzPosets {
-				if err := byzPoset.byzAdder(posets, rss, preunit, unit); err != nil {
+			for _, byzDag := range byzDags {
+				if err := byzDag.byzAdder(dags, rss, preunit, unit); err != nil {
 					return err
 				}
 			}
@@ -576,7 +576,7 @@ func testForkingChangingParents(forker forker) error {
 
 	verifier := helpers.NewDefaultVerifier()
 	testingRoutine := helpers.NewDefaultTestingRoutine(
-		func([]gomel.Poset, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
+		func([]gomel.Dag, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
 		unitAdder,
 		verifier,
 	)
@@ -614,7 +614,7 @@ func newDefaultCommonVote(uc gomel.Unit, initialVotingRound uint64, lastDetermin
 	return commonVotes
 }
 
-func syncPosets(p1, p2 gomel.Poset, rs1, rs2 gomel.RandomSource) (bool, error) {
+func syncDags(p1, p2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 	p1Max := p1.MaximalUnitsPerProcess()
 	p2Max := p2.MaximalUnitsPerProcess()
 	missingForP2 := map[gomel.Unit]bool{}
@@ -623,13 +623,13 @@ func syncPosets(p1, p2 gomel.Poset, rs1, rs2 gomel.RandomSource) (bool, error) {
 		p1Units := append([]gomel.Unit(nil), p1Max.Get(pid)...)
 		p2Units := append([]gomel.Unit(nil), p2Max.Get(pid)...)
 
-		different := func(units []gomel.Unit, poset gomel.Poset) map[gomel.Unit]bool {
+		different := func(units []gomel.Unit, dag gomel.Dag) map[gomel.Unit]bool {
 			missing := map[gomel.Unit]bool{}
 			for _, unit := range units {
 				// descend to a common parent
 				current := unit
 				for current != nil {
-					other := poset.Get([]*gomel.Hash{current.Hash()})
+					other := dag.Get([]*gomel.Hash{current.Hash()})
 					if len(other) < 1 || other[0] == nil {
 						if missing[current] {
 							break
@@ -668,10 +668,10 @@ func syncPosets(p1, p2 gomel.Poset, rs1, rs2 gomel.RandomSource) (bool, error) {
 	missingForP1Slice := topoSort(missingForP1)
 	missingForP2Slice := topoSort(missingForP2)
 
-	adder := func(units []gomel.Unit, poset gomel.Poset, rs gomel.RandomSource) error {
+	adder := func(units []gomel.Unit, dag gomel.Dag, rs gomel.RandomSource) error {
 		for _, unit := range units {
 			preunit := unitToPreunit(unit)
-			_, err := helpers.AddToPoset(poset, preunit, rs)
+			_, err := helpers.AddToDag(dag, preunit, rs)
 			if err != nil {
 				return err
 			}
@@ -717,16 +717,16 @@ func reverseDfsOrder(unit gomel.Unit, notVisited map[gomel.Unit]bool, result []g
 	return result
 }
 
-func syncAllPosets(posets []gomel.Poset, rss []gomel.RandomSource) error {
-	if len(posets) < 2 {
+func syncAllDags(dags []gomel.Dag, rss []gomel.RandomSource) error {
+	if len(dags) < 2 {
 		return nil
 	}
 	for different := true; different; {
 		different = false
-		first := posets[0]
+		first := dags[0]
 		firstRss := rss[0]
-		for ix, poset := range posets[1:] {
-			diff, err := syncPosets(first, poset, firstRss, rss[ix+1])
+		for ix, dag := range dags[1:] {
+			diff, err := syncDags(first, dag, firstRss, rss[ix+1])
 			if err != nil {
 				return err
 			}
@@ -738,13 +738,13 @@ func syncAllPosets(posets []gomel.Poset, rss []gomel.RandomSource) error {
 	return nil
 }
 
-func countUnitsOnLevelOrHigher(poset gomel.Poset, level uint64) map[uint16]bool {
-	seen := make(map[uint16]bool, poset.NProc())
-	poset.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+func countUnitsOnLevelOrHigher(dag gomel.Dag, level uint64) map[uint16]bool {
+	seen := make(map[uint16]bool, dag.NProc())
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, unit := range units {
 			if uint64(unit.Level()) >= level {
 				seen[uint16(unit.Creator())] = true
-				if poset.IsQuorum(len(seen)) {
+				if dag.IsQuorum(len(seen)) {
 					return false
 				}
 			}
@@ -803,8 +803,8 @@ func countUnitsOnLevelOrHigher(poset gomel.Poset, level uint64) map[uint16]bool 
 
 // ** to build new level we only use units from this tower (previous round consists of 2f+1 processes which is a quorum)
 // + type of vote, i.e. d is voting using the value of the common vote, v is voting using supermajority
-func makePosetsUndecidedForLongTime(
-	posets []gomel.Poset,
+func makeDagsUndecidedForLongTime(
+	dags []gomel.Dag,
 	privateKeys []gomel.PrivateKey,
 	ids []uint16,
 	rss []gomel.RandomSource,
@@ -814,8 +814,8 @@ func makePosetsUndecidedForLongTime(
 	initialVotingRound uint64,
 ) error {
 	// ASSUMPTIONS:
-	// 1) decisionUnit is already added to its owner's poset but every other poset is at the same level or lower
-	// 2) author of the decisionUnit is first on the list of posets
+	// 1) decisionUnit is already added to its owner's dag but every other dag is at the same level or lower
+	// 2) author of the decisionUnit is first on the list of dags
 	fmt.Println("decision level", decisionUnit.Level())
 
 	commonVotes = fixCommonVotes(commonVotes, initialVotingRound)
@@ -836,13 +836,13 @@ func makePosetsUndecidedForLongTime(
 	var awaitingUnits, unitsForOtherSide, myUnits *[]pair
 	var leftKeys, rightKeys []gomel.PrivateKey
 	var leftIds, rightIds []uint16
-	var leftSide, rightSide []gomel.Poset
+	var leftSide, rightSide []gomel.Dag
 	var leftRss, rightRss []gomel.RandomSource
 
 	// aim for 0 (2f+1 on the side of 0's)
-	ones, zeros := subsetSizesOfLowerLevelBasedOnCommonVote(true, uint16(len(posets)))
-	leftSide = posets[:ones]
-	rightSide = posets[ones:]
+	ones, zeros := subsetSizesOfLowerLevelBasedOnCommonVote(true, uint16(len(dags)))
+	leftSide = dags[:ones]
+	rightSide = dags[ones:]
 	leftKeys = privateKeys[:ones]
 	rightKeys = privateKeys[ones:]
 	leftIds = ids[:ones]
@@ -850,7 +850,7 @@ func makePosetsUndecidedForLongTime(
 	leftRss = rss[:ones]
 	rightRss = rss[ones:]
 
-	var currentSet *[]gomel.Poset
+	var currentSet *[]gomel.Dag
 	var currentKeys *[]gomel.PrivateKey
 	var currentIds *[]uint16
 	var currentRss *[]gomel.RandomSource
@@ -893,7 +893,7 @@ func makePosetsUndecidedForLongTime(
 
 	checkMissing := func(level uint64, seen map[uint16]bool, source []pair) map[uint16]bool {
 
-		if posets[0].IsQuorum(len(seen)) {
+		if dags[0].IsQuorum(len(seen)) {
 			return seen
 		}
 
@@ -905,7 +905,7 @@ func makePosetsUndecidedForLongTime(
 
 			if newUnit.r == level {
 				seen[uint16(newUnit.l.Creator())] = true
-				if posets[0].IsQuorum(len(seen)) {
+				if dags[0].IsQuorum(len(seen)) {
 					return seen
 				}
 			}
@@ -914,15 +914,15 @@ func makePosetsUndecidedForLongTime(
 		return seen
 	}
 
-	addMissing := func(level uint64, seen map[uint16]bool, source *[]pair, sink []gomel.Poset, sinkRss []gomel.RandomSource) map[uint16]bool {
+	addMissing := func(level uint64, seen map[uint16]bool, source *[]pair, sink []gomel.Dag, sinkRss []gomel.RandomSource) map[uint16]bool {
 
-		for !posets[0].IsQuorum(len(seen)) && len(*source) > 0 {
+		for !dags[0].IsQuorum(len(seen)) && len(*source) > 0 {
 
 			newUnit := (*source)[0]
 			if newUnit.r > level {
 				break
 			}
-			addedUnit := helpers.AddToPosetsIngoringErrors(newUnit.l, sinkRss, sink)
+			addedUnit := helpers.AddToDagsIngoringErrors(newUnit.l, sinkRss, sink)
 			*source = (*source)[1:]
 			if addedUnit != nil && uint64(addedUnit.Level()) == level {
 				seen[uint16(addedUnit.Creator())] = true
@@ -935,13 +935,13 @@ func makePosetsUndecidedForLongTime(
 	isLeft = true
 	switchSides()
 
-	leftSide = posets[:zeros]
+	leftSide = dags[:zeros]
 	leftKeys = privateKeys[:zeros]
 	leftIds = ids[:zeros]
 	leftRss = rss[:zeros]
 
 	// initialize using units from the previous level
-	posets[0].MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dags[0].MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, unit := range units {
 			if uint64(unit.Level()) >= level {
 				preunit := unitToPreunit(unit)
@@ -959,10 +959,10 @@ func makePosetsUndecidedForLongTime(
 
 		seen := map[uint16]bool{}
 		seen = checkMissing(level, seen, *myUnits)
-		if !posets[0].IsQuorum(len(seen)) {
+		if !dags[0].IsQuorum(len(seen)) {
 			seen = checkMissing(level, seen, *awaitingUnits)
 		}
-		if !posets[0].IsQuorum(len(seen)) {
+		if !dags[0].IsQuorum(len(seen)) {
 			// we are definitely unable to build new level
 			switchSides()
 			continue
@@ -987,33 +987,33 @@ func makePosetsUndecidedForLongTime(
 				} else {
 					// nothing left to do here
 					// just add all remaining units
-					err := syncAllPosets(posets, rss)
+					err := syncAllDags(dags, rss)
 					if err != nil {
 						return err
 					}
-					addMissing(level+1, map[uint16]bool{}, &leftUnits, posets, rss)
-					addMissing(level+1, map[uint16]bool{}, &rightUnits, posets, rss)
-					addMissing(level+1, map[uint16]bool{}, &awaitingUnitsForLeft, posets, rss)
-					addMissing(level+1, map[uint16]bool{}, &awaitingUnitsForRight, posets, rss)
+					addMissing(level+1, map[uint16]bool{}, &leftUnits, dags, rss)
+					addMissing(level+1, map[uint16]bool{}, &rightUnits, dags, rss)
+					addMissing(level+1, map[uint16]bool{}, &awaitingUnitsForLeft, dags, rss)
+					addMissing(level+1, map[uint16]bool{}, &awaitingUnitsForRight, dags, rss)
 					break
 				}
 			}
 		}
 
 		// promote all required processes to the next level
-		ones, _ := subsetSizesOfLowerLevelBasedOnCommonVote(nextVote, uint16(len(posets)))
+		ones, _ := subsetSizesOfLowerLevelBasedOnCommonVote(nextVote, uint16(len(dags)))
 		if isLeft {
-			leftSide = posets[:ones]
+			leftSide = dags[:ones]
 			leftKeys = privateKeys[:ones]
 			leftIds = ids[:ones]
 		} else {
-			rightSide = posets[ones:]
+			rightSide = dags[ones:]
 			rightKeys = privateKeys[ones:]
 			rightIds = ids[ones:]
 		}
 
-		// synchronize all posets for the current round
-		err := syncAllPosets(*currentSet, *currentRss)
+		// synchronize all dags for the current round
+		err := syncAllDags(*currentSet, *currentRss)
 		if err != nil {
 			return err
 		}
@@ -1021,7 +1021,7 @@ func makePosetsUndecidedForLongTime(
 		seen = countUnitsOnLevelOrHigher((*currentSet)[0], level)
 		// show minimal number of units that allows us to build new level
 		seen = addMissing(level, seen, myUnits, *currentSet, *currentRss)
-		if !posets[0].IsQuorum(len(seen)) {
+		if !dags[0].IsQuorum(len(seen)) {
 			seen = addMissing(level, seen, awaitingUnits, *currentSet, *currentRss)
 		}
 
@@ -1079,21 +1079,21 @@ func unitToPreunit(unit gomel.Unit) gomel.Preunit {
 
 // this function assumes that it is possible to create a new level, i.e. there are enough candidates on lower level
 func buildOneLevelUp(
-	posets []gomel.Poset,
+	dags []gomel.Dag,
 	privKeys []gomel.PrivateKey,
 	ids []uint16,
 	rss []gomel.RandomSource,
 	level uint64,
 ) ([]gomel.Preunit, error) {
-	// IMPORTANT instead of adding units immediately to all posets, save them so they will be processed on the next round
+	// IMPORTANT instead of adding units immediately to all dags, save them so they will be processed on the next round
 
-	createdUnits := make([]gomel.Preunit, 0, len(posets))
-	ones, _ := subsetSizesOfLowerLevelBasedOnCommonVote(true, uint16(posets[0].NProc()))
-	for ix, poset := range posets {
+	createdUnits := make([]gomel.Preunit, 0, len(dags))
+	ones, _ := subsetSizesOfLowerLevelBasedOnCommonVote(true, uint16(dags[0].NProc()))
+	for ix, dag := range dags {
 		createdOnLevel := false
 		for !createdOnLevel {
-			// check if process/poset is already on that level
-			for _, unit := range poset.MaximalUnitsPerProcess().Get(int(ids[ix])) {
+			// check if process/dag is already on that level
+			for _, unit := range dag.MaximalUnitsPerProcess().Get(int(ids[ix])) {
 				if unit.Level() == int(level) {
 					preunit := unitToPreunit(unit)
 					createdUnits = append(createdUnits, preunit)
@@ -1104,14 +1104,14 @@ func buildOneLevelUp(
 			if createdOnLevel {
 				break
 			}
-			preunit, err := creating.NewUnit(poset, int(ids[ix]), int(ones), helpers.NewDefaultDataContent(), rss[ix], true)
+			preunit, err := creating.NewUnit(dag, int(ids[ix]), int(ones), helpers.NewDefaultDataContent(), rss[ix], true)
 			if err != nil {
-				return nil, fmt.Errorf("error while creating a unit for poset no %d: %s", ids[ix], err.Error())
+				return nil, fmt.Errorf("error while creating a unit for dag no %d: %s", ids[ix], err.Error())
 			}
-			// add only to its creator's poset
-			addedUnit, err := helpers.AddToPoset(poset, preunit, rss[ix])
+			// add only to its creator's dag
+			addedUnit, err := helpers.AddToDag(dag, preunit, rss[ix])
 			if err != nil {
-				return nil, fmt.Errorf("error while adding to poset no %d: %s", ids[ix], err.Error())
+				return nil, fmt.Errorf("error while adding to dag no %d: %s", ids[ix], err.Error())
 			}
 
 			createdUnits = append(createdUnits, preunit)
@@ -1140,11 +1140,11 @@ func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan b
 	return fixedVotes
 }
 
-func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, numberOfDeterministicRounds uint64) (func([]gomel.Poset, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler, func([]gomel.Poset) bool) {
+func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, numberOfDeterministicRounds uint64) (func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler, func([]gomel.Dag) bool) {
 
 	alreadyTriggered := false
-	resultAdder := func(posets []gomel.Poset, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) helpers.AddingHandler {
-		seen := make(map[uint16]bool, len(posets))
+	resultAdder := func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) helpers.AddingHandler {
+		seen := make(map[uint16]bool, len(dags))
 		triggerCondition := func(unit gomel.Unit) bool {
 			if alreadyTriggered {
 				return false
@@ -1152,45 +1152,45 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			if uint64(unit.Level()) == (startLevel - 1) {
 				seen[uint16(unit.Creator())] = true
 			}
-			if posets[0].IsQuorum(len(seen)) && unit.Creator() != rss[0].GetCRP(int(startLevel))[0] {
+			if dags[0].IsQuorum(len(seen)) && unit.Creator() != rss[0].GetCRP(int(startLevel))[0] {
 				return true
 			}
 			return false
 		}
 
-		addingHandler := func(posets []gomel.Poset, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+		addingHandler := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
 
-			posetsCopy := append([]gomel.Poset{}, posets...)
+			dagsCopy := append([]gomel.Dag{}, dags...)
 			privKeysCopy := append([]gomel.PrivateKey{}, privKeys...)
-			ids := make([]uint16, len(posets))
+			ids := make([]uint16, len(dags))
 			rssCopy := append([]gomel.RandomSource{}, rss...)
-			for ix := range posets {
+			for ix := range dags {
 				ids[ix] = uint16(ix)
 			}
-			triggeringPoset := uint16(rss[0].GetCRP(int(startLevel))[0])
-			fmt.Println("triggering poset no", triggeringPoset)
+			triggeringDag := uint16(rss[0].GetCRP(int(startLevel))[0])
+			fmt.Println("triggering dag no", triggeringDag)
 			triggeringPreunit, err := creating.NewUnit(
-				posets[triggeringPoset],
-				int(triggeringPoset),
-				len(posets),
+				dags[triggeringDag],
+				int(triggeringDag),
+				len(dags),
 				helpers.NewDefaultDataContent(),
-				rss[triggeringPoset], false,
+				rss[triggeringDag], false,
 			)
 			if err != nil {
 				return err
 			}
-			triggeringUnit, err := helpers.AddToPoset(posets[triggeringPoset], triggeringPreunit, rss[triggeringPoset])
+			triggeringUnit, err := helpers.AddToDag(dags[triggeringDag], triggeringPreunit, rss[triggeringDag])
 			if err != nil {
 				return err
 			}
 			commonVotes := newDefaultCommonVote(triggeringUnit, initialVotingRound, numberOfDeterministicRounds)
 
-			posetsCopy[triggeringPoset], posetsCopy[0] = posetsCopy[0], posetsCopy[triggeringPoset]
-			privKeysCopy[triggeringPoset], privKeysCopy[0] = privKeysCopy[0], privKeysCopy[triggeringPoset]
-			ids[triggeringPoset], ids[0] = ids[0], ids[triggeringPoset]
-			rssCopy[triggeringPoset], rssCopy[0] = rssCopy[0], rssCopy[triggeringPoset]
+			dagsCopy[triggeringDag], dagsCopy[0] = dagsCopy[0], dagsCopy[triggeringDag]
+			privKeysCopy[triggeringDag], privKeysCopy[0] = privKeysCopy[0], privKeysCopy[triggeringDag]
+			ids[triggeringDag], ids[0] = ids[0], ids[triggeringDag]
+			rssCopy[triggeringDag], rssCopy[0] = rssCopy[0], rssCopy[triggeringDag]
 
-			result := makePosetsUndecidedForLongTime(posetsCopy, privKeysCopy, ids, rssCopy, triggeringPreunit, triggeringUnit, commonVotes, initialVotingRound)
+			result := makeDagsUndecidedForLongTime(dagsCopy, privKeysCopy, ids, rssCopy, triggeringPreunit, triggeringUnit, commonVotes, initialVotingRound)
 			if result != nil {
 				return result
 			}
@@ -1199,7 +1199,7 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 		}
 		return newTriggeredAdder(triggerCondition, addingHandler)
 	}
-	return resultAdder, func([]gomel.Poset) bool { return alreadyTriggered }
+	return resultAdder, func([]gomel.Dag) bool { return alreadyTriggered }
 }
 
 func testLongTimeUndecidedStrategy() error {
@@ -1218,7 +1218,7 @@ func testLongTimeUndecidedStrategy() error {
 
 	unitAdder, stopCondition := longTimeUndecidedStrategy(startLevel, initialVotingRound, numberOfDeterministicRounds)
 
-	checkIfUndecidedVerifier := func(posets []gomel.Poset, pids []uint16, configs []config.Configuration) error {
+	checkIfUndecidedVerifier := func(dags []gomel.Dag, pids []uint16, configs []config.Configuration) error {
 		fmt.Println("starting the undecided checker")
 
 		config := config.NewDefaultConfiguration()
@@ -1226,33 +1226,33 @@ func testLongTimeUndecidedStrategy() error {
 		config.PiDeltaLevel = uint(numberOfDeterministicRounds + 1)
 
 		errorsCount := 0
-		for pid, poset := range posets {
-			rs := random.NewTcSource(poset, pid)
-			ordering := linear.NewOrdering(poset, rs, int(config.VotingLevel), int(config.PiDeltaLevel))
+		for pid, dag := range dags {
+			rs := random.NewTcSource(dag, pid)
+			ordering := linear.NewOrdering(dag, rs, int(config.VotingLevel), int(config.PiDeltaLevel))
 			if unit := ordering.DecideTimingOnLevel(int(startLevel)); unit != nil {
-				fmt.Println("some poset already decided - error")
+				fmt.Println("some dag already decided - error")
 				errorsCount++
 			}
 		}
 		if errorsCount > 0 {
 			fmt.Println("number of errors", errorsCount)
-			return fmt.Errorf("posets were suppose to not decide on this level - number of errors %d", errorsCount)
+			return fmt.Errorf("dags were suppose to not decide on this level - number of errors %d", errorsCount)
 		}
-		fmt.Println("posets were unable to make a decision after", numberOfDeterministicRounds, "rounds")
+		fmt.Println("dags were unable to make a decision after", numberOfDeterministicRounds, "rounds")
 		return nil
 	}
 
 	testingRoutine := helpers.NewTestingRoutineWithStopCondition(
-		func([]gomel.Poset, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
+		func([]gomel.Dag, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
 		unitAdder,
-		func([]gomel.Poset, []gomel.PrivateKey) helpers.PosetVerifier { return checkIfUndecidedVerifier },
+		func([]gomel.Dag, []gomel.PrivateKey) helpers.DagVerifier { return checkIfUndecidedVerifier },
 		stopCondition,
 	)
 
 	return helpers.Test(pubKeys, privKeys, testingRoutine)
 }
 
-var _ = Describe("Byzantine Poset Test", func() {
+var _ = Describe("Byzantine Dag Test", func() {
 	Describe("simple scenario", func() {
 		Context("using same parents for forks", func() {
 			It("should finish without errors", func() {
@@ -1281,7 +1281,7 @@ var _ = Describe("Byzantine Poset Test", func() {
 	})
 
 	Describe("fork with different parents", func() {
-		Context("by calling creating on a bigger poset", func() {
+		Context("by calling creating on a bigger dag", func() {
 			It("should finish without errors", func() {
 				const parentsInForkingUnits = 2
 				err := testForkingChangingParents(createForkUsingNewUnit(parentsInForkingUnits))
