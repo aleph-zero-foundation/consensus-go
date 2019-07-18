@@ -47,14 +47,14 @@ def inst_deps(conn):
 #                                   syncing local version
 #======================================================================================
 
-@task 
+@task
 def send_config(conn):
     ''' Sends keys, addresses, and parameters. '''
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     conn.put('data/config.json', repo_path)
 
 
-@task 
+@task
 def send_data(conn, pid):
     ''' Sends keys, addresses, and parameters. '''
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
@@ -84,7 +84,7 @@ def run_protocol(conn, pid, delay='0'):
                     --keys {pid}.keys \
                     --config config.json \
                     --db pkg/testdata/users.txt \
-                    --poset {pid}.poset \
+                    --dag {pid}.dag \
                     --delay {int(float(delay))}'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
@@ -99,7 +99,7 @@ def run_protocol_profiler(conn, pid, delay='0'):
                     --keys {pid}.keys \
                     --config config.json \
                     --db pkg/testdata/users.txt \
-                    --poset {pid}.poset \
+                    --dag {pid}.dag \
                     --delay {int(float(delay))}'
         if int(pid)%16 == 0 :
             cmd += ' --cpuprof cpuprof --memprof memprof'
@@ -125,13 +125,13 @@ def get_profile(conn, pid):
     conn.get(f'{repo_path}/memprof', f'../results/{pid}.memprof')
 
 @task
-def get_poset(conn, pid):
+def get_dag(conn, pid):
     ''' Retrieves aleph.log from the server.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'zip -q {pid}.poset.zip {pid}.poset')
-    conn.get(f'{repo_path}/{pid}.poset.zip', f'../results/{pid}.poset.zip')
+        conn.run(f'zip -q {pid}.dag.zip {pid}.dag')
+    conn.get(f'{repo_path}/{pid}.dag.zip', f'../results/{pid}.dag.zip')
 
 @task
 def get_log(conn, pid):

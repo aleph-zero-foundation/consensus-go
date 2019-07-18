@@ -43,7 +43,7 @@ def create_security_group(region_name, security_group_name):
     sg = ec2.create_security_group(GroupName=security_group_name, Description='ssh and gossip', VpcId=vpc_id)
 
     # authorize incomming connections to port 22 for ssh, mainly for debugging
-    # and to port 8888 for syncing the posets
+    # and to port 8888 for syncing the dags
     sg.authorize_ingress(
         GroupName=security_group_name,
         IpPermissions=[

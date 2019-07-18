@@ -9,16 +9,16 @@ import (
 
 type tcRandomSource struct {
 	pid        int
-	poset      gomel.Poset
+	dag        gomel.Dag
 	tcs        *syncTCMap
 	coinShares *SyncCSMap
 }
 
 // NewTcSource returns a RandomSource based on threshold coins
-func NewTcSource(poset gomel.Poset, pid int) gomel.RandomSource {
+func NewTcSource(dag gomel.Dag, pid int) gomel.RandomSource {
 	return &tcRandomSource{
 		pid:        pid,
-		poset:      poset,
+		dag:        dag,
 		tcs:        newSyncTCMap(),
 		coinShares: NewSyncCSMap(),
 	}
@@ -26,7 +26,7 @@ func NewTcSource(poset gomel.Poset, pid int) gomel.RandomSource {
 
 // GetCRP is a dummy implementation of a common random permutation
 func (rs *tcRandomSource) GetCRP(nonce int) []int {
-	nProc := rs.poset.NProc()
+	nProc := rs.dag.NProc()
 	permutation := make([]int, nProc)
 	for i := 0; i < nProc; i++ {
 		permutation[i] = (i + nonce) % nProc
@@ -47,7 +47,7 @@ func (rs *tcRandomSource) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 
-	rs.poset.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
+	rs.dag.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			if !v.Below(uTossing) {
 				continue
@@ -125,7 +125,7 @@ func (rs *tcRandomSource) CheckCompliance(u gomel.Unit) error {
 func (rs *tcRandomSource) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
 	// dealing unit
 	if len(parents) == 0 {
-		nProc := rs.poset.NProc()
+		nProc := rs.dag.NProc()
 		return tcoin.Deal(nProc, nProc/3+1)
 	}
 	// prime non-dealing unit
@@ -174,7 +174,7 @@ func hasForkingEvidenceFromParents(parents []gomel.Unit, creator int) bool {
 // and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
 // that is below the unit under construction
 func (rs *tcRandomSource) firstDealingUnitFromParents(parents []gomel.Unit, level int) gomel.Unit {
-	dealingUnits := rs.poset.PrimeUnits(0)
+	dealingUnits := rs.dag.PrimeUnits(0)
 	for _, dealer := range rs.GetCRP(level) {
 		if hasForkingEvidenceFromParents(parents, dealer) {
 			continue
@@ -189,7 +189,7 @@ func (rs *tcRandomSource) firstDealingUnitFromParents(parents []gomel.Unit, leve
 }
 
 func (rs *tcRandomSource) firstDealingUnit(u gomel.Unit) gomel.Unit {
-	dealingUnits := rs.poset.PrimeUnits(0)
+	dealingUnits := rs.dag.PrimeUnits(0)
 	for _, dealer := range rs.GetCRP(u.Level()) {
 		if u.HasForkingEvidence(dealer) {
 			continue

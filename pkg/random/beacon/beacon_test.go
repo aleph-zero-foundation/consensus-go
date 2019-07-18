@@ -18,30 +18,30 @@ var _ = Describe("Beacon", func() {
 	var (
 		n        int
 		maxLevel int
-		poset    []gomel.Poset
+		dag      []gomel.Dag
 		rs       []gomel.RandomSource
 		err      error
 	)
 	BeforeEach(func() {
 		n = 4
 		maxLevel = 13
-		poset = make([]gomel.Poset, n)
+		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
 		for pid := 0; pid < n; pid++ {
-			poset[pid], err = tests.CreatePosetFromTestFile("../../testdata/empty4.txt", tests.NewTestPosetFactory())
+			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
-			rs[pid] = NewBeacon(poset[pid], pid)
+			rs[pid] = NewBeacon(dag[pid], pid)
 		}
-		// Generating very regular poset
+		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
 			for creator := 0; creator < n; creator++ {
-				pu, err := creating.NewNonSkippingUnit(poset[creator], creator, []byte{}, rs[creator])
+				pu, err := creating.NewNonSkippingUnit(dag[creator], creator, []byte{}, rs[creator])
 				Expect(err).NotTo(HaveOccurred())
 				for pid := 0; pid < n; pid++ {
 					var wg sync.WaitGroup
 					wg.Add(1)
 					var added gomel.Unit
-					poset[pid].AddUnit(pu, rs[pid], func(_ gomel.Preunit, u gomel.Unit, err error) {
+					dag[pid].AddUnit(pu, rs[pid], func(_ gomel.Preunit, u gomel.Unit, err error) {
 						defer wg.Done()
 						added = u
 						Expect(err).NotTo(HaveOccurred())
@@ -58,12 +58,12 @@ var _ = Describe("Beacon", func() {
 		Context("On a given level", func() {
 			It("Should return a permutation of pids", func() {
 				perm := rs[0].GetCRP(8)
-				Expect(len(perm)).To(Equal(poset[0].NProc()))
+				Expect(len(perm)).To(Equal(dag[0].NProc()))
 				elems := make(map[int]bool)
 				for _, pid := range perm {
 					elems[pid] = true
 				}
-				Expect(len(elems)).To(Equal(poset[0].NProc()))
+				Expect(len(elems)).To(Equal(dag[0].NProc()))
 			})
 			It("Should return the same permutation for all pid", func() {
 				perm := make([][]int, n)
@@ -93,7 +93,7 @@ var _ = Describe("Beacon", func() {
 	Describe("CheckCompliance", func() {
 		Context("On a dealing unit without tcoin included", func() {
 			It("Should return an error", func() {
-				u := poset[0].PrimeUnits(0).Get(0)[0]
+				u := dag[0].PrimeUnits(0).Get(0)[0]
 				um := newUnitMock(u, []byte{})
 				err := rs[0].CheckCompliance(um)
 				Expect(err).To(HaveOccurred())
@@ -103,7 +103,7 @@ var _ = Describe("Beacon", func() {
 		Context("On a voting unit", func() {
 			Context("Having no votes", func() {
 				It("Should return an error", func() {
-					u := poset[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].PrimeUnits(3).Get(0)[0]
 					um := newUnitMock(u, []byte{})
 					err := rs[0].CheckCompliance(um)
 					Expect(err).To(HaveOccurred())
@@ -112,7 +112,7 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("Having one vote missing", func() {
 				It("Should return an error", func() {
-					u := poset[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].PrimeUnits(3).Get(0)[0]
 					votes := u.RandomSourceData()
 					votes[0] = 0
 					um := newUnitMock(u, votes)
@@ -123,9 +123,9 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("Having incorrect vote", func() {
 				It("Should return an error", func() {
-					u := poset[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].PrimeUnits(3).Get(0)[0]
 					votes := u.RandomSourceData()
-					votes[poset[0].NProc()-1] = 2
+					votes[dag[0].NProc()-1] = 2
 					// preparing fake proof
 					proof := big.NewInt(int64(20190718))
 					proofBytes, _ := proof.GobEncode()
@@ -144,7 +144,7 @@ var _ = Describe("Beacon", func() {
 		Context("On a unit which should contain shares", func() {
 			Context("Without random source data", func() {
 				It("Should return an error", func() {
-					u := poset[0].PrimeUnits(8).Get(0)[0]
+					u := dag[0].PrimeUnits(8).Get(0)[0]
 					um := newUnitMock(u, []byte{})
 					err := rs[0].CheckCompliance(um)
 					Expect(err).To(HaveOccurred())
@@ -153,8 +153,8 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("With missing shares", func() {
 				It("Should return an error", func() {
-					u := poset[0].PrimeUnits(8).Get(0)[0]
-					shares := make([]byte, poset[0].NProc())
+					u := dag[0].PrimeUnits(8).Get(0)[0]
+					shares := make([]byte, dag[0].NProc())
 					um := newUnitMock(u, shares)
 					err := rs[0].CheckCompliance(um)
 					Expect(err).To(HaveOccurred())
@@ -163,9 +163,9 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("With incorrect shares", func() {
 				It("Should return an error", func() {
-					u := poset[0].PrimeUnits(8).Get(0)[0]
+					u := dag[0].PrimeUnits(8).Get(0)[0]
 					// taking shares of a unit of different level
-					v := poset[0].PrimeUnits(9).Get(0)[0]
+					v := dag[0].PrimeUnits(9).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
 					err := rs[0].CheckCompliance(um)
 					Expect(err).To(HaveOccurred())

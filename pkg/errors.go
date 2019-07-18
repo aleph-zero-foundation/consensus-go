@@ -16,7 +16,7 @@ func NewDataError(msg string) *DataError {
 	return &DataError{msg}
 }
 
-// UnknownParent is raised when at least one of the parents of a preunit cannot be found in the poset.
+// UnknownParent is raised when at least one of the parents of a preunit cannot be found in the dag.
 // Depending on the syncing protocol this might or might not indicate problems with the process providing the preunit.
 type UnknownParent struct{}
 
@@ -53,7 +53,7 @@ type DuplicateUnit struct {
 
 // Error returns a (fixed) string description of a DuplicateUnit.
 func (e *DuplicateUnit) Error() string {
-	return "Unit already in poset."
+	return "Unit already in dag."
 }
 
 // NewDuplicateUnit constructs a DuplicateUnit error for the given unit.

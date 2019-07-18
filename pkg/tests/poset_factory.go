@@ -4,13 +4,13 @@ import (
 	gomel "gitlab.com/alephledger/consensus-go/pkg"
 )
 
-type testPosetFactory struct{}
+type testDagFactory struct{}
 
-// NewTestPosetFactory returns instation of testPosetFactory --- factory creating test posets
-func NewTestPosetFactory() gomel.PosetFactory {
-	return testPosetFactory{}
+// NewTestDagFactory returns instation of testDagFactory --- factory creating test dags
+func NewTestDagFactory() gomel.DagFactory {
+	return testDagFactory{}
 }
 
-func (testPosetFactory) CreatePoset(posetConfiguration gomel.PosetConfig) gomel.Poset {
-	return newPoset(posetConfiguration)
+func (testDagFactory) CreateDag(dagConfiguration gomel.DagConfig) gomel.Dag {
+	return newDag(dagConfiguration)
 }

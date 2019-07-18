@@ -18,14 +18,14 @@ type service struct {
 	log          zerolog.Logger
 }
 
-// NewService creates a new syncing service for the given poset, with the given config.
-func NewService(poset gomel.Poset, randomSource gomel.RandomSource, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, error) {
+// NewService creates a new syncing service for the given dag, with the given config.
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, error) {
 	listener, dialer, err := tcp.NewNetwork(config.LocalAddress, config.RemoteAddresses, log)
 	if err != nil {
 		return nil, err
 	}
-	peerSource := gossip.NewDefaultPeerSource(uint16(poset.NProc()), uint16(config.Pid))
-	gossipProto := gossip.NewProtocol(uint16(config.Pid), poset, randomSource, listener, dialer, peerSource, config.Timeout, attemptTiming, log)
+	peerSource := gossip.NewDefaultPeerSource(uint16(dag.NProc()), uint16(config.Pid))
+	gossipProto := gossip.NewProtocol(uint16(config.Pid), dag, randomSource, listener, dialer, peerSource, config.Timeout, attemptTiming, log)
 	gossipServ := sync.NewServer(gossipProto, config.OutSyncLimit, config.InSyncLimit, log)
 
 	return &service{

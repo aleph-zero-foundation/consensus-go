@@ -7,43 +7,43 @@ import (
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type posetFactory struct{}
+type dagFactory struct{}
 
-func (posetFactory) CreatePoset(pc gomel.PosetConfig) gomel.Poset {
-	return NewPoset(&pc)
+func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
+	return NewDag(&dc)
 }
 
-func levelByIteratingPrimes(u gomel.Unit, p gomel.Poset) int {
+func levelByIteratingPrimes(u gomel.Unit, dag gomel.Dag) int {
 	if gomel.Dealing(u) {
 		return 0
 	}
 	level := u.Parents()[0].Level()
-	primes := p.PrimeUnits(level)
+	primes := dag.PrimeUnits(level)
 	nSeen := 0
-	nNotSeen := p.NProc()
+	nNotSeen := dag.NProc()
 	primes.Iterate(func(units []gomel.Unit) bool {
 		nNotSeen--
 		for _, v := range units {
 			if v.Below(u) {
 				nSeen++
-				if p.IsQuorum(nSeen) {
+				if dag.IsQuorum(nSeen) {
 					return false
 				}
 				break
 			}
 		}
-		if !p.IsQuorum(nSeen + nNotSeen) {
+		if !dag.IsQuorum(nSeen + nNotSeen) {
 			return false
 		}
 		return true
 	})
-	if p.IsQuorum(nSeen) {
+	if dag.IsQuorum(nSeen) {
 		return level + 1
 	}
 	return level
 }
 
-func levelByDFS(u gomel.Unit, poset gomel.Poset) int {
+func levelByDFS(u gomel.Unit, dag gomel.Dag) int {
 	if len(u.Parents()) == 0 {
 		return 0
 	}
@@ -62,7 +62,7 @@ func levelByDFS(u gomel.Unit, poset gomel.Poset) int {
 				stack = append(stack, v)
 				unitsSeen[*v.Hash()] = true
 				procSeen[v.Creator()] = true
-				if poset.IsQuorum(len(procSeen)) {
+				if dag.IsQuorum(len(procSeen)) {
 					return level + 1
 				}
 			}
@@ -71,7 +71,7 @@ func levelByDFS(u gomel.Unit, poset gomel.Poset) int {
 	return level
 }
 
-func levelByBFS(u gomel.Unit, poset gomel.Poset) int {
+func levelByBFS(u gomel.Unit, dag gomel.Dag) int {
 	if len(u.Parents()) == 0 {
 		return 0
 	}
@@ -90,7 +90,7 @@ func levelByBFS(u gomel.Unit, poset gomel.Poset) int {
 				queue = append(queue, v)
 				unitsSeen[*v.Hash()] = true
 				procSeen[v.Creator()] = true
-				if poset.IsQuorum(len(procSeen)) {
+				if dag.IsQuorum(len(procSeen)) {
 					return level + 1
 				}
 			}
@@ -99,12 +99,12 @@ func levelByBFS(u gomel.Unit, poset gomel.Poset) int {
 	return level
 }
 
-// collectUnits runs dfs from maximal units in the given poset and returns a map
+// collectUnits runs dfs from maximal units in the given dag and returns a map
 // creator => (height => slice of units by this creator on this height)
-func collectUnits(p gomel.Poset) map[int]map[int][]gomel.Unit {
+func collectUnits(dag gomel.Dag) map[int]map[int][]gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
 	result := make(map[int]map[int][]gomel.Unit)
-	for pid := 0; pid < p.NProc(); pid++ {
+	for pid := 0; pid < dag.NProc(); pid++ {
 		result[pid] = make(map[int][]gomel.Unit)
 	}
 
@@ -121,7 +121,7 @@ func collectUnits(p gomel.Poset) map[int]map[int][]gomel.Unit {
 			}
 		}
 	}
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
 			if !seenUnits[*u.Hash()] {
 				dfs(u)
@@ -134,9 +134,9 @@ func collectUnits(p gomel.Poset) map[int]map[int][]gomel.Unit {
 
 func BenchmarkLevelComputing(b *testing.B) {
 	var (
-		poset      gomel.Poset
+		dag        gomel.Dag
 		readingErr error
-		pf         posetFactory
+		df         dagFactory
 		units      map[int]map[int][]gomel.Unit
 	)
 	testfiles := []string{
@@ -145,13 +145,13 @@ func BenchmarkLevelComputing(b *testing.B) {
 		"random_100p_5000u.txt",
 	}
 	for _, testfile := range testfiles {
-		poset, readingErr = tests.CreatePosetFromTestFile("../testdata/"+testfile, pf)
+		dag, readingErr = tests.CreateDagFromTestFile("../testdata/"+testfile, df)
 
 		if readingErr != nil {
 			panic(readingErr)
 			return
 		}
-		units = collectUnits(poset)
+		units = collectUnits(dag)
 		flatten := []gomel.Unit{}
 		for pid := range units {
 			for h := range units[pid] {
@@ -168,21 +168,21 @@ func BenchmarkLevelComputing(b *testing.B) {
 		b.Run("With iterating on "+testfile, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				for _, u := range flatten {
-					levelByIteratingPrimes(u, poset)
+					levelByIteratingPrimes(u, dag)
 				}
 			}
 		})
 		b.Run("By simple dfs on "+testfile, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				for _, u := range flatten {
-					levelByDFS(u, poset)
+					levelByDFS(u, dag)
 				}
 			}
 		})
 		b.Run("By simple bfs on "+testfile, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				for _, u := range flatten {
-					levelByBFS(u, poset)
+					levelByBFS(u, dag)
 				}
 			}
 		})

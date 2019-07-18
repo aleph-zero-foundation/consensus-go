@@ -14,8 +14,8 @@ const (
 	NotEnoughParents      = "I"
 	SyncStarted           = "J"
 	SyncCompleted         = "K"
-	GetPosetInfo          = "L"
-	SendPosetInfo         = "M"
+	GetDagInfo            = "L"
+	SendDagInfo           = "M"
 	GetPreunits           = "N"
 	SendUnits             = "O"
 	GetRequests           = "P"
@@ -49,8 +49,8 @@ var eventTypeDict = map[string]string{
 	NotEnoughParents:      "creating.NewUnit failed (not enough parents)",
 	SyncStarted:           "new sync started",
 	SyncCompleted:         "sync completed (stats = units)",
-	GetPosetInfo:          "receiving poset info started",
-	SendPosetInfo:         "sending poset info started",
+	GetDagInfo:            "receiving dag info started",
+	SendDagInfo:           "sending dag info started",
 	GetPreunits:           "receiving preunits started",
 	SendUnits:             "sending units started",
 	GetRequests:           "receiving requests started",
@@ -59,7 +59,7 @@ var eventTypeDict = map[string]string{
 	AddUnits:              "adding received units started",
 	SentUnits:             "successfully sent units",
 	ReceivedPreunits:      "successfully received preunits",
-	DuplicatedUnit:        "attempting to add unit already present in poset",
+	DuplicatedUnit:        "attempting to add unit already present in dag",
 	OwnUnitOrdered:        "unit created by this process has been ordered",
 	ConnectionClosed:      "connection closed after sync (stats = bytes)",
 	MemoryUsage:           "memory usage statistics",

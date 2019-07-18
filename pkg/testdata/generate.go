@@ -13,26 +13,26 @@ import (
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-func writeToFile(filename string, poset gomel.Poset) error {
+func writeToFile(filename string, dag gomel.Dag) error {
 	file, err := os.Create(filename)
 	defer file.Close()
 	if err != nil {
 		return err
 	}
 	out := bufio.NewWriter(file)
-	tests.WritePoset(out, poset)
+	tests.WriteDag(out, dag)
 	out.Flush()
 	return nil
 }
 
-// CreateRandomNonForkingUsingCreating creates a random test poset when given
+// CreateRandomNonForkingUsingCreating creates a random test dag when given
 // nProcesses - number of processes
 // maxParents - maximal number of unit parents (valid for non-dealing units)
-// nUnits     - number of units to include in the poset
-func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gomel.Poset {
+// nUnits     - number of units to include in the dag
+func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	p := growing.NewPoset(&gomel.PosetConfig{Keys: make([]gomel.PublicKey, nProcesses)})
-	rs := tests.NewTestRandomSource(p)
+	dag := growing.NewDag(&gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
+	rs := tests.NewTestRandomSource(dag)
 	created := 0
 	pus := make([]gomel.Preunit, nProcesses)
 	for created < nUnits {
@@ -40,24 +40,24 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gom
 		if pus[pid] != nil {
 			var wg sync.WaitGroup
 			wg.Add(1)
-			p.AddUnit(pus[pid], rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
+			dag.AddUnit(pus[pid], rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
 				wg.Done()
 			})
 			wg.Wait()
 			created++
 			pus[pid] = nil
 		} else {
-			pu, err := creating.NewUnit(p, pid, maxParents, []byte{}, rs, true)
+			pu, err := creating.NewUnit(dag, pid, maxParents, []byte{}, rs, true)
 			if err != nil {
 				continue
 			}
 			pus[pid] = pu
 		}
 	}
-	return p
+	return dag
 }
 
 // Use this to generate more test files
 func main() {
-	writeToFile("poset.out", CreateRandomNonForkingUsingCreating(10, 2, 100))
+	writeToFile("dag.out", CreateRandomNonForkingUsingCreating(10, 2, 100))
 }

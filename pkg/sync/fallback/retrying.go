@@ -12,9 +12,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-// Retrying is a wrapper for a fallback that continously tries adding the problematic preunits to the poset.
+// Retrying is a wrapper for a fallback that continously tries adding the problematic preunits to the dag.
 type Retrying struct {
-	poset     gomel.Poset
+	dag       gomel.Dag
 	rs        gomel.RandomSource
 	inner     gsync.Fallback
 	interval  time.Duration
@@ -29,9 +29,9 @@ type Retrying struct {
 }
 
 // NewRetrying wraps the given fallback with a retrying routine that keeps trying to add problematic units.
-func NewRetrying(inner gsync.Fallback, poset gomel.Poset, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) *Retrying {
+func NewRetrying(inner gsync.Fallback, dag gomel.Dag, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) *Retrying {
 	return &Retrying{
-		poset:     poset,
+		dag:       dag,
 		rs:        rs,
 		inner:     inner,
 		mx:        sync.Mutex{},
@@ -63,7 +63,7 @@ func (f *Retrying) Stop() {
 
 func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 	hashes := pu.Parents()
-	parents := f.poset.Get(hashes)
+	parents := f.dag.Get(hashes)
 	missing := []*gomel.Hash{}
 	for i, h := range hashes {
 		if parents[i] == nil {
@@ -106,7 +106,7 @@ func (f *Retrying) work() {
 func (f *Retrying) update() {
 	f.mx.Lock()
 	defer f.mx.Unlock()
-	units := f.poset.Get(f.missing)
+	units := f.dag.Get(f.missing)
 	newMissing := make([]*gomel.Hash, 0, len(f.missing))
 	for i, h := range f.missing {
 		if units[i] != nil {
@@ -137,7 +137,7 @@ func (f *Retrying) gotHash(h *gomel.Hash) {
 }
 
 func (f *Retrying) addUnit(pu gomel.Preunit) {
-	_, err := add.Antichain(f.poset, f.rs, []gomel.Preunit{pu}, gsync.Noop(), f.log)
+	_, err := add.Antichain(f.dag, f.rs, []gomel.Preunit{pu}, gsync.Noop(), f.log)
 	if err != nil {
 		log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}

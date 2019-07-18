@@ -7,8 +7,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
-func generatePosetConfig(c *Committee) *gomel.PosetConfig {
-	return &gomel.PosetConfig{
+func generateDagConfig(c *Committee) *gomel.DagConfig {
+	return &gomel.DagConfig{
 		Keys: c.PublicKeys,
 	}
 }
@@ -61,7 +61,7 @@ func generateTxGenerateConfig(conf *Configuration, dbFilename string) *process.T
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(c *Committee, dbFilename string) process.Config {
 	return process.Config{
-		Poset:      generatePosetConfig(c),
+		Dag:        generateDagConfig(c),
 		Sync:       generateSyncConfig(conf, c),
 		Create:     generateCreateConfig(conf, c),
 		Order:      generateOrderConfig(conf, c),

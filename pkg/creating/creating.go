@@ -38,8 +38,8 @@ func (vs *visionSplit) newSeer(u gomel.Unit) bool {
 	return seesNew
 }
 
-func (vs *visionSplit) hasQuorumIn(poset gomel.Poset) bool {
-	return poset.IsQuorum(len(vs.visible))
+func (vs *visionSplit) hasQuorumIn(dag gomel.Dag) bool {
+	return dag.IsQuorum(len(vs.visible))
 }
 
 // getPredecessor picks one of the units in mu produced by the given creator.
@@ -192,16 +192,16 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 //
 // The procedure assumes no forks
 // and should be used only in the setup phase.
-func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.RandomSource) (gomel.Preunit, error) {
-	mu := poset.MaximalUnitsPerProcess()
+func NewNonSkippingUnit(dag gomel.Dag, creator int, data []byte, rs gomel.RandomSource) (gomel.Preunit, error) {
+	mu := dag.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	if predecessor == nil {
-		return newDealingUnit(creator, poset.NProc(), data, rs), nil
+		return newDealingUnit(creator, dag.NProc(), data, rs), nil
 	}
 	level := predecessor.Level()
 	parentsOnLevel := 1
 	parents := []gomel.Unit{predecessor}
-	for pid := 0; pid < poset.NProc(); pid++ {
+	for pid := 0; pid < dag.NProc(); pid++ {
 		if pid == creator {
 			continue
 		}
@@ -210,13 +210,13 @@ func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.Ra
 			if u.Level() < level {
 				parents = append(parents, u)
 			} else {
-				v := poset.PrimeUnits(level).Get(pid)[0]
+				v := dag.PrimeUnits(level).Get(pid)[0]
 				parents = append(parents, v)
 				parentsOnLevel++
 			}
 		}
 	}
-	if poset.IsQuorum(parentsOnLevel) {
+	if dag.IsQuorum(parentsOnLevel) {
 		// parents should be sorted by increasing level
 		sort.Slice(parents[1:], func(i, j int) bool {
 			return parents[i].Level() < parents[j].Level()
@@ -231,31 +231,31 @@ func NewNonSkippingUnit(poset gomel.Poset, creator int, data []byte, rs gomel.Ra
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
 // It also returns an error if requirePrime is true and no prime can be produced.
-func NewUnit(poset gomel.Poset, creator int, desiredParents int, data []byte, rs gomel.RandomSource, requirePrime bool) (gomel.Preunit, error) {
-	mu := poset.MaximalUnitsPerProcess()
+func NewUnit(dag gomel.Dag, creator int, desiredParents int, data []byte, rs gomel.RandomSource, requirePrime bool) (gomel.Preunit, error) {
+	mu := dag.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
 	if predecessor == nil {
-		return newDealingUnit(creator, poset.NProc(), data, rs), nil
+		return newDealingUnit(creator, dag.NProc(), data, rs), nil
 	}
 	parents := []gomel.Unit{predecessor}
-	posetLevel := maxLevel(mu)
-	resultLevel := posetLevel
+	dagLevel := maxLevel(mu)
+	resultLevel := dagLevel
 	isPrime := resultLevel > predecessor.Level()
 	// We try picking units of the highest possible level as parents, going down if we haven't filled all the parent slots.
 	// Usually this loop spans over at most two levels.
-	for level := posetLevel; level >= predecessor.Level() && (len(parents) < desiredParents || (requirePrime && !isPrime)); level-- {
+	for level := dagLevel; level >= predecessor.Level() && (len(parents) < desiredParents || (requirePrime && !isPrime)); level-- {
 		candidates := getCandidatesAtLevel(mu, parents, level)
-		vs := splitByBelow(poset.PrimeUnits(level), parents)
+		vs := splitByBelow(dag.PrimeUnits(level), parents)
 		newParents := pickMoreParents(candidates, vs, func(np []gomel.Unit) bool {
-			if vs.hasQuorumIn(poset) {
+			if vs.hasQuorumIn(dag) {
 				isPrime = true
 			}
 			totalLen := len(parents) + len(np)
 			return (!requirePrime || isPrime) && totalLen >= desiredParents
 		})
 		parents = combineParents(parents, newParents)
-		if vs.hasQuorumIn(poset) {
+		if vs.hasQuorumIn(dag) {
 			isPrime = true
 			if level == resultLevel {
 				resultLevel++

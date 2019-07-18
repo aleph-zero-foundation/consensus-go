@@ -8,10 +8,10 @@ import (
 	"math"
 )
 
-func countUnits(p gomel.Poset) int {
+func countUnits(dag gomel.Dag) int {
 	seenUnits := make(map[gomel.Hash]bool)
 	queue := []gomel.Unit{}
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
 			queue = append(queue, u)
 			seenUnits[*u.Hash()] = true
@@ -32,12 +32,12 @@ func countUnits(p gomel.Poset) int {
 	return len(seenUnits)
 }
 
-func getMinMaxParents(p gomel.Poset) (int, int) {
+func getMinMaxParents(dag gomel.Dag) (int, int) {
 	minParents, maxParents := math.MaxInt32, 0
 
 	seenUnits := make(map[gomel.Hash]bool)
 	queue := []gomel.Unit{}
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
 			queue = append(queue, u)
 			seenUnits[*u.Hash()] = true
@@ -69,17 +69,17 @@ func getMinMaxParents(p gomel.Poset) (int, int) {
 
 var _ = Describe("Generator", func() {
 	Describe("CreateRandomNonForking", func() {
-		var p gomel.Poset
+		var dag gomel.Dag
 		Context("Called with nProcesses = 10, minParents = 2, maxParents = 5, nUnits = 50", func() {
-			p = CreateRandomNonForking(10, 2, 5, 50)
-			It("Should return poset with 10 processes", func() {
-				Expect(p.NProc()).To(Equal(10))
+			dag = CreateRandomNonForking(10, 2, 5, 50)
+			It("Should return dag with 10 processes", func() {
+				Expect(dag.NProc()).To(Equal(10))
 			})
 			It("Should have 50 units", func() {
-				Expect(countUnits(p)).To(Equal(50))
+				Expect(countUnits(dag)).To(Equal(50))
 			})
 			It("Should have number of parents between 2 and 5", func() {
-				minParents, maxParents := getMinMaxParents(p)
+				minParents, maxParents := getMinMaxParents(dag)
 				Expect(minParents).To(BeNumerically(">=", 2))
 				Expect(maxParents).To(BeNumerically("<=", 5))
 			})

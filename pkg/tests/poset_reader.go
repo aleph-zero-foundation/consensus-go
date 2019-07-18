@@ -12,8 +12,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
-// ReadPoset reads poset from the given reader and creates it using given poset factory
-func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
+// ReadDag reads dag from the given reader and creates it using given dag factory
+func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	text := scanner.Text()
@@ -24,8 +24,8 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 		return nil, err
 	}
 
-	p := pf.CreatePoset(gomel.PosetConfig{Keys: make([]gomel.PublicKey, n)})
-	rs := NewTestRandomSource(p)
+	dag := df.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
+	rs := NewTestRandomSource(dag)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID uint32
@@ -59,7 +59,7 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 		var addingError error
 		var wg sync.WaitGroup
 		wg.Add(1)
-		p.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		dag.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
 				addingError = err
 			}
@@ -70,16 +70,16 @@ func ReadPoset(reader io.Reader, pf gomel.PosetFactory) (gomel.Poset, error) {
 			return nil, addingError
 		}
 	}
-	return p, nil
+	return dag, nil
 }
 
-// CreatePosetFromTestFile reads poset from given test file and uses factory to create the poset
-func CreatePosetFromTestFile(filename string, pf gomel.PosetFactory) (gomel.Poset, error) {
+// CreateDagFromTestFile reads dag from given test file and uses factory to create the dag
+func CreateDagFromTestFile(filename string, df gomel.DagFactory) (gomel.Dag, error) {
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
 		return nil, err
 	}
 	reader := bufio.NewReader(file)
-	return ReadPoset(reader, pf)
+	return ReadDag(reader, df)
 }

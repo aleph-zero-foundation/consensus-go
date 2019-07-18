@@ -8,7 +8,7 @@ import (
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	Poset      *gomel.PosetConfig
+	Dag        *gomel.DagConfig
 	Sync       *Sync
 	Create     *Create
 	Order      *Order

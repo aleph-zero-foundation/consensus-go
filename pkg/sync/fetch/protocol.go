@@ -18,7 +18,7 @@ import (
 
 type protocol struct {
 	pid           uint16
-	poset         gomel.Poset
+	dag           gomel.Dag
 	randomSource  gomel.RandomSource
 	reqs          <-chan Request
 	dialer        network.Dialer
@@ -33,11 +33,11 @@ type protocol struct {
 // NewProtocol returns a new fetching protocol.
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
-func NewProtocol(pid uint16, poset gomel.Poset, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback gsync.Fallback, attemptTiming chan<- int, log zerolog.Logger) gsync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback gsync.Fallback, attemptTiming chan<- int, log zerolog.Logger) gsync.Protocol {
 	nProc := uint16(dialer.Length())
 	return &protocol{
 		pid:           pid,
-		poset:         poset,
+		dag:           dag,
 		randomSource:  randomSource,
 		reqs:          reqs,
 		dialer:        dialer,
@@ -75,7 +75,7 @@ func (p *protocol) In() {
 		log.Error().Str("where", "fetchProtocol.in.receiveRequests").Msg(err.Error())
 		return
 	}
-	units, err := getUnits(p.poset, hashes)
+	units, err := getUnits(p.dag, hashes)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.in.getUnits").Msg(err.Error())
 		return
@@ -125,7 +125,7 @@ func (p *protocol) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	primeAdded, aggErr := add.Antichain(p.poset, p.randomSource, units, p.fallback, log)
+	primeAdded, aggErr := add.Antichain(p.dag, p.randomSource, units, p.fallback, log)
 	aggErr = aggErr.Pruned(true)
 	if aggErr != nil {
 		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())
@@ -197,8 +197,8 @@ func receivePreunits(conn network.Connection, k int) ([]gomel.Preunit, error) {
 	return result, nil
 }
 
-func getUnits(poset gomel.Poset, hashes []*gomel.Hash) ([]gomel.Unit, error) {
-	units := poset.Get(hashes)
+func getUnits(dag gomel.Dag, hashes []*gomel.Hash) ([]gomel.Unit, error) {
+	units := dag.Get(hashes)
 	for i, u := range units {
 		if u == nil {
 			return nil, fmt.Errorf("received request for unknown hash: %s", hashes[i].Short())
