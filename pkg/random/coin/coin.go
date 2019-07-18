@@ -3,8 +3,8 @@ package coin
 import (
 	"errors"
 
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
 )
 
@@ -18,6 +18,8 @@ type coin struct {
 
 // NewCoin returns a RandomSource based on fixed thresholdCoin with given
 // set of share providers.
+// It is meant to be used in the main process.
+// The result of the setup phase should be a consensus on this random source.
 func NewCoin(dag gomel.Dag, pid int, tcoin *tcoin.ThresholdCoin, shareProviders map[int]bool) gomel.RandomSource {
 	providesShare := make([]bool, dag.NProc())
 

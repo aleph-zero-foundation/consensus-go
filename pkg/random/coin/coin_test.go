@@ -5,9 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	gomel "gitlab.com/alephledger/consensus-go/pkg"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
