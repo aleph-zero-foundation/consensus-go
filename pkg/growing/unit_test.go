@@ -17,10 +17,10 @@ func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
 // creator => (height => slice of units by this creator on this height)
-func collectUnits(p gomel.Dag) map[int]map[int][]gomel.Unit {
+func collectUnits(dag gomel.Dag) map[int]map[int][]gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
 	result := make(map[int]map[int][]gomel.Unit)
-	for pid := 0; pid < p.NProc(); pid++ {
+	for pid := 0; pid < dag.NProc(); pid++ {
 		result[pid] = make(map[int][]gomel.Unit)
 	}
 
@@ -37,7 +37,7 @@ func collectUnits(p gomel.Dag) map[int]map[int][]gomel.Unit {
 			}
 		}
 	}
-	p.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, u := range units {
 			if !seenUnits[*u.Hash()] {
 				dfs(u)

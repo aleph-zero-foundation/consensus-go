@@ -24,8 +24,8 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 		return nil, err
 	}
 
-	p := df.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
-	rs := NewTestRandomSource(p)
+	dag := df.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
+	rs := NewTestRandomSource(dag)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID uint32
@@ -59,7 +59,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 		var addingError error
 		var wg sync.WaitGroup
 		wg.Add(1)
-		p.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		dag.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
 				addingError = err
 			}
@@ -70,7 +70,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 			return nil, addingError
 		}
 	}
-	return p, nil
+	return dag, nil
 }
 
 // CreateDagFromTestFile reads dag from given test file and uses factory to create the dag

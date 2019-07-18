@@ -133,15 +133,15 @@ func (o *ordering) computeVote(u gomel.Unit, uc gomel.Unit) vote {
 
 // Checks if votes for popular or unpopular make a quorum.
 // Returns the vote making a quorum or undecided if there is no quorum.
-func superMajority(p gomel.Dag, votes []vote) vote {
+func superMajority(dag gomel.Dag, votes []vote) vote {
 	cnt := make(map[vote]int)
 	for _, vote := range votes {
 		cnt[vote]++
 	}
-	if p.IsQuorum(cnt[popular]) {
+	if dag.IsQuorum(cnt[popular]) {
 		return popular
 	}
-	if p.IsQuorum(cnt[unpopular]) {
+	if dag.IsQuorum(cnt[unpopular]) {
 		return unpopular
 	}
 	return undecided

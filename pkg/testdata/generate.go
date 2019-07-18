@@ -31,8 +31,8 @@ func writeToFile(filename string, dag gomel.Dag) error {
 // nUnits     - number of units to include in the dag
 func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	p := growing.NewDag(&gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
-	rs := tests.NewTestRandomSource(p)
+	dag := growing.NewDag(&gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
+	rs := tests.NewTestRandomSource(dag)
 	created := 0
 	pus := make([]gomel.Preunit, nProcesses)
 	for created < nUnits {
@@ -40,21 +40,21 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gom
 		if pus[pid] != nil {
 			var wg sync.WaitGroup
 			wg.Add(1)
-			p.AddUnit(pus[pid], rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
+			dag.AddUnit(pus[pid], rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
 				wg.Done()
 			})
 			wg.Wait()
 			created++
 			pus[pid] = nil
 		} else {
-			pu, err := creating.NewUnit(p, pid, maxParents, []byte{}, rs, true)
+			pu, err := creating.NewUnit(dag, pid, maxParents, []byte{}, rs, true)
 			if err != nil {
 				continue
 			}
 			pus[pid] = pu
 		}
 	}
-	return p
+	return dag
 }
 
 // Use this to generate more test files

@@ -35,85 +35,85 @@ func newDag(dagConfiguration gomel.DagConfig) *Dag {
 }
 
 // AddUnit adds a unit in a thread safe manner without trying to be clever.
-func (p *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
 	var u unit
-	err := dehashParents(&u, p, pu)
+	err := dehashParents(&u, dag, pu)
 	if err != nil {
 		callback(pu, nil, gomel.NewUnknownParent())
 		return
 	}
 	// Setting height, creator, signature, version, hash
-	setBasicInfo(&u, p, pu)
-	setLevel(&u, p)
-	setFloor(&u, p)
+	setBasicInfo(&u, dag, pu)
+	setLevel(&u, dag)
+	setFloor(&u, dag)
 
 	//Setting dag variables
-	updateDag(&u, p)
+	updateDag(&u, dag)
 	callback(pu, &u, nil)
 }
 
 // PrimeUnits returns the prime units at the given level.
-func (p *Dag) PrimeUnits(level int) gomel.SlottedUnits {
-	p.RLock()
-	defer p.RUnlock()
-	if level < len(p.primeUnits) {
-		return p.primeUnits[level]
+func (dag *Dag) PrimeUnits(level int) gomel.SlottedUnits {
+	dag.RLock()
+	defer dag.RUnlock()
+	if level < len(dag.primeUnits) {
+		return dag.primeUnits[level]
 	}
 	return nil
 }
 
 // MaximalUnitsPerProcess returns the maximal units for all processes.
-func (p *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
-	p.RLock()
-	defer p.RUnlock()
-	su := newSlottedUnits(p.nProcesses)
-	for pid := 0; pid < p.nProcesses; pid++ {
-		if p.maximalHeight[pid] >= 0 {
-			su.Set(pid, p.unitsByHeight[p.maximalHeight[pid]].Get(pid))
+func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
+	dag.RLock()
+	defer dag.RUnlock()
+	su := newSlottedUnits(dag.nProcesses)
+	for pid := 0; pid < dag.nProcesses; pid++ {
+		if dag.maximalHeight[pid] >= 0 {
+			su.Set(pid, dag.unitsByHeight[dag.maximalHeight[pid]].Get(pid))
 		}
 	}
 	return su
 }
 
 // Get retunrs the units with the given hashes or nil, when it doesn't find them.
-func (p *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
-	p.RLock()
-	defer p.RUnlock()
+func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
+	dag.RLock()
+	defer dag.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
 	for i, h := range hashes {
-		result[i] = p.unitByHash[*h]
+		result[i] = dag.unitByHash[*h]
 	}
 	return result
 }
 
 // NProc returns the number of processes in this dag.
-func (p *Dag) NProc() int {
+func (dag *Dag) NProc() int {
 	// nProcesses doesn't change so no lock needed
-	return p.nProcesses
+	return dag.nProcesses
 }
 
 // IsQuorum checks whether the provided number of processes constitutes a quorum.
-func (p *Dag) IsQuorum(number int) bool {
+func (dag *Dag) IsQuorum(number int) bool {
 	// nProcesses doesn't change so no lock needed
-	return 3*number >= 2*p.nProcesses
+	return 3*number >= 2*dag.nProcesses
 }
 
-func dehashParents(u *unit, p *Dag, pu gomel.Preunit) error {
-	p.RLock()
-	defer p.RUnlock()
+func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
+	dag.RLock()
+	defer dag.RUnlock()
 	u.parents = []gomel.Unit{}
 	for _, parentHash := range pu.Parents() {
-		if _, ok := p.unitByHash[*parentHash]; !ok {
+		if _, ok := dag.unitByHash[*parentHash]; !ok {
 			return gomel.NewUnknownParent()
 		}
-		u.parents = append(u.parents, p.unitByHash[*parentHash])
+		u.parents = append(u.parents, dag.unitByHash[*parentHash])
 	}
 	return nil
 }
 
-func setBasicInfo(u *unit, p *Dag, pu gomel.Preunit) {
-	p.RLock()
-	defer p.RUnlock()
+func setBasicInfo(u *unit, dag *Dag, pu gomel.Preunit) {
+	dag.RLock()
+	defer dag.RUnlock()
 	u.creator = pu.Creator()
 	if len(u.parents) == 0 {
 		u.height = 0
@@ -124,56 +124,56 @@ func setBasicInfo(u *unit, p *Dag, pu gomel.Preunit) {
 	u.hash = *pu.Hash()
 	u.data = pu.Data()
 	u.rsData = pu.RandomSourceData()
-	if len(p.unitsByHeight) <= u.height {
+	if len(dag.unitsByHeight) <= u.height {
 		u.version = 0
 	} else {
-		u.version = len(p.unitsByHeight[u.height].Get(u.creator))
+		u.version = len(dag.unitsByHeight[u.height].Get(u.creator))
 	}
 }
 
-func updateDag(u *unit, p *Dag) {
-	p.Lock()
-	defer p.Unlock()
+func updateDag(u *unit, dag *Dag) {
+	dag.Lock()
+	defer dag.Unlock()
 
 	if u.Height() == 0 {
-		if len(p.unitsByHeight) == 0 {
-			p.unitsByHeight = append(p.unitsByHeight, newSlottedUnits(p.nProcesses))
+		if len(dag.unitsByHeight) == 0 {
+			dag.unitsByHeight = append(dag.unitsByHeight, newSlottedUnits(dag.nProcesses))
 		}
-		p.unitsByHeight[0].Set(u.Creator(), append(p.unitsByHeight[0].Get(u.Creator()), u))
-		if len(p.primeUnits) == 0 {
-			p.primeUnits = append(p.primeUnits, newSlottedUnits(p.nProcesses))
+		dag.unitsByHeight[0].Set(u.Creator(), append(dag.unitsByHeight[0].Get(u.Creator()), u))
+		if len(dag.primeUnits) == 0 {
+			dag.primeUnits = append(dag.primeUnits, newSlottedUnits(dag.nProcesses))
 		}
-		p.primeUnits[0].Set(u.Creator(), append(p.primeUnits[0].Get(u.Creator()), u))
+		dag.primeUnits[0].Set(u.Creator(), append(dag.primeUnits[0].Get(u.Creator()), u))
 	} else {
 		if gomel.Prime(u) {
-			if len(p.primeUnits) <= u.Level() {
-				p.primeUnits = append(p.primeUnits, newSlottedUnits(p.nProcesses))
+			if len(dag.primeUnits) <= u.Level() {
+				dag.primeUnits = append(dag.primeUnits, newSlottedUnits(dag.nProcesses))
 			}
-			p.primeUnits[u.Level()].Set(u.Creator(), append(p.primeUnits[u.Level()].Get(u.Creator()), u))
+			dag.primeUnits[u.Level()].Set(u.Creator(), append(dag.primeUnits[u.Level()].Get(u.Creator()), u))
 		}
-		if len(p.unitsByHeight) <= u.Height() {
-			p.unitsByHeight = append(p.unitsByHeight, newSlottedUnits(p.nProcesses))
+		if len(dag.unitsByHeight) <= u.Height() {
+			dag.unitsByHeight = append(dag.unitsByHeight, newSlottedUnits(dag.nProcesses))
 		}
-		p.unitsByHeight[u.Height()].Set(u.Creator(), append(p.unitsByHeight[u.Height()].Get(u.Creator()), u))
+		dag.unitsByHeight[u.Height()].Set(u.Creator(), append(dag.unitsByHeight[u.Height()].Get(u.Creator()), u))
 	}
-	if u.Height() > p.maximalHeight[u.Creator()] {
-		p.maximalHeight[u.Creator()] = u.Height()
+	if u.Height() > dag.maximalHeight[u.Creator()] {
+		dag.maximalHeight[u.Creator()] = u.Height()
 	}
-	p.unitByHash[*u.Hash()] = u
+	dag.unitByHash[*u.Hash()] = u
 }
 
-func setFloor(u *unit, p *Dag) {
-	p.RLock()
-	defer p.RUnlock()
-	parentsFloorUnion := make([][]gomel.Unit, p.NProc())
+func setFloor(u *unit, dag *Dag) {
+	dag.RLock()
+	defer dag.RUnlock()
+	parentsFloorUnion := make([][]gomel.Unit, dag.NProc())
 	parentsFloorUnion[u.Creator()] = []gomel.Unit{u}
 	for _, v := range u.Parents() {
 		for pid, units := range v.Floor() {
 			parentsFloorUnion[pid] = append(parentsFloorUnion[pid], units...)
 		}
 	}
-	result := make([][]gomel.Unit, p.NProc())
-	for pid := 0; pid < p.NProc(); pid++ {
+	result := make([][]gomel.Unit, dag.NProc())
+	for pid := 0; pid < dag.NProc(); pid++ {
 		sort.Slice(parentsFloorUnion[pid], func(i, j int) bool {
 			return parentsFloorUnion[pid][i].Height() > parentsFloorUnion[pid][j].Height()
 		})
@@ -193,9 +193,9 @@ func setFloor(u *unit, p *Dag) {
 	u.floor = result
 }
 
-func setLevel(u *unit, p *Dag) {
-	p.RLock()
-	defer p.RUnlock()
+func setLevel(u *unit, dag *Dag) {
+	dag.RLock()
+	defer dag.RUnlock()
 	if u.Height() == 0 {
 		u.level = 0
 		return
@@ -226,15 +226,15 @@ func setLevel(u *unit, p *Dag) {
 			}
 		}
 	}
-	if p.IsQuorum(len(seenProcesses)) {
+	if dag.IsQuorum(len(seenProcesses)) {
 		u.level = maxLevelBelow + 1
 	}
 }
 
-func (p *Dag) getPrimeUnitsOnLevel(level int) []gomel.Unit {
+func (dag *Dag) getPrimeUnitsOnLevel(level int) []gomel.Unit {
 	result := []gomel.Unit{}
-	for pid := 0; pid < p.NProc(); pid++ {
-		result = append(result, p.primeUnits[level].Get(pid)...)
+	for pid := 0; pid < dag.NProc(); pid++ {
+		result = append(result, dag.primeUnits[level].Get(pid)...)
 	}
 	return result
 }
