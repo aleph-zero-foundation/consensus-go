@@ -47,7 +47,7 @@ func NewDuplicateUnit(unit Unit) *DuplicateUnit {
 	return &DuplicateUnit{unit}
 }
 
-// UnknownParents is an error-like object used when trying to add a unit whose parents are not in the poset.
+// UnknownParents is an error-like object used when trying to add a unit whose parents are not in the dag.
 type UnknownParents struct {
 	Amount int
 }

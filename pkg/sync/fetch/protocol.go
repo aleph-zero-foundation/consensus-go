@@ -62,7 +62,7 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "fetchProtocol.in.greeting").Msg(err.Error())
 		return
 	}
-	if pid >= uint16(p.poset.NProc()) {
+	if pid >= uint16(p.dag.NProc()) {
 		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
 		return
 	}

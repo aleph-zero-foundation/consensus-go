@@ -76,7 +76,7 @@ func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 }
 
 // Get returns the units with the given hashes or nil, when it doesn't find them.
-func (dag *Poset) Get(hashes []*gomel.Hash) []gomel.Unit {
+func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
 	dag.RLock()
 	defer dag.RUnlock()
 	result := make([]gomel.Unit, len(hashes))

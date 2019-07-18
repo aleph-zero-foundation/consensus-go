@@ -71,7 +71,7 @@ var eventTypeDict = map[string]string{
 	SendFreshUnits:        "sending fresh units started",
 	UnitBroadcasted:       "successfully multicasted a unit",
 	UnknownParents:        "unable to add unit due to missing parents",
-	AddedBCUnit:           "successfully added to poset unit received from multicast",
+	AddedBCUnit:           "successfully added unit from multicast",
 }
 
 // Field names
