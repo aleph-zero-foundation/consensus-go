@@ -265,6 +265,10 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 			level++
 			orderedUnits = ordering.TimingRound(level)
 		}
+		dagLevel := dagLevel(dag)
+		fmt.Println("Dag's max level:", dagLevel)
+		fmt.Println("maximal decided level:", level)
+
 		close(units)
 	}()
 	return units
@@ -283,6 +287,9 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 			level++
 			timingUnit = ordering.DecideTimingOnLevel(level)
 		}
+		dagLevel := dagLevel(dag)
+		fmt.Println("Dag's max level:", dagLevel)
+		fmt.Println("maximal decided level:", level)
 		close(units)
 	}()
 	return units
@@ -307,6 +314,19 @@ func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Confi
 		close(units)
 	}()
 	return units
+}
+
+func dagLevel(dag gomel.Dag) uint64 {
+	result := uint64(0)
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+		for _, unit := range units {
+			if level := uint64(unit.Level()); level > result {
+				result = level
+			}
+		}
+		return true
+	})
+	return result
 }
 
 // ComposeVerifiers composes provided verifiers into a single verifier. Created verifier fails immediately after it discovers a failure of one of
