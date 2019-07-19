@@ -87,9 +87,9 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
+	close(s.mcRequests)
 	s.gossipServer.StopOut()
 	s.multicastServer.StopOut()
-	close(s.mcRequests)
 	// let other processes sync with us some more
 	time.Sleep(5 * time.Second)
 	s.gossipServer.StopIn()
