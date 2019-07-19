@@ -40,18 +40,22 @@ type TestingRoutine struct {
 	stopCondition func(dags []gomel.Dag) bool
 }
 
+// CreateUnitCreator create an instance of UnitCreator.
 func (test *TestingRoutine) CreateUnitCreator(dags []gomel.Dag, privKeys []gomel.PrivateKey) UnitCreator {
 	return test.creator(dags, privKeys)
 }
 
+// CreateAddingHandler creates an instance of AddingHandler.
 func (test *TestingRoutine) CreateAddingHandler(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) AddingHandler {
 	return test.adder(dags, privKeys, rss)
 }
 
+// CreateDagVerifier creates an instance of DagVerifier.
 func (test *TestingRoutine) CreateDagVerifier(dags []gomel.Dag, privKeys []gomel.PrivateKey) DagVerifier {
 	return test.verifier(dags, privKeys)
 }
 
+// StopCondition creates an instance of a function that decides when a testing routine should be stopped.
 func (test *TestingRoutine) StopCondition() func(dags []gomel.Dag) bool {
 	return test.stopCondition
 }
@@ -461,33 +465,6 @@ func NewNoOpVerifier() DagVerifier {
 		fmt.Println("No verification step")
 		return nil
 	}
-}
-
-type MockRandomSource struct {
-	rs gomel.RandomSource
-}
-
-func (m *MockRandomSource) GetCRP(level int) []int {
-	return m.rs.GetCRP(level)
-}
-
-func (m *MockRandomSource) RandomBytes(u gomel.Unit, l int) []byte {
-	var result [1]byte
-	result[0] = 0
-	return result[:]
-}
-
-func (m *MockRandomSource) CheckCompliance(u gomel.Unit) error {
-	return nil
-}
-
-func (m *MockRandomSource) Update(u gomel.Unit) {
-}
-
-func (m *MockRandomSource) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
-	var result [1]byte
-	result[0] = 1
-	return result[:]
 }
 
 // Test is a helper function that performs a single test using provided TestingRoutineFactory.
