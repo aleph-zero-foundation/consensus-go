@@ -7,6 +7,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
+	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
 
 // Beacon code assumes that:
@@ -293,6 +294,8 @@ func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {
 	return predecessor[0].Level() + 1, nil
 }
 
+// GetCoin returns a coin random source obtained by using this beacon.
+// Head should be the creator of a timing unit chosen on the 6th level.
 func GetCoin(b *beacon, head int) gomel.RandomSource {
-	return nil
+	return coin.NewCoin(b.dag.NProc(), b.pid, b.multicoins[head], b.shareProviders[head])
 }
