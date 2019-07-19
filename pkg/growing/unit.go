@@ -105,6 +105,10 @@ func (u *unit) computeHeight() {
 
 func (u *unit) computeFloor(nProcesses int) {
 	u.floor = make([][]gomel.Unit, nProcesses)
+	preallocated := make([]gomel.Unit, nProcesses)
+	for ix := range u.floor {
+		u.floor[ix] = preallocated[ix:ix]
+	}
 	u.floor[u.creator] = []gomel.Unit{u}
 
 	for _, parent := range u.parents {
@@ -126,6 +130,9 @@ func (u *unit) computeFloor(nProcesses int) {
 					}
 				}
 				if !found {
+					if len(u.floor[pid]) == 1 {
+						u.floor[pid] = append([]gomel.Unit{}, u.floor[pid])
+					}
 					u.floor[pid] = append(u.floor[pid], w)
 				}
 				if ri >= 0 {
