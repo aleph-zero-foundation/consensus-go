@@ -89,5 +89,10 @@ func (p *protocol) Out() {
 		p.log.Error().Str("where", "multicast.Out.SendUnit").Msg(err.Error())
 		return
 	}
-	p.log.Info().Int(logging.Height, r.height).Msg(logging.UnitBroadcasted)
+	err = conn.Flush()
+	if err != nil {
+		p.log.Error().Str("where", "multicast.Out.Flush").Msg(err.Error())
+		return
+	}
+	p.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, r.pid).Msg(logging.UnitBroadcasted)
 }
