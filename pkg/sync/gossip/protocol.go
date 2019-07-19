@@ -56,7 +56,7 @@ func (p *protocol) In() {
 	conn.TimeoutAfter(p.timeout)
 	pid, sid, err := handshake.AcceptGreeting(conn)
 	if err != nil {
-		p.log.Error().Str("where", "gossipProtocol.in.greeting").Msg(err.Error())
+		p.log.Error().Str("where", "gossip.In.greeting").Msg(err.Error())
 		return
 	}
 	if pid >= uint16(len(p.inUse)) {
@@ -81,7 +81,7 @@ func (p *protocol) Out() {
 	defer m.release()
 	conn, err := p.dialer.Dial(remotePid)
 	if err != nil {
-		p.log.Error().Str("where", "gossipProtocol.out.dial").Msg(err.Error())
+		p.log.Error().Str("where", "gossip.Out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
@@ -90,7 +90,7 @@ func (p *protocol) Out() {
 	p.syncIds[remotePid]++
 	err = handshake.Greet(conn, p.pid, sid)
 	if err != nil {
-		p.log.Error().Str("where", "gossipProtocol.out.greeting").Msg(err.Error())
+		p.log.Error().Str("where", "gossip.Out.greeting").Msg(err.Error())
 		return
 	}
 	conn.SetLogger(p.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, sid).Logger())

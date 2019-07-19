@@ -106,7 +106,7 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	log.Debug().Msg(logging.GetDagInfo)
 	theirDagInfo, err := getDagInfo(nProc, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.In.getDagInfo").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.getDagInfo").Msg(err.Error())
 		return
 	}
 
@@ -114,19 +114,19 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	dagInfo := toDagInfo(maxSnapshot)
 	log.Debug().Msg(logging.SendDagInfo)
 	if err := sendDagInfo(dagInfo, conn); err != nil {
-		log.Error().Str("where", "proto.In.sendDagInfo").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.sendDagInfo").Msg(err.Error())
 		return
 	}
 
 	units, err := unitsToSend(dag, maxSnapshot, theirDagInfo, nil)
 	if err != nil {
-		log.Error().Str("where", "proto.In.unitsToSend").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.unitsToSend").Msg(err.Error())
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(units, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.In.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.sendUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
@@ -135,14 +135,14 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(req, theirDagInfo, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.In.sendRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.sendRequests").Msg(err.Error())
 		return
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
 	theirPreunitsReceived, nReceived, err := getPreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "proto.In.getPreunits").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.getPreunits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
@@ -150,7 +150,7 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	log.Debug().Msg(logging.GetPreunits)
 	theirFreshPreunitsReceived, nFreshReceived, err := getPreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "proto.In.getPreunits fresh").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.getPreunits fresh").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nFreshReceived).Msg(logging.ReceivedPreunits)
@@ -158,7 +158,7 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	log.Debug().Msg(logging.GetRequests)
 	theirRequests, err := getRequests(nProc, dagInfo, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.In.getRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.getRequests").Msg(err.Error())
 		return
 	}
 
@@ -166,13 +166,13 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 		log.Info().Msg(logging.AdditionalExchange)
 		units, err = unitsToSend(dag, maxSnapshot, theirDagInfo, theirRequests)
 		if err != nil {
-			log.Error().Str("where", "proto.In.unitsToSend(extra round)").Msg(err.Error())
+			log.Error().Str("where", "gossip.In.unitsToSend(extra round)").Msg(err.Error())
 			return
 		}
 		log.Debug().Msg(logging.SendUnits)
 		err = sendUnits(units, conn)
 		if err != nil {
-			log.Error().Str("where", "proto.In.sendUnits(extra round)").Msg(err.Error())
+			log.Error().Str("where", "gossip.In.sendUnits(extra round)").Msg(err.Error())
 			return
 		}
 		log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
@@ -181,12 +181,12 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	log.Debug().Msg(logging.AddUnits)
 	err = addUnits(dag, randomSource, theirPreunitsReceived, attemptTiming, log)
 	if err != nil {
-		log.Error().Str("where", "proto.In.addUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.addUnits").Msg(err.Error())
 		return
 	}
 	err = addUnits(dag, randomSource, theirFreshPreunitsReceived, attemptTiming, log)
 	if err != nil {
-		log.Error().Str("where", "proto.In.addUnits fresh").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.addUnits fresh").Msg(err.Error())
 		return
 	}
 	log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Int(logging.FreshRecv, nFreshReceived).Msg(logging.SyncCompleted)
@@ -217,21 +217,21 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 	dagInfo := toDagInfo(maxSnapshot)
 	log.Debug().Msg(logging.SendDagInfo)
 	if err := sendDagInfo(dagInfo, conn); err != nil {
-		log.Error().Str("where", "proto.Out.sendDagInfo").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.sendDagInfo").Msg(err.Error())
 		return
 	}
 
 	log.Debug().Msg(logging.GetDagInfo)
 	theirDagInfo, err := getDagInfo(nProc, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.getDagInfo").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.getDagInfo").Msg(err.Error())
 		return
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
 	theirPreunitsReceived, nReceived, err := getPreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.getPreunits").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.getPreunits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
@@ -239,27 +239,27 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 	log.Debug().Msg(logging.GetRequests)
 	theirRequests, err := getRequests(nProc, dagInfo, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.getRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.getRequests").Msg(err.Error())
 		return
 	}
 
 	units, err := unitsToSend(dag, maxSnapshot, theirDagInfo, theirRequests)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.unitsToSend").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.unitsToSend").Msg(err.Error())
 		return
 	}
 
 	log.Debug().Msg(logging.SendUnits)
 	err = sendUnits(units, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.sendUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 
 	freshUnits, err := unitsToSend(dag, dagMaxSnapshot(dag), dagInfo, nil)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.unitsToSend fresh").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.unitsToSend fresh").Msg(err.Error())
 		return
 	}
 	theirPreunitsHashSet := newStaticHashSet(hashesFromAcquiredUnits(theirPreunitsReceived))
@@ -268,7 +268,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 	log.Debug().Msg(logging.SendFreshUnits)
 	err = sendUnits(freshUnitsUnknown, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.sendUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(freshUnitsUnknown)).Msg(logging.SentFreshUnits)
@@ -276,7 +276,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(req, theirDagInfo, conn)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.sendRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.sendRequests").Msg(err.Error())
 		return
 	}
 
@@ -285,7 +285,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 		log.Debug().Msg(logging.GetPreunits)
 		theirPreunitsReceived, nReceived, err = getPreunits(conn)
 		if err != nil {
-			log.Error().Str("where", "proto.Out.getPreunits(extra round)").Msg(err.Error())
+			log.Error().Str("where", "gossip.Out.getPreunits(extra round)").Msg(err.Error())
 			return
 		}
 		log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
@@ -294,7 +294,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 	log.Debug().Msg(logging.AddUnits)
 	err = addUnits(dag, randomSource, theirPreunitsReceived, attemptTiming, log)
 	if err != nil {
-		log.Error().Str("where", "proto.Out.addUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.addUnits").Msg(err.Error())
 		return
 	}
 	log.Info().Int(logging.Sent, len(units)).Int(logging.FreshSent, len(freshUnitsUnknown)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
