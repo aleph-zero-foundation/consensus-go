@@ -105,42 +105,55 @@ func (u *unit) computeHeight() {
 
 func (u *unit) computeFloor(nProcesses int) {
 	u.floor = make([][]gomel.Unit, nProcesses)
-	preallocated := make([]gomel.Unit, nProcesses)
-	for ix := range u.floor {
-		u.floor[ix] = preallocated[ix:ix]
-	}
-	u.floor[u.creator] = []gomel.Unit{u}
+	floors := make([]gomel.Unit, 0, nProcesses)
 
-	for _, parent := range u.parents {
-		pFloor := parent.Floor()
-		for pid := 0; pid < nProcesses; pid++ {
-			if pid == u.creator {
-				continue
-			}
-			for _, w := range pFloor[pid] {
+	for pid := 0; pid < nProcesses; pid++ {
+		if pid == u.creator {
+			floors = append(floors, u)
+			continue
+		}
+
+		startIx := len(floors)
+
+		// NOTE no self forking evidence, so each fork needs to stay, otherwise some unit was closing it
+		for _, parent := range u.parents {
+
+			for _, w := range parent.Floor()[pid] {
 				found, ri := false, -1
-				for k, v := range u.floor[pid] {
+				for ix, v := range floors[startIx:] {
+
 					if ok, _ := w.(*unit).aboveWithinProc(v.(*unit)); ok {
+						// if w.Above(v) {
 						found = true
-						ri = k
+						ri = ix
 						break
 					}
+
 					if ok, _ := w.(*unit).belowWithinProc(v.(*unit)); ok {
+						// if w.Below(v) {
 						found = true
+						break
 					}
+
 				}
 				if !found {
-					if len(u.floor[pid]) == 1 {
-						u.floor[pid] = append([]gomel.Unit{}, u.floor[pid])
-					}
-					u.floor[pid] = append(u.floor[pid], w)
-				}
-				if ri >= 0 {
-					u.floor[pid][ri] = w
+					floors = append(floors, w)
+				} else if ri >= 0 {
+					floors[startIx+ri] = w
 				}
 			}
 		}
 	}
+
+	currentPid := 0
+	lastIx := 0
+	for ix, unit := range floors {
+		if unit.Creator() != currentPid {
+			u.floor[currentPid] = floors[lastIx:ix]
+			lastIx = ix
+		}
+	}
+	u.floor[currentPid] = floors[lastIx:]
 }
 
 func combineParentsFloorsPerProc(u gomel.Unit, pid int) []gomel.Unit {
