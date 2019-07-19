@@ -124,6 +124,8 @@ const (
 	ValidateService
 	GenerateService
 	MemLogService
+	GossipService
+	MCService
 )
 
 // serviceTypeDict maps integer service types to human readable names
@@ -134,6 +136,8 @@ var serviceTypeDict = map[int]string{
 	ValidateService: "VALID",
 	GenerateService: "GENER",
 	MemLogService:   "MEMLOG",
+	GossipService:   "GOSSIP",
+	MCService:       "MCAST",
 }
 
 // Genesis was better with Phil Collins

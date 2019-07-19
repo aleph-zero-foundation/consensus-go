@@ -87,7 +87,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	}
 	services = append(services, service)
 
-	service, err = sync.NewService(dag, rs, config.Sync, mcRequests, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
+	service, err = sync.NewService(dag, rs, config.Sync, mcRequests, attemptTimingRequests, log)
 	if err != nil {
 		return nil, err
 	}
