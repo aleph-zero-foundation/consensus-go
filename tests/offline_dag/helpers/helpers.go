@@ -30,7 +30,7 @@ type Creator func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs go
 type AddingHandler func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error
 
 // DagVerifier is a type of a function that is responsible for verifying if a given list of dags is in valid state.
-type DagVerifier func([]gomel.Dag, []uint16, []config.Configuration) error
+type DagVerifier func([]gomel.Dag, []uint16, []config.Configuration, []gomel.RandomSource) error
 
 // TestingRoutine describes a strategy for performing a test on a given set of dags.
 type TestingRoutine struct {
@@ -336,9 +336,9 @@ func dagLevel(dag gomel.Dag) uint64 {
 // ComposeVerifiers composes provided verifiers into a single verifier. Created verifier fails immediately after it discovers a failure of one of
 // its verifiers.
 func ComposeVerifiers(verifiers ...DagVerifier) DagVerifier {
-	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Configuration) error {
+	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Configuration, rss []gomel.RandomSource) error {
 		for _, verifier := range verifiers {
-			if err := verifier(dags, pids, generalConfigs); err != nil {
+			if err := verifier(dags, pids, generalConfigs, rss); err != nil {
 				return err
 			}
 		}
@@ -361,7 +361,7 @@ func ComposeAdders(adders ...AddingHandler) AddingHandler {
 }
 
 func verifyUnitsUsingOrdering(ordering func(gomel.Dag, uint16, config.Configuration) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) DagVerifier {
-	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Configuration) error {
+	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Configuration, rss []gomel.RandomSource) error {
 		if len(dags) < 2 {
 			return nil
 		}
@@ -461,7 +461,7 @@ func NewDefaultVerifier() func([]gomel.Dag, []gomel.PrivateKey) DagVerifier {
 
 // NewNoOpVerifier returns a DagVerifier that does not check provided dags and immediately answers that they are correct.
 func NewNoOpVerifier() DagVerifier {
-	return func([]gomel.Dag, []uint16, []config.Configuration) error {
+	return func([]gomel.Dag, []uint16, []config.Configuration, []gomel.RandomSource) error {
 		fmt.Println("No verification step")
 		return nil
 	}
@@ -517,7 +517,7 @@ func Test(
 	fmt.Println("Testing routine finished")
 
 	fmt.Println("Verification step")
-	err := verifier(dags, pids, configurations)
+	err := verifier(dags, pids, configurations, rss)
 	if err != nil {
 		fmt.Println("Dags verfication failed", err.Error())
 		return err

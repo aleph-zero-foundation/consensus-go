@@ -16,7 +16,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
-	"gitlab.com/alephledger/consensus-go/pkg/random"
 	"gitlab.com/alephledger/consensus-go/tests/offline_dag/helpers"
 )
 
@@ -1218,7 +1217,7 @@ func testLongTimeUndecidedStrategy() error {
 
 	unitAdder, stopCondition := longTimeUndecidedStrategy(startLevel, initialVotingRound, numberOfDeterministicRounds)
 
-	checkIfUndecidedVerifier := func(dags []gomel.Dag, pids []uint16, configs []config.Configuration) error {
+	checkIfUndecidedVerifier := func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
 		fmt.Println("starting the undecided checker")
 
 		config := config.NewDefaultConfiguration()
@@ -1227,8 +1226,7 @@ func testLongTimeUndecidedStrategy() error {
 
 		errorsCount := 0
 		for pid, dag := range dags {
-			rs := random.NewTcSource(dag, pid)
-			ordering := linear.NewOrdering(dag, rs, int(config.VotingLevel), int(config.PiDeltaLevel))
+			ordering := linear.NewOrdering(dag, rss[pid], int(config.VotingLevel), int(config.PiDeltaLevel))
 			if unit := ordering.DecideTimingOnLevel(int(startLevel)); unit != nil {
 				fmt.Println("some dag already decided - error")
 				errorsCount++
