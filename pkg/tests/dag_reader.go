@@ -25,7 +25,8 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	}
 
 	dag := df.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
-	rs := NewTestRandomSource(dag)
+	rs := NewTestRandomSource()
+	rs.Init(dag)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID uint32

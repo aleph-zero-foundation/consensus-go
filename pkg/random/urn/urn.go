@@ -21,13 +21,17 @@ type urn struct {
 // as pseudo-random function of processes public keys.
 // The permutation is known to the adversary in advance and this knowledge
 // can be used in a potential attack).
-func New(dag gomel.Dag, pid int) gomel.RandomSource {
+func NewUrn(pid int) gomel.RandomSource {
 	return &urn{
 		pid:        pid,
-		dag:        dag,
 		tcs:        random.NewSyncTCMap(),
 		coinShares: random.NewSyncCSMap(),
 	}
+}
+
+// Init initialize the urn with given dag
+func (u *urn) Init(dag gomel.Dag) {
+	u.dag = dag
 }
 
 // GetCRP is a dummy implementation of a common random permutation

@@ -56,13 +56,15 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tdag1)
+				rs1 = tests.NewTestRandomSource()
+				rs1.Init(tdag1)
 				dag1 = &dag{
 					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource(tdag2)
+				rs2 = tests.NewTestRandomSource()
+				rs2.Init(tdag2)
 				dag2 = &dag{
 					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
@@ -94,14 +96,16 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tdag1)
+				rs1 = tests.NewTestRandomSource()
+				rs1.Init(tdag1)
 				dag1 = &dag{
 					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				theUnit = tdag1.MaximalUnitsPerProcess().Get(0)[0]
 				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource(tdag2)
+				rs2 = tests.NewTestRandomSource()
+				rs2.Init(tdag2)
 				dag2 = &dag{
 					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
@@ -133,13 +137,15 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tdag1)
+				rs1 = tests.NewTestRandomSource()
+				rs1.Init(tdag1)
 				dag1 = &dag{
 					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource(tdag2)
+				rs2 = tests.NewTestRandomSource()
+				rs2.Init(tdag2)
 				dag2 = &dag{
 					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,
@@ -170,13 +176,15 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource(tdag1)
+				rs1 = tests.NewTestRandomSource()
+				rs1.Init(tdag1)
 				dag1 = &dag{
 					Dag:          tdag1.(*tests.Dag),
 					attemptedAdd: nil,
 				}
 				tdag2 := tdag1
-				rs2 = tests.NewTestRandomSource(tdag2)
+				rs2 = tests.NewTestRandomSource()
+				rs2.Init(tdag2)
 				dag2 = &dag{
 					Dag:          tdag2.(*tests.Dag),
 					attemptedAdd: nil,

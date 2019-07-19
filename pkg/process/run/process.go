@@ -51,7 +51,8 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	txChan := make(chan []byte, 10)
 
 	dag := growing.NewDag(config.Dag)
-	rs := urn.New(dag, config.Create.Pid)
+	rs := urn.NewUrn(config.Create.Pid)
+	rs.Init(dag)
 	defer dag.Stop()
 
 	syncService, callback, err := sync.NewService(dag, rs, config.Sync, attemptTimingRequests, log)

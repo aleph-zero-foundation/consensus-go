@@ -15,7 +15,8 @@ import (
 func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	dag := newDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
-	rs := NewTestRandomSource(dag)
+	rs := NewTestRandomSource()
+	rs.Init(dag)
 	created := 0
 	for created < nUnits {
 		pid := r.Intn(nProcesses)

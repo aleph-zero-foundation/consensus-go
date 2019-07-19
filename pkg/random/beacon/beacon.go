@@ -55,25 +55,27 @@ func (v *vote) isCorrect() bool {
 
 // New returns a RandomSource based on a beacon
 // It is meant to be used in the setup stage only.
-func New(dag gomel.Dag, pid int) gomel.RandomSource {
+func NewBeacon(pid int) gomel.RandomSource {
+	return &beacon{pid: pid}
+}
+
+// Init initialize the beacon with given dag
+func (b *beacon) Init(dag gomel.Dag) {
 	n := dag.NProc()
-	b := &beacon{
-		pid:            pid,
-		dag:            dag,
-		multicoins:     make([]*tcoin.ThresholdCoin, n),
-		votes:          make([][]*vote, n),
-		shareProviders: make([]map[int]bool, n),
-		subcoins:       make([]map[int]bool, n),
-		tcoins:         make([]*tcoin.ThresholdCoin, n),
-		shares:         make([]*random.SyncCSMap, n),
-		polyVerifier:   tcoin.NewPolyVerifier(n, n/3+1),
-	}
+	b.dag = dag
+	b.multicoins = make([]*tcoin.ThresholdCoin, n)
+	b.votes = make([][]*vote, n)
+	b.shareProviders = make([]map[int]bool, n)
+	b.subcoins = make([]map[int]bool, n)
+	b.tcoins = make([]*tcoin.ThresholdCoin, n)
+	b.shares = make([]*random.SyncCSMap, n)
+	b.polyVerifier = tcoin.NewPolyVerifier(n, n/3+1)
+
 	for i := 0; i < dag.NProc(); i++ {
 		b.votes[i] = make([]*vote, dag.NProc())
 		b.shares[i] = random.NewSyncCSMap()
 		b.subcoins[i] = make(map[int]bool)
 	}
-	return b
 }
 
 // GetCRP returns a random permutation of processes on a given level.
@@ -289,4 +291,8 @@ func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {
 		return 0, errors.New("predecessor doesn't exist in the dag")
 	}
 	return predecessor[0].Level() + 1, nil
+}
+
+func GetCoin(b *beacon, head int) gomel.RandomSource {
+	return nil
 }

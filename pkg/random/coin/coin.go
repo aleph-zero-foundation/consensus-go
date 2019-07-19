@@ -20,14 +20,18 @@ type coin struct {
 // set of share providers.
 // It is meant to be used in the main process.
 // The result of the setup phase should be a consensus on this random source.
-func New(dag gomel.Dag, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool) gomel.RandomSource {
+func NewCoin(nProc, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool) gomel.RandomSource {
 	return &coin{
 		pid:           pid,
-		dag:           dag,
 		tc:            tcoin,
 		coinShares:    random.NewSyncCSMap(),
 		shareProvider: shareProvider,
 	}
+}
+
+// Init initialize the coin with given dag
+func (c *coin) Init(dag gomel.Dag) {
+	c.dag = dag
 }
 
 // GetCRP implements a common random permutation
