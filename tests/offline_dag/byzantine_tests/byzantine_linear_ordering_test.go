@@ -16,6 +16,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/tests/offline_dag/helpers"
 )
 
@@ -214,18 +215,6 @@ func createForksUsingForker(forker forker) forkingStrategy {
 	}
 }
 
-func newDefaultUnitCreator(maxParents uint16) helpers.Creator {
-	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		pu, err := creating.NewUnit(dag, int(creator), int(maxParents), helpers.NewDefaultDataContent(), rs, false)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
-			return nil, err
-		}
-		pu.SetSignature(privKey.Sign(pu))
-		return pu, nil
-	}
-}
-
 func newForkAndHideAdder(
 	createLevel, buildLevel, showOffLevel uint64,
 	forker uint16,
@@ -248,7 +237,7 @@ func newForkAndHideAdder(
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	switchCounter := 0
 
-	defaultUnitCreator := newDefaultUnitCreator(maxParents)
+	defaultUnitCreator := helpers.NewDefaultCreator(maxParents)
 	unitCreator := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 		// do not create new units after we showed some fork
 		if alreadyAdded {
@@ -450,7 +439,7 @@ func testPrimeFloodingScenario(forkingStrategy forkingStrategy) error {
 	)
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
-	unitCreator := helpers.NewDefaultUnitCreator(newDefaultUnitCreator(maxParents))
+	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
 	byzantineDags := getRandomListOfByzantineDags(nProcesses)
 	unitAdder := newPrimeFloodingAdder(floodingLevel, forkingPrimes, privKeys, byzantineDags, forkingStrategy)
 	verifier := helpers.NewDefaultVerifier()
@@ -471,7 +460,7 @@ func testSimpleForkingScenario(forkingStrategy forkingStrategy) error {
 	)
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
-	unitCreator := helpers.NewDefaultUnitCreator(newDefaultUnitCreator(maxParents))
+	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
 	byzantineDags := getRandomListOfByzantineDags(nProcesses)
 	unitAdder := newSimpleForkingAdder(10, privKeys, byzantineDags, forkingStrategy)
 	verifier := helpers.NewDefaultVerifier()
@@ -493,7 +482,7 @@ func testRandomForking(forkingStrategy forkingStrategy) error {
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	unitCreator := helpers.NewDefaultUnitCreator(newDefaultUnitCreator(maxParents))
+	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
 	byzantineDags := getRandomListOfByzantineDags(nProcesses)
 	unitAdder := newRandomForkingAdder(byzantineDags, 50, privKeys, forkingStrategy)
 	verifier := helpers.NewDefaultVerifier()
@@ -548,7 +537,7 @@ func testForkingChangingParents(forker forker) error {
 		byzDags[uint16(byzDag)] = byzPair{unitCreator, addingHandler}
 	}
 
-	defaultUnitCreator := newDefaultUnitCreator(maxParents)
+	defaultUnitCreator := helpers.NewDefaultCreator(maxParents)
 	unitFactory := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 		if byzDag, ok := byzDags[creator]; ok {
 			return byzDag.byzCreator(dag, creator, privKey, rs)
@@ -1213,7 +1202,7 @@ func testLongTimeUndecidedStrategy() error {
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	unitCreator := helpers.NewDefaultUnitCreator(newDefaultUnitCreator(maxParents))
+	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
 
 	unitAdder, stopCondition := longTimeUndecidedStrategy(startLevel, initialVotingRound, numberOfDeterministicRounds)
 
@@ -1224,9 +1213,11 @@ func testLongTimeUndecidedStrategy() error {
 		config.VotingLevel = uint(initialVotingRound)
 		config.PiDeltaLevel = uint(numberOfDeterministicRounds + 1)
 
+		logger, _ := logging.NewLogger("stdout", config.LogLevel, 100000, false)
+
 		errorsCount := 0
 		for pid, dag := range dags {
-			ordering := linear.NewOrdering(dag, rss[pid], int(config.VotingLevel), int(config.PiDeltaLevel))
+			ordering := linear.NewOrdering(dag, rss[pid], int(config.VotingLevel), int(config.PiDeltaLevel), int(config.OrderStartLevel), logger)
 			if unit := ordering.DecideTimingOnLevel(int(startLevel)); unit != nil {
 				fmt.Println("some dag already decided - error")
 				errorsCount++

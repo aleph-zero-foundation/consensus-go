@@ -8,11 +8,13 @@ import (
 	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
+	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
-	"gitlab.com/alephledger/consensus-go/pkg/random"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
 
 const (
@@ -113,6 +115,19 @@ func NewDefaultAdder() AddingHandler {
 func NewNoOpAdder() AddingHandler {
 	return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
 		return nil
+	}
+}
+
+// NewDefaultCreator creates an instance of Creator that when called attempts to create a unit using default data.
+func NewDefaultCreator(maxParents uint16) Creator {
+	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+		pu, err := creating.NewUnit(dag, int(creator), int(maxParents), NewDefaultDataContent(), rs, false)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
+			return nil, err
+		}
+		pu.SetSignature(privKey.Sign(pu))
+		return pu, nil
 	}
 }
 
@@ -258,8 +273,10 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
-		rs := random.NewTcSource(dag, int(pid))
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel))
+		rs := urn.New(int(pid))
+		rs.Init(dag)
+		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), generalConfig.OrderStartLevel, logger)
 		level := 0
 		orderedUnits := ordering.TimingRound(level)
 		for orderedUnits != nil {
@@ -270,8 +287,8 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 			orderedUnits = ordering.TimingRound(level)
 		}
 		dagLevel := dagLevel(dag)
-		fmt.Println("Dag's max level:", dagLevel)
-		fmt.Println("maximal decided level:", level)
+		fmt.Printf("Dag's no %d max level: %d", pid, dagLevel)
+		fmt.Println()
 
 		close(units)
 	}()
@@ -282,8 +299,10 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 	units := make(chan gomel.Unit)
 	go func() {
 
-		rs := random.NewTcSource(dag, int(pid))
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel))
+		rs := urn.New(int(pid))
+		rs.Init(dag)
+		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), generalConfig.OrderStartLevel, logger)
 		level := 0
 		timingUnit := ordering.DecideTimingOnLevel(level)
 		for timingUnit != nil {
@@ -291,9 +310,8 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 			level++
 			timingUnit = ordering.DecideTimingOnLevel(level)
 		}
-		dagLevel := dagLevel(dag)
-		fmt.Println("Dag's max level:", dagLevel)
-		fmt.Println("maximal decided level:", level)
+		fmt.Printf("maximal decided level of dag no %d: %d", pid, level)
+		fmt.Println()
 		close(units)
 	}()
 	return units
@@ -488,7 +506,8 @@ func Test(
 
 		pids = append(pids, pid)
 		configurations = append(configurations, generalConfig)
-		rs := random.NewTcSource(dag, int(pid))
+		rs := urn.New(int(pid))
+		rs.Init(dag)
 		rss = append(rss, rs)
 	}
 
