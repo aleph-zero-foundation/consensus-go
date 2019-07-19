@@ -24,11 +24,15 @@ type service struct {
 }
 
 // NewService creates a new syncing service for the given dag, with the given config.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, mcRequests chan multicast.MCRequest, attemptTiming chan<- int, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
 	nProc := uint16(dag.NProc())
 	pid := uint16(config.Pid)
+	syncLog := log.With().Int(logging.Service, logging.SyncService).Logger()
 	gossipLog := log.With().Int(logging.Service, logging.GossipService).Logger()
 	mcLog := log.With().Int(logging.Service, logging.MCService).Logger()
+	var dialerMC network.Dialer
+	var listenerMC network.Listener
+
 	dialer, listener, err := tcp.NewNetwork(config.LocalAddress, config.RemoteAddresses, gossipLog)
 	if err != nil {
 		return nil, nil, err
@@ -36,23 +40,35 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 	peerSource := gossip.NewDefaultPeerSource(nProc, pid)
 	gossipProto := gossip.NewProtocol(pid, dag, randomSource, dialer, listener, peerSource, config.Timeout, attemptTiming, gossipLog)
 
-	var dialerMC network.Dialer
-	var listenerMC network.Listener
-	if config.UDPMulticast {
-		dialerMC, listenerMC, err = udp.NewNetwork(config.LocalMCAddress, config.RemoteMCAddresses, mcLog)
-	} else {
+	switch config.Multicast {
+	case "tcp":
 		dialerMC, listenerMC, err = tcp.NewNetwork(config.LocalMCAddress, config.RemoteMCAddresses, mcLog)
+		if err != nil {
+			return nil, nil, err
+		}
+	case "udp":
+		dialerMC, listenerMC, err = udp.NewNetwork(config.LocalMCAddress, config.RemoteMCAddresses, mcLog)
+		if err != nil {
+			return nil, nil, err
+		}
+	default:
+		return &service{
+				gossipServer:    sync.NewServer(gossipProto, config.OutSyncLimit, config.InSyncLimit),
+				multicastServer: sync.NopServer(),
+				mcRequests:      nil,
+				log:             syncLog,
+			},
+			func(unit gomel.Unit) {}, nil
 	}
-	if err != nil {
-		return nil, nil, err
-	}
+
+	mcRequests := make(chan multicast.MCRequest, 10*nProc)
 	multicastProto := multicast.NewProtocol(pid, dag, randomSource, dialerMC, listenerMC, config.Timeout, mcRequests, mcLog)
 
 	return &service{
 			gossipServer:    sync.NewServer(gossipProto, config.OutSyncLimit, config.InSyncLimit),
 			multicastServer: sync.NewServer(multicastProto, 4*uint(nProc), 2*uint(nProc)),
 			mcRequests:      mcRequests,
-			log:             log.With().Int(logging.Service, logging.SyncService).Logger(),
+			log:             syncLog,
 		},
 		func(unit gomel.Unit) {
 			err := multicast.Request(unit, mcRequests, pid, nProc)

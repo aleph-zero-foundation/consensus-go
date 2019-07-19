@@ -27,7 +27,7 @@ type Sync struct {
 	OutSyncLimit      uint
 	InSyncLimit       uint
 	Timeout           time.Duration
-	UDPMulticast      bool
+	Multicast         string
 }
 
 // Create represents a complete configuration needed for a creating service to start.

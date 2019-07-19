@@ -25,8 +25,8 @@ type Configuration struct {
 	// Connection timeout in seconds
 	Timeout float32
 
-	// Whether UDP should be used for multicast.
-	UDPMulticast bool
+	// Whether to use multicast. Possible values "tcp", "udp". Any other value disables multicast.
+	Multicast string
 
 	// The number of transactions included in a unit.
 	// Currently only simulated by including random bytes depending on this number.
@@ -77,7 +77,7 @@ func NewDefaultConfiguration() Configuration {
 
 		Timeout: 2,
 
-		UDPMulticast: false,
+		Multicast: "tcp",
 
 		Txpu: 1,
 

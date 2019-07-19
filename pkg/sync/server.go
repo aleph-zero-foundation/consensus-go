@@ -33,3 +33,12 @@ func (s *Server) StopIn() {
 func (s *Server) StopOut() {
 	s.outPool.stop()
 }
+
+// NopServer is an empty server that does nothing
+func NopServer() *Server {
+	return &Server{
+		proto:   nil,
+		outPool: newPool(0, func() {}),
+		inPool:  newPool(0, func() {}),
+	}
+}

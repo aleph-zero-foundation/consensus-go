@@ -23,7 +23,7 @@ func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 		OutSyncLimit:      conf.NOutSync,
 		InSyncLimit:       conf.NInSync,
 		Timeout:           time.Duration(conf.Timeout * float32(time.Second)),
-		UDPMulticast:      conf.UDPMulticast,
+		Multicast:         conf.Multicast,
 	}
 }
 

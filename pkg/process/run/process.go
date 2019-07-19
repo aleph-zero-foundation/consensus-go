@@ -13,7 +13,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
 	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 )
 
 func stopAll(services []process.Service) {
@@ -48,8 +47,6 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	// We expect to order about one level of units at once, which should be around the size of the committee.
 	// The buffer has size taking that into account with some leeway.
 	orderedUnits := make(chan gomel.Unit, 2*config.Dag.NProc())
-	// mcRequests is a channel used by the callback in create service to send multicast requests to sync service.
-	mcRequests := make(chan multicast.MCRequest, 10*config.Dag.NProc())
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 
@@ -57,7 +54,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	rs := urn.New(dag, config.Create.Pid)
 	defer dag.Stop()
 
-	syncService, callback, err := sync.NewService(dag, rs, config.Sync, mcRequests, attemptTimingRequests, log)
+	syncService, callback, err := sync.NewService(dag, rs, config.Sync, attemptTimingRequests, log)
 	if err != nil {
 		return nil, err
 	}
