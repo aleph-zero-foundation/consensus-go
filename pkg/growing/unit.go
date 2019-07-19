@@ -115,21 +115,18 @@ func (u *unit) computeFloor(nProcesses int) {
 
 		startIx := len(floors)
 
-		// NOTE no self forking evidence, so each fork needs to stay, otherwise some unit was closing it
 		for _, parent := range u.parents {
 
 			for _, w := range parent.Floor()[pid] {
 				found, ri := false, -1
 				for ix, v := range floors[startIx:] {
 
-					// if ok, _ := w.(*unit).aboveWithinProc(v.(*unit)); ok {
 					if w.Above(v) {
 						found = true
 						ri = ix
 						break
 					}
 
-					// if ok, _ := w.(*unit).belowWithinProc(v.(*unit)); ok {
 					if w.Below(v) {
 						found = true
 						break
@@ -145,71 +142,14 @@ func (u *unit) computeFloor(nProcesses int) {
 		}
 	}
 
-	lastIx := 0
-	for pid := 0; pid < nProcesses; pid++ {
+	for lastIx, pid := 0, 0; pid < nProcesses; pid++ {
 		ix := lastIx
-		for ; ix < len(floors) && floors[ix].Creator() == pid; ix++ {
+		for ix < len(floors) && floors[ix].Creator() == pid {
+			ix++
 		}
 		u.floor[pid] = floors[lastIx:ix]
 		lastIx = ix
 	}
-	// fmt.Println(floors)
-	// // fmt.Println(u.floor)
-	// // for ix, unit := range floors {
-	// // 	if unit.Creator() != currentPid {
-	// // 		u.floor[currentPid] = floors[lastIx:ix]
-	// // 		lastIx = ix
-	// // 	}
-	// // }
-	// // u.floor[currentPid] = floors[lastIx:]
-	// testValue := u.floor
-
-	// u.floor = make([][]gomel.Unit, nProcesses)
-	// u.floor[u.creator] = []gomel.Unit{u}
-
-	// for _, parent := range u.parents {
-	// 	pFloor := parent.Floor()
-	// 	for pid := 0; pid < nProcesses; pid++ {
-	// 		if pid == u.creator {
-	// 			continue
-	// 		}
-	// 		for _, w := range pFloor[pid] {
-	// 			found, ri := false, -1
-	// 			for k, v := range u.floor[pid] {
-	// 				if ok, _ := w.(*unit).aboveWithinProc(v.(*unit)); ok {
-	// 					found = true
-	// 					ri = k
-	// 					break
-	// 				}
-	// 				if ok, _ := w.(*unit).belowWithinProc(v.(*unit)); ok {
-	// 					found = true
-	// 				}
-	// 			}
-	// 			if !found {
-	// 				u.floor[pid] = append(u.floor[pid], w)
-	// 			}
-	// 			if ri >= 0 {
-	// 				u.floor[pid][ri] = w
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// fmt.Println("old", u.floor)
-	// fmt.Println("new", testValue)
-	// for ix := range u.floor {
-	// 	if len(testValue) < ix+1 {
-	// 		panic("asasd")
-	// 	}
-	// 	for ix2 := range u.floor[ix] {
-	// 		if len(testValue[ix]) < ix2+1 {
-	// 			panic("bbbbb")
-	// 		}
-	// 		if u.floor[ix][ix2] != testValue[ix][ix2] {
-	// 			fmt.Println("wot")
-	// 		}
-	// 	}
-	// }
 }
 
 func combineParentsFloorsPerProc(u gomel.Unit, pid int) []gomel.Unit {
