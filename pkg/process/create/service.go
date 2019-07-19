@@ -10,7 +10,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 )
 
 const (
@@ -30,7 +29,7 @@ type service struct {
 	previousSuccess  bool
 	delay            time.Duration
 	ticker           *time.Ticker
-	mcRequests       chan<- multicast.MCRequest
+	callback         func(gomel.Unit)
 	dataSource       <-chan []byte
 	primeUnitCreated chan<- int
 	dagFinished      chan<- struct{}
@@ -47,7 +46,7 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close dagFinished channel when it stops.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, primeUnitCreated chan<- int, mcRequests chan<- multicast.MCRequest, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Create, callback func(gomel.Unit), dagFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		dag:              dag,
 		randomSource:     randomSource,
@@ -60,7 +59,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 		previousSuccess:  false,
 		delay:            config.InitialDelay,
 		ticker:           time.NewTicker(config.InitialDelay),
-		mcRequests:       mcRequests,
+		callback:         callback,
 		dataSource:       dataSource,
 		primeUnitCreated: primeUnitCreated,
 		dagFinished:      dagFinished,
@@ -90,7 +89,6 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	close(s.done)
-	close(s.mcRequests)
 	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }
@@ -146,7 +144,7 @@ func (s *service) createUnit() {
 			return
 		}
 
-		multicast.Request(added, s.mcRequests, s.pid, s.dag.NProc())
+		s.callback(added)
 
 		if gomel.Prime(added) {
 			s.log.Info().Int(logging.Height, added.Height()).Int(logging.NParents, len(added.Parents())).Msg(logging.PrimeUnitCreated)

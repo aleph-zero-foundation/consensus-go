@@ -16,7 +16,7 @@ type MCRequest struct {
 }
 
 //Request encodes the given unit and pushes to the provided channel MCRequests to send that unit to every committee member other than pid.
-func Request(unit gomel.Unit, requests chan<- MCRequest, pid, nProc int) error {
+func Request(unit gomel.Unit, requests chan<- MCRequest, pid, nProc uint16) error {
 	buffer := &bytes.Buffer{}
 	encoder := custom.NewEncoder(buffer)
 	err := encoder.EncodeUnit(unit)
@@ -24,9 +24,9 @@ func Request(unit gomel.Unit, requests chan<- MCRequest, pid, nProc int) error {
 		return err
 	}
 	encUnit := buffer.Bytes()[:]
-	perm := rand.Perm(nProc)
-	for i := 0; i < nProc; i++ {
-		if perm[i] == pid {
+	perm := rand.Perm(int(nProc))
+	for i := uint16(0); i < nProc; i++ {
+		if perm[i] == int(pid) {
 			continue
 		}
 		requests <- MCRequest{encUnit, unit.Height(), uint16(perm[i])}

@@ -19,18 +19,19 @@ import (
 type service struct {
 	gossipServer    *sync.Server
 	multicastServer *sync.Server
+	mcRequests      chan multicast.MCRequest
 	log             zerolog.Logger
 }
 
 // NewService creates a new syncing service for the given dag, with the given config.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, mcRequests <-chan multicast.MCRequest, attemptTiming chan<- int, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, mcRequests chan multicast.MCRequest, attemptTiming chan<- int, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
 	nProc := uint16(dag.NProc())
 	pid := uint16(config.Pid)
 	gossipLog := log.With().Int(logging.Service, logging.GossipService).Logger()
 	mcLog := log.With().Int(logging.Service, logging.MCService).Logger()
 	dialer, listener, err := tcp.NewNetwork(config.LocalAddress, config.RemoteAddresses, gossipLog)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	peerSource := gossip.NewDefaultPeerSource(nProc, pid)
 	gossipProto := gossip.NewProtocol(pid, dag, randomSource, dialer, listener, peerSource, config.Timeout, attemptTiming, gossipLog)
@@ -43,15 +44,23 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 		dialerMC, listenerMC, err = tcp.NewNetwork(config.LocalMCAddress, config.RemoteMCAddresses, mcLog)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	multicastProto := multicast.NewProtocol(pid, dag, randomSource, dialerMC, listenerMC, config.Timeout, mcRequests, mcLog)
 
 	return &service{
-		gossipServer:    sync.NewServer(gossipProto, config.OutSyncLimit, config.InSyncLimit),
-		multicastServer: sync.NewServer(multicastProto, 4*uint(nProc), 2*uint(nProc)),
-		log:             log.With().Int(logging.Service, logging.SyncService).Logger(),
-	}, nil
+			gossipServer:    sync.NewServer(gossipProto, config.OutSyncLimit, config.InSyncLimit),
+			multicastServer: sync.NewServer(multicastProto, 4*uint(nProc), 2*uint(nProc)),
+			mcRequests:      mcRequests,
+			log:             log.With().Int(logging.Service, logging.SyncService).Logger(),
+		},
+		func(unit gomel.Unit) {
+			err := multicast.Request(unit, mcRequests, pid, nProc)
+			if err != nil {
+				mcLog.Error().Str("where", "multicast.Request").Msg(err.Error())
+			}
+		},
+		nil
 }
 
 func (s *service) Start() error {
@@ -64,6 +73,7 @@ func (s *service) Start() error {
 func (s *service) Stop() {
 	s.gossipServer.StopOut()
 	s.multicastServer.StopOut()
+	close(s.mcRequests)
 	// let other processes sync with us some more
 	time.Sleep(5 * time.Second)
 	s.gossipServer.StopIn()
