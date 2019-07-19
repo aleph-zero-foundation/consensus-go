@@ -33,12 +33,12 @@ type service struct {
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		pid:                   config.Pid,
-		linearOrdering:        linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel),
+		linearOrdering:        linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel, config.OrderStartLevel),
 		attemptTimingRequests: attemptTimingRequests,
 		orderedUnits:          orderedUnits,
 		extendOrderRequests:   make(chan int, 10),
 		exitChan:              make(chan struct{}),
-		currentRound:          0,
+		currentRound:          config.OrderStartLevel,
 		log:                   log,
 	}, nil
 }

@@ -41,9 +41,10 @@ func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 
 func generateOrderConfig(conf *Configuration, c *Committee) *process.Order {
 	return &process.Order{
-		Pid:          c.Pid,
-		VotingLevel:  int(conf.VotingLevel),
-		PiDeltaLevel: int(conf.PiDeltaLevel),
+		Pid:             c.Pid,
+		VotingLevel:     int(conf.VotingLevel),
+		PiDeltaLevel:    int(conf.PiDeltaLevel),
+		OrderStartLevel: int(conf.OrderStartLevel),
 	}
 }
 

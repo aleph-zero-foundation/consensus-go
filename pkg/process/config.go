@@ -43,9 +43,10 @@ type Create struct {
 
 // Order represents a complete configuration needed for an ordering service to start.
 type Order struct {
-	Pid          int
-	VotingLevel  int
-	PiDeltaLevel int
+	Pid             int
+	VotingLevel     int
+	PiDeltaLevel    int
+	OrderStartLevel int
 }
 
 // TxValidate represents a complete configuration needed for a transaction validation service to start.

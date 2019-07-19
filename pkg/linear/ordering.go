@@ -15,6 +15,7 @@ type ordering struct {
 	orderedUnits        []gomel.Unit
 	votingLevel         int
 	piDeltaLevel        int
+	orderStartLevel     int
 	proofMemo           map[[2]gomel.Hash]bool
 	voteMemo            map[[2]gomel.Hash]vote
 	piMemo              map[[2]gomel.Hash]vote
@@ -23,15 +24,16 @@ type ordering struct {
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, PiDeltaLevel int) gomel.LinearOrdering {
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int) gomel.LinearOrdering {
 	return &ordering{
 		dag:                 dag,
 		randomSource:        rs,
-		timingUnits:         newSafeUnitSlice(),
+		timingUnits:         newSafeUnitSlice(orderStartLevel),
 		unitPositionInOrder: make(map[gomel.Hash]int),
 		orderedUnits:        []gomel.Unit{},
 		votingLevel:         votingLevel,
-		piDeltaLevel:        PiDeltaLevel,
+		piDeltaLevel:        piDeltaLevel,
+		orderStartLevel:     orderStartLevel,
 		proofMemo:           make(map[[2]gomel.Hash]bool),
 		voteMemo:            make(map[[2]gomel.Hash]vote),
 		piMemo:              make(map[[2]gomel.Hash]vote),
@@ -156,7 +158,7 @@ func (o *ordering) TimingRound(r int) []gomel.Unit {
 	// If we already ordered this unit we can read the answer from orderedUnits
 	if roundEnds, alreadyOrdered := o.unitPositionInOrder[*timingUnit.Hash()]; alreadyOrdered {
 		roundBegins := 0
-		if r != 0 {
+		if r != o.orderStartLevel {
 			roundBegins = o.unitPositionInOrder[*o.timingUnits.get(r - 1).Hash()] + 1
 		}
 		return o.orderedUnits[roundBegins:(roundEnds + 1)]

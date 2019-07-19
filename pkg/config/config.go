@@ -57,6 +57,9 @@ type Configuration struct {
 
 	// Whether to write the log in the human readable form or in JSON.
 	LogHuman bool
+
+	// The level from which we start ordering
+	OrderStartLevel int
 }
 
 // NewDefaultConfiguration returns default set of parameters.
@@ -96,6 +99,8 @@ func NewDefaultConfiguration() Configuration {
 		LogMemInterval: 10,
 
 		LogHuman: false,
+
+		OrderStartLevel: 0,
 	}
 	result.AddShares = result.PiDeltaLevel - 1
 	return result
