@@ -23,7 +23,7 @@ const (
 	sharesLevel    = 8
 )
 
-type beacon struct {
+type Beacon struct {
 	pid        int
 	dag        gomel.Dag
 	multicoins []*tcoin.ThresholdCoin
@@ -56,12 +56,12 @@ func (v *vote) isCorrect() bool {
 
 // New returns a RandomSource based on a beacon
 // It is meant to be used in the setup stage only.
-func NewBeacon(pid int) *beacon {
-	return &beacon{pid: pid}
+func NewBeacon(pid int) *Beacon {
+	return &Beacon{pid: pid}
 }
 
 // Init initialize the beacon with given dag
-func (b *beacon) Init(dag gomel.Dag) {
+func (b *Beacon) Init(dag gomel.Dag) {
 	n := dag.NProc()
 	b.dag = dag
 	b.multicoins = make([]*tcoin.ThresholdCoin, n)
@@ -89,7 +89,7 @@ func (b *beacon) Init(dag gomel.Dag) {
 // or
 // (3) there are no enough shares on level+3 yet to generate the priority
 // of some unit on a given level.
-func (b *beacon) GetCRP(level int) []int {
+func (b *Beacon) GetCRP(level int) []int {
 	return random.CRP(b, b.dag, level)
 }
 
@@ -103,7 +103,7 @@ func (b *beacon) GetCRP(level int) []int {
 //
 // When there is at least one unit of level+1 in the dag
 // then the (2) condition doesn't hold.
-func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
+func (b *Beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	if level < sharesLevel {
 		// RandomBytes asked on too low level
 		return nil
@@ -129,7 +129,7 @@ func (b *beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	return coin.RandomBytes()
 }
 
-func (b *beacon) CheckCompliance(u gomel.Unit) error {
+func (b *Beacon) CheckCompliance(u gomel.Unit) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
 		tc, err := tcoin.Decode(tcEncoded, b.pid)
@@ -174,7 +174,7 @@ func (b *beacon) CheckCompliance(u gomel.Unit) error {
 }
 
 // Update updates the RandomSource with data included in the preunit
-func (b *beacon) Update(u gomel.Unit) {
+func (b *Beacon) Update(u gomel.Unit) {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
 		tc, _ := tcoin.Decode(tcEncoded, b.pid)
@@ -223,7 +223,7 @@ func (b *beacon) Update(u gomel.Unit) {
 	}
 }
 
-func validateVotes(b *beacon, u gomel.Unit, votes []*vote) error {
+func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 	dealingUnits := random.UnitsOnLevel(b.dag, dealingLevel)
 	createdDealing := make([]bool, b.dag.NProc())
 	for _, v := range dealingUnits {
@@ -256,7 +256,7 @@ func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
 	}
 }
 
-func (b *beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
+func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
 		return tcoin.Deal(nProc, nProc/3+1)
@@ -296,6 +296,6 @@ func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {
 
 // GetCoin returns a coin random source obtained by using this beacon.
 // Head should be the creator of a timing unit chosen on the 6th level.
-func (b *beacon) GetCoin(head int) gomel.RandomSource {
+func (b *Beacon) GetCoin(head int) gomel.RandomSource {
 	return coin.NewCoin(b.dag.NProc(), b.pid, b.multicoins[head], b.shareProviders[head])
 }
