@@ -1128,20 +1128,27 @@ func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan b
 	return fixedVotes
 }
 
-func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, numberOfDeterministicRounds uint64) (func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler, func([]gomel.Dag) bool) {
+func longTimeUndecidedStrategy(startLevel *uint64, initialVotingRound uint64, numberOfDeterministicRounds uint64) (func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler, func([]gomel.Dag) bool) {
 
 	alreadyTriggered := false
+	var lastCreated gomel.Unit
 	resultAdder := func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) helpers.AddingHandler {
 		seen := make(map[uint16]bool, len(dags))
 		triggerCondition := func(unit gomel.Unit) bool {
 			if alreadyTriggered {
 				return false
 			}
-			if uint64(unit.Level()) == (startLevel - 1) {
+			if uint64(unit.Level()) == (*startLevel - 1) {
 				seen[uint16(unit.Creator())] = true
 			}
-			if dags[0].IsQuorum(len(seen)) && unit.Creator() != rss[0].GetCRP(int(startLevel))[0] {
-				return true
+			if dags[0].IsQuorum(len(seen)) {
+				if unit.Creator() != rss[0].GetCRP(int(*startLevel))[0] {
+					lastCreated = unit
+					return true
+				} else {
+					seen = map[uint16]bool{}
+					*startLevel++
+				}
 			}
 			return false
 		}
@@ -1155,7 +1162,8 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			for ix := range dags {
 				ids[ix] = uint16(ix)
 			}
-			triggeringDag := uint16(rss[0].GetCRP(int(startLevel))[0])
+
+			triggeringDag := uint16(rss[0].GetCRP(int(*startLevel))[0])
 			fmt.Println("triggering dag no", triggeringDag)
 			triggeringPreunit, err := creating.NewUnit(
 				dags[triggeringDag],
@@ -1178,6 +1186,13 @@ func longTimeUndecidedStrategy(startLevel uint64, initialVotingRound uint64, num
 			ids[triggeringDag], ids[0] = ids[0], ids[triggeringDag]
 			rssCopy[triggeringDag], rssCopy[0] = rssCopy[0], rssCopy[triggeringDag]
 
+			// move the last creator to the left side, so we will not ask it will observer some new units before we ask it to
+			// create a new one
+			dagsCopy[lastCreated.Creator()], dagsCopy[1] = dagsCopy[1], dagsCopy[lastCreated.Creator()]
+			privKeysCopy[lastCreated.Creator()], privKeysCopy[1] = privKeysCopy[1], privKeysCopy[lastCreated.Creator()]
+			ids[lastCreated.Creator()], ids[1] = ids[1], ids[lastCreated.Creator()]
+			rssCopy[lastCreated.Creator()], rssCopy[1] = rssCopy[1], rssCopy[lastCreated.Creator()]
+
 			result := makeDagsUndecidedForLongTime(dagsCopy, privKeysCopy, ids, rssCopy, triggeringPreunit, triggeringUnit, commonVotes, initialVotingRound)
 			if result != nil {
 				return result
@@ -1195,16 +1210,17 @@ func testLongTimeUndecidedStrategy() error {
 		nProcesses                  = 21
 		nUnits                      = 1000
 		maxParents                  = 2
-		startLevel                  = uint64(10)
 		initialVotingRound          = uint64(3)
 		numberOfDeterministicRounds = uint64(60)
 	)
+
+	startLevel := uint64(10)
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
 	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
 
-	unitAdder, stopCondition := longTimeUndecidedStrategy(startLevel, initialVotingRound, numberOfDeterministicRounds)
+	unitAdder, stopCondition := longTimeUndecidedStrategy(&startLevel, initialVotingRound, numberOfDeterministicRounds)
 
 	checkIfUndecidedVerifier := func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
 		fmt.Println("starting the undecided checker")
