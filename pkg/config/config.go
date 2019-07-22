@@ -9,6 +9,9 @@ type Configuration struct {
 	// Whether only prime units should be created.
 	PrimeOnly bool
 
+	// Wheather a level can be skipped
+	CanSkipLevel bool
+
 	// Delay after attempting to create a new unit, before another attempt is made.
 	CreateDelay float32
 
@@ -69,6 +72,8 @@ func NewDefaultConfiguration() Configuration {
 		NParents: 10,
 
 		PrimeOnly: true,
+
+		CanSkipLevel: true,
 
 		CreateDelay: 0.1,
 

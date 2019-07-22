@@ -219,7 +219,7 @@ func NewNonSkippingUnit(dag gomel.Dag, creator int, data []byte, rs gomel.Random
 	if dag.IsQuorum(parentsOnLevel) {
 		// parents should be sorted by increasing level
 		sort.Slice(parents[1:], func(i, j int) bool {
-			return parents[i].Level() < parents[j].Level()
+			return parents[i+1].Level() < parents[j+1].Level()
 		})
 		rsData := rs.DataToInclude(creator, parents, level+1)
 		return NewPreunit(creator, hashes(parents), data, rsData), nil

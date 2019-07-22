@@ -115,8 +115,10 @@ func (dag *Dag) checkExpandPrimes(u gomel.Unit) error {
 	}
 	notSeenPrimes := wholeSet
 	left := notSeenPrimes[:0]
-	level := u.Parents()[0].Level()
-	for _, parent := range u.Parents() {
+
+	predecessor := u.Parents()[0]
+	level := u.Parents()[1].Level()
+	for _, parent := range u.Parents()[1:] {
 		if currentLevel := parent.Level(); currentLevel < level {
 			return gomel.NewComplianceError("Expand primes rule violated - parents are not sorted in ascending order of levels")
 		} else if currentLevel > level {
@@ -130,7 +132,7 @@ func (dag *Dag) checkExpandPrimes(u gomel.Unit) error {
 		for ix, pid := range notSeenPrimes {
 			found := false
 			for _, unit := range parentsFloor[pid] {
-				if unit.Level() == level {
+				if unit.Level() == level && !unit.Below(predecessor) {
 					found = true
 					isSubset = false
 					break

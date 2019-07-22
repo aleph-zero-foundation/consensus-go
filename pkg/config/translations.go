@@ -13,6 +13,17 @@ func generateDagConfig(c *Committee) *gomel.DagConfig {
 	}
 }
 
+func generateSyncSetupConfig(conf *Configuration, c *Committee) *process.Sync {
+	return &process.Sync{
+		Pid:             c.Pid,
+		LocalAddress:    c.SetupAddresses[c.Pid],
+		RemoteAddresses: c.SetupAddresses,
+		OutSyncLimit:    conf.NOutSync,
+		InSyncLimit:     conf.NInSync,
+		Timeout:         2 * time.Second,
+	}
+}
+
 func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 	return &process.Sync{
 		Pid:               c.Pid,
@@ -27,11 +38,25 @@ func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 	}
 }
 
+func generateCreateSetupConfig(conf *Configuration, c *Committee) *process.Create {
+	return &process.Create{
+		Pid:          c.Pid,
+		MaxParents:   int(conf.NParents),
+		PrimeOnly:    conf.PrimeOnly,
+		CanSkipLevel: false,
+		PrivateKey:   c.PrivateKey,
+		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
+		AdjustFactor: conf.StepSize,
+		MaxLevel:     int(conf.LevelLimit),
+	}
+}
+
 func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 	return &process.Create{
 		Pid:          c.Pid,
 		MaxParents:   int(conf.NParents),
 		PrimeOnly:    conf.PrimeOnly,
+		CanSkipLevel: conf.CanSkipLevel,
 		PrivateKey:   c.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
@@ -62,12 +87,14 @@ func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(c *Committee) process.Config {
 	return process.Config{
-		Dag:        generateDagConfig(c),
-		Sync:       generateSyncConfig(conf, c),
-		Create:     generateCreateConfig(conf, c),
-		Order:      generateOrderConfig(conf, c),
-		TxValidate: generateTxValidateConfig(),
-		TxGenerate: generateTxGenerateConfig(conf),
-		MemLog:     conf.LogMemInterval,
+		Dag:         generateDagConfig(c),
+		Sync:        generateSyncConfig(conf, c),
+		SyncSetup:   generateSyncSetupConfig(conf, c),
+		Create:      generateCreateConfig(conf, c),
+		CreateSetup: generateCreateSetupConfig(conf, c),
+		Order:       generateOrderConfig(conf, c),
+		TxValidate:  generateTxValidateConfig(),
+		TxGenerate:  generateTxGenerateConfig(conf),
+		MemLog:      conf.LogMemInterval,
 	}
 }

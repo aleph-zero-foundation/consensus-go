@@ -8,13 +8,15 @@ import (
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	Dag        *gomel.DagConfig
-	Sync       *Sync
-	Create     *Create
-	Order      *Order
-	TxValidate *TxValidate
-	TxGenerate *TxGenerate
-	MemLog     int
+	Dag         *gomel.DagConfig
+	Sync        *Sync
+	SyncSetup   *Sync
+	Create      *Create
+	CreateSetup *Create
+	Order       *Order
+	TxValidate  *TxValidate
+	TxGenerate  *TxGenerate
+	MemLog      int
 }
 
 // Sync represents a complete configuration needed for a syncing service to start.
@@ -35,6 +37,7 @@ type Create struct {
 	Pid          int
 	MaxParents   int
 	PrimeOnly    bool
+	CanSkipLevel bool
 	PrivateKey   gomel.PrivateKey
 	InitialDelay time.Duration
 	AdjustFactor float64

@@ -27,20 +27,23 @@ func generateKeys(nProcesses uint64) (pubKeys []gomel.PublicKey, privKeys []gome
 	return pubKeys, privKeys
 }
 
-func generateLocalhostAdresses(localhostAddress string, nProcesses uint64) []string {
+func generateLocalhostAddresses(localhostAddress string, nProcesses uint64) ([]string, []string) {
 	const (
 		magicPort = 21037
 	)
 	result := make([]string, 0, nProcesses)
+	setupResult := make([]string, 0, nProcesses)
 	for id := uint64(0); id < nProcesses; id++ {
-		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+id))
+		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+2*id))
+		setupResult = append(setupResult, fmt.Sprintf("%s:%d", localhostAddress, magicPort+2*id+1))
 	}
-	return result
+	return result, setupResult
 }
 
 func createAndStartProcess(
 	id int,
 	addresses []string,
+	setupAddresses []string,
 	pubKeys []gomel.PublicKey,
 	privKey gomel.PrivateKey,
 	userDB string,
@@ -49,23 +52,32 @@ func createAndStartProcess(
 	dags []gomel.Dag,
 ) error {
 	committee := config.Committee{
-		Pid:        id,
-		PrivateKey: privKey,
-		PublicKeys: pubKeys,
-		Addresses:  addresses,
+		Pid:            id,
+		PrivateKey:     privKey,
+		PublicKeys:     pubKeys,
+		Addresses:      addresses,
+		SetupAddresses: setupAddresses,
 	}
 	defaultAppConfig := config.NewDefaultConfiguration()
+	defaultAppConfig.OrderStartLevel = 6
 	config := defaultAppConfig.GenerateConfig(&committee, userDB)
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
+
+	setupLog, err := logging.NewLogger("setup_log"+strconv.Itoa(id)+".log", 0, 100000, false)
+	if err != nil {
+		return err
+	}
+	setupLog = setupLog.With().Int("process_id", id).Logger()
+
 	log, err := logging.NewLogger("log"+strconv.Itoa(id)+".log", 0, 100000, false)
 	if err != nil {
 		return err
 	}
-	log = log.With().Int("process_id", id).Logger()
+	log = setupLog.With().Int("process_id", id).Logger()
 
 	go func() {
-		dag, err := run.Process(config, log)
+		dag, err := run.Process(config, setupLog, log, run.BeaconSetup)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 		}
@@ -175,17 +187,17 @@ func main() {
 	testSize := flag.Uint64("test_size", 10, "number of created processes; default is 10")
 	userDB := flag.String("user_db", "../../pkg/testdata/users.txt",
 		"file containing testdata for user accounts; default is a file containing names of superheros")
-	maxLevel := flag.Uint64("max_level", 10, "number of levels after which a process should finish; default is 10")
+	maxLevel := flag.Uint64("max_level", 15, "number of levels after which a process should finish; default is 15")
 	flag.Parse()
 
-	addresses := generateLocalhostAdresses("localhost", *testSize)
+	addresses, setupAddresses := generateLocalhostAddresses("localhost", *testSize)
 	pubKeys, privKeys := generateKeys(*testSize)
 	dags := make([]gomel.Dag, int(*testSize))
 
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(id, addresses, setupAddresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone)
 		if err != nil {
 			panic(err)
 		}

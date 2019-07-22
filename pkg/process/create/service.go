@@ -23,6 +23,7 @@ type service struct {
 	pid              int
 	maxParents       int
 	primeOnly        bool
+	canSkipLevel     bool
 	maxLevel         int
 	privKey          gomel.PrivateKey
 	adjustFactor     float64
@@ -55,6 +56,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 		pid:              config.Pid,
 		maxParents:       config.MaxParents,
 		primeOnly:        config.PrimeOnly,
+		canSkipLevel:     config.CanSkipLevel,
 		maxLevel:         config.MaxLevel,
 		privKey:          config.PrivateKey,
 		adjustFactor:     config.AdjustFactor,
@@ -128,8 +130,15 @@ func (s *service) getData() []byte {
 }
 
 func (s *service) createUnit() {
-	created, err := creating.NewUnit(s.dag, s.pid, s.maxParents, s.getData(),
-		s.randomSource, s.primeOnly)
+	var (
+		created gomel.Preunit
+		err     error
+	)
+	if !s.canSkipLevel {
+		created, err = creating.NewNonSkippingUnit(s.dag, s.pid, s.getData(), s.randomSource)
+	} else {
+		created, err = creating.NewUnit(s.dag, s.pid, s.maxParents, s.getData(), s.randomSource, s.primeOnly)
+	}
 	if err != nil {
 		s.slower()
 		s.log.Info().Msg(logging.NotEnoughParents)

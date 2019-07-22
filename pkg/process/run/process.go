@@ -1,6 +1,8 @@
 package run
 
 import (
+	"errors"
+
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -12,7 +14,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
-	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
 
 func stopAll(services []process.Service) {
@@ -32,9 +33,20 @@ func startAll(services []process.Service) error {
 	return nil
 }
 
-// Process runs all the services with the configuration provided.
+// Process starts main and setup processes.
+func Process(config process.Config, setupLog zerolog.Logger, log zerolog.Logger, setup func(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger)) (gomel.Dag, error) {
+	// rsCh is a channel shared between setup process and the main process.
+	// The setup process should create a random source and push it to the channel.
+	// The main process waits on the channel.
+	rsCh := make(chan gomel.RandomSource)
+
+	go setup(config, rsCh, setupLog)
+	return main(config, rsCh, log)
+}
+
+// main runs all the services with the configuration provided.
 // It blocks until all of them are done.
-func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
+func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Logger) (gomel.Dag, error) {
 	dagFinished := make(chan struct{})
 	var services []process.Service
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
@@ -51,9 +63,12 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	txChan := make(chan []byte, 10)
 
 	dag := growing.NewDag(config.Dag)
-	rs := urn.NewUrn(config.Create.Pid)
-	rs.Init(dag)
 	defer dag.Stop()
+	rs, ok := <-rsCh
+	if !ok {
+		return nil, errors.New("setup phase failed")
+	}
+	rs.Init(dag)
 
 	syncService, callback, err := sync.NewService(dag, rs, config.Sync, attemptTimingRequests, log)
 	if err != nil {
@@ -61,9 +76,6 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	}
 
 	service, err := create.NewService(dag, rs, config.Create, callback, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
-	if err != nil {
-		return nil, err
-	}
 	services = append(services, service)
 
 	service, err = order.NewService(dag, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
