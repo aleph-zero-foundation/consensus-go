@@ -483,6 +483,16 @@ class SyncPlots(Plotter):
         self.divide = divide
         self.colornames = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
+    def color(self, pid):
+        if self.regions is None:
+            return None
+        if pid is None:
+            return 'black'
+        try:
+            return [self.colornames[self.regions[i]] for i in pid]
+        except TypeError:
+            return self.colornames[self.regions[pid]]
+
     def process(self, entry):
         if PID not in entry:
             return entry
@@ -516,15 +526,39 @@ class SyncPlots(Plotter):
                 lst.append((v['start'],v['end'],v['units'],pid))
         self.out = lst
 
-    def makeplot(self, data, name, pid=None):
+    def corrplot(self, data, name, pid=None):
+        """Plots the correlation between the number of exchanged units and sync duration."""
+        d = np.array(sorted([(i[1]-i[0], i[2], i[3]) for i in data]))
+        filename = f'corr_{name}.png' if name else 'corr.png'
+
+        colors = self.color(d[:,2])
+        mycol = self.color(pid)
+
+        fig, ax = plt.subplots()
+        fig.set_size_inches(25,15)
+
+        ax.set_title(str(pid), fontsize=32, color=mycol)
+        ax.set_xlabel('exchanged units', color=mycol)
+        ax.set_ylabel('sync duration (ms)', color=mycol)
+        ax.tick_params(colors=mycol)
+
+        sc = ax.scatter(d[:,1], d[:,0], c=colors, alpha=0.5)
+
+        plt.savefig(filename)
+        plt.close()
+        return filename
+
+
+    def fancyplot(self, data, name, pid=None):
+        """For each sync, plots the beginning time (X axis), length of the sync (Y axis), number of
+            exchanged units (size of the marker) and area (color of the marker).
+            The borders of the plot have the color corresponding to the area of the examined process.
+            The number of concurrently happening syncs is shown as the gray line in the background.
+        """
         d = np.array(sorted(data))
         filename = f'syncs_{name}.png' if name else 'syncs.png'
-
-        if self.regions is not None:
-            colors = [self.colornames[self.regions[i]] for i in d[:,3]]
-        else:
-            colors = None
-        mycol = self.colornames[self.regions[pid]] if pid is not None else 'black'
+        colors = self.color(d[:,3])
+        mycol = self.color(pid)
 
         conc = [(i,1) for i in d[:,0]] + [(i,-1) for i in d[:,1]]
         conc.sort()
@@ -570,12 +604,13 @@ class SyncPlots(Plotter):
         except:
             pid = None
 
-        filename = self.makeplot(self.inc + self.out, name, pid)
+        names = []
+        names.append(self.fancyplot(self.inc + self.out, name, pid))
         if self.divide:
-            fileo  = self.makeplot(self.out, name+'_o', pid)
-            filei  = self.makeplot(self.inc, name+'_i', pid)
-            return f'Plots saved as {filename}, {fileo} and {filei}'
-        return f'Plot saved as {filename}'
+            names.append(self.fancyplot(self.out, name+'_o', pid))
+            names.append(self.fancyplot(self.inc, name+'_i', pid))
+        names.append(self.corrplot(self.inc + self.out, name, pid))
+        return f'Plots saved as ' + ', '.join(names)
 
 
 class DuplUnitPlots(Plotter):
@@ -629,7 +664,7 @@ class DuplUnitPlots(Plotter):
         return f'Global average of received duplicates: {ratio:5.2f}%'
 
     def saveplot(self, name):
-        filename = f'dupl_{name}.png'
+        filename = f'dupl_{name}.png' if name else 'dupl.png'
         x_inc = list(range(len(self.inc)))
         x_out = list(range(len(self.out)))
         unique_inc = [i[0] - i[1] for i in self.inc]
