@@ -53,9 +53,9 @@ func (v *vote) isCorrect() bool {
 	return v.proof == nil
 }
 
-// NewBeacon returns a RandomSource based on a beacon
+// New returns a RandomSource based on a beacon
 // It is meant to be used in the setup stage only.
-func NewBeacon(dag gomel.Dag, pid int) gomel.RandomSource {
+func New(dag gomel.Dag, pid int) gomel.RandomSource {
 	n := dag.NProc()
 	b := &beacon{
 		pid:            pid,

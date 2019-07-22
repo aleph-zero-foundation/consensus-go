@@ -15,13 +15,13 @@ type urn struct {
 	coinShares *random.SyncCSMap
 }
 
-// NewUrn returns a RandomSource based on multiple threshold coins
+// New returns a RandomSource based on multiple threshold coins
 // as explained in the first version of the whitepaper.
 // (i.e. we choose the dealer using the random permutation which is defined
 // as pseudo-random function of processes public keys.
 // The permutation is known to the adversary in advance and this knowledge
 // can be used in a potential attack).
-func NewUrn(dag gomel.Dag, pid int) gomel.RandomSource {
+func New(dag gomel.Dag, pid int) gomel.RandomSource {
 	return &urn{
 		pid:        pid,
 		dag:        dag,
