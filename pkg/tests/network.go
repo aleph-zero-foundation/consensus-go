@@ -61,11 +61,6 @@ func (d *Dialer) Dial(k uint16) (network.Connection, error) {
 	return out, nil
 }
 
-// Length specifies how many other processes we can dial.
-func (d *Dialer) Length() int {
-	return len(d.dialChan)
-}
-
 // Close makes all listeners associated with this dialer return errors.
 func (d *Dialer) Close() {
 	for _, ch := range d.dialChan {
