@@ -30,13 +30,13 @@ func NewUrn(pid int) gomel.RandomSource {
 }
 
 // Init initialize the urn with given dag
-func (u *urn) Init(dag gomel.Dag) {
-	u.dag = dag
+func (urn *urn) Init(dag gomel.Dag) {
+	urn.dag = dag
 }
 
 // GetCRP is a dummy implementation of a common random permutation
-func (rs *urn) GetCRP(nonce int) []int {
-	nProc := rs.dag.NProc()
+func (urn *urn) GetCRP(nonce int) []int {
+	nProc := urn.dag.NProc()
 	permutation := make([]int, nProc)
 	for i := 0; i < nProc; i++ {
 		permutation[i] = (i + nonce) % nProc
@@ -48,7 +48,7 @@ func (rs *urn) GetCRP(nonce int) []int {
 // in the case of fail it returns nil.
 // This function can always fail, typically because of adversarial behaviour
 // of some processes.
-func (rs *urn) RandomBytes(uTossing gomel.Unit, level int) []byte {
+func (urn *urn) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	if level+1 != uTossing.Level() {
 		return nil
 	}
@@ -57,7 +57,7 @@ func (rs *urn) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 
-	rs.dag.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
+	urn.dag.PrimeUnits(level).Iterate(func(units []gomel.Unit) bool {
 		for _, v := range units {
 			if !v.Below(uTossing) {
 				continue
@@ -65,15 +65,15 @@ func (rs *urn) RandomBytes(uTossing gomel.Unit, level int) []byte {
 			if shareCollected[v.Creator()] {
 				continue
 			}
-			fduV := rs.firstDealingUnit(v)
+			fduV := urn.firstDealingUnit(v)
 			if dealer == nil {
 				dealer = fduV
-				tc = rs.tcs.Get(dealer.Hash())
+				tc = urn.tcs.Get(dealer.Hash())
 			}
 			if dealer != fduV {
 				continue
 			}
-			cs := rs.coinShares.Get(v.Hash())
+			cs := urn.coinShares.Get(v.Hash())
 			if cs != nil {
 				if tc.VerifyCoinShare(cs, level) {
 					shares = append(shares, cs)
@@ -96,22 +96,22 @@ func (rs *urn) RandomBytes(uTossing gomel.Unit, level int) []byte {
 }
 
 // Update updates the RandomSource with data included in the preunit
-func (rs *urn) Update(u gomel.Unit) {
+func (urn *urn) Update(u gomel.Unit) {
 	if gomel.Dealing(u) {
-		tc, _ := tcoin.Decode(u.RandomSourceData(), rs.pid)
-		rs.tcs.Add(u.Hash(), tc)
+		tc, _ := tcoin.Decode(u.RandomSourceData(), urn.pid)
+		urn.tcs.Add(u.Hash(), tc)
 	} else if gomel.Prime(u) {
 		cs := new(tcoin.CoinShare)
 		cs.Unmarshal(u.RandomSourceData())
-		rs.coinShares.Add(u.Hash(), cs)
+		urn.coinShares.Add(u.Hash(), cs)
 	}
 }
 
 // CheckCompliance checks if the random source data included in the unit
 // is correct
-func (rs *urn) CheckCompliance(u gomel.Unit) error {
+func (urn *urn) CheckCompliance(u gomel.Unit) error {
 	if gomel.Dealing(u) {
-		_, err := tcoin.Decode(u.RandomSourceData(), rs.pid)
+		_, err := tcoin.Decode(u.RandomSourceData(), urn.pid)
 		if err != nil {
 			return err
 		}
@@ -121,8 +121,8 @@ func (rs *urn) CheckCompliance(u gomel.Unit) error {
 		if err != nil {
 			return err
 		}
-		fdu := rs.firstDealingUnit(u)
-		tc := rs.tcs.Get(fdu.Hash())
+		fdu := urn.firstDealingUnit(u)
+		tc := urn.tcs.Get(fdu.Hash())
 		if !tc.VerifyCoinShare(cs, u.Level()) {
 			return errors.New("Invalid coin share")
 		}
@@ -132,22 +132,22 @@ func (rs *urn) CheckCompliance(u gomel.Unit) error {
 
 // DataToInclude returns data which should be included in the unit under creation
 // with given creator and set of parents.
-func (rs *urn) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
+func (urn *urn) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
 	// dealing unit
 	if len(parents) == 0 {
-		nProc := rs.dag.NProc()
+		nProc := urn.dag.NProc()
 		return tcoin.Deal(nProc, nProc/3+1)
 	}
 	// prime non-dealing unit
 	if parents[0].Level() != level {
-		return rs.createCoinShare(parents, level).Marshal()
+		return urn.createCoinShare(parents, level).Marshal()
 	}
 	return nil
 }
 
-func (rs *urn) createCoinShare(parents []gomel.Unit, level int) *tcoin.CoinShare {
-	fdu := rs.firstDealingUnitFromParents(parents, level)
-	tc := rs.tcs.Get(fdu.Hash())
+func (urn *urn) createCoinShare(parents []gomel.Unit, level int) *tcoin.CoinShare {
+	fdu := urn.firstDealingUnitFromParents(parents, level)
+	tc := urn.tcs.Get(fdu.Hash())
 	return tc.CreateCoinShare(level)
 }
 
@@ -183,9 +183,9 @@ func hasForkingEvidenceFromParents(parents []gomel.Unit, creator int) bool {
 // firstDealingUnitFromParents takes parents of the unit under construction
 // and calculates the first (sorted with respect to CRP on level of the unit) dealing unit
 // that is below the unit under construction
-func (rs *urn) firstDealingUnitFromParents(parents []gomel.Unit, level int) gomel.Unit {
-	dealingUnits := rs.dag.PrimeUnits(0)
-	for _, dealer := range rs.GetCRP(level) {
+func (urn *urn) firstDealingUnitFromParents(parents []gomel.Unit, level int) gomel.Unit {
+	dealingUnits := urn.dag.PrimeUnits(0)
+	for _, dealer := range urn.GetCRP(level) {
 		if hasForkingEvidenceFromParents(parents, dealer) {
 			continue
 		}
@@ -198,9 +198,9 @@ func (rs *urn) firstDealingUnitFromParents(parents []gomel.Unit, level int) gome
 	return nil
 }
 
-func (rs *urn) firstDealingUnit(u gomel.Unit) gomel.Unit {
-	dealingUnits := rs.dag.PrimeUnits(0)
-	for _, dealer := range rs.GetCRP(u.Level()) {
+func (urn *urn) firstDealingUnit(u gomel.Unit) gomel.Unit {
+	dealingUnits := urn.dag.PrimeUnits(0)
+	for _, dealer := range urn.GetCRP(u.Level()) {
 		if u.HasForkingEvidence(dealer) {
 			continue
 		}
