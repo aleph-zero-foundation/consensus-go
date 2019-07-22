@@ -13,26 +13,20 @@ type coin struct {
 	dag           gomel.Dag
 	tc            *tcoin.ThresholdCoin
 	coinShares    *random.SyncCSMap
-	shareProvider []bool
+	shareProvider map[int]bool
 }
 
 // New returns a Coin RandomSource based on fixed thresholdCoin with given
 // set of share providers.
 // It is meant to be used in the main process.
 // The result of the setup phase should be a consensus on this random source.
-func New(dag gomel.Dag, pid int, tcoin *tcoin.ThresholdCoin, shareProviders map[int]bool) gomel.RandomSource {
-	providesShare := make([]bool, dag.NProc())
-
-	for provider := range shareProviders {
-		providesShare[provider] = true
-	}
-
+func New(dag gomel.Dag, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool) gomel.RandomSource {
 	return &coin{
 		pid:           pid,
 		dag:           dag,
 		tc:            tcoin,
 		coinShares:    random.NewSyncCSMap(),
-		shareProvider: providesShare,
+		shareProvider: shareProvider,
 	}
 }
 
