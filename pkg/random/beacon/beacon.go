@@ -23,6 +23,7 @@ const (
 	sharesLevel    = 8
 )
 
+// Beacon is a struct representing beacon random source
 type Beacon struct {
 	pid        int
 	dag        gomel.Dag
@@ -129,6 +130,8 @@ func (b *Beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
 	return coin.RandomBytes()
 }
 
+// CheckCompliance checks wheather the data included in the preunit
+// is compliant
 func (b *Beacon) CheckCompliance(u gomel.Unit) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
@@ -256,6 +259,8 @@ func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
 	}
 }
 
+// DataToInclude returns data which should be included in the unit under
+// creation with given creator and set of parents
 func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
