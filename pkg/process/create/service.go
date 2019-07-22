@@ -46,6 +46,8 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close dagFinished channel when it stops.
+// After creating a unit and adding it to the dag, the callback function is called on that unit.
+// The purpose of the callback is to communicate the fact of creating new unit to sync service.
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Create, callback func(gomel.Unit), dagFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		dag:              dag,
