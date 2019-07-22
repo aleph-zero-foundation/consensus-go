@@ -16,6 +16,13 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 )
 
+const (
+	// Some magic numbers for multicast. All below are ratios, they get multiplied with nProc.
+	mcRequestsSize = 10
+	mcOutWPSize    = 4
+	mcInWPSize     = 2
+)
+
 type service struct {
 	gossipServer    *sync.Server
 	multicastServer *sync.Server
@@ -61,12 +68,12 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 			func(unit gomel.Unit) {}, nil
 	}
 
-	mcRequests := make(chan multicast.MCRequest, 10*nProc)
+	mcRequests := make(chan multicast.MCRequest, mcRequestsSize*nProc)
 	multicastProto := multicast.NewProtocol(pid, dag, randomSource, dialerMC, listenerMC, config.Timeout, mcRequests, mcLog)
 
 	return &service{
 			gossipServer:    sync.NewServer(gossipProto, config.OutSyncLimit, config.InSyncLimit),
-			multicastServer: sync.NewServer(multicastProto, 4*uint(nProc), 2*uint(nProc)),
+			multicastServer: sync.NewServer(multicastProto, uint(mcOutWPSize*nProc), uint(mcOutWPSize*nProc)),
 			mcRequests:      mcRequests,
 			log:             syncLog,
 		},
