@@ -25,11 +25,11 @@ func Request(unit gomel.Unit, requests chan<- MCRequest, pid, nProc uint16) erro
 	}
 	encUnit := buffer.Bytes()[:]
 	perm := rand.Perm(int(nProc))
-	for i := uint16(0); i < nProc; i++ {
-		if perm[i] == int(pid) {
+	for _, i := range perm {
+		if i == int(pid) {
 			continue
 		}
-		requests <- MCRequest{encUnit, unit.Height(), uint16(perm[i])}
+		requests <- MCRequest{encUnit, unit.Height(), uint16(i)}
 	}
 	return nil
 }
