@@ -168,6 +168,11 @@ func (s *service) createUnit() {
 
 		if added.Level() >= s.maxLevel {
 			s.ticker.Stop()
+			// cleaning the ticker
+			select {
+			case <-s.ticker.C:
+			default:
+			}
 			close(s.dagFinished)
 		}
 	})
