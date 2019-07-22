@@ -104,35 +104,73 @@ func (u *unit) computeHeight() {
 }
 
 func (u *unit) computeFloor(nProcesses int) {
-	u.floor = make([][]gomel.Unit, nProcesses)
-	u.floor[u.creator] = []gomel.Unit{u}
+	// This version of the algorithm tries to minimize the number of heap allocations. It achieves this goal by means of
+	// pre-allocating a continuous region of memory which is then used for storing all values of the computed floor (instead of
+	// storing values of floor in separate slices for each process). At each index of the computed slice-of-slices we store a
+	// slice that was created using a slice-expression pointing to that continuous storage. This way, assuming there are no
+	// forks, it should only make two heap allocations in total, i.e. one for u.floor and one for storage variable floors.
+	// Please notice that it uses the fact that the zero value for any slice, which is denoted by `nil`, is in fact a struct
+	// containing a nil pointer and so the instruction `make([][]gomel.Unit, nProcesses)` pre-allocates memory for storing these
+	// structs. Further assignment of values to each of floor's indexes simply copies values of structs pointing to our
+	// pre-allocated storage. Previous version of this algorithm was allocating new heap objects for each index of floor. In
+	// case of forks this version requires at worst O(lg(S/N)) allocations, where S is the total size of the computed floor
+	// value and N is the number of processes.
 
-	for _, parent := range u.parents {
-		pFloor := parent.Floor()
-		for pid := 0; pid < nProcesses; pid++ {
-			if pid == u.creator {
-				continue
-			}
-			for _, w := range pFloor[pid] {
+	// WARNING: computed slice-of-slices is read-only. Any attempt of appending some value at any index can damage it.
+	// This is due to the technique we used here - at each index of floor we store a slice pointing to some bigger storage, so
+	// appending to such slice may overwrite values at indexes that follow the one we modified.
+
+	// pre-allocate memory for storing values for each process
+	u.floor = make([][]gomel.Unit, nProcesses)
+	// pre-allocate memory for all values for all processes - 0 `len` allows us to use append for sake of simplicity
+	floors := make([]gomel.Unit, 0, nProcesses)
+
+	for pid := 0; pid < nProcesses; pid++ {
+		if pid == u.creator {
+			floors = append(floors, u)
+			continue
+		}
+
+		startIx := len(floors)
+
+		for _, parent := range u.parents {
+
+			for _, w := range parent.Floor()[pid] {
 				found, ri := false, -1
-				for k, v := range u.floor[pid] {
-					if ok, _ := w.(*unit).aboveWithinProc(v.(*unit)); ok {
+				for ix, v := range floors[startIx:] {
+
+					if w.Above(v) {
 						found = true
-						ri = k
+						ri = ix
+						// we can now break out of the loop since if we would find any other index for storing `w` it would be a
+						// proof of self-forking
 						break
 					}
-					if ok, _ := w.(*unit).belowWithinProc(v.(*unit)); ok {
+
+					if w.Below(v) {
 						found = true
+						// we can now break out of the loop since if `w` would be above some other index it would contradicts
+						// the assumption that elements of `floors` (narrowed to some index) are not comparable
+						break
 					}
+
 				}
 				if !found {
-					u.floor[pid] = append(u.floor[pid], w)
-				}
-				if ri >= 0 {
-					u.floor[pid][ri] = w
+					floors = append(floors, w)
+				} else if ri >= 0 {
+					floors[startIx+ri] = w
 				}
 			}
 		}
+	}
+
+	for lastIx, pid := 0, 0; pid < nProcesses; pid++ {
+		ix := lastIx
+		for ix < len(floors) && floors[ix].Creator() == pid {
+			ix++
+		}
+		u.floor[pid] = floors[lastIx:ix]
+		lastIx = ix
 	}
 }
 
