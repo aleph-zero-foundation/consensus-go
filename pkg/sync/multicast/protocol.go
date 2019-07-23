@@ -1,6 +1,8 @@
 package multicast
 
 import (
+	"bytes"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -9,32 +11,63 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
+
+const (
+	// Some magic numbers for multicast. All below are ratios, they get multiplied with nProc.
+	requestsSize = 10
+	mcOutWPSize  = 4
+	mcInWPSize   = 2
+)
+
+//request represents a request to send the encoded unit to the committee member indicated by pid.
+type request struct {
+	encUnit []byte
+	height  int
+	pid     uint16
+}
 
 type protocol struct {
 	pid          uint16
 	dag          gomel.Dag
 	randomSource gomel.RandomSource
-	mcRequests   <-chan MCRequest
+	requests     chan request
 	dialer       network.Dialer
 	listener     network.Listener
 	timeout      time.Duration
 	log          zerolog.Logger
 }
 
-// NewProtocol returns a new multicast protocol.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, mcRequests <-chan MCRequest, log zerolog.Logger) gsync.Protocol {
+func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
 	return &protocol{
 		pid:          pid,
 		dag:          dag,
 		randomSource: randomSource,
-		mcRequests:   mcRequests,
+		requests:     make(chan request, requestsSize*dag.NProc()),
 		dialer:       dialer,
 		listener:     listener,
 		timeout:      timeout,
 		log:          log,
 	}
+}
+
+//Request encodes the given unit and pushes to the internal channel requests to send that unit to every committee member other than one's own.
+func (p *protocol) request(unit gomel.Unit) error {
+	buffer := &bytes.Buffer{}
+	encoder := custom.NewEncoder(buffer)
+	err := encoder.EncodeUnit(unit)
+	if err != nil {
+		return err
+	}
+	encUnit := buffer.Bytes()[:]
+	perm := rand.Perm(p.dag.NProc())
+	for _, i := range perm {
+		if i == int(p.pid) {
+			continue
+		}
+		p.requests <- request{encUnit, unit.Height(), uint16(i)}
+	}
+	return nil
 }
 
 func (p *protocol) In() {
@@ -73,7 +106,7 @@ func (p *protocol) In() {
 }
 
 func (p *protocol) Out() {
-	r, ok := <-p.mcRequests
+	r, ok := <-p.requests
 	if !ok {
 		return
 	}

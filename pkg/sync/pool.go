@@ -5,21 +5,24 @@ import (
 	"sync/atomic"
 )
 
-type pool struct {
+// Pool represents a pool of parallel workers.
+type Pool struct {
 	size uint
 	work func()
 	wg   sync.WaitGroup
 	quit int32
 }
 
-func newPool(size uint, work func()) *pool {
-	return &pool{
+//NewPool creates a pool of workers with the given size, all doing the same work.
+func NewPool(size uint, work func()) *Pool {
+	return &Pool{
 		size: size,
 		work: work,
 	}
 }
 
-func (p *pool) start() {
+// Start the pool.
+func (p *Pool) Start() {
 	p.wg.Add(int(p.size))
 	for i := uint(0); i < p.size; i++ {
 		go func() {
@@ -34,7 +37,8 @@ func (p *pool) start() {
 	}
 }
 
-func (p *pool) stop() {
+// Stop the pool.
+func (p *Pool) Stop() {
 	atomic.StoreInt32(&p.quit, 1)
 	p.wg.Wait()
 }
