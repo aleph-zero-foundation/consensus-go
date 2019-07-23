@@ -10,8 +10,8 @@ import (
 )
 
 // NewServer returns a server that runs multicast protocol and callback for create service
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) (sync.Server, func(gomel.Unit)) {
-	proto := newProtocol(pid, dag, randomSource, dialer, listener, timeout, log)
+func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, func(gomel.Unit)) {
+	proto := newProtocol(pid, dag, randomSource, dialer, listener, timeout, fallback, log)
 	return &server{
 			proto:   proto,
 			outPool: sync.NewPool(uint(mcOutWPSize*dag.NProc()), proto.Out),

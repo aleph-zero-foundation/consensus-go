@@ -3,7 +3,6 @@ package multicast
 import (
 	"bytes"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -11,6 +10,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
 const (
@@ -35,10 +36,11 @@ type protocol struct {
 	dialer       network.Dialer
 	listener     network.Listener
 	timeout      time.Duration
+	fallback     sync.Fallback
 	log          zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) *protocol {
 	return &protocol{
 		pid:          pid,
 		dag:          dag,
@@ -47,6 +49,7 @@ func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dia
 		dialer:       dialer,
 		listener:     listener,
 		timeout:      timeout,
+		fallback:     fallback,
 		log:          log,
 	}
 }
@@ -85,24 +88,7 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "multicast.In.Decode").Msg(err.Error())
 		return
 	}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	p.dag.AddUnit(preunit, p.randomSource, func(pu gomel.Preunit, added gomel.Unit, err error) {
-		defer wg.Done()
-		if err != nil {
-			switch e := err.(type) {
-			case *gomel.DuplicateUnit:
-				p.log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
-			case *gomel.UnknownParents:
-				p.log.Info().Int(logging.Creator, pu.Creator()).Int(logging.Size, e.Amount).Msg(logging.UnknownParents)
-			default:
-				p.log.Error().Str("where", "multicast.In.AddUnit").Msg(err.Error())
-			}
-			return
-		}
-		p.log.Info().Int(logging.Creator, added.Creator()).Int(logging.Height, added.Height()).Msg(logging.AddedBCUnit)
-	})
-	wg.Wait()
+	add.Unit(p.dag, p.randomSource, preunit, p.fallback, p.log)
 }
 
 func (p *protocol) Out() {

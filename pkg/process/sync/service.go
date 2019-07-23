@@ -48,7 +48,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 	if err != nil {
 		return nil, nil, err
 	}
-	multicastServer, callback := multicast.NewServer(pid, dag, randomSource, dialer, listener, config.Timeout, mcLog)
+	multicastServer, callback := multicast.NewServer(pid, dag, randomSource, dialer, listener, config.Timeout, sync.Noop(), mcLog)
 	s.servers = append(s.servers, multicastServer)
 
 	return s, callback, nil
