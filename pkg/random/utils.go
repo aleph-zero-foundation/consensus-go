@@ -32,7 +32,7 @@ func CRP(rs gomel.RandomSource, dag gomel.Dag, level int) []int {
 		}
 
 		buf := make([]byte, 4)
-		binary.LittleEndian.PutUint32(buf, uint32(u.Creator()+level))
+		binary.LittleEndian.PutUint32(buf, uint32(u.Creator()))
 		rBytes = append(rBytes, buf...)
 		sha3.ShakeSum128(priority[u.Creator()], rBytes)
 	}
