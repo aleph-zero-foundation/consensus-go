@@ -10,7 +10,7 @@ import (
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-func postAdd(wg sync.WaitGroup, primeAdded *int32, errorAddr *error, fallback gsync.Fallback, log zerolog.Logger) func(pu gomel.Preunit, added gomel.Unit, err error) {
+func postAdd(wg *sync.WaitGroup, primeAdded *int32, errorAddr *error, fallback gsync.Fallback, log zerolog.Logger) func(pu gomel.Preunit, added gomel.Unit, err error) {
 	return func(pu gomel.Preunit, added gomel.Unit, err error) {
 		if err != nil {
 			switch e := err.(type) {
@@ -39,7 +39,7 @@ func Unit(dag gomel.Dag, randomSource gomel.RandomSource, preunit gomel.Preunit,
 	var primeAdded int32
 	var err error
 	wg.Add(1)
-	dag.AddUnit(preunit, randomSource, postAdd(wg, &primeAdded, &err, fallback, log))
+	dag.AddUnit(preunit, randomSource, postAdd(&wg, &primeAdded, &err, fallback, log))
 	wg.Wait()
 	return primeAdded == 1, err
 }
@@ -54,7 +54,7 @@ func Antichain(dag gomel.Dag, randomSource gomel.RandomSource, preunits []gomel.
 	var primeAdded int32
 	for i, preunit := range preunits {
 		wg.Add(1)
-		dag.AddUnit(preunit, randomSource, postAdd(wg, &primeAdded, &problem.errs[i], fallback, log))
+		dag.AddUnit(preunit, randomSource, postAdd(&wg, &primeAdded, &problem.errs[i], fallback, log))
 	}
 	wg.Wait()
 	return primeAdded == 1, problem.Pruned(false)
