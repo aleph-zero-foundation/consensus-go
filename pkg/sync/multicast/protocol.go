@@ -31,7 +31,7 @@ type protocol struct {
 	log          zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, requests <-chan request, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, requests <-chan request, log zerolog.Logger) sync.Protocol {
 	return &protocol{
 		pid:          pid,
 		dag:          dag,
