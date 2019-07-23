@@ -60,7 +60,10 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "multicast.In.Decode").Msg(err.Error())
 		return
 	}
-	add.Unit(p.dag, p.randomSource, preunit, p.fallback, p.log)
+	_, err = add.Unit(p.dag, p.randomSource, preunit, p.fallback, p.log)
+	if err != nil {
+		p.log.Info().Int(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
+	}
 }
 
 func (p *protocol) Out() {
