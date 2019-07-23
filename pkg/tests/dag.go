@@ -39,7 +39,7 @@ func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(g
 	var u unit
 	err := dehashParents(&u, dag, pu)
 	if err != nil {
-		callback(pu, nil, gomel.NewUnknownParents(1))
+		callback(pu, nil, err)
 		return
 	}
 	// Setting height, creator, signature, version, hash
