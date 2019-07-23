@@ -1,6 +1,7 @@
 package random
 
 import (
+	"encoding/binary"
 	"sort"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -29,7 +30,10 @@ func CRP(rs gomel.RandomSource, dag gomel.Dag, level int) []int {
 		if rBytes == nil {
 			return nil
 		}
-		rBytes = append(rBytes, u.Hash()[:]...)
+
+		buf := make([]byte, 4)
+		binary.LittleEndian.PutUint32(buf, uint32(u.Creator()+level))
+		rBytes = append(rBytes, buf...)
 		sha3.ShakeSum128(priority[u.Creator()], rBytes)
 	}
 
