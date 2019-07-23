@@ -32,7 +32,7 @@ func postAdd(wg *sync.WaitGroup, primeAdded *int32, errorAddr *error, fallback g
 	}
 }
 
-// Unit adds a preunit to the dag and reports a composite error if it fails.
+// Unit adds a preunit to the dag and returns an error if it fails.
 // It also returns whether it successfully added a prime unit.
 func Unit(dag gomel.Dag, randomSource gomel.RandomSource, preunit gomel.Preunit, fallback gsync.Fallback, log zerolog.Logger) (bool, error) {
 	var wg sync.WaitGroup

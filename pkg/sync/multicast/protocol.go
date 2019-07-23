@@ -1,8 +1,6 @@
 package multicast
 
 import (
-	"bytes"
-	"math/rand"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -21,18 +19,11 @@ const (
 	mcInWPSize   = 2
 )
 
-//request represents a request to send the encoded unit to the committee member indicated by pid.
-type request struct {
-	encUnit []byte
-	height  int
-	pid     uint16
-}
-
 type protocol struct {
 	pid          uint16
 	dag          gomel.Dag
 	randomSource gomel.RandomSource
-	requests     chan request
+	requests     <-chan request
 	dialer       network.Dialer
 	listener     network.Listener
 	timeout      time.Duration
@@ -40,37 +31,18 @@ type protocol struct {
 	log          zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, requests <-chan request, log zerolog.Logger) *protocol {
 	return &protocol{
 		pid:          pid,
 		dag:          dag,
 		randomSource: randomSource,
-		requests:     make(chan request, requestsSize*dag.NProc()),
+		requests:     requests,
 		dialer:       dialer,
 		listener:     listener,
 		timeout:      timeout,
 		fallback:     fallback,
 		log:          log,
 	}
-}
-
-//Request encodes the given unit and pushes to the internal channel requests to send that unit to every committee member other than one's own.
-func (p *protocol) request(unit gomel.Unit) error {
-	buffer := &bytes.Buffer{}
-	encoder := custom.NewEncoder(buffer)
-	err := encoder.EncodeUnit(unit)
-	if err != nil {
-		return err
-	}
-	encUnit := buffer.Bytes()[:]
-	perm := rand.Perm(p.dag.NProc())
-	for _, i := range perm {
-		if i == int(p.pid) {
-			continue
-		}
-		p.requests <- request{encUnit, unit.Height(), uint16(i)}
-	}
-	return nil
 }
 
 func (p *protocol) In() {
