@@ -21,7 +21,7 @@ type urn struct {
 // as pseudo-random function of processes public keys.
 // The permutation is known to the adversary in advance and this knowledge
 // can be used in a potential attack).
-func NewUrn(pid int) gomel.RandomSource {
+func New(pid int) gomel.RandomSource {
 	return &urn{
 		pid:        pid,
 		tcs:        random.NewSyncTCMap(),

@@ -20,7 +20,7 @@ import (
 // UrnSetup just deals an urn. Running a process with this setup
 // is equivalent to the version of without setup phase.
 func UrnSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
-	rsCh <- urn.NewUrn(config.Create.Pid)
+	rsCh <- urn.New(config.Create.Pid)
 	close(rsCh)
 }
 
@@ -39,7 +39,7 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	txChan := make(chan []byte, 10)
 
 	dag := growing.NewDag(config.Dag)
-	rs := beacon.NewBeacon(config.Create.Pid)
+	rs := beacon.New(config.Create.Pid)
 	rs.Init(dag)
 
 	service, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())

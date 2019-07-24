@@ -19,7 +19,7 @@ var _ = Describe("Tcoin", func() {
 		pid = 0
 		dag, err = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 		Expect(err).NotTo(HaveOccurred())
-		rs = urn.NewUrn(pid)
+		rs = urn.New(pid)
 		rs.Init(dag)
 	})
 	Describe("GetCRP", func() {

@@ -38,7 +38,7 @@ var _ = Describe("Coin", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tc, tcErr := tcoin.Decode(delt, pid)
 			Expect(tcErr).NotTo(HaveOccurred())
-			rs[pid] = NewCoin(n, pid, tc, shareProviders)
+			rs[pid] = New(n, pid, tc, shareProviders)
 			rs[pid].Init(dag[pid])
 		}
 		// Generating very regular dag

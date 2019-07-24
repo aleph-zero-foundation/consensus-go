@@ -20,7 +20,7 @@ type coin struct {
 // set of share providers.
 // It is meant to be used in the main process.
 // The result of the setup phase should be a consensus on this random source.
-func NewCoin(nProc, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool) gomel.RandomSource {
+func New(nProc, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool) gomel.RandomSource {
 	return &coin{
 		pid:           pid,
 		tc:            tcoin,

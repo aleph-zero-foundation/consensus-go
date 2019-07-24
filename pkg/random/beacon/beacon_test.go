@@ -30,7 +30,7 @@ var _ = Describe("Beacon", func() {
 		for pid := 0; pid < n; pid++ {
 			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
-			rs[pid] = NewBeacon(pid)
+			rs[pid] = New(pid)
 			rs[pid].Init(dag[pid])
 		}
 		// Generating very regular dag

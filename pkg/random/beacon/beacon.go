@@ -57,7 +57,7 @@ func (v *vote) isCorrect() bool {
 
 // New returns a RandomSource based on a beacon
 // It is meant to be used in the setup stage only.
-func NewBeacon(pid int) *Beacon {
+func New(pid int) *Beacon {
 	return &Beacon{pid: pid}
 }
 
@@ -302,5 +302,5 @@ func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {
 // GetCoin returns a coin random source obtained by using this beacon.
 // Head should be the creator of a timing unit chosen on the 6th level.
 func (b *Beacon) GetCoin(head int) gomel.RandomSource {
-	return coin.NewCoin(b.dag.NProc(), b.pid, b.multicoins[head], b.shareProviders[head])
+	return coin.New(b.dag.NProc(), b.pid, b.multicoins[head], b.shareProviders[head])
 }
