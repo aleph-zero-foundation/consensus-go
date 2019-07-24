@@ -137,7 +137,7 @@ func (f *Retrying) gotHash(h *gomel.Hash) {
 }
 
 func (f *Retrying) addUnit(pu gomel.Preunit) {
-	_, err := add.Antichain(f.dag, f.rs, []gomel.Preunit{pu}, gsync.Noop(), f.log)
+	err := add.Unit(f.dag, f.rs, pu, gomel.NopCallback(), gsync.NopFallback(), f.log)
 	if err != nil {
 		log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}

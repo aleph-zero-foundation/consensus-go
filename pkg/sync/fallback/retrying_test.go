@@ -42,11 +42,11 @@ var _ = Describe("Retrying", func() {
 		rs1.Init(dag)
 		fallback = NewRetrying(baseFallback, dag, rs1, interval, zerolog.Nop())
 		fallback.Start()
-		proto = fetch.NewProtocol(0, dag, rs1, reqs, d, ls[0], time.Second, fallback, make(chan int), zerolog.Nop())
+		proto = fetch.NewProtocol(0, dag, rs1, reqs, d, ls[0], gomel.NopCallback, time.Second, fallback, zerolog.Nop())
 		for i, op := range dags {
 			trs := tests.NewTestRandomSource()
 			trs.Init(op)
-			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, trs, reqs, d, ls[i+1], time.Second, nil, make(chan int), zerolog.Nop()))
+			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, trs, reqs, d, ls[i+1], gomel.NopCallback, time.Second, nil, zerolog.Nop()))
 		}
 	})
 

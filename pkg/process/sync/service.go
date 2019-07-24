@@ -19,21 +19,21 @@ type service struct {
 	log     zerolog.Logger
 }
 
-// NewService creates a new syncing service for the given dag, with the given config.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
+// NewService creates a new syncing service for the given dag, with the given config. Returns also a callback meant to be called after creating a new unit.
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, primeAlert gomel.Callback, log zerolog.Logger) (process.Service, gomel.Callback, error) {
 	pid := uint16(config.Pid)
 	nProc := uint16(dag.NProc())
 	s := &service{log: log.With().Int(logging.Service, logging.SyncService).Logger()}
 	gossipLog := log.With().Int(logging.Service, logging.GossipService).Logger()
 	mcLog := log.With().Int(logging.Service, logging.MCService).Logger()
-	callback := func(gomel.Unit) {}
+	callback := gomel.NopCallback()
 
 	dialer, listener, err := tcp.NewNetwork(config.LocalAddress, config.RemoteAddresses, gossipLog)
 	if err != nil {
 		return nil, nil, err
 	}
 	peerSource := gossip.NewDefaultPeerSource(nProc, pid)
-	gossipProto := gossip.NewProtocol(pid, dag, randomSource, dialer, listener, peerSource, config.Timeout, attemptTiming, gossipLog)
+	gossipProto := gossip.NewProtocol(pid, dag, randomSource, dialer, listener, peerSource, primeAlert, config.Timeout, gossipLog)
 	gossipServer := sync.NewDefaultServer(gossipProto, config.OutSyncLimit, config.InSyncLimit)
 	s.servers = append(s.servers, gossipServer)
 
@@ -48,7 +48,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 	if err != nil {
 		return nil, nil, err
 	}
-	multicastServer, callback := multicast.NewServer(pid, dag, randomSource, dialer, listener, config.Timeout, sync.Noop(), mcLog)
+	multicastServer, callback := multicast.NewServer(pid, dag, randomSource, dialer, listener, primeAlert, config.Timeout, sync.NopFallback(), mcLog)
 	s.servers = append(s.servers, multicastServer)
 
 	return s, callback, nil

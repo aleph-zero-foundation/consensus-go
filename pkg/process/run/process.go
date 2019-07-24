@@ -48,11 +48,6 @@ func Process(config process.Config, setupLog zerolog.Logger, log zerolog.Logger,
 // It blocks until all of them are done.
 func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Logger) (gomel.Dag, error) {
 	dagFinished := make(chan struct{})
-	var services []process.Service
-	// attemptTimingRequests is a channel shared between orderer and creator/syncer
-	// creator/syncer should send a notification to the channel when a new prime unit is added to the dag
-	// orderer attempts timing decision after receiving the notification
-	attemptTimingRequests := make(chan int)
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
 	orderedUnits := make(chan []gomel.Unit, 5)
@@ -67,41 +62,31 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	}
 	rs.Init(dag)
 
-	syncService, callback, err := sync.NewService(dag, rs, config.Sync, attemptTimingRequests, log)
+	orderService, primeAlert, err := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
 		return nil, err
 	}
-
-	service, err := create.NewService(dag, rs, config.Create, callback, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	syncService, requestMulticast, err := sync.NewService(dag, rs, config.Sync, primeAlert, log)
 	if err != nil {
 		return nil, err
 	}
-	services = append(services, service)
-
-	service, err = order.NewService(dag, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	createService, err := create.NewService(dag, rs, config.Create, dagFinished, gomel.MergeCallbacks(requestMulticast, primeAlert), txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return nil, err
 	}
-	services = append(services, service)
-
-	service, err = validate.NewService(dag, config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
+	validateService, err := validate.NewService(dag, config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
 	if err != nil {
 		return nil, err
 	}
-	services = append(services, service)
-
-	service, err = generate.NewService(dag, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
+	generateService, err := generate.NewService(dag, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
 	if err != nil {
 		return nil, err
 	}
-	services = append(services, service)
-
-	service, err = logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+	memlogService, err := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 	if err != nil {
 		return nil, err
 	}
-	services = append(services, service)
-	services = append(services, syncService)
+	services := []process.Service{createService, orderService, generateService, validateService, memlogService, syncService}
 
 	err = startAll(services)
 	if err != nil {

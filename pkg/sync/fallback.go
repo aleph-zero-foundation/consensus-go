@@ -12,7 +12,7 @@ type noop struct{}
 
 func (f noop) Run(gomel.Preunit) {}
 
-// Noop is a fallback that does nothing
-func Noop() Fallback {
+// NopFallback is a fallback that does nothing
+func NopFallback() Fallback {
 	return noop{}
 }

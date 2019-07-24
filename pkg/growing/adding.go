@@ -10,12 +10,12 @@ type unitBuilt struct {
 	preunit gomel.Preunit
 	result  *unit
 	rs      gomel.RandomSource
-	done    func(gomel.Preunit, gomel.Unit, error)
+	done    gomel.Callback
 }
 
 // AddUnit adds the provided Preunit to the dag as a Unit.
 // When done calls the callback.
-func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
 	if pu.Creator() < 0 || pu.Creator() >= dag.nProcesses {
 		callback(pu, nil, gomel.NewDataError("Invalid creator."))
 		return
