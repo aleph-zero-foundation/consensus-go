@@ -14,7 +14,6 @@ import (
 
 var _ = Describe("Coin", func() {
 	var (
-		pid            int
 		n              int
 		maxLevel       int
 		dag            []gomel.Dag
@@ -26,7 +25,6 @@ var _ = Describe("Coin", func() {
 	BeforeEach(func() {
 		n = 4
 		maxLevel = 7
-		pid = 0
 		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
 		shareProviders = make(map[int]bool)
