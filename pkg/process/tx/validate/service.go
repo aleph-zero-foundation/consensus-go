@@ -35,7 +35,7 @@ func (s *service) main() {
 				<-s.exitChan
 				return
 			}
-			s.log.Info().Int(logging.Size, len(u.Data())).Msg(logging.DataValidated)
+			s.log.Info().Int(logging.Size, len(u.Data())).Int(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
 		case <-s.exitChan:
 			return
 		}
