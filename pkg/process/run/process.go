@@ -12,7 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
-	"gitlab.com/alephledger/consensus-go/pkg/random"
+	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
 
 func stopAll(services []process.Service) {
@@ -49,8 +49,9 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	orderedUnits := make(chan gomel.Unit, 2*config.Dag.NProc())
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
+
 	dag := growing.NewDag(config.Dag)
-	rs := random.NewTcSource(dag, config.Create.Pid)
+	rs := urn.New(dag, config.Create.Pid)
 	defer dag.Stop()
 
 	service, err := create.NewService(dag, rs, config.Create, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())

@@ -13,7 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
-	"gitlab.com/alephledger/consensus-go/pkg/random"
+	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
 
 func runOfflineTest() {
@@ -36,7 +36,7 @@ func runOfflineTest() {
 	// start goroutines waiting for a preunit and adding it to its' dag
 	for pid := 0; pid < nProcesses; pid++ {
 		dags[pid] = growing.NewDag(config)
-		rses[pid] = random.NewTcSource(dags[pid], pid)
+		rses[pid] = urn.New(dags[pid], pid)
 	}
 
 	for i := 0; i < nUnits; i++ {

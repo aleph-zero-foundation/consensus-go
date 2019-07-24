@@ -1,10 +1,11 @@
-package random_test
+package urn_test
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random"
+	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
@@ -17,9 +18,9 @@ var _ = Describe("Tcoin", func() {
 	)
 	BeforeEach(func() {
 		pid = 0
-		dag, err = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
+		dag, err = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 		Expect(err).NotTo(HaveOccurred())
-		rs = NewTcSource(dag, pid)
+		rs = urn.New(dag, pid)
 	})
 	Describe("GetCRP", func() {
 		Context("On a given level", func() {

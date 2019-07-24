@@ -1,4 +1,4 @@
-package random_test
+package urn_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRandom(t *testing.T) {
+func TestUrn(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Random Suite")
+	RunSpecs(t, "Urn Suite")
 }
