@@ -74,7 +74,7 @@ func createAndStartProcess(
 	if err != nil {
 		return err
 	}
-	log = setupLog.With().Int("process_id", id).Logger()
+	log = log.With().Int("process_id", id).Logger()
 
 	go func() {
 		dag, err := run.Process(config, setupLog, log, run.BeaconSetup)
@@ -169,10 +169,10 @@ func readOrderFromLogs(logfile string) [][2]int {
 	return result
 }
 
-func checkOrderingFromLogs(nProc int) bool {
+func checkOrderingFromLogs(nProc int, filenamePrefix string) bool {
 	var lastOrder [][2]int
 	for pid := 0; pid < nProc; pid++ {
-		myOrder := readOrderFromLogs("log" + strconv.Itoa(pid) + ".log")
+		myOrder := readOrderFromLogs(filenamePrefix + strconv.Itoa(pid) + ".log")
 		if pid != 0 && !isPrefix(lastOrder, myOrder) && !isPrefix(myOrder, lastOrder) {
 			return false
 		}
@@ -184,10 +184,10 @@ func checkOrderingFromLogs(nProc int) bool {
 }
 
 func main() {
-	testSize := flag.Uint64("test_size", 10, "number of created processes; default is 10")
+	testSize := flag.Uint64("test_size", 4, "number of created processes; default is 4")
 	userDB := flag.String("user_db", "../../pkg/testdata/users.txt",
 		"file containing testdata for user accounts; default is a file containing names of superheros")
-	maxLevel := flag.Uint64("max_level", 15, "number of levels after which a process should finish; default is 15")
+	maxLevel := flag.Uint64("max_level", 10, "number of levels after which a process should finish; default is 10")
 	flag.Parse()
 
 	addresses, setupAddresses := generateLocalhostAddresses("localhost", *testSize)
@@ -197,7 +197,7 @@ func main() {
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(id, addresses, setupAddresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone)
+		err := createAndStartProcess(id, addresses, setupAddresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}
@@ -207,10 +207,15 @@ func main() {
 	allDone.Wait()
 
 	// Sanity checks
-	fmt.Println("Dags are the same up to", commonLevel(dags, int(*maxLevel)), "level. Max level is", *maxLevel)
-	if checkOrderingFromLogs(dags[0].NProc()) {
-		fmt.Println("Ordering OK")
+	if checkOrderingFromLogs(dags[0].NProc(), "setup_log") {
+		fmt.Println("Ordering in setup OK")
 	} else {
-		fmt.Println("Processes obtained different ordering!")
+		fmt.Println("Processes obtained different orderings in setup!")
+	}
+	fmt.Println("Main Dags are the same up to", commonLevel(dags, int(*maxLevel)), "level. Max level is", *maxLevel)
+	if checkOrderingFromLogs(dags[0].NProc(), "log") {
+		fmt.Println("Ordering in main is OK")
+	} else {
+		fmt.Println("Processes obtained different orderings in main!")
 	}
 }
