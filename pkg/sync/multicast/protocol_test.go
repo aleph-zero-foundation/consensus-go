@@ -32,7 +32,7 @@ var _ = Describe("Protocol", func() {
 		rs      []gomel.RandomSource
 		servs   []sync.Server
 		ls      []network.Listener
-		d       network.Dialer
+		d       *tests.Dialer
 		request func(unit gomel.Unit)
 		serv    sync.Server
 		theUnit gomel.Unit
@@ -75,10 +75,11 @@ var _ = Describe("Protocol", func() {
 
 			It("should add the unit to empty copies", func() {
 				request(theUnit)
+				time.Sleep(time.Millisecond * 500)
 				for i := 0; i < 10; i++ {
 					servs[i].StopOut()
 				}
-				tests.Close(d.(*tests.Dialer))
+				d.Close()
 				for i := 0; i < 10; i++ {
 					servs[i].StopIn()
 				}
