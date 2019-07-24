@@ -62,7 +62,7 @@ func (d *Dialer) Dial(k uint16) (network.Connection, error) {
 }
 
 // Close makes all listeners associated with this dialer return errors.
-func (d *Dialer) Close() {
+func Close(d *Dialer) {
 	for _, ch := range d.dialChan {
 		close(ch)
 	}

@@ -75,7 +75,13 @@ var _ = Describe("Protocol", func() {
 
 			It("should add the unit to empty copies", func() {
 				request(theUnit)
-				time.Sleep(time.Second)
+				for i := 0; i < 10; i++ {
+					servs[i].StopOut()
+				}
+				tests.Close(d.(*tests.Dialer))
+				for i := 0; i < 10; i++ {
+					servs[i].StopIn()
+				}
 				Expect(dags[0].attemptedAdd).To(BeEmpty())
 				for i := 1; i < 10; i++ {
 					Expect(dags[i].attemptedAdd).To(HaveLen(1))
