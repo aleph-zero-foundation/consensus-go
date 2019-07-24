@@ -122,6 +122,10 @@ func (u *unit) computeFloor(nProcesses int) {
 
 	// pre-allocate memory for storing values for each process
 	u.floor = make([][]gomel.Unit, nProcesses)
+	if len(u.parents) == 0 {
+		u.floor[u.creator] = []gomel.Unit{u}
+		return
+	}
 	// pre-allocate memory for all values for all processes - 0 `len` allows us to use append for sake of simplicity
 	floors := make([]gomel.Unit, 0, nProcesses)
 
@@ -150,7 +154,7 @@ func (u *unit) computeFloor(nProcesses int) {
 					if w.Below(v) {
 						found = true
 						// we can now break out of the loop since if `w` would be above some other index it would contradicts
-						// the assumption that elements of `floors` (narrowed to some index) are not comparable
+						// the assumption that elements of `floors` (narrowed to some creator) are not comparable
 						break
 					}
 
@@ -162,6 +166,12 @@ func (u *unit) computeFloor(nProcesses int) {
 				}
 			}
 		}
+	}
+
+	if len(floors) != cap(floors) {
+		newFloors := make([]gomel.Unit, len(floors))
+		copy(newFloors, floors)
+		floors = newFloors
 	}
 
 	for lastIx, pid := 0, 0; pid < nProcesses; pid++ {
