@@ -97,7 +97,7 @@ func (rs *coin) CheckCompliance(u gomel.Unit) error {
 			return errors.New("invalid share")
 		}
 	} else if u.RandomSourceData() != nil {
-		return errors.New("malformed random source data")
+		return errors.New("random source data should be empty")
 	}
 	return nil
 }
