@@ -54,11 +54,8 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	// orderer attempts timing decision after receiving the notification
 	attemptTimingRequests := make(chan int)
 	// orderedUnits is a channel shared between orderer and validator
-	// orderer sends ordered units to the channel
-	// validator reads the units from the channel and validates transactions contained in the unit
-	// We expect to order about one level of units at once, which should be around the size of the committee.
-	// The buffer has size taking that into account with some leeway.
-	orderedUnits := make(chan gomel.Unit, 2*config.Dag.NProc())
+	// orderer sends ordered rounds to the channel
+	orderedUnits := make(chan []gomel.Unit, 5)
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 

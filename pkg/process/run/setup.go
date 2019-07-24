@@ -32,9 +32,9 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	// creator/syncer should send a notification to the channel when a new prime unit is added to the dag
 	// orderer attempts timing decision after receiving the notification
 	attemptTimingRequests := make(chan int)
-	// orderedUnits is a channel orderer sends ordered units to
-	//
-	orderedUnits := make(chan gomel.Unit, 2*config.Dag.NProc())
+	// orderedUnits is a channel shared between orderer and validator
+	// orderer sends ordered rounds to the channel
+	orderedUnits := make(chan []gomel.Unit, 5)
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 
@@ -42,7 +42,13 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	rs := beacon.New(config.Create.Pid)
 	rs.Init(dag)
 
-	service, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	syncService, callback, err := sync.NewService(dag, rs, config.SyncSetup, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
+	if err != nil {
+		close(rsCh)
+		return
+	}
+
+	service, err := create.NewService(dag, rs, config.CreateSetup, callback, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		close(rsCh)
 		return
@@ -70,12 +76,6 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 		return
 	}
 	services = append(services, service)
-
-	syncService, err := sync.NewService(dag, rs, config.SyncSetup, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
-	if err != nil {
-		close(rsCh)
-		return
-	}
 	services = append(services, syncService)
 
 	err = startAll(services)
@@ -84,11 +84,16 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 		return
 	}
 
-	u, ok := <-orderedUnits
-	if !ok {
+	units, ok := <-orderedUnits
+	if !ok || len(units) == 0 {
 		close(rsCh)
 	}
-	rsCh <- rs.GetCoin(u.Creator())
+	head := units[len(units)-1]
+	rsCh <- rs.GetCoin(head.Creator())
+	// logging the order
+	for _, u := range units {
+		log.Info().Int(logging.Service, logging.ValidateService).Int(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
+	}
 	// Read and ignore the rest of orderedUnits
 	go func() {
 		for range orderedUnits {

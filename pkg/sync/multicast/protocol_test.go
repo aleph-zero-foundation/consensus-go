@@ -62,13 +62,15 @@ var _ = Describe("Protocol", func() {
 				dags = []*dag{}
 
 				tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
-				rs = append(rs, tests.NewTestRandomSource(tdag))
+				rs = append(rs, tests.NewTestRandomSource())
+				rs[0].Init(tdag)
 				dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
 				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
 
 				for i := 1; i < 10; i++ {
 					tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-					rs = append(rs, tests.NewTestRandomSource(tdag))
+					rs = append(rs, tests.NewTestRandomSource())
+					rs[i].Init(tdag)
 					dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
 				}
 			})
