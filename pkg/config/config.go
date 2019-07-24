@@ -22,6 +22,12 @@ type Configuration struct {
 	// The number of parallel initiated syncs that are allowed to happen at once.
 	NOutSync uint
 
+	// Connection timeout in seconds
+	Timeout float32
+
+	// Whether to use multicast. Possible values "tcp", "udp". Any other value disables multicast.
+	Multicast string
+
 	// The number of transactions included in a unit.
 	// Currently only simulated by including random bytes depending on this number.
 	// Will be removed completely in the future, whengomel becomes transaction-agnostic.
@@ -68,6 +74,10 @@ func NewDefaultConfiguration() Configuration {
 		NInSync: 32,
 
 		NOutSync: 32,
+
+		Timeout: 2,
+
+		Multicast: "tcp",
 
 		Txpu: 1,
 

@@ -33,7 +33,9 @@ const (
 	TooManyOutgoing       = "b"
 	SendFreshUnits        = "c"
 	SentFreshUnits        = "d"
-	UnknownParents        = "e"
+	UnitBroadcasted       = "e"
+	UnknownParents        = "f"
+	AddedBCUnit           = "g"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -67,8 +69,9 @@ var eventTypeDict = map[string]string{
 	TooManyIncoming:       "too many incoming connections",
 	TooManyOutgoing:       "too many outgoing connections",
 	SendFreshUnits:        "sending fresh units started",
-	SentFreshUnits:        "succesfully sent fresh units",
-	UnknownParents:        "received unit with unknown parents",
+	UnitBroadcasted:       "sent a unit through multicast",
+	UnknownParents:        "unable to add unit due to missing parents",
+	AddedBCUnit:           "successfully added unit from multicast",
 }
 
 // Field names
@@ -121,6 +124,8 @@ const (
 	ValidateService
 	GenerateService
 	MemLogService
+	GossipService
+	MCService
 )
 
 // serviceTypeDict maps integer service types to human readable names
@@ -131,6 +136,8 @@ var serviceTypeDict = map[int]string{
 	ValidateService: "VALID",
 	GenerateService: "GENER",
 	MemLogService:   "MEMLOG",
+	GossipService:   "GOSSIP",
+	MCService:       "MCAST",
 }
 
 // Genesis was better with Phil Collins

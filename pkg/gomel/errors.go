@@ -16,20 +16,6 @@ func NewDataError(msg string) *DataError {
 	return &DataError{msg}
 }
 
-// UnknownParent is raised when at least one of the parents of a preunit cannot be found in the dag.
-// Depending on the syncing protocol this might or might not indicate problems with the process providing the preunit.
-type UnknownParent struct{}
-
-// Error returns a (fixed) string description of an UnknownParent.
-func (e *UnknownParent) Error() string {
-	return "Unknown parent."
-}
-
-// NewUnknownParent constructs an UnknownParent.
-func NewUnknownParent() *UnknownParent {
-	return &UnknownParent{}
-}
-
 // ComplianceError is raised when encountering a unit that does not follow compliance rules.
 // Indicates a problem with both the process providing the data and the unit's creator.
 type ComplianceError struct {
@@ -59,6 +45,21 @@ func (e *DuplicateUnit) Error() string {
 // NewDuplicateUnit constructs a DuplicateUnit error for the given unit.
 func NewDuplicateUnit(unit Unit) *DuplicateUnit {
 	return &DuplicateUnit{unit}
+}
+
+// UnknownParents is an error-like object used when trying to add a unit whose parents are not in the dag.
+type UnknownParents struct {
+	Amount int
+}
+
+// Error returns a (fixed) string description of a UnknownParents.
+func (e *UnknownParents) Error() string {
+	return "Unknown parents"
+}
+
+// NewUnknownParents constructs a UnknownParents error for the given unit.
+func NewUnknownParents(howMany int) *UnknownParents {
+	return &UnknownParents{howMany}
 }
 
 // ConfigError is returned when a provided configuration can not be parsed.

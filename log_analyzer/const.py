@@ -30,6 +30,9 @@ TooManyIncoming       = "a"
 TooManyOutgoing       = "b"
 SendFreshUnits        = "c"
 SentFreshUnits        = "d"
+UnitBroadcasted       = "e"
+UnknownParents        = "f"
+AddedBCUnit           = "g"
 
 Time      = "T"
 Level     = "L"
@@ -55,5 +58,7 @@ SyncService     = 2
 ValidateService = 3
 GenerateService = 4
 MemLogService   = 5
+GossipService   = 6
+MCService       = 7
 
 Genesis = "genesis"

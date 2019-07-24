@@ -72,7 +72,8 @@ func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 // Get returns a slice of units corresponding to the hashes provided.
 // If a unit of a given hash is not present in the dag, the value at the same index in the result is nil.
 func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
-	return dag.units.get(hashes)
+	result, _ := dag.units.get(hashes)
+	return result
 }
 
 // Stop stops all the goroutines spawned by this dag.

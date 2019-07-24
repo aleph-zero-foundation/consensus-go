@@ -52,7 +52,6 @@ func getConfiguration(filename string) (*config.Configuration, error) {
 type cliOptions struct {
 	keyFilename     string
 	configFilename  string
-	dbFilename      string
 	logFilename     string
 	cpuProfFilename string
 	memProfFilename string
@@ -66,13 +65,12 @@ func getOptions() cliOptions {
 	var result cliOptions
 	flag.StringVar(&result.keyFilename, "keys", "", "a file with keys and associated addresses")
 	flag.StringVar(&result.configFilename, "config", "", "a configuration file")
-	flag.StringVar(&result.dbFilename, "db", "", "a mock database file")
 	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
 	flag.StringVar(&result.dagFilename, "dag", "", "the name of the file to save resulting dag")
-	flag.StringVar(&result.localAddress, "address", "", "the address on which to run the process, if ommitted will be read from the key file")
+	flag.StringVar(&result.localAddress, "address", "", "the address on which to run the process, if omitted will be read from the key file")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
 	return result
@@ -108,7 +106,7 @@ func main() {
 		return
 	}
 
-	processConfig := conf.GenerateConfig(committee, options.dbFilename)
+	processConfig := conf.GenerateConfig(committee)
 
 	fixLocalAddress(processConfig, options.localAddress)
 

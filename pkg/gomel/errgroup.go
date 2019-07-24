@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// ErrGroup spawns multiple goroutines, waits untill they finish, and returns a concatenated error
+// ErrGroup spawns multiple goroutines, waits until they finish, and returns a concatenated error
 type ErrGroup struct {
 	wg      sync.WaitGroup
 	errFlag int64

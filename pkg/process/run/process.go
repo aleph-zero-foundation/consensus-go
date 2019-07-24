@@ -54,7 +54,12 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 	rs := urn.New(dag, config.Create.Pid)
 	defer dag.Stop()
 
-	service, err := create.NewService(dag, rs, config.Create, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	syncService, callback, err := sync.NewService(dag, rs, config.Sync, attemptTimingRequests, log)
+	if err != nil {
+		return nil, err
+	}
+
+	service, err := create.NewService(dag, rs, config.Create, callback, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -83,12 +88,7 @@ func Process(config process.Config, log zerolog.Logger) (gomel.Dag, error) {
 		return nil, err
 	}
 	services = append(services, service)
-
-	service, err = sync.NewService(dag, rs, config.Sync, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
-	if err != nil {
-		return nil, err
-	}
-	services = append(services, service)
+	services = append(services, syncService)
 
 	err = startAll(services)
 	if err != nil {
