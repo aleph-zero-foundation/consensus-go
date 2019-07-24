@@ -53,7 +53,6 @@ func CRP(rs gomel.RandomSource, dag gomel.Dag, level int) []int {
 			}
 		}
 		panic("hash collision")
-		return (permutation[i] < permutation[j])
 	})
 
 	return permutation

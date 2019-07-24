@@ -53,15 +53,13 @@ func (rs *coin) RandomBytes(_ gomel.Unit, level int) []byte {
 				continue
 			}
 			cs := rs.coinShares.Get(v.Hash())
-			if cs != nil {
-				if rs.tc.VerifyCoinShare(cs, level) {
-					shares = append(shares, cs)
-					shareCollected[v.Creator()] = true
-					if len(shares) == rs.tc.Threshold {
-						return false
-					}
-					return true
+			if cs != nil && rs.tc.VerifyCoinShare(cs, level) {
+				shares = append(shares, cs)
+				shareCollected[v.Creator()] = true
+				if len(shares) == rs.tc.Threshold {
+					return false
 				}
+				return true
 			}
 		}
 		return true
