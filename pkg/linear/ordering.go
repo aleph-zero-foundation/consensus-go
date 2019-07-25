@@ -3,7 +3,10 @@ package linear
 import (
 	"sort"
 
+	"github.com/rs/zerolog"
+
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // Ordering is an implementation of LinearOrdering interface.
@@ -21,10 +24,11 @@ type ordering struct {
 	piMemo              map[[2]gomel.Hash]vote
 	deltaMemo           map[[2]gomel.Hash]vote
 	decisionMemo        map[gomel.Hash]vote
+	log                 zerolog.Logger
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int) gomel.LinearOrdering {
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, log zerolog.Logger) gomel.LinearOrdering {
 	return &ordering{
 		dag:                 dag,
 		randomSource:        rs,
@@ -39,6 +43,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaL
 		piMemo:              make(map[[2]gomel.Hash]vote),
 		deltaMemo:           make(map[[2]gomel.Hash]vote),
 		decisionMemo:        make(map[gomel.Hash]vote),
+		log:                 log,
 	}
 }
 
@@ -62,14 +67,14 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	if o.timingUnits.length() > level {
 		return o.timingUnits.get(level)
 	}
-
 	if dagMaxLevel(o.dag) < level+o.votingLevel {
 		return nil
 	}
 	for _, pid := range o.randomSource.GetCRP(level) {
 		for _, uc := range o.dag.PrimeUnits(level).Get(pid) {
-			decision := o.decideUnitIsPopular(uc)
+			decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
 			if decision == popular {
+				o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 				o.timingUnits.pushBack(uc)
 				return uc
 			}
