@@ -61,7 +61,7 @@ func (p *protocol) In() {
 		return
 	}
 	_, err = add.Unit(p.dag, p.randomSource, preunit, p.fallback, p.log)
-	if err != nil {
+	if err == nil {
 		p.log.Info().Int(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 	}
 }
