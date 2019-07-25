@@ -11,7 +11,7 @@ driver.add_pipeline('Latency', [
     Delay('Latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
 ])
 
-driver.add_pipeline('Sync stats', [
-    Filter(Service, SyncService),
-    SyncStats(),
+driver.add_pipeline('Gossip stats', [
+    Filter(Service, GossipService),
+    GossipStats(),
 ])

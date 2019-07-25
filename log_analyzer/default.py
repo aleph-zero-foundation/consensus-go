@@ -24,9 +24,9 @@ driver.add_pipeline('Latency', [
 ])
 
 
-driver.add_pipeline('Sync stats', [
-    Filter(Service, SyncService),
-    SyncStats(),
+driver.add_pipeline('Gossip stats', [
+    Filter(Service, GossipService),
+    GossipStats(),
     NetworkTraffic(SKIP)
 ])
 

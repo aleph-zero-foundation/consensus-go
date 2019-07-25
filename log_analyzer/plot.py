@@ -6,6 +6,6 @@ args.all = True
 
 driver.add_pipeline('', [
     Filter(Event, [SyncStarted, SyncCompleted, DuplicatedUnit]),
-    SyncPlots(regions, region_names),
+    GossipPlots(regions, region_names),
     DuplUnitPlots(),
 ])

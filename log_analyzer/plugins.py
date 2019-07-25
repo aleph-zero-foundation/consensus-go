@@ -304,9 +304,9 @@ class CreateCounter(Plugin):
         return ret
 
 
-class SyncStats(Plugin):
-    """Plugin gathering detailed statistics of syncs."""
-    name = 'Sync stats'
+class GossipStats(Plugin):
+    """Plugin gathering detailed statistics of syncs during gossip."""
+    name = 'Gossip stats'
     multistats = multimean
     def __init__(self, ignore_empty=True):
         self.ig = ignore_empty
@@ -472,7 +472,7 @@ class MemoryStats(Plugin):
         return ret
 
 
-class SyncPlots(Plotter):
+class GossipPlots(Plotter):
     """Plugin preparing plots about syncs statistics."""
     name = 'Sync plots'
     def __init__(self, regions=None, region_names=None, divide=True):

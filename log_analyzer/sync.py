@@ -10,7 +10,7 @@ driver.add_pipeline('Incoming syncs', [
     Delay('GetPreunits', GetPreunits, ReceivedPreunits, lambda entry: (entry[PID],entry[ISID]), SKIP),
     Delay('GetRequests', GetRequests, AddUnits, lambda entry: (entry[PID],entry[ISID]), SKIP),
     Delay('AddUnits', AddUnits, SyncCompleted, lambda entry: (entry[PID],entry[ISID]), SKIP),
-    SyncStats(),
+    GossipStats(),
 ])
 
 
@@ -24,7 +24,7 @@ driver.add_pipeline('Outgoing syncs', [
     Delay('SendUnits', SendUnits, SentUnits, lambda entry: (entry[PID],entry[OSID]), SKIP),
     Delay('SendRequests', SendRequests, AddUnits, lambda entry: (entry[PID],entry[OSID]), SKIP),
     Delay('AddUnits', AddUnits, SyncCompleted, lambda entry: (entry[PID],entry[OSID]), SKIP),
-    SyncStats(),
+    GossipStats(),
 ])
 
 import numpy as np
@@ -33,6 +33,6 @@ region_names = ['Virginia','California','Oregon','Ireland','Sao Paulo','Singapor
 
 driver.add_pipeline('', [
     Filter(Event, [SyncStarted, SyncCompleted, DuplicatedUnit]),
-    SyncPlots(regions, region_names),
+    GossipPlots(regions, region_names),
     DuplUnitPlots(),
 ])
