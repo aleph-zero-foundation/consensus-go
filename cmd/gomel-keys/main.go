@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-    "strings"
+	"strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
@@ -66,12 +66,12 @@ func main() {
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-            addr := scanner.Text()
-            i := strings.Index(addr, ":")
-            j := strings.Index(addr[i+1:], ":")
-            ip := addr[:i]
-            port := addr[i:i+j+1]
-            mcPort := addr[i+j+1:]
+			addr := scanner.Text()
+			i := strings.Index(addr, ":")
+			j := strings.Index(addr[i+1:], ":")
+			ip := addr[:i]
+			port := addr[i : i+j+1]
+			mcPort := addr[i+j+1:]
 			addresses = append(addresses, ip+port)
 			mcAddresses = append(mcAddresses, ip+mcPort)
 		}
