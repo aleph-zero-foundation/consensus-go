@@ -58,6 +58,7 @@ type cliOptions struct {
 	traceFilename   string
 	dagFilename     string
 	localAddress    string
+	localMcAddress  string
 	delay           int64
 }
 
@@ -70,7 +71,8 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
 	flag.StringVar(&result.dagFilename, "dag", "", "the name of the file to save resulting dag")
-	flag.StringVar(&result.localAddress, "address", "", "the address on which to run the process, if omitted will be read from the key file")
+	flag.StringVar(&result.localAddress, "address", "", "the gossip address on which to run the process, if omitted will be read from the key file")
+	flag.StringVar(&result.localMcAddress, "mcAddress", "", "the MC address on which to run the process, if omitted will be read from the key file")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
 	return result
@@ -79,6 +81,12 @@ func getOptions() cliOptions {
 func fixLocalAddress(processConfig process.Config, localAddress string) {
 	if localAddress != "" {
 		processConfig.Sync.LocalAddress = localAddress
+	}
+}
+
+func fixLocalMcAddress(processConfig process.Config, localMcAddress string) {
+	if localMcAddress != "" {
+		processConfig.Sync.LocalMCAddress = localMcAddress
 	}
 }
 
@@ -109,6 +117,7 @@ func main() {
 	processConfig := conf.GenerateConfig(committee)
 
 	fixLocalAddress(processConfig, options.localAddress)
+	fixLocalMcAddress(processConfig, options.localMcAddress)
 
 	if options.cpuProfFilename != "" {
 		f, err := os.Create(options.cpuProfFilename)

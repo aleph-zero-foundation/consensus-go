@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+    "strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
@@ -15,16 +16,16 @@ type proc struct {
 	publicKey  gomel.PublicKey
 	privateKey gomel.PrivateKey
 	address    string
-	MCaddress  string
+	mcAddress  string
 }
 
-func makeProcess(address string, MCaddress string) proc {
+func makeProcess(address string, mcAddress string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
 	return proc{
 		publicKey:  pubKey,
 		privateKey: privKey,
 		address:    address,
-		MCaddress:  MCaddress,
+		mcAddress:  mcAddress,
 	}
 }
 
@@ -50,11 +51,11 @@ func main() {
 		return
 	}
 	addresses := []string{}
-	MCaddresses := []string{}
+	mcAddresses := []string{}
 	if len(os.Args) == 2 {
 		for i := 0; i < num; i++ {
 			addresses = append(addresses, "127.0.0.1:"+strconv.Itoa(9000+i))
-			MCaddresses = append(MCaddresses, "127.0.0.1:"+strconv.Itoa(10000+i))
+			mcAddresses = append(mcAddresses, "127.0.0.1:"+strconv.Itoa(10000+i))
 		}
 	} else {
 		f, err := os.Open(os.Args[2])
@@ -65,7 +66,14 @@ func main() {
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			addresses = append(addresses, scanner.Text())
+            addr := scanner.Text()
+            i := strings.Index(addr, ":")
+            j := strings.Index(addr[i+1:], ":")
+            ip := addr[:i]
+            port := addr[i:i+j+1]
+            mcPort := addr[i+j+1:]
+			addresses = append(addresses, ip+port)
+			mcAddresses = append(mcAddresses, ip+mcPort)
 		}
 		if len(addresses) < num {
 			fmt.Fprintln(os.Stderr, "Too few addresses in ", os.Args[2])
@@ -74,13 +82,13 @@ func main() {
 	}
 	processes := []proc{}
 	for i := 0; i < num; i++ {
-		processes = append(processes, makeProcess(addresses[i], MCaddresses[i]))
+		processes = append(processes, makeProcess(addresses[i], mcAddresses[i]))
 	}
 	committee := &config.Committee{}
 	for _, p := range processes {
 		committee.PublicKeys = append(committee.PublicKeys, p.publicKey)
 		committee.Addresses = append(committee.Addresses, p.address)
-		committee.MCAddresses = append(committee.MCAddresses, p.MCaddress)
+		committee.MCAddresses = append(committee.MCAddresses, p.mcAddress)
 	}
 	for i, p := range processes {
 		f, err := os.Create(strconv.Itoa(i) + ".keys")
