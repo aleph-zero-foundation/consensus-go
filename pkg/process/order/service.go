@@ -23,6 +23,7 @@ type service struct {
 	extendOrderRequests chan int
 	orderedUnits        chan<- []gomel.Unit
 	currentRound        int
+	primeAlert          chan struct{}
 	exitChan            chan struct{}
 	wg                  sync.WaitGroup
 	log                 zerolog.Logger
@@ -30,35 +31,39 @@ type service struct {
 
 // NewService is a constructor of an ordering service
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, gomel.Callback, error) {
+	primeAlert := make(chan struct{}, 1)
 	return &service{
-		pid:                 config.Pid,
-		linearOrdering:      linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel),
-		orderedUnits:        orderedUnits,
-		extendOrderRequests: make(chan int, 10),
-		exitChan:            make(chan struct{}),
-		currentRound:        config.OrderStartLevel,
-		log:                 log,
-	}, func(gomel.Preunit, gomel.Unit, error) {}, nil
+			pid:                 config.Pid,
+			linearOrdering:      linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel),
+			orderedUnits:        orderedUnits,
+			extendOrderRequests: make(chan int, 10),
+			primeAlert:          primeAlert,
+			exitChan:            make(chan struct{}),
+			currentRound:        config.OrderStartLevel,
+			log:                 log,
+		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
+			if err == nil && gomel.Prime(unit) {
+				select {
+				case primeAlert <- struct{}{}:
+				default:
+				}
+			}
+		}, nil
 }
 
 func (s *service) attemptOrdering() {
 	defer close(s.extendOrderRequests)
 	defer s.wg.Done()
 	for {
-		//select {
-		//case highest, ok := <-s.attemptTimingRequests: // level of the most recent prime unit
-		//	if !ok {
-		//		<-s.exitChan
-		//		return
-		//	}
-		//	for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
-		//		s.log.Info().Int(logging.Height, highest).Int(logging.Round, s.currentRound).Msg(logging.NewTimingUnit)
-		//		s.extendOrderRequests <- s.currentRound
-		//		s.currentRound++
-		//	}
-		//case <-s.exitChan:
-		//	return
-		//}
+		select {
+		case <-s.primeAlert:
+			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
+				s.extendOrderRequests <- s.currentRound
+				s.currentRound++
+			}
+		case <-s.exitChan:
+			return
+		}
 	}
 }
 
