@@ -307,13 +307,11 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 	}
 }
 
-func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
+func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
-		rs := urn.New(int(pid))
-		rs.Init(dag)
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), generalConfig.OrderStartLevel, logger)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), int(generalConfig.OrderStartLevel), logger)
 		level := 0
 		orderedUnits := ordering.TimingRound(level)
 		for orderedUnits != nil {
@@ -332,14 +330,12 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 	return units
 }
 
-func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
+func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 
-		rs := urn.New(int(pid))
-		rs.Init(dag)
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), generalConfig.OrderStartLevel, logger)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), int(generalConfig.OrderStartLevel), logger)
 		level := 0
 		timingUnit := ordering.DecideTimingOnLevel(level)
 		for timingUnit != nil {
@@ -354,7 +350,7 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 	return units
 }
 
-func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
+func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 		dag.MaximalUnitsPerProcess().Iterate(func(forks []gomel.Unit) bool {
@@ -415,17 +411,17 @@ func ComposeAdders(adders ...AddingHandler) AddingHandler {
 	}
 }
 
-func verifyUnitsUsingOrdering(ordering func(gomel.Dag, uint16, config.Configuration) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) DagVerifier {
+func verifyUnitsUsingOrdering(ordering func(gomel.Dag, uint16, config.Configuration, gomel.RandomSource) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) DagVerifier {
 	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Configuration, rss []gomel.RandomSource) error {
 		if len(dags) < 2 {
 			return nil
 		}
 		var units1 []gomel.Unit
-		for unit := range ordering(dags[0], pids[0], generalConfigs[0]) {
+		for unit := range ordering(dags[0], pids[0], generalConfigs[0], rss[0]) {
 			units1 = append(units1, unit)
 		}
 		for ix, dag := range dags {
-			units2 := ordering(dag, pids[ix], generalConfigs[ix])
+			units2 := ordering(dag, pids[ix], generalConfigs[ix], rss[ix])
 
 			for _, unit1 := range units1 {
 				unit2, open := <-units2
@@ -453,9 +449,9 @@ func VerifyTimingUnits() DagVerifier {
 	prevLevel := -1
 	return verifyUnitsUsingOrdering(
 
-		func(dag gomel.Dag, pid uint16, generalConfig config.Configuration) chan gomel.Unit {
+		func(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
 			prevLevel = -1
-			return getAllTimingUnits(dag, pid, generalConfig)
+			return getAllTimingUnits(dag, pid, generalConfig, rs)
 		},
 
 		func(u1, u2 gomel.Unit) error {
