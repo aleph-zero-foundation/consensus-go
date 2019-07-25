@@ -8,7 +8,7 @@ driver.add_pipeline('Create service', [
 
 driver.add_pipeline('Timing units', [
     Filter(Event, [NewTimingUnit, LinearOrderExtended]),
-    Histogram('timing unit decision level', NewTimingUnit, lambda entry: entry[Height], SKIP),
+    Histogram('timing unit decision level', NewTimingUnit, lambda entry: (entry[Height] - entry[Round]), SKIP),
     Filter(Event, NewTimingUnit),
     Timer('timing unit decision intervals', SKIP),
 ])
