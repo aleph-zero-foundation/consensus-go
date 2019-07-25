@@ -65,7 +65,7 @@ if isfile(args.path) and args.path.endswith('.log'):
 else:
     path = args.path if isdir(args.path) else extract(args.path)
     os.chdir(path)
-    for filename in tqdm(list(filter(lambda x: x.endswith('.log'), os.listdir('.')))):
+    for filename in tqdm(list(filter(lambda x: x.endswith('.log') and not x.startswith('setup_'), os.listdir('.')))):
         name = filename[:-4]
         driver.new_dataset(name)
         with open(filename) as f:
