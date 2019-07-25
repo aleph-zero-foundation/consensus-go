@@ -227,6 +227,43 @@ func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag, rss []
 	return nil
 }
 
+// ComputeLevel computes value of the level attribute for a given preunit.
+func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) uint64 {
+	if len(parents) == 0 {
+		return 0
+	}
+	level := uint64(0)
+	nProcesses := dag.NProc()
+	for _, parent := range parents {
+		if pl := parent.Level(); uint64(pl) > level {
+			level = uint64(pl)
+		}
+	}
+	nSeen := uint64(0)
+	for pid := range parents[0].Floor() {
+		pidFound := false
+		for _, parent := range parents {
+			for _, unit := range parent.Floor()[pid] {
+				if uint64(unit.Level()) == level {
+					nSeen++
+					pidFound = true
+					if dag.IsQuorum(int(nSeen)) {
+						return level + 1
+					}
+					break
+				}
+			}
+			if pidFound {
+				break
+			}
+		}
+		if !pidFound && !dag.IsQuorum(int(nSeen)+(nProcesses-(pid+1))) {
+			break
+		}
+	}
+	return level
+}
+
 // GenerateKeys is a helper function that creates a list of pairs of public-private keys.
 func GenerateKeys(nProcesses int) ([]gomel.PublicKey, []gomel.PrivateKey) {
 	pubKeys := make([]gomel.PublicKey, 0, nProcesses)

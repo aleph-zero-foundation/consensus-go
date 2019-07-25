@@ -63,46 +63,25 @@ func createForkUsingNewUnit(parentsCount int) forker {
 		parents[0] = preunit.Parents()[0]
 		freshData := generateFreshData(preunit.Data())
 		parentUnits := dag.Get(parents)
-		level := computeLevel(dag, parentUnits)
+		level := helpers.ComputeLevel(dag, parentUnits)
 		rsData := rs.DataToInclude(pu.Creator(), parentUnits, int(level))
 		return creating.NewPreunit(pu.Creator(), parents, freshData, rsData), nil
 	}
 }
 
 func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
-	var max gomel.Unit
-	for ix, parent := range parents {
-		if floor := parent.Floor()[creator]; len(floor) > 0 {
-			if len(floor) > 1 {
-				return false
-			}
-			max = floor[0]
-			parents = parents[ix:]
-			break
-		}
-	}
-	if max == nil {
+	var storage [1]gomel.Unit
+	combinedFloor := storage[:0]
+	growing.CombineParentsFloorsPerProc(parents, int(creator), &combinedFloor)
+	if len(combinedFloor) > 1 {
 		return true
 	}
-	for _, parent := range parents {
-		floor := parent.Floor()[creator]
-		if len(floor) == 0 {
-			continue
-		}
-		if len(floor) > 1 {
-			return false
-		}
-		if max.Below(floor[0]) {
-			max = floor[0]
-		} else if !floor[0].Below(max) {
-			return false
-		}
-	}
-	return true
+	pred := parents[0]
+	return pred.Below(combinedFloor[0]) && !pred.Above(combinedFloor[0])
 }
 
 func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error {
-	if !checkSelfForkingEvidence(parents, creator) {
+	if checkSelfForkingEvidence(parents, creator) {
 		return gomel.NewComplianceError("parents contain evidence of self forking")
 	}
 	if growing.CheckForkerMuting(parents) != nil {
@@ -159,33 +138,10 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 			return nil, errors.New("unable to collect enough parents")
 		}
 		freshData := generateFreshData(preunit.Data())
-		level := computeLevel(dag, parentUnits)
+		level := helpers.ComputeLevel(dag, parentUnits)
 		rsData := rs.DataToInclude(preunit.Creator(), parentUnits, int(level))
 		return creating.NewPreunit(preunit.Creator(), parents, freshData, rsData), nil
 	}
-}
-
-func computeLevel(dag gomel.Dag, parents []gomel.Unit) uint64 {
-	level := uint64(0)
-	for _, parent := range parents {
-		if pl := parent.Level(); uint64(pl) > level {
-			level = uint64(pl)
-		}
-	}
-	onLevel := map[uint16]bool{}
-	for _, parent := range parents {
-		for pid, floor := range parent.Floor() {
-			for _, unit := range floor {
-				if uint64(unit.Level()) == level {
-					onLevel[uint16(pid)] = true
-					if dag.IsQuorum(len(onLevel)) {
-						return level + 1
-					}
-				}
-			}
-		}
-	}
-	return level
 }
 
 func createForksUsingForker(forker forker) forkingStrategy {
@@ -264,7 +220,6 @@ func newForkAndHideAdder(
 
 		// randomly change forkingRoot if current unit is on the same level
 		if forkingRootUnit != nil && forkingRootUnit.Level() == unit.Level() && uint16(preunit.Creator()) == forker {
-			// if forkingRootUnit != nil && forkingRootUnit.Level() == unit.Level() && uint16(preunit.Creator()) == forker {
 			switchCounter++
 			if rand.Intn(switchCounter) == 0 {
 				forkingRoot = preunit
