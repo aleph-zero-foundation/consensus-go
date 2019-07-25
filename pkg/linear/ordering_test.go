@@ -1,6 +1,8 @@
 package linear_test
 
 import (
+	"github.com/rs/zerolog"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -27,7 +29,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, zerolog.Nop())
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -37,7 +39,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, zerolog.Nop())
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -47,7 +49,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, zerolog.Nop())
 			})
 			It("should decide up to 5th level", func() {
 				for level := 0; level < 5; level++ {
@@ -65,7 +67,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, zerolog.Nop())
 				ordering.DecideTimingOnLevel(0)
 				Expect(ordering.TimingRound(0)).To(BeNil())
 			})
@@ -76,7 +78,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, zerolog.Nop())
 				for level := 0; level < 5; level++ {
 					ordering.DecideTimingOnLevel(level)
 					thisRound := ordering.TimingRound(level)
