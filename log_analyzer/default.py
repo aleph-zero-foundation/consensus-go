@@ -11,7 +11,8 @@ driver.add_pipeline('Create service', [
 
 driver.add_pipeline('Timing units', [
     Filter(Event, [NewTimingUnit, LinearOrderExtended]),
-    Histogram('timing unit choice delay', NewTimingUnit, lambda entry: (-1 if entry[Height] < 0 else entry[Height]-entry[Round]), SKIP),
+    Histogram('timing unit decision level', NewTimingUnit, lambda entry: entry[Height], SKIP),
+    Histogram('dag levels above deciding prime unit', NewTimingUnit, lambda entry: (entry[Size] - entry[Round] - entry[Height]), SKIP),
     Counter('units ordered per level', LinearOrderExtended, lambda entry: entry[Size], SKIP),
     Filter(Event, NewTimingUnit),
     Timer('timing unit decision intervals', SKIP),

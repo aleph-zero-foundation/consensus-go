@@ -6,6 +6,13 @@ driver.add_pipeline('Create service', [
     Timer('unit creation intervals', SKIP)
 ])
 
+driver.add_pipeline('Timing units', [
+    Filter(Event, [NewTimingUnit, LinearOrderExtended]),
+    Histogram('timing unit decision level', NewTimingUnit, lambda entry: entry[Height], SKIP),
+    Filter(Event, NewTimingUnit),
+    Timer('timing unit decision intervals', SKIP),
+])
+
 driver.add_pipeline('Latency', [
     Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]),
     Delay('Latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
