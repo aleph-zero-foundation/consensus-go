@@ -1245,7 +1245,7 @@ var _ = Describe("Byzantine Dag Test", func() {
 			It("should finish without errors", func() {
 				const parentsInForkingUnits = 2
 				err := testForkingChangingParents(createForkUsingNewUnit(parentsInForkingUnits))
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).Should(HaveOccurred())
 			})
 		})
 
