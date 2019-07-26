@@ -22,7 +22,7 @@ func generateSyncSetupConfig(conf *Configuration, c *Committee) *process.Sync {
 		RemoteMCAddresses: c.SetupMCAddresses,
 		OutSyncLimit:      conf.NOutSync,
 		InSyncLimit:       conf.NInSync,
-		Timeout:           2 * time.Second,
+		Timeout:           time.Duration(conf.Timeout * float32(time.Second)),
 		Multicast:         conf.Multicast,
 	}
 }
