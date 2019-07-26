@@ -14,10 +14,21 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
+
+func getMember(filename string) (*config.Member, error) {
+	if filename == "" {
+		return nil, errors.New("please provide a key file")
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return config.LoadMember(file)
+}
 
 func getCommittee(filename string) (*config.Committee, error) {
 	if filename == "" {
@@ -50,44 +61,30 @@ func getConfiguration(filename string) (*config.Configuration, error) {
 }
 
 type cliOptions struct {
-	keyFilename     string
-	configFilename  string
-	logFilename     string
-	cpuProfFilename string
-	memProfFilename string
-	traceFilename   string
-	dagFilename     string
-	localAddress    string
-	localMcAddress  string
-	delay           int64
+	pkPidFilename     string
+	keysAddrsFilename string
+	configFilename    string
+	logFilename       string
+	cpuProfFilename   string
+	memProfFilename   string
+	traceFilename     string
+	dagFilename       string
+	delay             int64
 }
 
 func getOptions() cliOptions {
 	var result cliOptions
-	flag.StringVar(&result.keyFilename, "keys", "", "a file with keys and associated addresses")
+	flag.StringVar(&result.pkPidFilename, "pkPid", "", "a file with a private key and process id")
+	flag.StringVar(&result.keysAddrsFilename, "keysAddrs", "", "a file with keys and associated addresses")
 	flag.StringVar(&result.configFilename, "config", "", "a configuration file")
 	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
 	flag.StringVar(&result.dagFilename, "dag", "", "the name of the file to save resulting dag")
-	flag.StringVar(&result.localAddress, "address", "", "the gossip address on which to run the process, if omitted will be read from the key file")
-	flag.StringVar(&result.localMcAddress, "mcAddress", "", "the MC address on which to run the process, if omitted will be read from the key file")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
 	return result
-}
-
-func fixLocalAddress(processConfig process.Config, localAddress string) {
-	if localAddress != "" {
-		processConfig.Sync.LocalAddress = localAddress
-	}
-}
-
-func fixLocalMcAddress(processConfig process.Config, localMcAddress string) {
-	if localMcAddress != "" {
-		processConfig.Sync.LocalMCAddress = localMcAddress
-	}
 }
 
 func main() {
@@ -98,9 +95,14 @@ func main() {
 		time.Sleep(duration)
 	}
 
-	committee, err := getCommittee(options.keyFilename)
+	member, err := getMember(options.pkPidFilename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keyFilename, err.Error())
+		fmt.Fprintf(os.Stderr, "Invalid private key file \"%s\", because: %s.\n", options.pkPidFilename, err.Error())
+		return
+	}
+	committee, err := getCommittee(options.keysAddrsFilename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keysAddrsFilename, err.Error())
 		return
 	}
 	conf, err := getConfiguration(options.configFilename)
@@ -119,10 +121,7 @@ func main() {
 		return
 	}
 
-	processConfig := conf.GenerateConfig(committee)
-
-	fixLocalAddress(processConfig, options.localAddress)
-	fixLocalMcAddress(processConfig, options.localMcAddress)
+	processConfig := conf.GenerateConfig(member, committee)
 
 	if options.cpuProfFilename != "" {
 		f, err := os.Create(options.cpuProfFilename)
