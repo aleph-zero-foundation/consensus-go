@@ -71,12 +71,21 @@ func (u *unit) Level() int {
 }
 
 func (u *unit) HasForkingEvidence(creator int) bool {
+	if gomel.Dealing(u) {
+		return false
+	}
+	if creator != u.creator {
+		return len(u.floor[creator]) > 1
+	}
 	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
 	// check whether collection of these maximal units has a single maximal element
-	if creator == u.creator {
-		return len(combineParentsFloorsPerProc(u, creator)) > 1
+	var storage [1]gomel.Unit
+	combinedFloor := CombineParentsFloorsPerProc(u.parents, creator, storage[:0])
+	if len(combinedFloor) > 1 {
+		return true
 	}
-	return len(u.floor[creator]) > 1
+	// check if some other parent has an evidence of a unit made by 'creator' that is above our self-predecessor
+	return *u.parents[0].Hash() != *combinedFloor[0].Hash()
 }
 
 func (u *unit) initialize(dag *Dag) {
@@ -130,38 +139,7 @@ func (u *unit) computeFloor(nProcesses int) {
 			floors = append(floors, u)
 			continue
 		}
-
-		startIx := len(floors)
-
-		for _, parent := range u.parents {
-
-			for _, w := range parent.Floor()[pid] {
-				found, ri := false, -1
-				for ix, v := range floors[startIx:] {
-
-					if w.Above(v) {
-						found = true
-						ri = ix
-						// we can now break out of the loop since if we would find any other index for storing `w` it would be a
-						// proof of self-forking
-						break
-					}
-
-					if w.Below(v) {
-						found = true
-						// we can now break out of the loop since if `w` would be above some other index it would contradicts
-						// the assumption that elements of `floors` (narrowed to some creator) are not comparable
-						break
-					}
-
-				}
-				if !found {
-					floors = append(floors, w)
-				} else if ri >= 0 {
-					floors[startIx+ri] = w
-				}
-			}
-		}
+		floors = CombineParentsFloorsPerProc(u.parents, pid, floors)
 	}
 
 	if len(floors) != cap(floors) {
@@ -180,33 +158,42 @@ func (u *unit) computeFloor(nProcesses int) {
 	}
 }
 
-func combineParentsFloorsPerProc(u gomel.Unit, pid int) []gomel.Unit {
-	newFloor := []gomel.Unit{}
+// CombineParentsFloorsPerProc combines floors of provided parents just for a given creator.
+// The result will be appended to the 'out' parameter.
+func CombineParentsFloorsPerProc(parents []gomel.Unit, pid int, out []gomel.Unit) []gomel.Unit {
 
-	for _, parent := range u.Parents() {
+	startIx := len(out)
+
+	for _, parent := range parents {
+
 		for _, w := range parent.Floor()[pid] {
 			found, ri := false, -1
-			for k, v := range newFloor {
-				if ok, _ := w.(*unit).aboveWithinProc(v.(*unit)); ok {
+			for ix, v := range out[startIx:] {
+
+				if w.Above(v) {
 					found = true
-					ri = k
+					ri = ix
+					// we can now break out of the loop since if we would find any other index for storing `w` it would be a
+					// proof of self-forking
 					break
 				}
-				if ok, _ := w.(*unit).belowWithinProc(v.(*unit)); ok {
+
+				if w.Below(v) {
 					found = true
+					// we can now break out of the loop since if `w` would be above some other index it would contradicts
+					// the assumption that elements of `floors` (narrowed to some index) are not comparable
+					break
 				}
+
 			}
 			if !found {
-				newFloor = append(newFloor, w)
-			}
-
-			if ri >= 0 {
-				newFloor[ri] = w
+				out = append(out, w)
+			} else if ri >= 0 {
+				out[startIx+ri] = w
 			}
 		}
 	}
-
-	return newFloor
+	return out
 }
 
 func (u *unit) computeLevel() {
@@ -223,11 +210,12 @@ func (u *unit) computeLevel() {
 	nSeen := 0
 
 	// we should consider our self predecessor
+	// it assumes that this unit is not an evidence of self-forking
 	if pred, err := gomel.Predecessor(u); err == nil && pred.Level() == maxLevelParents {
 		nSeen++
 	}
-
 	creator := u.Creator()
+	hasQuorum := IsQuorum(nProcesses, nSeen)
 	for pid, vs := range u.floor {
 		if pid == creator {
 			continue
@@ -236,17 +224,15 @@ func (u *unit) computeLevel() {
 		for _, unit := range vs {
 			if unit.Level() == maxLevelParents {
 				nSeen++
+				if IsQuorum(nProcesses, nSeen) {
+					level = maxLevelParents + 1
+					hasQuorum = true
+				}
 				break
 			}
 		}
 
-		// optimization to not loop over all processes if quorum cannot be reached anyway
-		if !IsQuorum(nProcesses, nSeen+(nProcesses-(pid+1))) {
-			break
-		}
-
-		if IsQuorum(nProcesses, nSeen) {
-			level = maxLevelParents + 1
+		if hasQuorum || !IsQuorum(nProcesses, nSeen+(nProcesses-(pid+1))) {
 			break
 		}
 	}
