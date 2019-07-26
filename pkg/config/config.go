@@ -1,5 +1,15 @@
 package config
 
+// SyncConfiguration represents parameters for a synchronization service
+type SyncConfiguration struct {
+	// Type describes the service type.
+	Type string
+	// Params holds additional parameters needed by a service of a given type
+	Params map[string]uint
+	// Fallback is a name of a service that is to be used as a fallback to this service
+	Fallback string
+}
+
 // Configuration represents project-wide configuration.
 type Configuration struct {
 	// How many parents we try to give every unit.
@@ -19,17 +29,8 @@ type Configuration struct {
 	// A large value means aggressive adjustment, while 0 - no adjustment at all.
 	StepSize float64
 
-	// The number of parallel received syncs that are allowed to happen at once.
-	NInSync uint
-
-	// The number of parallel initiated syncs that are allowed to happen at once.
-	NOutSync uint
-
-	// Connection timeout in seconds
-	Timeout float32
-
-	// Whether to use multicast. Possible values "tcp", "udp". Any other value disables multicast.
-	Multicast string
+	// Configurations for synchronization services
+	Sync []SyncConfiguration
 
 	// The number of transactions included in a unit.
 	// Currently only simulated by including random bytes depending on this number.
@@ -67,6 +68,12 @@ type Configuration struct {
 
 // NewDefaultConfiguration returns default set of parameters.
 func NewDefaultConfiguration() Configuration {
+	syncConf := []SyncConfiguration{SyncConfiguration{
+		Type:     "request",
+		Params:   map[string]uint{"nIn": 20, "nOut": 15, "timeout": 2},
+		Fallback: "",
+	}}
+
 	result := Configuration{
 
 		NParents: 10,
@@ -79,13 +86,7 @@ func NewDefaultConfiguration() Configuration {
 
 		StepSize: 0.0,
 
-		NInSync: 32,
-
-		NOutSync: 32,
-
-		Timeout: 2,
-
-		Multicast: "tcp",
+		Sync: syncConf,
 
 		Txpu: 1,
 
