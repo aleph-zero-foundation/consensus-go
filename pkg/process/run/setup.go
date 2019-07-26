@@ -26,6 +26,7 @@ func UrnSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog
 
 // BeaconSetup is a setup described in the whitepaper
 func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
+	defer close(rsCh)
 	dagFinished := make(chan struct{})
 	var services []process.Service
 	// attemptTimingRequests is a channel shared between orderer and creator/syncer
@@ -44,20 +45,17 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 
 	syncService, callback, err := sync.NewService(dag, rs, config.SyncSetup, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
 	if err != nil {
-		close(rsCh)
 		return
 	}
 
 	service, err := create.NewService(dag, rs, config.CreateSetup, callback, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
-		close(rsCh)
 		return
 	}
 	services = append(services, service)
 
 	service, err = order.NewService(dag, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
-		close(rsCh)
 		return
 	}
 	services = append(services, service)
@@ -65,14 +63,12 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	// We shouldn't have txs in the setup phase. But for now it stays.
 	service, err = generate.NewService(dag, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
 	if err != nil {
-		close(rsCh)
 		return
 	}
 	services = append(services, service)
 
 	service, err = logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 	if err != nil {
-		close(rsCh)
 		return
 	}
 	services = append(services, service)
@@ -80,13 +76,12 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 
 	err = startAll(services)
 	if err != nil {
-		close(rsCh)
 		return
 	}
 
 	units, ok := <-orderedUnits
 	if !ok || len(units) == 0 {
-		close(rsCh)
+		return
 	}
 	head := units[len(units)-1]
 	rsCh <- rs.GetCoin(head.Creator())
@@ -99,7 +94,6 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 		for range orderedUnits {
 		}
 	}()
-	close(rsCh)
 	// we should still sync with each other
 	services = services[:(len(services) - 1)]
 	stopAll(services)
