@@ -80,7 +80,8 @@ func (u *unit) HasForkingEvidence(creator int) bool {
 	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
 	// check whether collection of these maximal units has a single maximal element
 	var storage [1]gomel.Unit
-	combinedFloor := CombineParentsFloorsPerProc(u.parents, creator, storage[:0])
+	combinedFloor := storage[:0]
+	CombineParentsFloorsPerProc(u.parents, creator, &combinedFloor)
 	if len(combinedFloor) > 1 {
 		return true
 	}
@@ -139,7 +140,7 @@ func (u *unit) computeFloor(nProcesses int) {
 			floors = append(floors, u)
 			continue
 		}
-		floors = CombineParentsFloorsPerProc(u.parents, pid, floors)
+		CombineParentsFloorsPerProc(u.parents, pid, &floors)
 	}
 
 	if len(floors) != cap(floors) {
@@ -160,15 +161,15 @@ func (u *unit) computeFloor(nProcesses int) {
 
 // CombineParentsFloorsPerProc combines floors of provided parents just for a given creator.
 // The result will be appended to the 'out' parameter.
-func CombineParentsFloorsPerProc(parents []gomel.Unit, pid int, out []gomel.Unit) []gomel.Unit {
+func CombineParentsFloorsPerProc(parents []gomel.Unit, pid int, out *[]gomel.Unit) {
 
-	startIx := len(out)
+	startIx := len(*out)
 
 	for _, parent := range parents {
 
 		for _, w := range parent.Floor()[pid] {
 			found, ri := false, -1
-			for ix, v := range out[startIx:] {
+			for ix, v := range (*out)[startIx:] {
 
 				if w.Above(v) {
 					found = true
@@ -187,13 +188,12 @@ func CombineParentsFloorsPerProc(parents []gomel.Unit, pid int, out []gomel.Unit
 
 			}
 			if !found {
-				out = append(out, w)
+				*out = append(*out, w)
 			} else if ri >= 0 {
-				out[startIx+ri] = w
+				(*out)[startIx+ri] = w
 			}
 		}
 	}
-	return out
 }
 
 func (u *unit) computeLevel() {
