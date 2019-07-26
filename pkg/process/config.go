@@ -9,8 +9,8 @@ import (
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
 	Dag         *gomel.DagConfig
-	Sync        *Sync
-	SyncSetup   *Sync
+	Sync        []*Sync
+	SyncSetup   []*Sync
 	Create      *Create
 	CreateSetup *Create
 	Order       *Order
@@ -22,15 +22,12 @@ type Config struct {
 
 // Sync represents a complete configuration needed for a syncing service to start.
 type Sync struct {
-	Pid               int
-	LocalAddress      string
-	RemoteAddresses   []string
-	LocalMCAddress    string
-	RemoteMCAddresses []string
-	OutSyncLimit      uint
-	InSyncLimit       uint
-	Timeout           time.Duration
-	Multicast         string
+	Type            string
+	Pid             int
+	LocalAddress    string
+	RemoteAddresses []string
+	Params          map[string]uint
+	Fallback        string
 }
 
 // Create represents a complete configuration needed for a creating service to start.
