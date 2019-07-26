@@ -73,10 +73,10 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	}
 
 	service, err := create.NewService(dag, rs, config.Create, callback, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
-	services = append(services, service)
 	if err != nil {
 		return nil, err
 	}
+	services = append(services, service)
 
 	service, err = order.NewService(dag, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {

@@ -117,6 +117,11 @@ func (dag *Dag) checkExpandPrimes(u gomel.Unit) error {
 	left := notSeenPrimes[:0]
 
 	predecessor := u.Parents()[0]
+	// predecessor can't have higher level than all other parents
+	if predecessor.Level() > u.Parents()[len(u.Parents())-1].Level() {
+		return gomel.NewComplianceError("Expand primes rule violated")
+	}
+
 	level := u.Parents()[1].Level()
 	for _, parent := range u.Parents()[1:] {
 		if currentLevel := parent.Level(); currentLevel < level {
