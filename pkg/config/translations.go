@@ -1,7 +1,7 @@
 package config
 
 import (
-	"time"
+    "time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
@@ -30,7 +30,7 @@ func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*pr
 }
 
 func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process.Sync {
-	nTypes := len(c.Addresses)
+	nTypes := len(conf.Sync)
 	syncConfs := make([]*process.Sync, nTypes)
 	for i := range syncConfs {
 		syncConfs[i] = &process.Sync{

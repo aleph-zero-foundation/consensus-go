@@ -69,7 +69,7 @@ type Configuration struct {
 // NewDefaultConfiguration returns default set of parameters.
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
-		Type:     "request",
+		Type:     "gossip",
 		Params:   map[string]uint{"nIn": 20, "nOut": 15, "timeout": 2},
 		Fallback: "",
 	}}

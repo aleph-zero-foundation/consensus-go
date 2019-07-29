@@ -121,12 +121,12 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			server   sync.Server
 			fbk      sync.Fallback
 		)
-		t := time.Duration(float64(c.Params["Timeout"]))
+		t := time.Duration(float64(c.Params["Timeout"])) * time.Second
 		switch c.Type {
 		case "multicast":
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			var err error
-			switch c.Params["mcType"] {
+			switch c.Params["McType"] {
 			case 0:
 				dialer, listener, err = tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
 			case 1:
