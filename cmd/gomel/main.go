@@ -74,8 +74,8 @@ type cliOptions struct {
 
 func getOptions() cliOptions {
 	var result cliOptions
-	flag.StringVar(&result.pkPidFilename, "pkPid", "", "a file with a private key and process id")
-	flag.StringVar(&result.keysAddrsFilename, "keysAddrs", "", "a file with keys and associated addresses")
+	flag.StringVar(&result.pkPidFilename, "pk", "", "a file with a private key and process id")
+	flag.StringVar(&result.keysAddrsFilename, "keys_addrs", "", "a file with keys and associated addresses")
 	flag.StringVar(&result.configFilename, "config", "", "a configuration file")
 	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
@@ -110,6 +110,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid configuration file \"%s\", because: %s.\n", options.configFilename, err.Error())
 		return
 	}
+    if len(conf.Sync) != len(committee.Addresses) {
+        fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync), len(committee.Addresses))
+        return
+    }
+
 	log, err := logging.NewLogger(options.logFilename, conf.LogLevel, conf.LogBuffer, conf.LogHuman)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Creating log file \"%s\" failed because: %s.\n", options.logFilename, err.Error())
