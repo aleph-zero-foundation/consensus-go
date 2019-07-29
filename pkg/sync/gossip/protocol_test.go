@@ -46,8 +46,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, dag1, rs1, d, ls[0], NewDefaultPeerSource(2, 0), gomel.NopCallback(), time.Second, zerolog.Nop())
-		proto2 = NewProtocol(1, dag2, rs2, d, ls[1], NewDefaultPeerSource(2, 1), gomel.NopCallback(), time.Second, zerolog.Nop())
+		proto1 = NewProtocol(0, dag1, rs1, d, ls[0], NewDefaultPeerSource(2, 0), gomel.NopCallback, time.Second, zerolog.Nop())
+		proto2 = NewProtocol(1, dag2, rs2, d, ls[1], NewDefaultPeerSource(2, 1), gomel.NopCallback, time.Second, zerolog.Nop())
 	})
 
 	Describe("in a small dag", func() {

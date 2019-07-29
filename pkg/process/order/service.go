@@ -23,7 +23,7 @@ type service struct {
 	extendOrderRequests chan int
 	orderedUnits        chan<- []gomel.Unit
 	currentRound        int
-	primeAlert          chan struct{}
+	primeAlert          <-chan struct{}
 	exitChan            chan struct{}
 	wg                  sync.WaitGroup
 	log                 zerolog.Logger

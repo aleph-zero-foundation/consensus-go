@@ -28,7 +28,5 @@ func MergeCallbacks(cb1, cb2 Callback) Callback {
 	}
 }
 
-// NopCallback returns an empty Callback.
-func NopCallback() Callback {
-	return func(Preunit, Unit, error) {}
-}
+// NopCallback is an empty Callback.
+var NopCallback Callback = func(Preunit, Unit, error) {}

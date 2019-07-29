@@ -26,7 +26,6 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 	s := &service{log: log.With().Int(logging.Service, logging.SyncService).Logger()}
 	gossipLog := log.With().Int(logging.Service, logging.GossipService).Logger()
 	mcLog := log.With().Int(logging.Service, logging.MCService).Logger()
-	callback := gomel.NopCallback()
 
 	dialer, listener, err := tcp.NewNetwork(config.LocalAddress, config.RemoteAddresses, gossipLog)
 	if err != nil {
@@ -43,7 +42,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 	case "udp":
 		dialer, listener, err = udp.NewNetwork(config.LocalMCAddress, config.RemoteMCAddresses, mcLog)
 	default:
-		return s, callback, nil
+		return s, gomel.NopCallback, nil
 	}
 	if err != nil {
 		return nil, nil, err
