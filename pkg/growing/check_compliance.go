@@ -7,18 +7,12 @@ import (
 // Assumes that prepare_unit(U) has been already called.
 // Checks if the unit U is correct and follows the rules of creating units, i.e.:
 // 1. Parents are created by pairwise different processes.
-// 2. U does not provide evidence of its creator forking
-// 3. Satisfies forker-muting policy.
-// 4. Satisfies the expand primes rule.
-// 5. The random source data is OK.
+// 2. Satisfies forker-muting policy.
+// 3. Satisfies the expand primes rule.
+// 4. The random source data is OK.
 func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 	// 1. Parents are created by pairwise different processes.
 	if err := checkParentsDiversity(u); err != nil {
-		return err
-	}
-
-	// 2. U does not provide evidence of its creator forking
-	if err := checkNoSelfForkingEvidence(u); err != nil {
 		return err
 	}
 
@@ -57,6 +51,9 @@ func checkBasicParentsCorrectness(u gomel.Unit) error {
 	// self-predecessor and the first unit on the Parents list should be equal
 	if firstParent != selfPredecessor {
 		return gomel.NewComplianceError("First parent of a unit is not equal to its self-predecessor")
+	}
+	if err := checkNoSelfForkingEvidence(u); err != nil {
+		return err
 	}
 
 	return nil
