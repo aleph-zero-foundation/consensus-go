@@ -13,6 +13,20 @@ func generateDagConfig(c *Committee) *gomel.DagConfig {
 	}
 }
 
+func generateSyncSetupConfig(conf *Configuration, c *Committee) *process.Sync {
+	return &process.Sync{
+		Pid:               c.Pid,
+		LocalAddress:      c.SetupAddresses[c.Pid],
+		RemoteAddresses:   c.SetupAddresses,
+		LocalMCAddress:    c.SetupMCAddresses[c.Pid],
+		RemoteMCAddresses: c.SetupMCAddresses,
+		OutSyncLimit:      conf.NOutSync,
+		InSyncLimit:       conf.NInSync,
+		Timeout:           time.Duration(conf.Timeout * float32(time.Second)),
+		Multicast:         conf.Multicast,
+	}
+}
+
 func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 	return &process.Sync{
 		Pid:               c.Pid,
@@ -27,11 +41,25 @@ func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
 	}
 }
 
+func generateCreateSetupConfig(conf *Configuration, c *Committee) *process.Create {
+	return &process.Create{
+		Pid:          c.Pid,
+		MaxParents:   int(conf.NParents),
+		PrimeOnly:    conf.PrimeOnly,
+		CanSkipLevel: false,
+		PrivateKey:   c.PrivateKey,
+		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
+		AdjustFactor: conf.StepSize,
+		MaxLevel:     int(conf.LevelLimit),
+	}
+}
+
 func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 	return &process.Create{
 		Pid:          c.Pid,
 		MaxParents:   int(conf.NParents),
 		PrimeOnly:    conf.PrimeOnly,
+		CanSkipLevel: conf.CanSkipLevel,
 		PrivateKey:   c.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
@@ -41,9 +69,10 @@ func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 
 func generateOrderConfig(conf *Configuration, c *Committee) *process.Order {
 	return &process.Order{
-		Pid:          c.Pid,
-		VotingLevel:  int(conf.VotingLevel),
-		PiDeltaLevel: int(conf.PiDeltaLevel),
+		Pid:             c.Pid,
+		VotingLevel:     int(conf.VotingLevel),
+		PiDeltaLevel:    int(conf.PiDeltaLevel),
+		OrderStartLevel: int(conf.OrderStartLevel),
 	}
 }
 
@@ -61,12 +90,14 @@ func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(c *Committee) process.Config {
 	return process.Config{
-		Dag:        generateDagConfig(c),
-		Sync:       generateSyncConfig(conf, c),
-		Create:     generateCreateConfig(conf, c),
-		Order:      generateOrderConfig(conf, c),
-		TxValidate: generateTxValidateConfig(),
-		TxGenerate: generateTxGenerateConfig(conf),
-		MemLog:     conf.LogMemInterval,
+		Dag:         generateDagConfig(c),
+		Sync:        generateSyncConfig(conf, c),
+		SyncSetup:   generateSyncSetupConfig(conf, c),
+		Create:      generateCreateConfig(conf, c),
+		CreateSetup: generateCreateSetupConfig(conf, c),
+		Order:       generateOrderConfig(conf, c),
+		TxValidate:  generateTxValidateConfig(),
+		TxGenerate:  generateTxGenerateConfig(conf),
+		MemLog:      conf.LogMemInterval,
 	}
 }

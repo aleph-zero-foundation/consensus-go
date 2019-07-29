@@ -97,7 +97,8 @@ var _ = Describe("Dag", func() {
 				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			}
 			dag = NewDag(&gomel.DagConfig{Keys: pubKeys})
-			rs = tests.NewTestRandomSource(dag)
+			rs = tests.NewTestRandomSource()
+			rs.Init(dag)
 		})
 
 		AfterEach(func() {

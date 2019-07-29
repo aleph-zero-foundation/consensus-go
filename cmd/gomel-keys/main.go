@@ -13,19 +13,23 @@ import (
 )
 
 type proc struct {
-	publicKey  gomel.PublicKey
-	privateKey gomel.PrivateKey
-	address    string
-	mcAddress  string
+	publicKey      gomel.PublicKey
+	privateKey     gomel.PrivateKey
+	address        string
+	mcAddress      string
+	setupAddress   string
+	setupMCAddress string
 }
 
-func makeProcess(address string, mcAddress string) proc {
+func makeProcess(address, mcAddress, setupAddress, setupMCAddress string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
 	return proc{
-		publicKey:  pubKey,
-		privateKey: privKey,
-		address:    address,
-		mcAddress:  mcAddress,
+		publicKey:      pubKey,
+		privateKey:     privKey,
+		address:        address,
+		mcAddress:      mcAddress,
+		setupAddress:   setupAddress,
+		setupMCAddress: setupMCAddress,
 	}
 }
 
@@ -52,10 +56,14 @@ func main() {
 	}
 	addresses := []string{}
 	mcAddresses := []string{}
+	setupAddresses := []string{}
+	setupMCAddresses := []string{}
 	if len(os.Args) == 2 {
 		for i := 0; i < num; i++ {
 			addresses = append(addresses, "127.0.0.1:"+strconv.Itoa(9000+i))
 			mcAddresses = append(mcAddresses, "127.0.0.1:"+strconv.Itoa(10000+i))
+			setupAddresses = append(setupAddresses, "127.0.0.1:"+strconv.Itoa(11000+i))
+			setupMCAddresses = append(setupMCAddresses, "127.0.0.1:"+strconv.Itoa(12000+i))
 		}
 	} else {
 		f, err := os.Open(os.Args[2])
@@ -82,13 +90,15 @@ func main() {
 	}
 	processes := []proc{}
 	for i := 0; i < num; i++ {
-		processes = append(processes, makeProcess(addresses[i], mcAddresses[i]))
+		processes = append(processes, makeProcess(addresses[i], mcAddresses[i], setupAddresses[i], setupMCAddresses[i]))
 	}
 	committee := &config.Committee{}
 	for _, p := range processes {
 		committee.PublicKeys = append(committee.PublicKeys, p.publicKey)
 		committee.Addresses = append(committee.Addresses, p.address)
 		committee.MCAddresses = append(committee.MCAddresses, p.mcAddress)
+		committee.SetupAddresses = append(committee.SetupAddresses, p.setupAddress)
+		committee.SetupMCAddresses = append(committee.SetupMCAddresses, p.setupMCAddress)
 	}
 	for i, p := range processes {
 		f, err := os.Create(strconv.Itoa(i) + ".keys")

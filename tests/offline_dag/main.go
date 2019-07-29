@@ -36,7 +36,8 @@ func runOfflineTest() {
 	// start goroutines waiting for a preunit and adding it to its' dag
 	for pid := 0; pid < nProcesses; pid++ {
 		dags[pid] = growing.NewDag(config)
-		rses[pid] = urn.New(dags[pid], pid)
+		rses[pid] = urn.NewUrn(pid)
+		rses[pid].Init(dags[pid])
 	}
 
 	for i := 0; i < nUnits; i++ {

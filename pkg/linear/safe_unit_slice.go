@@ -11,9 +11,13 @@ type safeUnitSlice struct {
 	contents []gomel.Unit
 }
 
-func newSafeUnitSlice() *safeUnitSlice {
+func newSafeUnitSlice(nEmpty int) *safeUnitSlice {
+	contents := []gomel.Unit{}
+	for i := 0; i < nEmpty; i++ {
+		contents = append(contents, nil)
+	}
 	return &safeUnitSlice{
-		contents: []gomel.Unit{},
+		contents: contents,
 	}
 }
 

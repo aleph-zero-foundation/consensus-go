@@ -18,7 +18,8 @@ var _ = Describe("Creating", func() {
 			h2  gomel.Hash
 		)
 		JustBeforeEach(func() {
-			rs = tests.NewTestRandomSource(dag)
+			rs = tests.NewTestRandomSource()
+			rs.Init(dag)
 		})
 		Context("that is empty", func() {
 			BeforeEach(func() {

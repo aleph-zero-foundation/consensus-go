@@ -23,6 +23,7 @@ type service struct {
 	pid              int
 	maxParents       int
 	primeOnly        bool
+	canSkipLevel     bool
 	maxLevel         int
 	privKey          gomel.PrivateKey
 	adjustFactor     float64
@@ -55,6 +56,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 		pid:              config.Pid,
 		maxParents:       config.MaxParents,
 		primeOnly:        config.PrimeOnly,
+		canSkipLevel:     config.CanSkipLevel,
 		maxLevel:         config.MaxLevel,
 		privKey:          config.PrivateKey,
 		adjustFactor:     config.AdjustFactor,
@@ -73,15 +75,19 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 func (s *service) Start() error {
 	s.wg.Add(1)
 	go func() {
+		defer s.ticker.Stop()
+		defer s.wg.Done()
 		s.createUnit()
 		for {
 			select {
 			case <-s.done:
-				s.ticker.Stop()
-				s.wg.Done()
 				return
 			case <-s.ticker.C:
-				s.createUnit()
+				if !s.createUnit() {
+					close(s.dagFinished)
+					<-s.done
+					return
+				}
 			}
 		}
 	}()
@@ -127,18 +133,28 @@ func (s *service) getData() []byte {
 	}
 }
 
-func (s *service) createUnit() {
-	created, err := creating.NewUnit(s.dag, s.pid, s.maxParents, s.getData(),
-		s.randomSource, s.primeOnly)
+// createUnit creates a unit and adds it to the poset
+// It returns boolean value: wheather we can create more units or not.
+func (s *service) createUnit() bool {
+	var (
+		created gomel.Preunit
+		err     error
+	)
+	if !s.canSkipLevel {
+		created, err = creating.NewNonSkippingUnit(s.dag, s.pid, s.getData(), s.randomSource)
+	} else {
+		created, err = creating.NewUnit(s.dag, s.pid, s.maxParents, s.getData(), s.randomSource, s.primeOnly)
+	}
 	if err != nil {
 		s.slower()
 		s.log.Info().Msg(logging.NotEnoughParents)
-		return
+		return true
 	}
 	created.SetSignature(s.privKey.Sign(created))
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+	canCreateMore := true
 	s.dag.AddUnit(created, s.randomSource, func(_ gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
@@ -158,9 +174,9 @@ func (s *service) createUnit() {
 		}
 
 		if added.Level() >= s.maxLevel {
-			s.ticker.Stop()
-			close(s.dagFinished)
+			canCreateMore = false
 		}
 	})
 	wg.Wait()
+	return canCreateMore
 }

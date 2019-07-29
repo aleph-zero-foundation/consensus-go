@@ -2,6 +2,8 @@ package gomel
 
 // RandomSource is an interface for sharing random source between units
 type RandomSource interface {
+	// Init initialize the random source with given dag
+	Init(Dag)
 	// GetCRP returns common random permutation for a given nonce
 	GetCRP(int) []int
 	// RandomBytes returns a random bits for a given unit and nonce

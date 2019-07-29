@@ -9,6 +9,9 @@ type Configuration struct {
 	// Whether only prime units should be created.
 	PrimeOnly bool
 
+	// Wheather a level can be skipped
+	CanSkipLevel bool
+
 	// Delay after attempting to create a new unit, before another attempt is made.
 	CreateDelay float32
 
@@ -57,6 +60,9 @@ type Configuration struct {
 
 	// Whether to write the log in the human readable form or in JSON.
 	LogHuman bool
+
+	// The level from which we start ordering
+	OrderStartLevel int
 }
 
 // NewDefaultConfiguration returns default set of parameters.
@@ -66,6 +72,8 @@ func NewDefaultConfiguration() Configuration {
 		NParents: 10,
 
 		PrimeOnly: true,
+
+		CanSkipLevel: true,
 
 		CreateDelay: 0.1,
 
@@ -96,6 +104,8 @@ func NewDefaultConfiguration() Configuration {
 		LogMemInterval: 10,
 
 		LogHuman: false,
+
+		OrderStartLevel: 0,
 	}
 	result.AddShares = result.PiDeltaLevel - 1
 	return result

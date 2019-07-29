@@ -25,8 +25,9 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource()
+				rs.Init(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -34,8 +35,9 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err = tests.CreateDagFromTestFile("../testdata/only_dealing.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource()
+				rs.Init(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
 				Expect(ordering.DecideTimingOnLevel(0)).To(BeNil())
 			})
 		})
@@ -43,8 +45,9 @@ var _ = Describe("Ordering", func() {
 			BeforeEach(func() {
 				p, err = tests.CreateDagFromTestFile("../testdata/regular1.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource()
+				rs.Init(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
 			})
 			It("should decide up to 5th level", func() {
 				for level := 0; level < 5; level++ {
@@ -60,8 +63,9 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				p, err = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource()
+				rs.Init(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
 				ordering.DecideTimingOnLevel(0)
 				Expect(ordering.TimingRound(0)).To(BeNil())
 			})
@@ -70,8 +74,9 @@ var _ = Describe("Ordering", func() {
 			BeforeEach(func() {
 				p, err = tests.CreateDagFromTestFile("../testdata/regular1.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel)
+				rs = tests.NewTestRandomSource()
+				rs.Init(p)
+				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0)
 				for level := 0; level < 5; level++ {
 					ordering.DecideTimingOnLevel(level)
 					thisRound := ordering.TimingRound(level)

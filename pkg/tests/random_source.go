@@ -9,10 +9,13 @@ type testRandomSource struct {
 }
 
 // NewTestRandomSource returns a simple RandomSource for testing
-func NewTestRandomSource(dag gomel.Dag) gomel.RandomSource {
-	return &testRandomSource{
-		nProc: dag.NProc(),
-	}
+func NewTestRandomSource() gomel.RandomSource {
+	return &testRandomSource{}
+}
+
+// Init initialize the random source with given dag
+func (rs *testRandomSource) Init(dag gomel.Dag) {
+	rs.nProc = dag.NProc()
 }
 
 // GetCRP is a dummy implementation of a common random permutation

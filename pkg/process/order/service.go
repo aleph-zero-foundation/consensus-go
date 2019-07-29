@@ -22,7 +22,7 @@ type service struct {
 	linearOrdering        gomel.LinearOrdering
 	attemptTimingRequests <-chan int
 	extendOrderRequests   chan int
-	orderedUnits          chan<- gomel.Unit
+	orderedUnits          chan<- []gomel.Unit
 	currentRound          int
 	exitChan              chan struct{}
 	wg                    sync.WaitGroup
@@ -30,15 +30,15 @@ type service struct {
 }
 
 // NewService is a constructor of an ordering service
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- gomel.Unit, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		pid:                   config.Pid,
-		linearOrdering:        linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel),
+		linearOrdering:        linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel, config.OrderStartLevel),
 		attemptTimingRequests: attemptTimingRequests,
 		orderedUnits:          orderedUnits,
 		extendOrderRequests:   make(chan int, 10),
 		exitChan:              make(chan struct{}),
-		currentRound:          0,
+		currentRound:          config.OrderStartLevel,
 		log:                   log,
 	}, nil
 }
@@ -67,8 +67,8 @@ func (s *service) attemptOrdering() {
 func (s *service) extendOrder() {
 	for round := range s.extendOrderRequests {
 		units := s.linearOrdering.TimingRound(round)
+		s.orderedUnits <- units
 		for _, u := range units {
-			s.orderedUnits <- u
 			if u.Creator() == s.pid {
 				s.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
 			}

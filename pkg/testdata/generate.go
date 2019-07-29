@@ -32,7 +32,8 @@ func writeToFile(filename string, dag gomel.Dag) error {
 func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	dag := growing.NewDag(&gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
-	rs := tests.NewTestRandomSource(dag)
+	rs := tests.NewTestRandomSource()
+	rs.Init(dag)
 	created := 0
 	pus := make([]gomel.Preunit, nProcesses)
 	for created < nUnits {

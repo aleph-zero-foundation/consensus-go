@@ -27,20 +27,29 @@ func generateKeys(nProcesses uint64) (pubKeys []gomel.PublicKey, privKeys []gome
 	return pubKeys, privKeys
 }
 
-func generateLocalhostAdresses(localhostAddress string, nProcesses uint64) []string {
+func generateLocalhostAddresses(localhostAddress string, nProcesses uint64) ([]string, []string, []string, []string) {
 	const (
 		magicPort = 21037
 	)
 	result := make([]string, 0, nProcesses)
+	resultMC := make([]string, 0, nProcesses)
+	setupResult := make([]string, 0, nProcesses)
+	setupMCResult := make([]string, 0, nProcesses)
 	for id := uint64(0); id < nProcesses; id++ {
-		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+id))
+		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id))
+		resultMC = append(resultMC, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+1))
+		setupResult = append(setupResult, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+2))
+		setupMCResult = append(setupMCResult, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+3))
 	}
-	return result
+	return result, setupResult, resultMC, setupMCResult
 }
 
 func createAndStartProcess(
 	id int,
 	addresses []string,
+	setupAddresses []string,
+	mcAddresses []string,
+	setupMCAddresses []string,
 	pubKeys []gomel.PublicKey,
 	privKey gomel.PrivateKey,
 	userDB string,
@@ -49,15 +58,26 @@ func createAndStartProcess(
 	dags []gomel.Dag,
 ) error {
 	committee := config.Committee{
-		Pid:        id,
-		PrivateKey: privKey,
-		PublicKeys: pubKeys,
-		Addresses:  addresses,
+		Pid:              id,
+		PrivateKey:       privKey,
+		PublicKeys:       pubKeys,
+		Addresses:        addresses,
+		SetupAddresses:   setupAddresses,
+		MCAddresses:      mcAddresses,
+		SetupMCAddresses: setupMCAddresses,
 	}
 	defaultAppConfig := config.NewDefaultConfiguration()
-	config := defaultAppConfig.GenerateConfig(&committee, userDB)
+	defaultAppConfig.OrderStartLevel = 6
+	config := defaultAppConfig.GenerateConfig(&committee)
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
+
+	setupLog, err := logging.NewLogger("setup_log"+strconv.Itoa(id)+".log", 0, 100000, false)
+	if err != nil {
+		return err
+	}
+	setupLog = setupLog.With().Int("process_id", id).Logger()
+
 	log, err := logging.NewLogger("log"+strconv.Itoa(id)+".log", 0, 100000, false)
 	if err != nil {
 		return err
@@ -65,7 +85,7 @@ func createAndStartProcess(
 	log = log.With().Int("process_id", id).Logger()
 
 	go func() {
-		dag, err := run.Process(config, log)
+		dag, err := run.Process(config, setupLog, log, run.BeaconSetup)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 		}
@@ -157,10 +177,10 @@ func readOrderFromLogs(logfile string) [][2]int {
 	return result
 }
 
-func checkOrderingFromLogs(nProc int) bool {
+func checkOrderingFromLogs(nProc int, filenamePrefix string) bool {
 	var lastOrder [][2]int
 	for pid := 0; pid < nProc; pid++ {
-		myOrder := readOrderFromLogs("log" + strconv.Itoa(pid) + ".log")
+		myOrder := readOrderFromLogs(filenamePrefix + strconv.Itoa(pid) + ".log")
 		if pid != 0 && !isPrefix(lastOrder, myOrder) && !isPrefix(myOrder, lastOrder) {
 			return false
 		}
@@ -172,20 +192,20 @@ func checkOrderingFromLogs(nProc int) bool {
 }
 
 func main() {
-	testSize := flag.Uint64("test_size", 10, "number of created processes; default is 10")
+	testSize := flag.Uint64("test_size", 4, "number of created processes; default is 4")
 	userDB := flag.String("user_db", "../../pkg/testdata/users.txt",
 		"file containing testdata for user accounts; default is a file containing names of superheros")
-	maxLevel := flag.Uint64("max_level", 10, "number of levels after which a process should finish; default is 10")
+	maxLevel := flag.Uint64("max_level", 12, "number of levels after which a process should finish; default is 12")
 	flag.Parse()
 
-	addresses := generateLocalhostAdresses("localhost", *testSize)
+	addresses, setupAddresses, mcAddresses, setupMCAddresses := generateLocalhostAddresses("localhost", *testSize)
 	pubKeys, privKeys := generateKeys(*testSize)
 	dags := make([]gomel.Dag, int(*testSize))
 
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(id, addresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(id, addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}
@@ -195,10 +215,15 @@ func main() {
 	allDone.Wait()
 
 	// Sanity checks
-	fmt.Println("Dags are the same up to", commonLevel(dags, int(*maxLevel)), "level. Max level is", *maxLevel)
-	if checkOrderingFromLogs(dags[0].NProc()) {
-		fmt.Println("Ordering OK")
+	if checkOrderingFromLogs(dags[0].NProc(), "setup_log") {
+		fmt.Println("Ordering in setup OK")
 	} else {
-		fmt.Println("Processes obtained different ordering!")
+		fmt.Println("Processes obtained different orderings in setup!")
+	}
+	fmt.Println("Main Dags are the same up to", commonLevel(dags, int(*maxLevel)), "level. Max level is", *maxLevel)
+	if checkOrderingFromLogs(dags[0].NProc(), "log") {
+		fmt.Println("Ordering in main is OK")
+	} else {
+		fmt.Println("Processes obtained different orderings in main!")
 	}
 }
