@@ -16,17 +16,17 @@ func (dag *Dag) checkCompliance(u gomel.Unit, rs gomel.RandomSource) error {
 		return err
 	}
 
-	// 3. Satisfies forker-muting policy
+	// 2. Satisfies forker-muting policy
 	if err := CheckForkerMuting(u.Parents()); err != nil {
 		return err
 	}
 
-	// 4. Satisfies the expand primes rule
+	// 3. Satisfies the expand primes rule
 	if err := CheckExpandPrimes(dag, u.Parents()); err != nil {
 		return err
 	}
 
-	// 5. The random source data is OK.
+	// 4. The random source data is OK.
 	if err := rs.CheckCompliance(u); err != nil {
 		return err
 	}

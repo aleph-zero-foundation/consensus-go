@@ -63,6 +63,17 @@ var _ = Describe("Units", func() {
 		AfterEach(func() {
 			dag.(*Dag).Stop()
 		})
+		Describe("HasForkingEvidence works properly in case of forks even when combined floors is not an evidence of forking", func() {
+
+			BeforeEach(func() {
+				dag, readingErr = tests.CreateDagFromTestFile("../testdata/self_forking_evidence.txt", df)
+				dag = df.CreateDag(gomel.DagConfig{Keys: nil})
+			})
+
+			It("should confirm that a unit exploiting it is a self-forking evidence", func() {
+				Expect(readingErr).To(Equal(gomel.NewComplianceError("A unit is evidence of self forking")))
+			})
+		})
 		Describe("Checking reflexivity of Below", func() {
 			BeforeEach(func() {
 				dag, readingErr = tests.CreateDagFromTestFile("../testdata/one_unit.txt", df)
