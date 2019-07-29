@@ -53,10 +53,10 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		trs1 := tests.NewTestRandomSource()
 		trs1.Init(dag1)
-		proto1 = NewProtocol(0, dag1, trs1, reqs, d, ls[0], gomel.NopCallback, time.Second, &fallenBack, make(chan int), zerolog.Nop())
+		proto1 = NewProtocol(0, dag1, trs1, reqs, d, ls[0], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
 		trs2 := tests.NewTestRandomSource()
 		trs2.Init(dag2)
-		proto2 = NewProtocol(1, dag2, trs2, reqs, d, ls[1], gomel.NopCallback, time.Second, &fallenBack, make(chan int), zerolog.Nop())
+		proto2 = NewProtocol(1, dag2, trs2, reqs, d, ls[1], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
 	})
 
 	Describe("with only two participants", func() {
