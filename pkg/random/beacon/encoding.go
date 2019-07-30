@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"math/big"
 
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
@@ -27,7 +27,7 @@ func marshallVotes(votes []*vote) []byte {
 			buf.Write([]byte{1})
 		} else {
 			buf.Write([]byte{2})
-			proofBytes, _ := v.proof.GobEncode()
+			proofBytes := v.proof.Marshal()
 			binary.Write(&buf, binary.LittleEndian, uint16(len(proofBytes)))
 			buf.Write(proofBytes)
 		}
@@ -59,8 +59,7 @@ func unmarshallVotes(data []byte, nProc int) ([]*vote, error) {
 			if len(data) < int(proofLen) {
 				return nil, errors.New("votes wrongly encoded")
 			}
-			proof := big.NewInt(0)
-			err := proof.GobDecode(data[:proofLen])
+			proof, err := new(bn256.SecretKey).Unmarshal(data[:proofLen])
 			data = data[proofLen:]
 			if err != nil {
 				return nil, err

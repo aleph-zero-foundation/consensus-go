@@ -1,4 +1,4 @@
-package tcoin
+package bn256
 
 import (
 	"crypto/rand"
@@ -17,7 +17,7 @@ type PolyVerifier struct {
 
 // Verify verifies if the given sequence of elems is a polynomial sequence
 // with bounded degree
-func (pv *PolyVerifier) Verify(elems []*bn256.G2) bool {
+func (pv *PolyVerifier) Verify(elems []*VerificationKey) bool {
 	if len(elems) != len(pv.vector) {
 		// wrong number of elems
 		return false
@@ -28,12 +28,12 @@ func (pv *PolyVerifier) Verify(elems []*bn256.G2) bool {
 	summands := make(chan *bn256.G2)
 
 	var wg sync.WaitGroup
-	for i, e := range elems {
+	for i, vk := range elems {
 		wg.Add(1)
 		go func(e *bn256.G2, i int) {
 			defer wg.Done()
 			summands <- new(bn256.G2).ScalarMult(e, pv.vector[i])
-		}(e, i)
+		}(&vk.key, i)
 	}
 	go func() {
 		wg.Wait()
