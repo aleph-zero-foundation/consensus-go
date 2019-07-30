@@ -14,6 +14,7 @@ type Config struct {
 	Create      *Create
 	CreateSetup *Create
 	Order       *Order
+	OrderSetup  *Order
 	TxValidate  *TxValidate
 	TxGenerate  *TxGenerate
 	MemLog      int

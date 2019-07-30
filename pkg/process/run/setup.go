@@ -38,7 +38,7 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	rs := beacon.New(config.Create.Pid)
 	rs.Init(dag)
 
-	orderService, primeAlert, err := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	orderService, primeAlert, err := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
 		return
 	}
