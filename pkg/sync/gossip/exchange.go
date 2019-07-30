@@ -1,8 +1,6 @@
 package gossip
 
 import (
-	"github.com/rs/zerolog"
-
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -58,17 +56,11 @@ func getRequests(nProc int, myDagInfo dagInfo, conn network.Connection) (request
 }
 
 // addUnits adds the provided units to the dag, assuming they are divided into antichains as described in toLayers
-func addUnits(dag gomel.Dag, randomSource gomel.RandomSource, preunits [][]gomel.Preunit, attemptTiming chan<- int, log zerolog.Logger) error {
+func (p *protocol) addUnits(preunits [][]gomel.Preunit) error {
 	for _, pus := range preunits {
-		primeAdded, err := add.Antichain(dag, randomSource, pus, sync.Noop(), log)
+		err := add.Antichain(p.dag, p.randomSource, pus, p.callback, sync.NopFallback(), p.log)
 		if err != nil {
 			return err
-		}
-		if primeAdded {
-			select {
-			case attemptTiming <- -1:
-			default:
-			}
 		}
 	}
 	return nil
@@ -98,10 +90,10 @@ func nonempty(req requests) bool {
 		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
 		9. Add the received units to the dag.
 */
-func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming chan<- int, conn network.Connection) {
+func (p *protocol) inExchange(conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
-	nProc := dag.NProc()
+	nProc := p.dag.NProc()
 
 	log.Debug().Msg(logging.GetDagInfo)
 	theirDagInfo, err := getDagInfo(nProc, conn)
@@ -110,7 +102,7 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 		return
 	}
 
-	maxSnapshot := dagMaxSnapshot(dag)
+	maxSnapshot := dagMaxSnapshot(p.dag)
 	dagInfo := toDagInfo(maxSnapshot)
 	log.Debug().Msg(logging.SendDagInfo)
 	if err := sendDagInfo(dagInfo, conn); err != nil {
@@ -118,7 +110,7 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 		return
 	}
 
-	units, err := unitsToSend(dag, maxSnapshot, theirDagInfo, nil)
+	units, err := unitsToSend(p.dag, maxSnapshot, theirDagInfo, nil)
 	if err != nil {
 		log.Error().Str("where", "gossip.In.unitsToSend").Msg(err.Error())
 		return
@@ -131,7 +123,7 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 
-	req := requestsToSend(dag, theirDagInfo, newStaticHashSet(nil))
+	req := requestsToSend(p.dag, theirDagInfo, newStaticHashSet(nil))
 	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(req, theirDagInfo, conn)
 	if err != nil {
@@ -164,7 +156,7 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 
 	if nonempty(theirRequests) {
 		log.Info().Msg(logging.AdditionalExchange)
-		units, err = unitsToSend(dag, maxSnapshot, theirDagInfo, theirRequests)
+		units, err = unitsToSend(p.dag, maxSnapshot, theirDagInfo, theirRequests)
 		if err != nil {
 			log.Error().Str("where", "gossip.In.unitsToSend(extra round)").Msg(err.Error())
 			return
@@ -179,12 +171,12 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(dag, randomSource, theirPreunitsReceived, attemptTiming, log)
+	err = p.addUnits(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.In.addUnits").Msg(err.Error())
 		return
 	}
-	err = addUnits(dag, randomSource, theirFreshPreunitsReceived, attemptTiming, log)
+	err = p.addUnits(theirFreshPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.In.addUnits fresh").Msg(err.Error())
 		return
@@ -208,12 +200,12 @@ func inExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming ch
 			9. If the sent requests were nonempty, wait for more units. All the units are resend.
 		10. Add the received units to the dag.
 */
-func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming chan<- int, conn network.Connection) {
+func (p *protocol) outExchange(conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
-	nProc := dag.NProc()
+	nProc := p.dag.NProc()
 
-	maxSnapshot := dagMaxSnapshot(dag)
+	maxSnapshot := dagMaxSnapshot(p.dag)
 	dagInfo := toDagInfo(maxSnapshot)
 	log.Debug().Msg(logging.SendDagInfo)
 	if err := sendDagInfo(dagInfo, conn); err != nil {
@@ -243,7 +235,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 		return
 	}
 
-	units, err := unitsToSend(dag, maxSnapshot, theirDagInfo, theirRequests)
+	units, err := unitsToSend(p.dag, maxSnapshot, theirDagInfo, theirRequests)
 	if err != nil {
 		log.Error().Str("where", "gossip.Out.unitsToSend").Msg(err.Error())
 		return
@@ -257,7 +249,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 
-	freshUnits, err := unitsToSend(dag, dagMaxSnapshot(dag), dagInfo, nil)
+	freshUnits, err := unitsToSend(p.dag, dagMaxSnapshot(p.dag), dagInfo, nil)
 	if err != nil {
 		log.Error().Str("where", "gossip.Out.unitsToSend fresh").Msg(err.Error())
 		return
@@ -272,7 +264,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 		return
 	}
 	log.Debug().Int(logging.Size, len(freshUnitsUnknown)).Msg(logging.SentFreshUnits)
-	req := requestsToSend(dag, theirDagInfo, theirPreunitsHashSet)
+	req := requestsToSend(p.dag, theirDagInfo, theirPreunitsHashSet)
 	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(req, theirDagInfo, conn)
 	if err != nil {
@@ -292,7 +284,7 @@ func outExchange(dag gomel.Dag, randomSource gomel.RandomSource, attemptTiming c
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = addUnits(dag, randomSource, theirPreunitsReceived, attemptTiming, log)
+	err = p.addUnits(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.Out.addUnits").Msg(err.Error())
 		return

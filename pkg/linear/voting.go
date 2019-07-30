@@ -252,13 +252,13 @@ func (o *ordering) computeDelta(uc gomel.Unit, u gomel.Unit) vote {
 }
 
 // Decides if uc is popular (i.e. it can be used as a timing unit)
-// Returns vote
-func (o *ordering) decideUnitIsPopular(uc gomel.Unit) vote {
+// Returns vote, level on which the decision was made and current dag level
+func (o *ordering) decideUnitIsPopular(uc gomel.Unit) (vote, int, int) {
+	dagLevelReached := dagMaxLevel(o.dag)
 	if result, ok := o.decisionMemo[*uc.Hash()]; ok {
-		return result
+		return result, -1, dagLevelReached
 	}
 
-	dagLevelReached := dagMaxLevel(o.dag)
 	// At levels +2, +3,..., +(votingLevel-1) it might be possible to prove that the consensus will be "1"
 	// This is being tried in the loop below -- as Lemma 2.3.(1) in "Lewelewele" allows us to do:
 	// -- whenever there is unit U at one of this levels that proves popularity of U_c, we can conclude the decision is "1"
@@ -275,7 +275,7 @@ func (o *ordering) decideUnitIsPopular(uc gomel.Unit) vote {
 		})
 		if decision == popular {
 			o.decisionMemo[*uc.Hash()] = decision
-			return decision
+			return decision, level, dagLevelReached
 		}
 	}
 
@@ -293,7 +293,7 @@ func (o *ordering) decideUnitIsPopular(uc gomel.Unit) vote {
 		})
 		if decision != undecided {
 			o.decisionMemo[*uc.Hash()] = decision
-			return decision
+			return decision, level, dagLevelReached
 		}
 	}
 
@@ -315,9 +315,9 @@ func (o *ordering) decideUnitIsPopular(uc gomel.Unit) vote {
 		})
 		if decision != undecided {
 			o.decisionMemo[*uc.Hash()] = decision
-			return decision
+			return decision, level, dagLevelReached
 		}
 	}
 
-	return undecided
+	return undecided, -1, dagLevelReached
 }

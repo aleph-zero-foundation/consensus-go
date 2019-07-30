@@ -18,29 +18,37 @@ import (
 //   the go routine which is ordering units that a new timingUnit has been chosen
 // - currentRound is the round up to which we have chosen timing units
 type service struct {
-	pid                   int
-	linearOrdering        gomel.LinearOrdering
-	attemptTimingRequests <-chan int
-	extendOrderRequests   chan int
-	orderedUnits          chan<- []gomel.Unit
-	currentRound          int
-	exitChan              chan struct{}
-	wg                    sync.WaitGroup
-	log                   zerolog.Logger
+	pid                 int
+	linearOrdering      gomel.LinearOrdering
+	extendOrderRequests chan int
+	orderedUnits        chan<- []gomel.Unit
+	currentRound        int
+	primeAlert          <-chan struct{}
+	exitChan            chan struct{}
+	wg                  sync.WaitGroup
+	log                 zerolog.Logger
 }
 
 // NewService is a constructor of an ordering service
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, attemptTimingRequests <-chan int, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, gomel.Callback, error) {
+	primeAlert := make(chan struct{}, 1)
 	return &service{
-		pid:                   config.Pid,
-		linearOrdering:        linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel, config.OrderStartLevel),
-		attemptTimingRequests: attemptTimingRequests,
-		orderedUnits:          orderedUnits,
-		extendOrderRequests:   make(chan int, 10),
-		exitChan:              make(chan struct{}),
-		currentRound:          config.OrderStartLevel,
-		log:                   log,
-	}, nil
+			pid:                 config.Pid,
+			linearOrdering:      linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel, config.OrderStartLevel, log),
+			orderedUnits:        orderedUnits,
+			extendOrderRequests: make(chan int, 10),
+			primeAlert:          primeAlert,
+			exitChan:            make(chan struct{}),
+			currentRound:        config.OrderStartLevel,
+			log:                 log,
+		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
+			if err == nil && gomel.Prime(unit) {
+				select {
+				case primeAlert <- struct{}{}:
+				default:
+				}
+			}
+		}, nil
 }
 
 func (s *service) attemptOrdering() {
@@ -48,13 +56,8 @@ func (s *service) attemptOrdering() {
 	defer s.wg.Done()
 	for {
 		select {
-		case highest, ok := <-s.attemptTimingRequests: // level of the most recent prime unit
-			if !ok {
-				<-s.exitChan
-				return
-			}
+		case <-s.primeAlert:
 			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
-				s.log.Info().Int(logging.Height, highest).Int(logging.Round, s.currentRound).Msg(logging.NewTimingUnit)
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}

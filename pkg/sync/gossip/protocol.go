@@ -12,38 +12,38 @@ import (
 )
 
 type protocol struct {
-	pid           uint16
-	dag           gomel.Dag
-	randomSource  gomel.RandomSource
-	peerSource    PeerSource
-	dialer        network.Dialer
-	listener      network.Listener
-	inUse         []*mutex
-	syncIds       []uint32
-	timeout       time.Duration
-	attemptTiming chan<- int
-	log           zerolog.Logger
+	pid          uint16
+	dag          gomel.Dag
+	randomSource gomel.RandomSource
+	dialer       network.Dialer
+	listener     network.Listener
+	peerSource   PeerSource
+	callback     gomel.Callback
+	timeout      time.Duration
+	log          zerolog.Logger
+	inUse        []*mutex
+	syncIds      []uint32
 }
 
 // NewProtocol returns a new gossiping protocol.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, peerSource PeerSource, timeout time.Duration, attemptTiming chan<- int, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger) sync.Protocol {
 	nProc := uint16(dag.NProc())
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
 		inUse[i] = newMutex()
 	}
 	return &protocol{
-		pid:           pid,
-		dag:           dag,
-		randomSource:  randomSource,
-		peerSource:    peerSource,
-		dialer:        dialer,
-		listener:      listener,
-		inUse:         inUse,
-		syncIds:       make([]uint32, nProc),
-		timeout:       timeout,
-		attemptTiming: attemptTiming,
-		log:           log,
+		pid:          pid,
+		dag:          dag,
+		randomSource: randomSource,
+		dialer:       dialer,
+		listener:     listener,
+		peerSource:   peerSource,
+		callback:     callback,
+		timeout:      timeout,
+		log:          log,
+		inUse:        inUse,
+		syncIds:      make([]uint32, nProc),
 	}
 }
 
@@ -69,7 +69,7 @@ func (p *protocol) In() {
 	}
 	defer m.release()
 	conn.SetLogger(p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger())
-	inExchange(p.dag, p.randomSource, p.attemptTiming, conn)
+	p.inExchange(conn)
 }
 
 func (p *protocol) Out() {
@@ -94,5 +94,5 @@ func (p *protocol) Out() {
 		return
 	}
 	conn.SetLogger(p.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, sid).Logger())
-	outExchange(p.dag, p.randomSource, p.attemptTiming, conn)
+	p.outExchange(conn)
 }

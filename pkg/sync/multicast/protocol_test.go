@@ -20,7 +20,7 @@ type dag struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
 	dag.attemptedAdd = append(dag.attemptedAdd, unit)
 	dag.Dag.AddUnit(unit, rs, callback)
 }
@@ -33,7 +33,7 @@ var _ = Describe("Protocol", func() {
 		servs   []sync.Server
 		ls      []network.Listener
 		d       *tests.Dialer
-		request func(unit gomel.Unit)
+		request gomel.Callback
 		serv    sync.Server
 		theUnit gomel.Unit
 	)
@@ -43,11 +43,11 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		serv, request = NewServer(0, dags[0], rs[0], d, ls[0], time.Second, sync.Noop(), zerolog.Nop())
+		serv, request = NewServer(0, dags[0], rs[0], d, ls[0], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
 		servs = []sync.Server{serv}
 		serv.Start()
 		for i := 1; i < 10; i++ {
-			serv, _ = NewServer(uint16(i), dags[i], rs[i], d, ls[i], time.Second, sync.Noop(), zerolog.Nop())
+			serv, _ = NewServer(uint16(i), dags[i], rs[i], d, ls[i], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
 			servs = append(servs, serv)
 			serv.Start()
 		}
@@ -76,7 +76,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to empty copies", func() {
-				request(theUnit)
+				request(nil, theUnit, nil)
 				time.Sleep(time.Millisecond * 500)
 				for i := 0; i < 10; i++ {
 					servs[i].StopOut()

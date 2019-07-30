@@ -30,7 +30,7 @@ type service struct {
 	previousSuccess  bool
 	delay            time.Duration
 	ticker           *time.Ticker
-	callback         func(gomel.Unit)
+	callback         gomel.Callback
 	dataSource       <-chan []byte
 	primeUnitCreated chan<- int
 	dagFinished      chan<- struct{}
@@ -49,26 +49,25 @@ type service struct {
 // The service will close dagFinished channel when it stops.
 // After creating a unit and adding it to the dag, the callback function is called on that unit.
 // The purpose of the callback is to communicate the fact of creating new unit to sync service.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Create, callback func(gomel.Unit), dagFinished chan<- struct{}, primeUnitCreated chan<- int, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, callback gomel.Callback, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
-		dag:              dag,
-		randomSource:     randomSource,
-		pid:              config.Pid,
-		maxParents:       config.MaxParents,
-		primeOnly:        config.PrimeOnly,
-		canSkipLevel:     config.CanSkipLevel,
-		maxLevel:         config.MaxLevel,
-		privKey:          config.PrivateKey,
-		adjustFactor:     config.AdjustFactor,
-		previousSuccess:  false,
-		delay:            config.InitialDelay,
-		ticker:           time.NewTicker(config.InitialDelay),
-		callback:         callback,
-		dataSource:       dataSource,
-		primeUnitCreated: primeUnitCreated,
-		dagFinished:      dagFinished,
-		done:             make(chan struct{}),
-		log:              log,
+		dag:             dag,
+		randomSource:    randomSource,
+		pid:             config.Pid,
+		maxParents:      config.MaxParents,
+		primeOnly:       config.PrimeOnly,
+		canSkipLevel:    config.CanSkipLevel,
+		maxLevel:        config.MaxLevel,
+		privKey:         config.PrivateKey,
+		adjustFactor:    config.AdjustFactor,
+		previousSuccess: false,
+		delay:           config.InitialDelay,
+		ticker:          time.NewTicker(config.InitialDelay),
+		callback:        callback,
+		dataSource:      dataSource,
+		dagFinished:     dagFinished,
+		done:            make(chan struct{}),
+		log:             log,
 	}, nil
 }
 
@@ -155,19 +154,18 @@ func (s *service) createUnit() bool {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	canCreateMore := true
-	s.dag.AddUnit(created, s.randomSource, func(_ gomel.Preunit, added gomel.Unit, err error) {
+	s.dag.AddUnit(created, s.randomSource, func(pu gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
 			s.log.Error().Str("where", "dag.AddUnit callback").Msg(err.Error())
 			return
 		}
 
-		s.callback(added)
+		s.callback(pu, added, err)
 
 		if gomel.Prime(added) {
 			s.log.Info().Int(logging.Height, added.Height()).Int(logging.NParents, len(added.Parents())).Msg(logging.PrimeUnitCreated)
 			s.quicker()
-			s.primeUnitCreated <- added.Level()
 		} else {
 			s.log.Info().Int(logging.Height, added.Height()).Int(logging.NParents, len(added.Parents())).Msg(logging.UnitCreated)
 			s.slower()

@@ -17,36 +17,36 @@ import (
 )
 
 type protocol struct {
-	pid           uint16
-	dag           gomel.Dag
-	randomSource  gomel.RandomSource
-	reqs          <-chan Request
-	dialer        network.Dialer
-	listener      network.Listener
-	syncIds       []uint32
-	timeout       time.Duration
-	fallback      gsync.Fallback
-	attemptTiming chan<- int
-	log           zerolog.Logger
+	pid          uint16
+	dag          gomel.Dag
+	randomSource gomel.RandomSource
+	reqs         <-chan Request
+	dialer       network.Dialer
+	listener     network.Listener
+	syncIds      []uint32
+	callback     gomel.Callback
+	timeout      time.Duration
+	fallback     gsync.Fallback
+	log          zerolog.Logger
 }
 
 // NewProtocol returns a new fetching protocol.
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback gsync.Fallback, attemptTiming chan<- int, log zerolog.Logger) gsync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback gsync.Fallback, log zerolog.Logger) gsync.Protocol {
 	nProc := uint16(dag.NProc())
 	return &protocol{
-		pid:           pid,
-		dag:           dag,
-		randomSource:  randomSource,
-		reqs:          reqs,
-		dialer:        dialer,
-		listener:      listener,
-		syncIds:       make([]uint32, nProc),
-		timeout:       timeout,
-		fallback:      fallback,
-		attemptTiming: attemptTiming,
-		log:           log,
+		pid:          pid,
+		dag:          dag,
+		randomSource: randomSource,
+		reqs:         reqs,
+		dialer:       dialer,
+		listener:     listener,
+		syncIds:      make([]uint32, nProc),
+		callback:     callback,
+		timeout:      timeout,
+		fallback:     fallback,
+		log:          log,
 	}
 }
 
@@ -125,17 +125,11 @@ func (p *protocol) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	primeAdded, aggErr := add.Antichain(p.dag, p.randomSource, units, p.fallback, log)
+	aggErr := add.Antichain(p.dag, p.randomSource, units, p.callback, p.fallback, log)
 	aggErr = aggErr.Pruned(true)
 	if aggErr != nil {
 		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())
 		return
-	}
-	if primeAdded {
-		select {
-		case p.attemptTiming <- -1:
-		default:
-		}
 	}
 	log.Info().Int(logging.Recv, len(units)).Msg(logging.SyncCompleted)
 }

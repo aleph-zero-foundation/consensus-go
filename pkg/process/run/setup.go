@@ -12,7 +12,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
@@ -28,51 +27,31 @@ func UrnSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog
 func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	defer close(rsCh)
 	dagFinished := make(chan struct{})
-	var services []process.Service
-	// attemptTimingRequests is a channel shared between orderer and creator/syncer
-	// creator/syncer should send a notification to the channel when a new prime unit is added to the dag
-	// orderer attempts timing decision after receiving the notification
-	attemptTimingRequests := make(chan int)
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
 	orderedUnits := make(chan []gomel.Unit, 5)
-	// txChan is a channel shared between tx_generator and creator
-	txChan := make(chan []byte, 10)
 
 	dag := growing.NewDag(config.Dag)
 	rs := beacon.New(config.Create.Pid)
 	rs.Init(dag)
 
-	syncService, callback, err := sync.NewService(dag, rs, config.SyncSetup, attemptTimingRequests, log.With().Int(logging.Service, logging.SyncService).Logger())
+	orderService, primeAlert, err := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	if err != nil {
 		return
 	}
-
-	service, err := create.NewService(dag, rs, config.CreateSetup, callback, dagFinished, attemptTimingRequests, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	syncService, requestMulticast, err := sync.NewService(dag, rs, config.SyncSetup, primeAlert, log)
 	if err != nil {
 		return
 	}
-	services = append(services, service)
-
-	service, err = order.NewService(dag, rs, config.Order, attemptTimingRequests, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(requestMulticast, primeAlert), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return
 	}
-	services = append(services, service)
-
-	// We shouldn't have txs in the setup phase. But for now it stays.
-	service, err = generate.NewService(dag, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
+	memlogService, err := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 	if err != nil {
 		return
 	}
-	services = append(services, service)
-
-	service, err = logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-	if err != nil {
-		return
-	}
-	services = append(services, service)
-	services = append(services, syncService)
+	services := []process.Service{createService, orderService, memlogService, syncService}
 
 	err = startAll(services)
 	if err != nil {

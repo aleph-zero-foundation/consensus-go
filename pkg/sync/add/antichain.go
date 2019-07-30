@@ -2,7 +2,6 @@ package add
 
 import (
 	"sync"
-	"sync/atomic"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -10,7 +9,7 @@ import (
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-func postAdd(wg *sync.WaitGroup, primeAdded *int32, errorAddr *error, fallback gsync.Fallback, log zerolog.Logger) func(pu gomel.Preunit, added gomel.Unit, err error) {
+func handleFailure(errorAddr *error, fallback gsync.Fallback, log zerolog.Logger) gomel.Callback {
 	return func(pu gomel.Preunit, added gomel.Unit, err error) {
 		if err != nil {
 			switch e := err.(type) {
@@ -23,39 +22,40 @@ func postAdd(wg *sync.WaitGroup, primeAdded *int32, errorAddr *error, fallback g
 			default:
 				*errorAddr = err
 			}
-		} else {
-			if gomel.Prime(added) {
-				atomic.StoreInt32(primeAdded, 1)
-			}
 		}
-		wg.Done()
 	}
 }
 
 // Unit adds a preunit to the dag and returns an error if it fails.
 // It also returns whether it successfully added a prime unit.
-func Unit(dag gomel.Dag, randomSource gomel.RandomSource, preunit gomel.Preunit, fallback gsync.Fallback, log zerolog.Logger) (bool, error) {
+func Unit(dag gomel.Dag, randomSource gomel.RandomSource, preunit gomel.Preunit, callback gomel.Callback, fallback gsync.Fallback, log zerolog.Logger) error {
 	var wg sync.WaitGroup
-	var primeAdded int32
 	var err error
 	wg.Add(1)
-	dag.AddUnit(preunit, randomSource, postAdd(&wg, &primeAdded, &err, fallback, log))
+	dag.AddUnit(preunit, randomSource, func(p gomel.Preunit, u gomel.Unit, e error) {
+		defer wg.Done()
+		handleFailure(&err, fallback, log)(p, u, e)
+		callback(p, u, e)
+	})
 	wg.Wait()
-	return primeAdded == 1, err
+	return err
 }
 
 // Antichain adds an antichain of preunits to the dag and reports a composite error if it fails.
 // It also returns whether it successfully added a prime unit.
-func Antichain(dag gomel.Dag, randomSource gomel.RandomSource, preunits []gomel.Preunit, fallback gsync.Fallback, log zerolog.Logger) (bool, *AggregateError) {
+func Antichain(dag gomel.Dag, randomSource gomel.RandomSource, preunits []gomel.Preunit, callback gomel.Callback, fallback gsync.Fallback, log zerolog.Logger) *AggregateError {
 	var wg sync.WaitGroup
 	problem := &AggregateError{
 		errs: make([]error, len(preunits)),
 	}
-	var primeAdded int32
 	for i, preunit := range preunits {
 		wg.Add(1)
-		dag.AddUnit(preunit, randomSource, postAdd(&wg, &primeAdded, &problem.errs[i], fallback, log))
+		dag.AddUnit(preunit, randomSource, func(p gomel.Preunit, u gomel.Unit, e error) {
+			defer wg.Done()
+			handleFailure(&problem.errs[i], fallback, log)(p, u, e)
+			callback(p, u, e)
+		})
 	}
 	wg.Wait()
-	return primeAdded == 1, problem.Pruned(false)
+	return problem.Pruned(false)
 }

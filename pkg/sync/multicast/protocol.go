@@ -26,12 +26,13 @@ type protocol struct {
 	requests     <-chan request
 	dialer       network.Dialer
 	listener     network.Listener
+	callback     gomel.Callback
 	timeout      time.Duration
 	fallback     sync.Fallback
 	log          zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, requests <-chan request, log zerolog.Logger) sync.Protocol {
+func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, requests <-chan request, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
 	return &protocol{
 		pid:          pid,
 		dag:          dag,
@@ -39,6 +40,7 @@ func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dia
 		requests:     requests,
 		dialer:       dialer,
 		listener:     listener,
+		callback:     callback,
 		timeout:      timeout,
 		fallback:     fallback,
 		log:          log,
@@ -60,7 +62,7 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "multicast.In.Decode").Msg(err.Error())
 		return
 	}
-	_, err = add.Unit(p.dag, p.randomSource, preunit, p.fallback, p.log)
+	err = add.Unit(p.dag, p.randomSource, preunit, p.callback, p.fallback, p.log)
 	if err == nil {
 		p.log.Info().Int(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 	}

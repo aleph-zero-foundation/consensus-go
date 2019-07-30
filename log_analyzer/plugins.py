@@ -390,6 +390,8 @@ class GossipStats(Plugin):
         ret +=  '    Outgoing:                 %5d\n'%len(self.out)
         ret +=  '    Failed:                   %5d\n'%self.failed
         ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
+        if not self.times:
+            return ret + 'NO SUCCESSFUL SYNCS :(\n'
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
         ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
@@ -440,6 +442,8 @@ class NetworkTraffic(Plugin):
         s = self.sent[self.skip:]
         r = self.recv[self.skip:]
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
+        if not s:
+            return ret + 'NO ENTRIES\n'
         ret += '                Sent           Received\n'
         ret += '    Min: %10d       %10d\n' % (min(s), min(r))
         ret += '    Max: %10d       %10d\n' % (max(s), max(r))

@@ -35,7 +35,7 @@ func newDag(dagConfiguration gomel.DagConfig) *Dag {
 }
 
 // AddUnit adds a unit in a thread safe manner without trying to be clever.
-func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback func(gomel.Preunit, gomel.Unit, error)) {
+func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
 	var u unit
 	err := dehashParents(&u, dag, pu)
 	if err != nil {

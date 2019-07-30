@@ -67,6 +67,15 @@ func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
 	}
 }
 
+func generateOrderSetupConfig(conf *Configuration, c *Committee) *process.Order {
+	return &process.Order{
+		Pid:             c.Pid,
+		VotingLevel:     int(conf.VotingLevel),
+		PiDeltaLevel:    int(conf.PiDeltaLevel),
+		OrderStartLevel: 6,
+	}
+}
+
 func generateOrderConfig(conf *Configuration, c *Committee) *process.Order {
 	return &process.Order{
 		Pid:             c.Pid,
@@ -96,6 +105,7 @@ func (conf *Configuration) GenerateConfig(c *Committee) process.Config {
 		Create:      generateCreateConfig(conf, c),
 		CreateSetup: generateCreateSetupConfig(conf, c),
 		Order:       generateOrderConfig(conf, c),
+		OrderSetup:  generateOrderSetupConfig(conf, c),
 		TxValidate:  generateTxValidateConfig(),
 		TxGenerate:  generateTxGenerateConfig(conf),
 		MemLog:      conf.LogMemInterval,

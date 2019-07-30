@@ -13,26 +13,28 @@ import (
 )
 
 // NewServer returns a server that runs multicast protocol and callback for create service
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, func(gomel.Unit)) {
+func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, gomel.Callback) {
 	requests := make(chan request, requestsSize*dag.NProc())
-	proto := newProtocol(pid, dag, randomSource, dialer, listener, timeout, fallback, requests, log)
+	proto := newProtocol(pid, dag, randomSource, requests, dialer, listener, callback, timeout, fallback, log)
 	return &server{
 			requests: requests,
 			outPool:  sync.NewPool(uint(mcOutWPSize*dag.NProc()), proto.Out),
 			inPool:   sync.NewPool(uint(mcInWPSize*dag.NProc()), proto.In),
-		}, func(unit gomel.Unit) {
-			buffer := &bytes.Buffer{}
-			encoder := custom.NewEncoder(buffer)
-			err := encoder.EncodeUnit(unit)
-			if err != nil {
-				return
-			}
-			encUnit := buffer.Bytes()[:]
-			for _, i := range rand.Perm(dag.NProc()) {
-				if i == int(pid) {
-					continue
+		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
+			if err == nil {
+				buffer := &bytes.Buffer{}
+				encoder := custom.NewEncoder(buffer)
+				err := encoder.EncodeUnit(unit)
+				if err != nil {
+					return
 				}
-				requests <- request{encUnit, unit.Height(), uint16(i)}
+				encUnit := buffer.Bytes()[:]
+				for _, i := range rand.Perm(dag.NProc()) {
+					if i == int(pid) {
+						continue
+					}
+					requests <- request{encUnit, unit.Height(), uint16(i)}
+				}
 			}
 		}
 }
