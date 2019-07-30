@@ -12,7 +12,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
@@ -31,8 +30,6 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
 	orderedUnits := make(chan []gomel.Unit, 5)
-	// txChan is a channel shared between tx_generator and creator
-	txChan := make(chan []byte, 10)
 
 	dag := growing.NewDag(config.Dag)
 	rs := beacon.New(config.Create.Pid)
@@ -46,11 +43,7 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	if err != nil {
 		return
 	}
-	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(requestMulticast, primeAlert), txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
-	if err != nil {
-		return
-	}
-	generateService, err := generate.NewService(dag, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
+	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(requestMulticast, primeAlert), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return
 	}
@@ -58,7 +51,7 @@ func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	if err != nil {
 		return
 	}
-	services := []process.Service{createService, orderService, generateService, memlogService, syncService}
+	services := []process.Service{createService, orderService, memlogService, syncService}
 
 	err = startAll(services)
 	if err != nil {
