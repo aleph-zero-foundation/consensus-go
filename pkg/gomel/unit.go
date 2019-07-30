@@ -15,11 +15,74 @@ type Unit interface {
 	Below(Unit) bool
 	// Above is a counterpart to Below.
 	Above(Unit) bool
-	// HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
-	// i.e. it is above two units created by creator that share a predecessor.
-	HasForkingEvidence(creator int) bool
 	// Floor returns a collection of units containing, for each process, all maximal units created by that process below the unit.
 	Floor() [][]Unit
+}
+
+// CombineParentsFloorsPerProc combines floors of provided parents just for a given creator.
+// The result will be appended to the 'out' parameter.
+func CombineParentsFloorsPerProc(parents []Unit, pid int, out *[]Unit) {
+
+	startIx := len(*out)
+
+	for _, parent := range parents {
+
+		for _, w := range parent.Floor()[pid] {
+			found, ri := false, -1
+			for ix, v := range (*out)[startIx:] {
+
+				if w.Above(v) {
+					found = true
+					ri = ix
+					// we can now break out of the loop since if we would find any other index for storing `w` it would be a
+					// proof of self-forking
+					break
+				}
+
+				if w.Below(v) {
+					found = true
+					// we can now break out of the loop since if `w` would be above some other index it would contradicts
+					// the assumption that elements of `floors` (narrowed to some index) are not comparable
+					break
+				}
+
+			}
+			if !found {
+				*out = append(*out, w)
+			} else if ri >= 0 {
+				(*out)[startIx+ri] = w
+			}
+		}
+	}
+}
+
+// HasSelfForkingEvidence returns true iff given set of parents proves that the creator made a fork.
+func HasSelfForkingEvidence(parents []Unit, creator int) bool {
+	if len(parents) == 0 {
+		return false
+	}
+	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
+	// check whether collection of these maximal units has a single maximal element
+	var storage [1]Unit
+	combinedFloor := storage[:0]
+	CombineParentsFloorsPerProc(parents, creator, &combinedFloor)
+	if len(combinedFloor) > 1 {
+		return true
+	}
+	// check if some other parent has an evidence of a unit made by 'creator' that is above our self-predecessor
+	return *parents[0].Hash() != *combinedFloor[0].Hash()
+}
+
+// HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
+// i.e. it is above two units created by creator that share a predecessor.
+func HasForkingEvidence(u Unit, creator int) bool {
+	if Dealing(u) {
+		return false
+	}
+	if creator != u.Creator() {
+		return len(u.Floor()[creator]) > 1
+	}
+	return HasSelfForkingEvidence(u.Parents(), creator)
 }
 
 // Predecessor of a unit is one of its parents, the one created by the same process as the given unit.

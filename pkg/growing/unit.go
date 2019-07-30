@@ -70,25 +70,6 @@ func (u *unit) Level() int {
 	return u.level
 }
 
-func (u *unit) HasForkingEvidence(creator int) bool {
-	if gomel.Dealing(u) {
-		return false
-	}
-	if creator != u.creator {
-		return len(u.floor[creator]) > 1
-	}
-	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
-	// check whether collection of these maximal units has a single maximal element
-	var storage [1]gomel.Unit
-	combinedFloor := storage[:0]
-	CombineParentsFloorsPerProc(u.parents, creator, &combinedFloor)
-	if len(combinedFloor) > 1 {
-		return true
-	}
-	// check if some other parent has an evidence of a unit made by 'creator' that is above our self-predecessor
-	return *u.parents[0].Hash() != *combinedFloor[0].Hash()
-}
-
 func (u *unit) initialize(dag *Dag) {
 	u.computeHeight()
 	u.computeFloor(dag.nProcesses)
@@ -140,7 +121,7 @@ func (u *unit) computeFloor(nProcesses int) {
 			floors = append(floors, u)
 			continue
 		}
-		CombineParentsFloorsPerProc(u.parents, pid, &floors)
+		gomel.CombineParentsFloorsPerProc(u.parents, pid, &floors)
 	}
 
 	if len(floors) != cap(floors) {
@@ -156,43 +137,6 @@ func (u *unit) computeFloor(nProcesses int) {
 		}
 		u.floor[pid] = floors[lastIx:ix]
 		lastIx = ix
-	}
-}
-
-// CombineParentsFloorsPerProc combines floors of provided parents just for a given creator.
-// The result will be appended to the 'out' parameter.
-func CombineParentsFloorsPerProc(parents []gomel.Unit, pid int, out *[]gomel.Unit) {
-
-	startIx := len(*out)
-
-	for _, parent := range parents {
-
-		for _, w := range parent.Floor()[pid] {
-			found, ri := false, -1
-			for ix, v := range (*out)[startIx:] {
-
-				if w.Above(v) {
-					found = true
-					ri = ix
-					// we can now break out of the loop since if we would find any other index for storing `w` it would be a
-					// proof of self-forking
-					break
-				}
-
-				if w.Below(v) {
-					found = true
-					// we can now break out of the loop since if `w` would be above some other index it would contradicts
-					// the assumption that elements of `floors` (narrowed to some index) are not comparable
-					break
-				}
-
-			}
-			if !found {
-				*out = append(*out, w)
-			} else if ri >= 0 {
-				(*out)[startIx+ri] = w
-			}
-		}
 	}
 }
 
