@@ -141,7 +141,7 @@ func main() {
 	}
 
 	var dag gomel.Dag
-	dag, err = run.Process(processConfig, log, run.UrnSetup)
+	dag, err = run.Process(processConfig, log, log, run.UrnSetup)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
