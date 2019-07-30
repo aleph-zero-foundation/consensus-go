@@ -1,6 +1,8 @@
 '''Helper functions for shell'''
 
+import json
 import os
+
 from pathlib import Path
 from subprocess import call
 from glob import glob
@@ -205,40 +207,30 @@ def read_aws_keys():
         return access_key_id, secret_access_key
 
 
-def generate_keys(ip_list, port):
+def generate_keys(ip_list):
     ''' Generate signing keys for the committee.'''
     n_processes = len(ip_list)
 
     os.chdir('data/')
+    with open('config.json', 'r') as f:
+        n_ports = len(json.load(f)['Sync'])
     keys_path = glob('*.keys')
     pubs = None
-    if len(keys_path) == n_processes:
-        print('reusing keys')
-        # there are enough keys, we need only to update ips
-        for i, ip in enumerate(ip_list):
-            with open(f'{i}.keys', 'r') as f:
-                priv, _ = f.readline().split()
-                if pubs is None:
-                    pubs = []
-                    for line in f:
-                        pub, _ = line.split()
-                        pubs.append(pub)
-            with open(f'{i}.keys', 'w') as f:
-                f.write(f'{priv} {ip}:{port}\n')
-                for pub, ip in zip(pubs, ip_list):
-                    f.write(f'{pub} {ip}:{port}\n')
-    else:
-        print('removing old keys')
-        for kp in keys_path:
-            os.remove(kp)
-        print('genereting a new set of keys')
-        # we need to generate a new set of keys
-        with open('addresses', 'w') as f:
-            for ip in ip_list:
-                f.write(f'{ip}:{port}\n')
+    print('removing old keys')
+    for kp in keys_path:
+        os.remove(kp)
+    print('genereting a new set of keys')
+    # we need to generate a new set of keys
+    with open('addresses', 'w') as f:
+        for ip in ip_list:
+            for port in range(9, 9+n_ports):
+                if port != 9:
+                    f.write(' ')
+                f.write(f'{ip}:{port*1000}')
+            f.write('\n')
 
-        cmd = f'go run ../../../cmd/gomel-keys/main.go {n_processes} addresses'
-        call(cmd.split())
+    cmd = f'go run ../../../cmd/gomel-keys/main.go {n_processes} addresses'
+    call(cmd.split())
 
     os.chdir('..')
 

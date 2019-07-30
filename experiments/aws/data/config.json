@@ -7,9 +7,21 @@
 
 		"StepSize": 0.0,
 
-		"NInSync": 20,
-
-		"NOutSync": 15,
+        "Sync": [{
+            "Type": "fetch",
+            "Params": {
+                "nIn": 2,
+                "nOut": 1,
+                "Timeout": 2},
+            "Fallback": "fetch"
+        }, {
+            "Type": "multicast",
+            "Params": {
+                "McType": 0,
+                "fallback": 1,
+                "Timeout": 2},
+            "Fallback": "fetch"
+        }],
 
 		"Txpu": 1,
 
