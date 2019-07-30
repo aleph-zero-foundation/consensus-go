@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -56,9 +57,9 @@ func getRequests(nProc int, myDagInfo dagInfo, conn network.Connection) (request
 }
 
 // addUnits adds the provided units to the dag, assuming they are divided into antichains as described in toLayers
-func (p *protocol) addUnits(preunits [][]gomel.Preunit) error {
+func (p *protocol) addUnits(preunits [][]gomel.Preunit, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		err := add.Antichain(p.dag, p.randomSource, pus, p.callback, sync.NopFallback(), p.log)
+		err := add.Antichain(p.dag, p.randomSource, pus, p.callback, sync.NopFallback(), log)
 		if err != nil {
 			return err
 		}
@@ -171,12 +172,12 @@ func (p *protocol) inExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived)
+	err = p.addUnits(theirPreunitsReceived, log)
 	if err != nil {
 		log.Error().Str("where", "gossip.In.addUnits").Msg(err.Error())
 		return
 	}
-	err = p.addUnits(theirFreshPreunitsReceived)
+	err = p.addUnits(theirFreshPreunitsReceived, log)
 	if err != nil {
 		log.Error().Str("where", "gossip.In.addUnits fresh").Msg(err.Error())
 		return
@@ -284,7 +285,7 @@ func (p *protocol) outExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived)
+	err = p.addUnits(theirPreunitsReceived, log)
 	if err != nil {
 		log.Error().Str("where", "gossip.Out.addUnits").Msg(err.Error())
 		return
