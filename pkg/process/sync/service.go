@@ -17,14 +17,15 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 )
 
-// T0DO write an explanation for the required order of launching servers and logic behind instantiating fbks.
+// Note: it is required that every server type that is used as a fallback is initialized
+// before a server type that uses it as a fallback server.
 
 type service struct {
 	servers []sync.Server
 	log     zerolog.Logger
 }
 
-// checks if all fallbacks have their corresponding configurations
+// Checks if all fallbacks have their corresponding configurations.
 func valid(configs []*process.Sync) error {
 	if len(configs) == 0 {
 		return gomel.NewConfigError("empty sync configuration")
@@ -32,7 +33,7 @@ func valid(configs []*process.Sync) error {
 	for i, c := range configs {
 		if c.Fallback != "" {
 			f := c.Fallback
-			if f == "retrying"{
+			if f == "retrying" {
 				switch c.Params["fallback"] {
 				case 0:
 					f = "gossip"
@@ -43,9 +44,9 @@ func valid(configs []*process.Sync) error {
 				}
 			}
 			found := false
-            if f == "fetch" {
-                found = c.Type == "fetch"
-            }
+			if f == "fetch" {
+				found = c.Type == "fetch"
+			}
 			for _, cPrev := range configs[:i] {
 				if cPrev.Type == f {
 					found = true
@@ -60,7 +61,7 @@ func valid(configs []*process.Sync) error {
 	return nil
 }
 
-//
+// Builds fallback for process.Sync configuration
 func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.RandomSource, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
 	var fbk sync.Fallback
 	switch c.Fallback {
@@ -96,7 +97,6 @@ func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.
 	return fbk, nil, nil, nil
 }
 
-//
 func isFallback(name string, configs []*process.Sync) int {
 	for i, c := range configs {
 		if c.Fallback == name {
@@ -139,9 +139,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 				return nil, nil, err
 			}
 			fbk = fallbacks[c.Fallback]
-            if fbk == nil {
-                fbk = sync.Noop()
-            }
+			if fbk == nil {
+				fbk = sync.Noop()
+			}
 			server, callback = multicast.NewServer(pid, dag, randomSource, dialer, listener, t, fbk, log)
 		case "gossip":
 			log = log.With().Int(logging.Service, logging.GossipService).Logger()
@@ -153,7 +153,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 
 			var peerSource gossip.PeerSource
 			if id := isFallback("fetch", configs[i+1:]); id != -1 {
-				fbk, reqChan, _,  err := getFallback(configs[i+1+id], s, dag, randomSource, log)
+				fbk, reqChan, _, err := getFallback(configs[i+1+id], s, dag, randomSource, log)
 				fallbacks["gossip"] = fbk
 				if err != nil {
 					return nil, nil, err

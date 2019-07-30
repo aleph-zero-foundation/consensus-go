@@ -1,7 +1,7 @@
 package config
 
 import (
-    "time"
+	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/process"

@@ -110,10 +110,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid configuration file \"%s\", because: %s.\n", options.configFilename, err.Error())
 		return
 	}
-    if len(conf.Sync) != len(committee.Addresses) {
-        fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync), len(committee.Addresses))
-        return
-    }
+	if len(conf.Sync) != len(committee.Addresses) {
+		fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync), len(committee.Addresses))
+		return
+	}
 
 	log, err := logging.NewLogger(options.logFilename, conf.LogLevel, conf.LogBuffer, conf.LogHuman)
 	if err != nil {

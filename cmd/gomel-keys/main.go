@@ -50,14 +50,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number> [<addresses_file>].")
 		return
 	}
-    // addresses for gossip and multicast
+	// addresses for gossip and multicast
 	addresses := make([][]string, num)
 	setupAddresses := make([][]string, num)
 	if len(os.Args) == 2 {
 		for i := 0; i < num; i++ {
-            // gossip
+			// gossip
 			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(9000+i))
-            // multicast
+			// multicast
 			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(10000+i))
             // gossip
 			setupAddresses[i] = append(setupAddresses[i], "127.0.0.1:"+strconv.Itoa(11000+i))
@@ -72,10 +72,10 @@ func main() {
 		}
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
-		for pid:=0; pid < num && scanner.Scan(); pid++ {
+		for pid := 0; pid < num && scanner.Scan(); pid++ {
 			for _, addr := range strings.Split(scanner.Text(), " ") {
-                addresses[pid] = append(addresses[pid], addr)
-            }
+				addresses[pid] = append(addresses[pid], addr)
+			}
 		}
 	}
 	processes := []proc{}
@@ -95,7 +95,7 @@ func main() {
         }
 	}
 	for pid, p := range processes {
-        member := &config.Member{pid, p.privateKey}
+		member := &config.Member{pid, p.privateKey}
 		f, err := os.Create(strconv.Itoa(pid) + ".pk")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
@@ -109,13 +109,13 @@ func main() {
 		}
 
 	}
-    f, err := os.Create("keys_addrs")
+	f, err := os.Create("keys_addrs")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
 	defer f.Close()
-		err = config.StoreCommittee(f, committee)
+	err = config.StoreCommittee(f, committee)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return
