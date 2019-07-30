@@ -21,6 +21,7 @@ import (
 // before a server type that uses it as a fallback server.
 
 type service struct {
+	mcId    int
 	servers []sync.Server
 	log     zerolog.Logger
 }
@@ -127,6 +128,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		t := time.Duration(float64(c.Params["Timeout"])) * time.Second
 		switch c.Type {
 		case "multicast":
+			s.mcId = i
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			var err error
 			switch c.Params["McType"] {
@@ -197,13 +199,15 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
-	for _, server := range s.servers {
-		server.StopOut()
+	for i := len(s.servers) - 1; i >= 0; i-- {
+		s.servers[i].StopOut()
 	}
+	s.servers[s.mcId].StopIn()
+
 	// let other processes sync with us some more
 	time.Sleep(5 * time.Second)
-	for _, server := range s.servers {
-		server.StopIn()
+	for i := len(s.servers) - 1; i >= 0; i-- {
+		s.servers[i].StopIn()
 	}
 	s.log.Info().Msg(logging.ServiceStopped)
 }

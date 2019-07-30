@@ -33,7 +33,7 @@
 
 		"AddShares": 0,
 
-		"LogLevel": 1,
+		"LogLevel": 0,
 
 		"LogBuffer": 100000,
 
