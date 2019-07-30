@@ -1,0 +1,42 @@
+{
+		"NParents": 2,
+
+		"PrimeOnly": true,
+
+		"CreateDelay": 0.05,
+
+		"StepSize": 0.0,
+
+        "Sync": [{
+            "Type": "gossip",
+            "Params": {
+                "nIn": 2,
+                "nOut": 1,
+                "Timeout": 2},
+            "Fallback": ""
+        }, {
+            "Type": "multicast",
+            "Params": {
+                "McType": 0,
+                "Timeout": 2},
+            "Fallback": "gossip"
+        } ],
+
+		"Txpu": 1,
+
+		"LevelLimit": 50,
+
+		"VotingLevel": 3,
+
+		"PiDeltaLevel": 12,
+
+		"AddShares": 0,
+
+		"LogLevel": 1,
+
+		"LogBuffer": 100000,
+
+		"LogMemInterval": 10,
+
+		"LogHuman": true
+}
