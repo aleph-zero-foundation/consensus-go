@@ -113,6 +113,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Creating log file \"%s\" failed because: %s.\n", options.logFilename, err.Error())
 		return
 	}
+	setupLog, err := logging.NewLogger("setup_"+options.logFilename, conf.LogLevel, conf.LogBuffer, conf.LogHuman)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Creating log file \"%s\" failed because: %s.\n", "setup_"+options.logFilename, err.Error())
+		return
+	}
 
 	processConfig := conf.GenerateConfig(committee)
 
@@ -141,7 +146,7 @@ func main() {
 	}
 
 	var dag gomel.Dag
-	dag, err = run.Process(processConfig, log, log, run.UrnSetup)
+	dag, err = run.Process(processConfig, setupLog, log, run.UrnSetup)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
