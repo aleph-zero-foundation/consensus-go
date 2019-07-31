@@ -22,3 +22,9 @@ driver.add_pipeline('Gossip stats', [
     Filter(Service, GossipService),
     GossipStats(),
 ])
+
+driver.add_pipeline('Multicast stats', [
+    Filter(Service, MCService),
+    MulticastStats(),
+    Histogram('number of missing parents', UnknownParents, lambda entry: entry[Size]),
+])

@@ -28,7 +28,13 @@ driver.add_pipeline('Latency', [
 driver.add_pipeline('Gossip stats', [
     Filter(Service, GossipService),
     GossipStats(),
-    NetworkTraffic(SKIP)
 ])
 
+driver.add_pipeline('Multicast stats', [
+    Filter(Service, MCService),
+    MulticastStats(),
+    Histogram('number of missing parents', UnknownParents, lambda entry: entry[Size]),
+])
+
+driver.add_pipeline('Network traffic', NetworkTraffic())
 driver.add_pipeline('Memory', MemoryStats(unit = 'kB'))

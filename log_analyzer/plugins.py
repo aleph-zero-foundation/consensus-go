@@ -115,7 +115,7 @@ class Counter(Plugin):
     """
     Plugin gathering basis statistic (min, max, med, avg) of some numeric value.
     'value' should be a function taking log entry (dict) and returning a value.
-    'finalize()' method can be overriden. After it self.data should be a list of numbers.
+    'finalize()' method can be overriden. After 'finalize()' self.data should be a list of numbers.
     """
     multistats = multimean
     def __init__(self, name, events, value, skip_first=0):
@@ -304,10 +304,49 @@ class CreateCounter(Plugin):
         return ret
 
 
+class MulticastStats(Plugin):
+    """Plugin gathering statistics of units received via multicast."""
+    name = 'Incoming multicast events'
+    def __init__(self):
+        self.succ = 0
+        self.miss = 0
+        self.dupl = 0
+        self.err = 0
+
+    def process(self, entry):
+        if entry[Event] == AddedBCUnit:
+            self.succ += 1
+        elif entry[Event] == UnknownParents:
+            self.miss += 1
+        elif entry[Event] == DuplicatedUnit:
+            self.dupl += 1
+        elif entry[Level] == 3 and 'multicast.In' in entry['where']:
+            self.err += 1
+        return entry
+
+    def get_data(self):
+        return self.succ, self.miss, self.dupl
+
+    @staticmethod
+    def multistats(datasets):
+        ret = '    PID     Success    Failed    Duplicated\n'
+        for name in sorted(datasets.keys()):
+            s,m,d = datasets[name]
+            ret += f'     {name} {s:10} {m:10} {d:10}\n'
+        return ret
+
+    def report(self):
+        ret  =  '    Units added:               %5d\n'%self.succ
+        ret +=  '    Units with missing parents:%5d\n'%self.miss
+        ret +=  '    Duplicates received:       %5d\n'%self.dupl
+        ret +=  '    Interrupted by error:      %5d\n'%self.err
+        ret +=  '    Total:                     %5d\n'%(self.succ+self.miss+self.dupl+self.err)
+        return ret
+
+
 class GossipStats(Plugin):
     """Plugin gathering detailed statistics of syncs during gossip."""
     name = 'Gossip stats'
-    multistats = multimean
     def __init__(self, ignore_empty=True):
         self.ig = ignore_empty
         self.inc = {}
@@ -357,6 +396,7 @@ class GossipStats(Plugin):
         self.fsent = []
         self.frecv = []
         self.dupl = []
+        self.totaldupl = 0
         self.addexc, self.failed, self.unfinished = 0,0,0
         for d in values:
             if d['fail']:
@@ -371,6 +411,7 @@ class GossipStats(Plugin):
                 self.fsent.append(d['fsent'])
                 self.frecv.append(d['frecv'])
                 self.dupl.append((d['dupl']/d['recv'] if d['recv'] > 0 else 0, d['recv']))
+                self.totaldupl += d['dupl']
             if d['addexc']:
                 self.addexc += 1
         self.times.sort()
@@ -381,7 +422,17 @@ class GossipStats(Plugin):
         self.dupl.sort()
 
     def get_data(self):
-        return self.times
+        return self.times, self.totaldupl, sum(self.recv) + sum(self.frecv)
+
+    @staticmethod
+    def multistats(datasets):
+        ret = '    PID     Received    Duplicated\n'
+        for name in sorted(datasets.keys()):
+            _,d,r = datasets[name]
+            ret += f'     {name} {r:10} {d:10}\n'
+        ret += '\n  Duration [ms]\n'
+        ret += multimean({k:datasets[k][0] for k in datasets})
+        return ret
 
     def report(self):
         ret =   '  (ignoring syncs that exchanged nothing)\n' if self.ig else ''
