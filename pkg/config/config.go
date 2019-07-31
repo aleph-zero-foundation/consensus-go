@@ -70,6 +70,9 @@ type Configuration struct {
 
 	// The level from which we start ordering
 	OrderStartLevel int
+
+	// The number of default pids used before using the CRP
+	CRPFixedPrefix int
 }
 
 // NewDefaultConfiguration returns default set of parameters.
@@ -122,6 +125,8 @@ func NewDefaultConfiguration() Configuration {
 		LogHuman: false,
 
 		OrderStartLevel: 0,
+
+		CRPFixedPrefix: 5,
 	}
 	result.AddShares = result.PiDeltaLevel - 1
 	return result

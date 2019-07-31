@@ -49,6 +49,7 @@ type Order struct {
 	VotingLevel     int
 	PiDeltaLevel    int
 	OrderStartLevel int
+	CRPFixedPrefix  int
 }
 
 // TxValidate represents a complete configuration needed for a transaction validation service to start.

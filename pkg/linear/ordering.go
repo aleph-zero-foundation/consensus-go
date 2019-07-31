@@ -19,6 +19,7 @@ type ordering struct {
 	votingLevel         int
 	piDeltaLevel        int
 	orderStartLevel     int
+	crpFixedPrefix      int
 	proofMemo           map[[2]gomel.Hash]bool
 	voteMemo            map[[2]gomel.Hash]vote
 	piMemo              map[[2]gomel.Hash]vote
@@ -28,7 +29,7 @@ type ordering struct {
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, log zerolog.Logger) gomel.LinearOrdering {
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 	return &ordering{
 		dag:                 dag,
 		randomSource:        rs,
@@ -38,6 +39,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaL
 		votingLevel:         votingLevel,
 		piDeltaLevel:        piDeltaLevel,
 		orderStartLevel:     orderStartLevel,
+		crpFixedPrefix:      crpFixedPrefix,
 		proofMemo:           make(map[[2]gomel.Hash]bool),
 		voteMemo:            make(map[[2]gomel.Hash]vote),
 		piMemo:              make(map[[2]gomel.Hash]vote),
@@ -61,6 +63,18 @@ func dagMaxLevel(dag gomel.Dag) int {
 	return maxLevel
 }
 
+// defaultPids returns a fixed pseudorandom slice of pids to be used on a given level
+// before using the random permutation.
+func (o *ordering) defaultPids(level int) []int {
+	// One can use more sophisticated strategy of choosing default pids
+	// for example based on previous timing units
+	result := make([]int, o.crpFixedPrefix)
+	for i := 0; i < o.crpFixedPrefix; i++ {
+		result[i] = (level + i) % o.dag.NProc()
+	}
+	return result
+}
+
 // DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
 func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	// If we have already decided we can read the answer from memory
@@ -70,17 +84,42 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	if dagMaxLevel(o.dag) < level+o.votingLevel {
 		return nil
 	}
-	for _, pid := range o.randomSource.GetCRP(level) {
-		for _, uc := range o.dag.PrimeUnits(level).Get(pid) {
+
+	// processPopularUnit returns popular unit of the given process and a flag
+	// indicating if all the units created by the given process are unpopular
+	processPopularUnit := func(pid int) (gomel.Unit, bool) {
+		units := o.dag.PrimeUnits(level).Get(pid)
+		sort.Slice(units, func(i, j int) bool {
+			return units[i].Hash().LessThan(units[j].Hash())
+		})
+		for _, uc := range units {
 			decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
 			if decision == popular {
 				o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 				o.timingUnits.pushBack(uc)
-				return uc
+				return uc, true
 			}
 			if decision == undecided {
-				return nil
+				return nil, true
 			}
+		}
+		return nil, false
+	}
+
+	defaultPids := o.defaultPids(level)
+	isDefaultPid := make(map[int]bool)
+	for _, pid := range defaultPids {
+		if u, ok := processPopularUnit(pid); ok {
+			return u
+		}
+		isDefaultPid[pid] = true
+	}
+	for _, pid := range o.randomSource.GetCRP(level) {
+		if isDefaultPid[pid] {
+			continue
+		}
+		if u, ok := processPopularUnit(pid); ok {
+			return u
 		}
 	}
 	return nil
