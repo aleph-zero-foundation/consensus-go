@@ -30,7 +30,7 @@ type protocol struct {
 	log          zerolog.Logger
 }
 
-// newProtocol returns a new fetching protocol.
+// NewProtocol returns a new fetching protocol.
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
 func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback gsync.Fallback, log zerolog.Logger) gsync.Protocol {

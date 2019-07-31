@@ -63,7 +63,7 @@ func LoadMember(r io.Reader) (*Member, error) {
 }
 
 func parseLine(line string) (string, []string, []string, error) {
-    setup, main := strings.Split(line, "|")
+	setup, main := strings.Split(line, "|")
 	elems := strings.Split(setup, " ")
 	if len(elems) < 2 {
 		return "", nil, errors.New(malformedData)
@@ -109,11 +109,11 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		return nil, errors.New(malformedData)
 	}
 	return &Committee{
-		Pid:              pid,
-		PrivateKey:       privateKey,
-		PublicKeys:       publicKeys,
-		Addresses:        remoteAddresses,
-		SetupAddresses:   sRemoteAddresses,
+		Pid:            pid,
+		PrivateKey:     privateKey,
+		PublicKeys:     publicKeys,
+		Addresses:      remoteAddresses,
+		SetupAddresses: sRemoteAddresses,
 	}, nil
 }
 
@@ -160,12 +160,12 @@ func StoreCommittee(w io.Writer, c *Committee) error {
 			return err
 		}
 		for j := range c.Addresses {
-            if j != 0 {
-			    _, err = io.WriteString(w, " ")
-			    if err != nil {
-			    	return err
-			    }
-            }
+			if j != 0 {
+				_, err = io.WriteString(w, " ")
+				if err != nil {
+					return err
+				}
+			}
 			_, err = io.WriteString(w, c.Addresses[j][i])
 			if err != nil {
 				return err

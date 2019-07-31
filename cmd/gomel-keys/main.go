@@ -13,19 +13,19 @@ import (
 )
 
 type proc struct {
-	publicKey  gomel.PublicKey
-	privateKey gomel.PrivateKey
-	localAddrs    []string
+	publicKey       gomel.PublicKey
+	privateKey      gomel.PrivateKey
+	localAddrs      []string
 	setupLocalAddrs []string
 }
 
 func makeProcess(localAddrs []string, setupLocalAddrs []string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
 	return proc{
-		publicKey:  pubKey,
-		privateKey: privKey,
-		localAddrs:    localAddrs,
-		setupLocalAddrs:    setupLocalAddrs,
+		publicKey:       pubKey,
+		privateKey:      privKey,
+		localAddrs:      localAddrs,
+		setupLocalAddrs: setupLocalAddrs,
 	}
 }
 
@@ -59,9 +59,9 @@ func main() {
 			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(9000+i))
 			// multicast
 			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(10000+i))
-            // gossip
+			// gossip
 			setupAddresses[i] = append(setupAddresses[i], "127.0.0.1:"+strconv.Itoa(11000+i))
-            // multicast
+			// multicast
 			setupAddresses[i] = append(setupAddresses[i], "127.0.0.1:"+strconv.Itoa(12000+i))
 		}
 	} else {
@@ -83,16 +83,16 @@ func main() {
 		processes = append(processes, makeProcess(addresses[i], setupAddress[i]))
 	}
 	committee := &config.Committee{}
-    committee.Addresses = make([][]string, len(addresses[0]))
-    committee.SetupAddresses = make([][]string, len(SetupAddresses[0]))
+	committee.Addresses = make([][]string, len(addresses[0]))
+	committee.SetupAddresses = make([][]string, len(SetupAddresses[0]))
 	for _, p := range processes {
 		committee.PublicKeys = append(committee.PublicKeys, p.publicKey)
-        for i, addr := range p.localAddrs{
-		    committee.Addresses[i] = append(committee.Addresses[i], addr)
-        }
-        for i, addr := range p.setupLocalAddrs{
-		    committee.SetupAddresses[i] = append(committee.SetupAddresses[i], addr)
-        }
+		for i, addr := range p.localAddrs {
+			committee.Addresses[i] = append(committee.Addresses[i], addr)
+		}
+		for i, addr := range p.setupLocalAddrs {
+			committee.SetupAddresses[i] = append(committee.SetupAddresses[i], addr)
+		}
 	}
 	for pid, p := range processes {
 		member := &config.Member{pid, p.privateKey}

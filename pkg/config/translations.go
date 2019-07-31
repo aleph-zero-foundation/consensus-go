@@ -82,9 +82,9 @@ func generateOrderSetupConfig(conf *Configuration, c *Committee) *process.Order 
 
 func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *process.Order {
 	return &process.Order{
-		Pid:          m.Pid,
-		VotingLevel:  int(conf.VotingLevel),
-		PiDeltaLevel: int(conf.PiDeltaLevel),
+		Pid:             m.Pid,
+		VotingLevel:     int(conf.VotingLevel),
+		PiDeltaLevel:    int(conf.PiDeltaLevel),
 		OrderStartLevel: int(conf.OrderStartLevel),
 	}
 }
@@ -103,15 +103,15 @@ func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) process.Config {
 	return process.Config{
-		Dag:        generateDagConfig(c),
-		Sync:       generateSyncConfig(conf, m, c),
+		Dag:         generateDagConfig(c),
+		Sync:        generateSyncConfig(conf, m, c),
 		SyncSetup:   generateSyncSetupConfig(conf, m, c),
-		Create:     generateCreateConfig(conf, m, c),
+		Create:      generateCreateConfig(conf, m, c),
 		CreateSetup: generateCreateSetupConfig(conf, m, c),
-		Order:      generateOrderConfig(conf, m, c),
+		Order:       generateOrderConfig(conf, m, c),
 		OrderSetup:  generateOrderSetupConfig(conf, m, c),
-		TxValidate: generateTxValidateConfig(),
-		TxGenerate: generateTxGenerateConfig(conf),
-		MemLog:     conf.LogMemInterval,
+		TxValidate:  generateTxValidateConfig(),
+		TxGenerate:  generateTxGenerateConfig(conf),
+		MemLog:      conf.LogMemInterval,
 	}
 }
