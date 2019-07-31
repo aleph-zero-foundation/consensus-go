@@ -1,9 +1,11 @@
 package linear
 
 import (
+	"encoding/binary"
 	"sort"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/crypto/sha3"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -63,16 +65,57 @@ func dagMaxLevel(dag gomel.Dag) int {
 	return maxLevel
 }
 
-// defaultPids returns a fixed pseudorandom slice of pids to be used on a given level
+// crpPrefix returns a pseudorandom slice of pids to be used on a given level
 // before using the random permutation.
-func (o *ordering) defaultPids(level int) []int {
-	// One can use more sophisticated strategy of choosing default pids
-	// for example based on previous timing units
-	result := make([]int, o.crpFixedPrefix)
-	for i := 0; i < o.crpFixedPrefix; i++ {
-		result[i] = (level + i) % o.dag.NProc()
+// It can be called when the timing unit for level - 1 has already been chosen.
+func (o *ordering) crpPrefix(level int) []int {
+	nProc := o.dag.NProc()
+	permutation := make([]int, nProc)
+	priority := make([][]byte, nProc)
+
+	size := o.crpFixedPrefix
+	if size > nProc {
+		size = nProc
 	}
-	return result
+
+	for pid := 0; pid < nProc; pid++ {
+		permutation[pid] = pid
+	}
+
+	if level == o.orderStartLevel {
+		return permutation[:size]
+	}
+	tu := o.timingUnits.get(level - 1)
+
+	for pid := 0; pid < nProc; pid++ {
+		priority[pid] = make([]byte, 32)
+
+		hash := make([]byte, 36)
+		copy(hash, (*tu.Hash())[:])
+		binary.LittleEndian.PutUint32(hash[32:], uint32(pid))
+
+		sha3.ShakeSum128(priority[pid], hash)
+	}
+
+	sort.Slice(permutation, func(i, j int) bool {
+		if priority[permutation[j]] == nil {
+			return true
+		}
+		if priority[permutation[i]] == nil {
+			return false
+		}
+		for x := 0; x < 32; x++ {
+			if priority[permutation[i]][x] < priority[permutation[j]][x] {
+				return true
+			}
+			if priority[permutation[i]][x] > priority[permutation[j]][x] {
+				return false
+			}
+		}
+		panic("hash collision")
+	})
+
+	return permutation[:size]
 }
 
 // DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
@@ -80,6 +123,10 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	// If we have already decided we can read the answer from memory
 	if o.timingUnits.length() > level {
 		return o.timingUnits.get(level)
+	}
+	// We should decide on previous levels first
+	if o.timingUnits.length() < level {
+		return nil
 	}
 	if dagMaxLevel(o.dag) < level+o.votingLevel {
 		return nil
@@ -106,16 +153,16 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		return nil, false
 	}
 
-	defaultPids := o.defaultPids(level)
-	isDefaultPid := make(map[int]bool)
-	for _, pid := range defaultPids {
+	crpPrefix := o.crpPrefix(level)
+	inPrefix := make(map[int]bool)
+	for _, pid := range crpPrefix {
 		if u, ok := processPopularUnit(pid); ok {
 			return u
 		}
-		isDefaultPid[pid] = true
+		inPrefix[pid] = true
 	}
 	for _, pid := range o.randomSource.GetCRP(level) {
-		if isDefaultPid[pid] {
+		if inPrefix[pid] {
 			continue
 		}
 		if u, ok := processPopularUnit(pid); ok {
