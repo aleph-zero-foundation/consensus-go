@@ -7,4 +7,5 @@
 # python
 *.pyc
 # keys
-*.keys
+*.pk
+*.ka

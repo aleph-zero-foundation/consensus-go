@@ -1,40 +1,39 @@
 {
-		"NParents": 8,
+	"NParents": 8,
 
-		"PrimeOnly": true,
+	"PrimeOnly": true,
 
-        "CanSkipLevel": true, 
+	"CanSkipLevel": true, 
 
-		"CreateDelay": 0.2,
+	"CreateDelay": 0.2,
 
-		"StepSize": 0.0,
+	"StepSize": 0.0,
 
-        "Sync": [{
-            "Type": "gossip",
-            "Params": {
-                "nIn": 2,
-                "nOut": 1,
-                "Timeout": 2},
-            "Fallback": ""
-        }, {
-            "Type": "fetch",
-            "Params": {
-                "nIn": 2,
-                "nOut": 1,
-                "Timeout": 2},
-            "Fallback": "fetch"
-        }, {
-            "Type": "multicast",
-            "Params": {
-                "McType": 0,
-                "Timeout": 2},
-            "Fallback": "fetch"
-        } ],
+	"Sync": [{
+		"Type": "gossip",
+		"Params": {
+			"nIn": 2,
+			"nOut": 1,
+			"Timeout": 2},
+		"Fallback": ""
+		}, {
+		"Type": "fetch",
+		"Params": {
+			"nIn": 2,
+			"nOut": 1,
+			"Timeout": 2},
+		"Fallback": "fetch"
+		}, {
+		"Type": "multicast",
+		"Params": {
+			"McType": 0,
+			"Timeout": 2},
+		"Fallback": "fetch"
+		}],
 
+		"Setup": "urn",
 
-        "Setup": "urn",
-
-        "SyncSetup": [],
+		"SyncSetup": [],
 
 		"Txpu": 1,
 
@@ -52,7 +51,7 @@
 
 		"LogMemInterval": 10,
 
-		"LogHuman": true,
+		"LogHuman": false,
 
 	    "OrderStartLevel": 0
 }

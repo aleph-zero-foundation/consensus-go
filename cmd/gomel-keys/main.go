@@ -115,7 +115,7 @@ func main() {
 		}
 
 	}
-	f, err := os.Create("keys_addrs")
+	f, err := os.Create("committee.ka")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return

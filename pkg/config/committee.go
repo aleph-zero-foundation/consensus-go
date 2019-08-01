@@ -62,7 +62,7 @@ func LoadMember(r io.Reader) (*Member, error) {
 	}, nil
 }
 
-func parseLine(line string) (string, []string, []string, error) {
+func parseCommitteeLine(line string) (string, []string, []string, error) {
 	s := strings.Split(line, "|")
 	pk, setupAddrs, addrs := s[0], s[1], s[2]
 	if len(pk) == 0 {
@@ -85,7 +85,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 	sRemoteAddresses := [][]string{}
 	remoteAddresses := [][]string{}
 	for scanner.Scan() {
-		pk, setupAddresses, addresses, err := parseLine(scanner.Text())
+		pk, setupAddresses, addresses, err := parseCommitteeLine(scanner.Text())
 		if err != nil {
 			return nil, err
 		}
