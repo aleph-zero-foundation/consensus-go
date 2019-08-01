@@ -12,14 +12,14 @@ import (
 func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs chan Request, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger, nOut, nIn uint) sync.Server {
 	proto := NewProtocol(pid, dag, randomSource, reqs, dialer, listener, callback, timeout, fallback, log)
 	return &server{
-        reqs:    reqs,
+		reqs:    reqs,
 		outPool: sync.NewPool(nOut, proto.Out),
 		inPool:  sync.NewPool(nIn, proto.In),
 	}
 }
 
 type server struct {
-    reqs    chan Request
+	reqs    chan Request
 	outPool *sync.Pool
 	inPool  *sync.Pool
 }
@@ -34,6 +34,6 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-    close(s.reqs)
+	close(s.reqs)
 	s.outPool.Stop()
 }
