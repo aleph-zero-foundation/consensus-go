@@ -3,7 +3,9 @@
 
 		"PrimeOnly": true,
 
-		"CreateDelay": 0.05,
+        "CanSkipLevel": true, 
+
+		"CreateDelay": 0.1,
 
 		"StepSize": 0.0,
 
@@ -29,6 +31,10 @@
             "Fallback": "fetch"
         } ],
 
+        "Setup": "urn",
+
+        "SyncSetup": [],
+
 		"Txpu": 1,
 
 		"LevelLimit": 50,
@@ -45,5 +51,8 @@
 
 		"LogMemInterval": 10,
 
-		"LogHuman": true
+		"LogHuman": true,
+
+	    "OrderStartLevel": 0
+
 }

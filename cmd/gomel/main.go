@@ -110,6 +110,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid configuration file \"%s\", because: %s.\n", options.configFilename, err.Error())
 		return
 	}
+	if len(conf.SyncSetup) != len(committee.SetupAddresses) {
+		fmt.Fprintf(os.Stderr, "Wrong number of setup addresses. Needs %d, got %d", len(conf.SyncSetup), len(committee.SetupAddresses))
+		return
+	}
 	if len(conf.Sync) != len(committee.Addresses) {
 		fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync), len(committee.Addresses))
 		return
@@ -150,7 +154,7 @@ func main() {
 	}
 
 	var dag gomel.Dag
-	dag, err = run.Process(processConfig, setupLog, log, run.UrnSetup)
+	dag, err = run.Process(processConfig, setupLog, log)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}

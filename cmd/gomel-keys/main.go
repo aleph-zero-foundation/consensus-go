@@ -19,13 +19,13 @@ type proc struct {
 	setupLocalAddrs []string
 }
 
-func makeProcess(localAddrs []string, setupLocalAddrs []string) proc {
+func makeProcess(setupLocalAddrs []string, localAddrs []string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
 	return proc{
 		publicKey:       pubKey,
 		privateKey:      privKey,
-		localAddrs:      localAddrs,
 		setupLocalAddrs: setupLocalAddrs,
+		localAddrs:      localAddrs,
 	}
 }
 
@@ -37,32 +37,32 @@ func main() {
 		fmt.Fprintln(os.Stderr, usageMsg)
 		return
 	}
-	num, err := strconv.Atoi(os.Args[1])
+	nProc, err := strconv.Atoi(os.Args[1])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, usageMsg)
 		return
 	}
-	if num < 4 {
+	if nProc < 4 {
 		fmt.Fprintln(os.Stderr, "Cannot have less than 4 processes.")
 		return
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <number> [<addresses_file>].")
+		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <nProcber> [<addresses_file>].")
 		return
 	}
 	// addresses for gossip and multicast
-	addresses := make([][]string, num)
-	setupAddresses := make([][]string, num)
+	setupAddresses := make([][]string, nProc)
+	addresses := make([][]string, nProc)
 	if len(os.Args) == 2 {
-		for i := 0; i < num; i++ {
-			// gossip
-			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(9000+i))
-			// multicast
-			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(10000+i))
+		for i := 0; i < nProc; i++ {
 			// gossip
 			setupAddresses[i] = append(setupAddresses[i], "127.0.0.1:"+strconv.Itoa(11000+i))
 			// multicast
 			setupAddresses[i] = append(setupAddresses[i], "127.0.0.1:"+strconv.Itoa(12000+i))
+			// gossip
+			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(9000+i))
+			// multicast
+			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(10000+i))
 		}
 	} else {
 		f, err := os.Open(os.Args[2])
@@ -72,28 +72,34 @@ func main() {
 		}
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
-		for pid := 0; pid < num && scanner.Scan(); pid++ {
-			for _, addr := range strings.Split(scanner.Text(), " ") {
+		for pid := 0; pid < nProc && scanner.Scan(); pid++ {
+			s := strings.Split(scanner.Text(), "|")
+			setupAddrs, addrs := s[0], s[1]
+			for _, addr := range strings.Split(setupAddrs, " ") {
+				setupAddresses[pid] = append(setupAddresses[pid], addr)
+			}
+			for _, addr := range strings.Split(addrs, " ") {
 				addresses[pid] = append(addresses[pid], addr)
 			}
 		}
 	}
 	processes := []proc{}
-	for i := 0; i < num; i++ {
-		processes = append(processes, makeProcess(addresses[i], setupAddress[i]))
+	for i := 0; i < nProc; i++ {
+		processes = append(processes, makeProcess(setupAddresses[i], addresses[i]))
 	}
 	committee := &config.Committee{}
+	committee.SetupAddresses = make([][]string, len(setupAddresses[0]))
 	committee.Addresses = make([][]string, len(addresses[0]))
-	committee.SetupAddresses = make([][]string, len(SetupAddresses[0]))
 	for _, p := range processes {
 		committee.PublicKeys = append(committee.PublicKeys, p.publicKey)
-		for i, addr := range p.localAddrs {
-			committee.Addresses[i] = append(committee.Addresses[i], addr)
-		}
 		for i, addr := range p.setupLocalAddrs {
 			committee.SetupAddresses[i] = append(committee.SetupAddresses[i], addr)
 		}
+		for i, addr := range p.localAddrs {
+			committee.Addresses[i] = append(committee.Addresses[i], addr)
+		}
 	}
+
 	for pid, p := range processes {
 		member := &config.Member{pid, p.privateKey}
 		f, err := os.Create(strconv.Itoa(pid) + ".pk")

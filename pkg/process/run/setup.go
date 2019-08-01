@@ -16,15 +16,15 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
 
-// UrnSetup just deals an urn. Running a process with this setup
+// urnSetup just deals an urn. Running a process with this setup
 // is equivalent to the version of without setup phase.
-func UrnSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
+func urnSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	rsCh <- urn.New(config.Create.Pid)
 	close(rsCh)
 }
 
-// BeaconSetup is a setup described in the whitepaper
-func BeaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
+// beaconSetup is a setup described in the whitepaper
+func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	defer close(rsCh)
 	dagFinished := make(chan struct{})
 	// orderedUnits is a channel shared between orderer and validator

@@ -93,7 +93,7 @@ func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.
 			return nil, nil, nil, gomel.NewConfigError("fallback param for retrying cannot be empty")
 		}
 	default:
-		fbk = sync.Noop()
+		fbk = sync.NopFallback()
 	}
 	return fbk, nil, nil, nil
 }
@@ -108,7 +108,7 @@ func isFallback(name string, configs []*process.Sync) int {
 }
 
 // NewService creates a new syncing service for the given dag, with the given config.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, attemptTiming chan<- int, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, primeAlert gomel.Callback, log zerolog.Logger) (process.Service, gomel.Callback, error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
@@ -116,7 +116,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 	nProc := uint16(dag.NProc())
 	s := &service{log: log.With().Int(logging.Service, logging.SyncService).Logger()}
 	fallbacks := make(map[string]sync.Fallback)
-	callback := func(gomel.Unit) {}
+	callback := gomel.NopCallback
 
 	for i, c := range configs {
 		var (
@@ -142,9 +142,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 			fbk = fallbacks[c.Fallback]
 			if fbk == nil {
-				fbk = sync.Noop()
+				fbk = sync.NopFallback()
 			}
-			server, callback = multicast.NewServer(pid, dag, randomSource, dialer, listener, t, fbk, log)
+			server, callback = multicast.NewServer(pid, dag, randomSource, dialer, listener, primeAlert, t, fbk, log)
 		case "gossip":
 			log = log.With().Int(logging.Service, logging.GossipService).Logger()
 
@@ -164,7 +164,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			} else {
 				peerSource = gossip.NewDefaultPeerSource(nProc, pid)
 			}
-			server = gossip.NewServer(pid, dag, randomSource, dialer, listener, peerSource, t, attemptTiming, log, c.Params["nOut"], c.Params["nIn"])
+			server = gossip.NewServer(pid, dag, randomSource, dialer, listener, peerSource, primeAlert, t, log, c.Params["nOut"], c.Params["nIn"])
 		case "fetch":
 			log = log.With().Int(logging.Service, logging.FetchService).Logger()
 			dialer, listener, err := tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
@@ -182,7 +182,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 
 			fbk = fallbacks[c.Fallback]
-			server = fetch.NewServer(pid, dag, randomSource, reqChan, dialer, listener, t, fbk, attemptTiming, log, c.Params["nOut"], c.Params["nIn"])
+			server = fetch.NewServer(pid, dag, randomSource, reqChan, dialer, listener, primeAlert, t, fbk, log, c.Params["nOut"], c.Params["nIn"])
 		}
 		s.servers = append(s.servers, server)
 	}

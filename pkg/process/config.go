@@ -18,6 +18,7 @@ type Config struct {
 	TxValidate  *TxValidate
 	TxGenerate  *TxGenerate
 	MemLog      int
+	Setup       string
 }
 
 // Sync represents a complete configuration needed for a syncing service to start.

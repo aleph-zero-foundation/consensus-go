@@ -25,12 +25,12 @@ type Committee struct {
 	// Public keys of all committee members, ordered according to process ids.
 	PublicKeys []gomel.PublicKey
 
+	// Addresses use for the setup phase, ordered as above.
+	SetupAddresses [][]string
+
 	// Addresses of all committee members, gathered in a list for all type of services in use and
 	// every entry in that list is ordered according to process ids.
 	Addresses [][]string
-
-	// Addresses use for the setup phase, ordered as above.
-	SetupAddresses [][]string
 }
 
 const malformedData = "malformed committee data"
@@ -63,12 +63,18 @@ func LoadMember(r io.Reader) (*Member, error) {
 }
 
 func parseLine(line string) (string, []string, []string, error) {
-	setup, main := strings.Split(line, "|")
-	elems := strings.Split(setup, " ")
-	if len(elems) < 2 {
-		return "", nil, errors.New(malformedData)
+	s := strings.Split(line, "|")
+	pk, setupAddrs, addrs := s[0], s[1], s[2]
+	if len(pk) == 0 {
+		return "", nil, nil, errors.New(malformedData)
 	}
-	return elems[0], elems[1:], strings.split(main, " "), nil
+	if len(addrs) == 0 {
+		return "", nil, nil, errors.New(malformedData)
+	}
+	if len(setupAddrs) == 0 {
+		return pk, nil, strings.Split(addrs, " "), nil
+	}
+	return pk, strings.Split(setupAddrs, " "), strings.Split(addrs, " "), nil
 }
 
 // LoadCommittee loads the data from the given reader and creates a committee.
@@ -76,8 +82,8 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 	scanner := bufio.NewScanner(r)
 
 	publicKeys := []gomel.PublicKey{}
-	remoteAddresses := [][]string{}
 	sRemoteAddresses := [][]string{}
+	remoteAddresses := [][]string{}
 	for scanner.Scan() {
 		pk, setupAddresses, addresses, err := parseLine(scanner.Text())
 		if err != nil {
@@ -90,12 +96,12 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		}
 
 		publicKeys = append(publicKeys, publicKey)
-		if len(sRemoteAddresses) == 0 {
+		if len(remoteAddresses) == 0 {
 			sRemoteAddresses = make([][]string, len(setupAddresses))
 			remoteAddresses = make([][]string, len(addresses))
 		}
 		for i, address := range setupAddresses {
-			remoteAddresses[i] = append(sRemoteAddresses[i], address)
+			sRemoteAddresses[i] = append(sRemoteAddresses[i], address)
 		}
 		for i, address := range addresses {
 			remoteAddresses[i] = append(remoteAddresses[i], address)
@@ -109,8 +115,6 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		return nil, errors.New(malformedData)
 	}
 	return &Committee{
-		Pid:            pid,
-		PrivateKey:     privateKey,
 		PublicKeys:     publicKeys,
 		Addresses:      remoteAddresses,
 		SetupAddresses: sRemoteAddresses,
@@ -138,6 +142,26 @@ func StoreMember(w io.Writer, m *Member) error {
 	return nil
 }
 
+func store(w io.Writer, addresses [][]string, i int) error {
+	_, err := io.WriteString(w, "|")
+	if err != nil {
+		return err
+	}
+	for j := range addresses {
+		if j != 0 {
+			_, err = io.WriteString(w, " ")
+			if err != nil {
+				return err
+			}
+		}
+		_, err = io.WriteString(w, addresses[j][i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // StoreCommittee writes the given committee to the writer.
 func StoreCommittee(w io.Writer, c *Committee) error {
 	for i, pk := range c.PublicKeys {
@@ -145,33 +169,14 @@ func StoreCommittee(w io.Writer, c *Committee) error {
 		if err != nil {
 			return err
 		}
-		for j := range c.SetupAddresses {
-			_, err = io.WriteString(w, " ")
-			if err != nil {
-				return err
-			}
-			_, err = io.WriteString(w, c.Addresses[j][i])
-			if err != nil {
-				return err
-			}
-		}
-		_, err = io.WriteString(w, "|")
+		err = store(w, c.SetupAddresses, i)
 		if err != nil {
 			return err
 		}
-		for j := range c.Addresses {
-			if j != 0 {
-				_, err = io.WriteString(w, " ")
-				if err != nil {
-					return err
-				}
-			}
-			_, err = io.WriteString(w, c.Addresses[j][i])
-			if err != nil {
-				return err
-			}
+		err = store(w, c.Addresses, i)
+		if err != nil {
+			return err
 		}
-
 		_, err = io.WriteString(w, "\n")
 		if err != nil {
 			return err

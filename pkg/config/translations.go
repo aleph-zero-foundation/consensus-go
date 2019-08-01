@@ -14,16 +14,16 @@ func generateDagConfig(c *Committee) *gomel.DagConfig {
 }
 
 func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*process.Sync {
-	nTypes := len(c.Addresses)
+	nTypes := len(c.SetupAddresses)
 	syncConfs := make([]*process.Sync, nTypes)
 	for i := range syncConfs {
 		syncConfs[i] = &process.Sync{
-			Type:            conf.Sync[i].Type,
+			Type:            conf.SyncSetup[i].Type,
 			Pid:             m.Pid,
 			LocalAddress:    c.SetupAddresses[i][m.Pid],
 			RemoteAddresses: c.SetupAddresses[i],
-			Params:          conf.Sync[i].Params,
-			Fallback:        conf.Sync[i].Fallback,
+			Params:          conf.SyncSetup[i].Params,
+			Fallback:        conf.SyncSetup[i].Fallback,
 		}
 	}
 	return syncConfs
@@ -71,7 +71,7 @@ func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *process
 	}
 }
 
-func generateOrderSetupConfig(conf *Configuration, c *Committee) *process.Order {
+func generateOrderSetupConfig(conf *Configuration, m *Member, c *Committee) *process.Order {
 	return &process.Order{
 		Pid:             m.Pid,
 		VotingLevel:     int(conf.VotingLevel),
@@ -113,5 +113,6 @@ func (conf *Configuration) GenerateConfig(m *Member, c *Committee) process.Confi
 		TxValidate:  generateTxValidateConfig(),
 		TxGenerate:  generateTxGenerateConfig(conf),
 		MemLog:      conf.LogMemInterval,
+		Setup:       conf.Setup,
 	}
 }

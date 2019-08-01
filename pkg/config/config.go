@@ -30,6 +30,12 @@ type Configuration struct {
 	StepSize float64
 
 	// Configurations for synchronization services
+	SyncSetup []SyncConfiguration
+
+	// Name of setup procedure
+	Setup string
+
+	// Configurations for synchronization services
 	Sync []SyncConfiguration
 
 	// The number of transactions included in a unit.
@@ -86,7 +92,11 @@ func NewDefaultConfiguration() Configuration {
 
 		StepSize: 0.0,
 
-		Sync: syncConf,
+		SyncSetup: syncConf,
+
+		Setup: "urn",
+
+		Sync: []SyncConfiguration{},
 
 		Txpu: 1,
 
