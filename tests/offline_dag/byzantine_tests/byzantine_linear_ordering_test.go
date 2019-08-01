@@ -557,14 +557,14 @@ func newDefaultCommonVote(uc gomel.Unit, initialVotingRound uint64, lastDetermin
 	return commonVotes
 }
 
-func syncDags(p1, p2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
-	p1Max := p1.MaximalUnitsPerProcess()
-	p2Max := p2.MaximalUnitsPerProcess()
-	missingForP2 := map[gomel.Unit]bool{}
-	missingForP1 := map[gomel.Unit]bool{}
-	for pid := 0; pid < p1.NProc(); pid++ {
-		p1Units := append([]gomel.Unit(nil), p1Max.Get(pid)...)
-		p2Units := append([]gomel.Unit(nil), p2Max.Get(pid)...)
+func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
+	dag1Max := dag1.MaximalUnitsPerProcess()
+	dag2Max := dag2.MaximalUnitsPerProcess()
+	missingForDag2 := map[gomel.Unit]bool{}
+	missingForDag1 := map[gomel.Unit]bool{}
+	for pid := 0; pid < dag1.NProc(); pid++ {
+		dag1Units := append([]gomel.Unit(nil), dag1Max.Get(pid)...)
+		dag2Units := append([]gomel.Unit(nil), dag2Max.Get(pid)...)
 
 		different := func(units []gomel.Unit, dag gomel.Dag) map[gomel.Unit]bool {
 			missing := map[gomel.Unit]bool{}
@@ -593,23 +593,23 @@ func syncDags(p1, p2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 			}
 			return missing
 		}
-		for unit := range different(p1Units, p2) {
-			if missingForP2[unit] {
+		for unit := range different(dag1Units, dag2) {
+			if missingForDag2[unit] {
 				break
 			}
-			missingForP2[unit] = true
+			missingForDag2[unit] = true
 		}
-		for unit := range different(p2Units, p1) {
-			if missingForP1[unit] {
+		for unit := range different(dag2Units, dag1) {
+			if missingForDag1[unit] {
 				break
 			}
-			missingForP1[unit] = true
+			missingForDag1[unit] = true
 		}
 	}
 
 	// sort units topologically
-	missingForP1Slice := topoSort(missingForP1)
-	missingForP2Slice := topoSort(missingForP2)
+	missingForDag1Slice := topoSort(missingForDag1)
+	missingForDag2Slice := topoSort(missingForDag2)
 
 	adder := func(units []gomel.Unit, dag gomel.Dag, rs gomel.RandomSource) error {
 		for _, unit := range units {
@@ -623,13 +623,13 @@ func syncDags(p1, p2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 		return nil
 	}
 
-	if err := adder(missingForP1Slice, p1, rs1); err != nil {
+	if err := adder(missingForDag1Slice, dag1, rs1); err != nil {
 		return true, err
 	}
-	if err := adder(missingForP2Slice, p2, rs2); err != nil {
+	if err := adder(missingForDag2Slice, dag2, rs2); err != nil {
 		return true, err
 	}
-	return len(missingForP1) > 0 || len(missingForP2) > 0, nil
+	return len(missingForDag1) > 0 || len(missingForDag2) > 0, nil
 }
 
 // TopoSort sort units topologically.
