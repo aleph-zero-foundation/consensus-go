@@ -1,15 +1,22 @@
 {
-		"NParents": 128,
+		"NParents": 8,
 
 		"PrimeOnly": true,
 
         "CanSkipLevel": true, 
 
-		"CreateDelay": 0.05,
+		"CreateDelay": 0.2,
 
 		"StepSize": 0.0,
 
         "Sync": [{
+            "Type": "gossip",
+            "Params": {
+                "nIn": 2,
+                "nOut": 1,
+                "Timeout": 2},
+            "Fallback": ""
+        }, {
             "Type": "fetch",
             "Params": {
                 "nIn": 2,
@@ -20,10 +27,10 @@
             "Type": "multicast",
             "Params": {
                 "McType": 0,
-                "fallback": 1,
                 "Timeout": 2},
             "Fallback": "fetch"
-        }],
+        } ],
+
 
         "Setup": "urn",
 
@@ -45,7 +52,7 @@
 
 		"LogMemInterval": 10,
 
-		"LogHuman": false ,
+		"LogHuman": true,
 
 	    "OrderStartLevel": 0
 }

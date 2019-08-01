@@ -66,7 +66,7 @@ def send_data(conn, pid):
     ''' Sends keys, addresses, and parameters. '''
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     conn.put(f'data/{pid}.pk', repo_path)
-    conn.put('data/keys_addrs', repo_path)
+    send_keys_addrs(conn)
     conn.put('data/config.json', repo_path)
 
 @task
