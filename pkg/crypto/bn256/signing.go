@@ -1,6 +1,7 @@
 package bn256
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
 	"math/big"
 
@@ -34,6 +35,16 @@ func (s *Signature) Unmarshal(data []byte) (*Signature, error) {
 }
 
 var gen = new(bn256.G2).ScalarBaseMult(big.NewInt(int64(1)))
+
+// GenerateKeys randomly.
+func GenerateKeys() (*VerificationKey, *SecretKey, error) {
+	secret, err := rand.Int(rand.Reader, Order)
+	if err != nil {
+		return nil, nil, err
+	}
+	sk := NewSecretKey(secret)
+	return sk.VerificationKey(), sk, nil
+}
 
 // NewSecretKey returns a secret key with the specified secret.
 func NewSecretKey(secret *big.Int) *SecretKey {
