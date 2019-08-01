@@ -58,7 +58,6 @@ func (f *Retrying) Start() {
 // Stop signals the adding goroutine to halt and blocks until it does.
 func (f *Retrying) Stop() {
 	atomic.StoreInt32(&f.quit, 1)
-	f.inner.Stop()
 	f.wg.Wait()
 }
 

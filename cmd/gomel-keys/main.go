@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Usage: gomel-keys <nProcber> [<addresses_file>].")
+		fmt.Fprintln(os.Stderr, usageMsg)
 		return
 	}
 	// addresses for gossip and multicast
