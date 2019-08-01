@@ -9,7 +9,19 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// Ordering is an implementation of the LinearOrdering interface.
+type defaultVote func(uc, u gomel.Unit) vote
+
+type decide interface {
+	decide(uc, u gomel.Unit) vote
+}
+
+type voter interface {
+	vote(uc, u gomel.Unit) vote
+}
+
+type coinToss func(uc, u gomel.Unit) bool
+
+// Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
 	dag                 gomel.Dag
 	randomSource        gomel.RandomSource
@@ -17,19 +29,32 @@ type ordering struct {
 	unitPositionInOrder map[gomel.Hash]int
 	orderedUnits        []gomel.Unit
 	votingLevel         int
-	piDeltaLevel        int
 	orderStartLevel     int
 	crpFixedPrefix      int
-	proofMemo           map[[2]gomel.Hash]bool
-	voteMemo            map[[2]gomel.Hash]vote
-	piMemo              map[[2]gomel.Hash]vote
-	deltaMemo           map[[2]gomel.Hash]vote
 	decisionMemo        map[gomel.Hash]vote
+	decisionMakers      []decide
 	log                 zerolog.Logger
 }
 
 // NewOrdering creates an Ordering wrapper around the given dag.
 func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
+
+	fiv := newFastInitialVoting(dag)
+	coinToss := newCoin(rs)
+	defaultVoter := newDefaultVote(votingLevel, coinToss)
+
+	standardVoter := newStandardVoter(dag, uint64(votingLevel), newSimpleInitialVoter(), defaultVoter)
+	standardDecider := newStandardDecider(dag, standardVoter)
+	fastInitialDecider, fastDecider := newPairOfFastDeciders(dag, fiv, uint64(votingLevel), defaultVoter)
+	piDeltaDecider := newPiDelta(dag, uint64(piDeltaLevel), fiv, coinToss)
+
+	decisionMakers := []decide{
+		standardDecider,
+		fastInitialDecider,
+		fastDecider,
+		piDeltaDecider,
+	}
+
 	return &ordering{
 		dag:                 dag,
 		randomSource:        rs,
@@ -37,14 +62,10 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaL
 		unitPositionInOrder: make(map[gomel.Hash]int),
 		orderedUnits:        []gomel.Unit{},
 		votingLevel:         votingLevel,
-		piDeltaLevel:        piDeltaLevel,
 		orderStartLevel:     orderStartLevel,
 		crpFixedPrefix:      crpFixedPrefix,
-		proofMemo:           make(map[[2]gomel.Hash]bool),
-		voteMemo:            make(map[[2]gomel.Hash]vote),
-		piMemo:              make(map[[2]gomel.Hash]vote),
-		deltaMemo:           make(map[[2]gomel.Hash]vote),
 		decisionMemo:        make(map[gomel.Hash]vote),
+		decisionMakers:      decisionMakers,
 		log:                 log,
 	}
 }
@@ -67,7 +88,7 @@ func dagMaxLevel(dag gomel.Dag) int {
 func (o *ordering) DecideTiming() gomel.Unit {
 	level := o.timingUnits.length()
 
-	if dagMaxLevel(o.dag) < level+o.votingLevel {
+	if dagMaxLevel(o.dag) < level+int(o.votingLevel) {
 		return nil
 	}
 
