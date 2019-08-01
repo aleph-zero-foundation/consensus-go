@@ -34,16 +34,11 @@ func (c *coin) Init(dag gomel.Dag) {
 	c.dag = dag
 }
 
-// GetCRP implements a common random permutation
-func (c *coin) GetCRP(level int) []int {
-	return random.CRP(c, c.dag, level)
-}
-
 // RandomBytes returns a sequence of random bits for a given level.
 // The first argument is irrelevant for this random source.
 // If there are not enough shares on the level it returns nil.
 // If the dag reached level+1 the existence of enough shares is guaranteed.
-func (c *coin) RandomBytes(_ gomel.Unit, level int) []byte {
+func (c *coin) RandomBytes(pid int, level int) []byte {
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[int]bool)
 

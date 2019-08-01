@@ -1,11 +1,9 @@
 package linear
 
 import (
-	"encoding/binary"
 	"sort"
 
 	"github.com/rs/zerolog"
-	"golang.org/x/crypto/sha3"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -65,59 +63,6 @@ func dagMaxLevel(dag gomel.Dag) int {
 	return maxLevel
 }
 
-// crpPrefix returns a pseudorandom slice of pids to be used on a given level
-// before using the random permutation.
-// It can be called when the timing unit for level - 1 has already been chosen.
-func (o *ordering) crpPrefix(level int) []int {
-	nProc := o.dag.NProc()
-	permutation := make([]int, nProc)
-	priority := make([][]byte, nProc)
-
-	size := o.crpFixedPrefix
-	if size > nProc {
-		size = nProc
-	}
-
-	for pid := 0; pid < nProc; pid++ {
-		permutation[pid] = pid
-	}
-
-	if level == o.orderStartLevel {
-		return permutation[:size]
-	}
-	tu := o.timingUnits.get(level - 1)
-
-	for pid := 0; pid < nProc; pid++ {
-		priority[pid] = make([]byte, 32)
-
-		hash := make([]byte, 36)
-		copy(hash, (*tu.Hash())[:])
-		binary.LittleEndian.PutUint32(hash[32:], uint32(pid))
-
-		sha3.ShakeSum128(priority[pid], hash)
-	}
-
-	sort.Slice(permutation, func(i, j int) bool {
-		if priority[permutation[j]] == nil {
-			return true
-		}
-		if priority[permutation[i]] == nil {
-			return false
-		}
-		for x := 0; x < 32; x++ {
-			if priority[permutation[i]][x] < priority[permutation[j]][x] {
-				return true
-			}
-			if priority[permutation[i]][x] > priority[permutation[j]][x] {
-				return false
-			}
-		}
-		panic("hash collision")
-	})
-
-	return permutation[:size]
-}
-
 // DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
 func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	// If we have already decided we can read the answer from memory
@@ -132,44 +77,26 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		return nil
 	}
 
-	// processPopularUnit returns popular unit of the given process and a flag
-	// indicating if all the units created by the given process are unpopular
-	processPopularUnit := func(pid int) (gomel.Unit, bool) {
-		units := o.dag.PrimeUnits(level).Get(pid)
-		sort.Slice(units, func(i, j int) bool {
-			return units[i].Hash().LessThan(units[j].Hash())
-		})
-		for _, uc := range units {
-			decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
-			if decision == popular {
-				o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
-				o.timingUnits.pushBack(uc)
-				return uc, true
-			}
-			if decision == undecided {
-				return nil, true
-			}
-		}
-		return nil, false
+	var previousTU gomel.Unit
+	if level != o.orderStartLevel {
+		previousTU = o.timingUnits.get(level - 1)
 	}
 
-	crpPrefix := o.crpPrefix(level)
-	inPrefix := make(map[int]bool)
-	for _, pid := range crpPrefix {
-		if u, ok := processPopularUnit(pid); ok {
-			return u
+	var result gomel.Unit
+	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
+		decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
+		if decision == popular {
+			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
+			o.timingUnits.pushBack(uc)
+			result = uc
+			return false
 		}
-		inPrefix[pid] = true
-	}
-	for _, pid := range o.randomSource.GetCRP(level) {
-		if inPrefix[pid] {
-			continue
+		if decision == undecided {
+			return false
 		}
-		if u, ok := processPopularUnit(pid); ok {
-			return u
-		}
-	}
-	return nil
+		return true
+	})
+	return result
 }
 
 // getAntichainLayers for a given timing unit tu, returns all the units in its timing round

@@ -102,7 +102,7 @@ func NewDefaultConfiguration() Configuration {
 
 		SyncSetup: syncConf,
 
-		Setup: "urn",
+		Setup: "beacon",
 
 		Sync: syncConf,
 

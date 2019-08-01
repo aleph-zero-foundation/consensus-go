@@ -80,49 +80,34 @@ func (b *Beacon) Init(dag gomel.Dag) {
 	}
 }
 
-// GetCRP returns a random permutation of processes on a given level.
-// Proceses which haven't produce a unit on the requested level,
-// form a sufix of the permutation.
-// It returns nil when
-// (1) there are no units on the given level
-// or
-// (2) the level is too low (i.e. (level+3) < sharesLevel)
-// or
-// (3) there are no enough shares on level+3 yet to generate the priority
-// of some unit on a given level.
-func (b *Beacon) GetCRP(level int) []int {
-	return random.CRP(b, b.dag, level)
-}
-
 // RandomBytes returns a sequence of random bits for a given unit.
 // It returns nil when
 // (1) asked on too low level i.e. level < sharesLevel
 // or
 // (2) there are no enough shares. i.e.
 // The number of units on a given level created by share providers
-// to the multicoin of uTossing.Creator() is less than f+1
+// to the multicoin of pid is less than f+1
 //
 // When there is at least one unit of level+1 in the dag
 // then the (2) condition doesn't hold.
-func (b *Beacon) RandomBytes(uTossing gomel.Unit, level int) []byte {
+func (b *Beacon) RandomBytes(pid int, level int) []byte {
 	if level < sharesLevel {
 		// RandomBytes asked on too low level
 		return nil
 	}
 
-	mcID := uTossing.Creator()
 	shares := []*tcoin.CoinShare{}
-	units := random.UnitsOnLevel(b.dag, level)
+	units := unitsOnLevel(b.dag, level)
 	for _, u := range units {
-		if b.shareProviders[mcID][u.Creator()] {
+		if b.shareProviders[pid][u.Creator()] {
 			uShares := []*tcoin.CoinShare{}
-			for sc := range b.subcoins[mcID] {
+			for sc := range b.subcoins[pid] {
 				uShares = append(uShares, b.shares[sc].Get(u.Hash()))
 			}
 			shares = append(shares, tcoin.SumShares(uShares))
 		}
 	}
-	coin, ok := b.multicoins[mcID].CombineCoinShares(shares)
+	coin, ok := b.multicoins[pid].CombineCoinShares(shares)
 	if !ok {
 		// Not enough shares
 		return nil
@@ -193,7 +178,7 @@ func (b *Beacon) Update(u gomel.Unit) {
 		coinsApprovedBy := make([]int, b.dag.NProc())
 		nBelowUOnVotingLevel := 0
 		providers := make(map[int]bool)
-		votingUnits := random.UnitsOnLevel(b.dag, votingLevel)
+		votingUnits := unitsOnLevel(b.dag, votingLevel)
 
 		for _, v := range votingUnits {
 			if v.Below(u) {
@@ -227,7 +212,7 @@ func (b *Beacon) Update(u gomel.Unit) {
 }
 
 func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
-	dealingUnits := random.UnitsOnLevel(b.dag, dealingLevel)
+	dealingUnits := unitsOnLevel(b.dag, dealingLevel)
 	createdDealing := make([]bool, b.dag.NProc())
 	for _, v := range dealingUnits {
 		shouldVote := v.Below(u)
@@ -268,7 +253,7 @@ func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []b
 	}
 	if level == votingLevel {
 		votes := make([]*vote, b.dag.NProc())
-		dealingUnits := random.UnitsOnLevel(b.dag, dealingLevel)
+		dealingUnits := unitsOnLevel(b.dag, dealingLevel)
 		for _, u := range dealingUnits {
 			if gomel.BelowAny(u, parents) {
 				votes[u.Creator()] = verifyTCoin(b.tcoins[u.Creator()])
@@ -303,4 +288,19 @@ func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {
 // Head should be the creator of a timing unit chosen on the 6th level.
 func (b *Beacon) GetCoin(head int) gomel.RandomSource {
 	return coin.New(b.dag.NProc(), b.pid, b.multicoins[head], b.shareProviders[head])
+}
+
+// unitsOnLevel returns all the prime units in dag on a given level
+func unitsOnLevel(dag gomel.Dag, level int) []gomel.Unit {
+	result := []gomel.Unit{}
+	su := dag.PrimeUnits(level)
+	if su != nil {
+		su.Iterate(func(units []gomel.Unit) bool {
+			if len(units) != 0 {
+				result = append(result, units[0])
+			}
+			return true
+		})
+	}
+	return result
 }

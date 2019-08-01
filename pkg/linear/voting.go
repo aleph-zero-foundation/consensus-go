@@ -157,7 +157,7 @@ func superMajority(dag gomel.Dag, votes []vote) vote {
 
 func (o *ordering) coinToss(uc gomel.Unit, uTossing gomel.Unit) int {
 	level := uTossing.Level() - 1
-	randomBytes := o.randomSource.RandomBytes(uTossing, uTossing.Level()-1)
+	randomBytes := o.randomSource.RandomBytes(uTossing.Creator(), uTossing.Level()-1)
 	if randomBytes == nil {
 		return simpleCoin(uc, level)
 	}

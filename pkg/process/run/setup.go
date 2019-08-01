@@ -13,15 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
-	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
 )
-
-// urnSetup just deals an urn. Running a process with this setup
-// is equivalent to the version of without setup phase.
-func urnSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
-	rsCh <- urn.New(config.Create.Pid)
-	close(rsCh)
-}
 
 // beaconSetup is a setup described in the whitepaper
 func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {

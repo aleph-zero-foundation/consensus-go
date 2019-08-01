@@ -4,10 +4,8 @@ package gomel
 type RandomSource interface {
 	// Init initialize the random source with given dag
 	Init(Dag)
-	// GetCRP returns common random permutation for a given nonce
-	GetCRP(int) []int
-	// RandomBytes returns a random bits for a given unit and nonce
-	RandomBytes(Unit, int) []byte
+	// RandomBytes returns a random bits for a given process and level
+	RandomBytes(int, int) []byte
 	// CheckCompliance checks wheather the data included in the preunit
 	// is compliant
 	CheckCompliance(Unit) error
