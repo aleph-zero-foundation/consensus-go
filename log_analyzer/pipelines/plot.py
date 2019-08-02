@@ -5,6 +5,7 @@ region_names = ['Virginia','California','Oregon','Ireland','Sao Paulo','Singapor
 args.all = True
 
 driver.add_pipeline('', [
+    Filter(Service, GossipService),
     Filter(Event, [SyncStarted, SyncCompleted, DuplicatedUnit]),
     GossipPlots(regions, region_names),
     DuplUnitPlots(),

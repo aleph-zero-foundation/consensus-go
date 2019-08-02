@@ -13,6 +13,8 @@ from zipfile import ZipFile
 from driver import Driver
 from const import *
 from plugins import *
+from sync_plugins import *
+from plotters import *
 
 def lasttime(path, seek=128):
     with open(path, 'rb') as f:
@@ -32,17 +34,18 @@ parser.add_argument('-p', '--pipe', metavar='name', help='file with pipelines de
 parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
 args = parser.parse_args()
 
+pipelines_folder = join(dirname(__file__), 'pipelines')
 
 if not args.pipe:
-    pipelines = join(dirname(__file__), 'default.py')
+    pipelines = join(pipelines_folder, 'default.py')
 elif isfile(args.pipe):
     pipelines = args.pipe
 elif isfile(args.pipe+'.py'):
     pipelines = args.pipe+'.py'
-elif isfile(join(dirname(__file__), args.pipe)):
-    pipelines = join(dirname(__file__), args.pipe)
-elif isfile(join(dirname(__file__), args.pipe+'.py')):
-    pipelines = join(dirname(__file__), args.pipe+'.py')
+elif isfile(join(pipelines_folder, args.pipe)):
+    pipelines = join(pipelines_folder, args.pipe)
+elif isfile(join(pipelines_folder, args.pipe+'.py')):
+    pipelines = join(pipelines_folder, args.pipe+'.py')
 else:
     print(f'{args.pipe}: invalid file')
     sys.exit(1)
@@ -65,7 +68,8 @@ if isfile(args.path) and args.path.endswith('.log'):
 else:
     path = args.path if isdir(args.path) else extract(args.path)
     os.chdir(path)
-    for filename in tqdm(list(filter(lambda x: x.endswith('.log') and not x.startswith('setup_'), os.listdir('.')))):
+    filelist = list(sorted(filter(lambda x: x.endswith('.log') and not x.startswith('setup_'), os.listdir('.'))))
+    for filename in filelist if args.all else tqdm(filelist):
         name = filename[:-4]
         driver.new_dataset(name)
         with open(filename) as f:

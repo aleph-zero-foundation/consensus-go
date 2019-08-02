@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from copy import deepcopy
-from plugins import Plotter
+from plotters import Plotter
 
 class Driver:
     """
@@ -53,7 +53,7 @@ class Driver:
         return ret
 
     def summary(self):
-        ret = ''
+        ret = maketitle('GLOBAL STATS', 100, '#')+'\n'
         for pipeline in self.pipelines:
             pipesummary = ''
             for i, plugin in enumerate(self.pipelines[pipeline]):
