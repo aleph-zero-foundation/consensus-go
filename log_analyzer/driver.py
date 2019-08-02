@@ -53,7 +53,7 @@ class Driver:
         return ret
 
     def summary(self):
-        ret = ''
+        ret = maketitle('GLOBAL STATS', 100, '#')+'\n'
         for pipeline in self.pipelines:
             pipesummary = ''
             for i, plugin in enumerate(self.pipelines[pipeline]):
