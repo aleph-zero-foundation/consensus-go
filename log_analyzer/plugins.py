@@ -243,6 +243,8 @@ class Delay(Plugin):
         if len(self.data) == 0:
             return sadpanda
         times = self.get_data()
+        if len(times) == 0:
+            return sadpanda
         if max(times) <= self.thr:
             return 'NEGLIGIBLE'
         ret =  '    Complete:   %7d\n' % len(self.data)
