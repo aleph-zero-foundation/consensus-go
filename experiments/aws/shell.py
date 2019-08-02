@@ -597,13 +597,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
 
     n_processes = len(ip2pid)
 
-    result_path = f'{name}_'\
-                  f'{n_processes}_'\
-                  f'{config["NParents"]}_'\
-                  f'{config["CreateDelay"]}_'\
-                  f'{config["NInSync"]}_'\
-                  f'{config["NOutSync"]}_'\
-                  f'{config["Txpu"]}'
+    result_path = f'{name}'
 
     color_print('move and rename dir')
     shutil.move('../results', result_path)

@@ -88,7 +88,7 @@ def run_protocol(conn, pid, delay='0'):
     with conn.cd(repo_path):
         cmd = f'go run cmd/gomel/main.go \
                     --pk {pid}.pk\
-                    --keys_addrs keys_addrs\
+                    --keys_addrs committee.ka\
                     --config config.json \
                     --dag {pid}.dag \
                     --delay {int(float(delay))}'
@@ -102,7 +102,7 @@ def run_protocol_profiler(conn, pid, delay='0'):
     with conn.cd(repo_path):
         cmd = f'go run cmd/gomel/main.go \
                     --pk {pid}.pk\
-                    --keys_addrs keys_addrs\
+                    --keys_addrs committee.ka\
                     --config config.json \
                     --dag {pid}.dag \
                     --delay {int(float(delay))}'
