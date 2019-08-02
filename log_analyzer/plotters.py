@@ -133,6 +133,8 @@ class GossipPlots(Plotter):
         return filename
 
     def saveplot(self, name):
+        if len(self.inc) == 0 and len(self.out) == 0:
+            return sadpanda
         try:
             pid = int(name)
         except:
@@ -141,8 +143,10 @@ class GossipPlots(Plotter):
         names = []
         names.append(self.fancyplot(self.inc + self.out, name, pid))
         if self.divide:
-            names.append(self.fancyplot(self.out, name+'_o', pid))
-            names.append(self.fancyplot(self.inc, name+'_i', pid))
+            if self.out:
+                names.append(self.fancyplot(self.out, name+'_o', pid))
+            if self.inc:
+                names.append(self.fancyplot(self.inc, name+'_i', pid))
         names.append(self.corrplot(self.inc + self.out, name, pid))
         return f'Plots saved as ' + ', '.join(names)
 
@@ -194,10 +198,14 @@ class DuplUnitPlots(Plotter):
         for d,r in datasets.values():
             dupl += d
             recv += r
+        if recv == 0:
+            return sadpanda
         ratio = 100*dupl/recv
         return f'Global average of received duplicates: {ratio:5.2f}%'
 
     def saveplot(self, name):
+        if len(self.inc) == 0 and len(self.out) == 0:
+            return sadpanda
         filename = f'dupl_{name}.png' if name else 'dupl.png'
         x_inc = list(range(len(self.inc)))
         x_out = list(range(len(self.out)))
