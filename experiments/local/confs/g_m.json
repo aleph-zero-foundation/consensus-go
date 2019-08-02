@@ -12,15 +12,15 @@
         "Sync": [{
             "Type": "gossip",
             "Params": {
-                "nIn": 2,
-                "nOut": 1,
-                "Timeout": 2},
+                "nIn": "3",
+                "nOut": "2",
+                "Timeout": "2"},
             "Fallback": ""
         }, {
             "Type": "multicast",
             "Params": {
-                "McType": 0,
-                "Timeout": 2},
+                "McType": "tcp",
+                "Timeout": "2"},
             "Fallback": ""
         } ],
 
@@ -44,7 +44,7 @@
 
 		"LogMemInterval": 10,
 
-		"LogHuman": true,
+		"LogHuman": false,
 
 	    "OrderStartLevel": 0
 

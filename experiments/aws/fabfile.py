@@ -57,9 +57,9 @@ def send_config(conn):
 def send_keys_addrs(conn):
     ''' Sends keys and addresses, and fixes ip address. '''
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
-    conn.put('data/keys_addrs', repo_path+'/ka')
+    conn.put('data/committee.ka', repo_path+'/ka')
     with conn.cd(repo_path):
-        conn.run(f'sed s/{conn.host}/$(hostname --ip-address)/g < ka > keys_addrs')
+        conn.run(f'sed s/{conn.host}/$(hostname --ip-address)/g < ka > committee.ka')
 
 @task
 def send_data(conn, pid):

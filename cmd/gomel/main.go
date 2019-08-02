@@ -115,6 +115,7 @@ func main() {
 		return
 	}
 	if len(conf.Sync) != len(committee.Addresses) {
+		fmt.Println(committee.Addresses)
 		fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync), len(committee.Addresses))
 		return
 	}

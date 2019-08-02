@@ -12,9 +12,9 @@
         "Sync": [{
             "Type": "gossip",
             "Params": {
-                "nIn": 3,
-                "nOut": 2,
-                "Timeout": 2},
+                "nIn": "3",
+                "nOut": "2",
+                "Timeout": "2"},
             "Fallback": ""
         }],
 
@@ -38,7 +38,7 @@
 
 		"LogMemInterval": 10,
 
-		"LogHuman": true,
+		"LogHuman": false,
 
 	    "OrderStartLevel": 0
 }

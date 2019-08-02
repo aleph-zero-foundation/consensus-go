@@ -27,7 +27,7 @@ type Sync struct {
 	Pid             int
 	LocalAddress    string
 	RemoteAddresses []string
-	Params          map[string]uint
+	Params          map[string]string
 	Fallback        string
 }
 

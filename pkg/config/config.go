@@ -5,7 +5,7 @@ type SyncConfiguration struct {
 	// Type describes the service type.
 	Type string
 	// Params holds additional parameters needed by a service of a given type
-	Params map[string]uint
+	Params map[string]string
 	// Fallback is a name of a service that is to be used as a fallback to this service
 	Fallback string
 }
@@ -76,7 +76,7 @@ type Configuration struct {
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
 		Type:     "gossip",
-		Params:   map[string]uint{"nIn": 20, "nOut": 15, "timeout": 2},
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2"},
 		Fallback: "",
 	}}
 

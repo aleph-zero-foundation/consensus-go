@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -32,16 +33,9 @@ func valid(configs []*process.Sync) error {
 	}
 	for i, c := range configs {
 		if c.Fallback != "" {
-			f := c.Fallback
-			if f == "retrying" {
-				switch c.Params["fallback"] {
-				case 0:
-					f = "gossip"
-				case 1:
-					f = "fetch"
-				default:
-					gomel.NewConfigError("defined " + f + " as fallback, but didn't specify correct fallback for it")
-				}
+			f, internal := c.Fallback, c.Params["fallback"]
+			if f == "retrying" && internal != "gossip" && internal != "fetch" {
+				gomel.NewConfigError("defined retrying as fallback, but didn't specify correct fallback for it")
 			}
 			found := false
 			if f == "fetch" {
@@ -76,14 +70,18 @@ func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.
 	case "retrying":
 		var baseFbk sync.Fallback
 		log := log.With().Int(logging.Service, logging.RetryingService).Logger()
-		ri := time.Duration(float64(c.Params["retryingInterval"]))
+		rif, err := strconv.ParseFloat(c.Params["retryingInterval"], 64)
+		ri := time.Duration(rif)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		switch c.Params["fallback"] {
-		case 0:
+		case "gossip":
 			reqChan := make(chan uint16)
 			baseFbk = fallback.NewGossip(reqChan)
 			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
 			return fbk, reqChan, nil, nil
-		case 1:
+		case "fetch":
 			reqChan := make(chan fetch.Request)
 			baseFbk = fallback.NewFetch(dag, reqChan)
 			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
@@ -124,15 +122,19 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			server   sync.Server
 			fbk      sync.Fallback
 		)
-		t := time.Duration(float64(c.Params["Timeout"])) * time.Second
+		tf, err := strconv.ParseFloat(c.Params["Timeout"], 64)
+		if err != nil {
+			return nil, nil, err
+		}
+		t := time.Duration(tf) * time.Second
 		switch c.Type {
 		case "multicast":
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			var err error
 			switch c.Params["McType"] {
-			case 0:
+			case "tcp":
 				dialer, listener, err = tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
-			case 1:
+			case "udp":
 				dialer, listener, err = udp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
 			}
 			if err != nil {
@@ -162,7 +164,15 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			} else {
 				peerSource = gossip.NewDefaultPeerSource(nProc, pid)
 			}
-			server = gossip.NewServer(pid, dag, randomSource, dialer, listener, peerSource, primeAlert, t, log, c.Params["nOut"], c.Params["nIn"])
+			nOut, err := strconv.Atoi(c.Params["nOut"])
+			if err != nil {
+				return nil, nil, err
+			}
+			nIn, err := strconv.Atoi(c.Params["nIn"])
+			if err != nil {
+				return nil, nil, err
+			}
+			server = gossip.NewServer(pid, dag, randomSource, dialer, listener, peerSource, primeAlert, t, log, uint(nOut), uint(nIn))
 		case "fetch":
 			log = log.With().Int(logging.Service, logging.FetchService).Logger()
 			dialer, listener, err := tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
@@ -180,7 +190,15 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 
 			fbk = fallbacks[c.Fallback]
-			server = fetch.NewServer(pid, dag, randomSource, reqChan, dialer, listener, primeAlert, t, fbk, log, c.Params["nOut"], c.Params["nIn"])
+			nOut, err := strconv.Atoi(c.Params["nOut"])
+			if err != nil {
+				return nil, nil, err
+			}
+			nIn, err := strconv.Atoi(c.Params["nIn"])
+			if err != nil {
+				return nil, nil, err
+			}
+			server = fetch.NewServer(pid, dag, randomSource, reqChan, dialer, listener, primeAlert, t, fbk, log, uint(nOut), uint(nIn))
 		}
 		s.servers = append(s.servers, server)
 	}
