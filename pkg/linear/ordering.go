@@ -78,7 +78,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 	}
 
 	var previousTU gomel.Unit
-	if level != o.orderStartLevel {
+	if level > o.orderStartLevel {
 		previousTU = o.timingUnits.get(level - 1)
 	}
 

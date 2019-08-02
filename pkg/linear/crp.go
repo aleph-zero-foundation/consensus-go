@@ -86,7 +86,7 @@ func randomPermutation(rs gomel.RandomSource, dag gomel.Dag, level int, pids []i
 			priority[u] = make([]byte, 32)
 			sha3.ShakeSum128(priority[u], randomBytes)
 		}
-		permutation = append(permutation, dag.PrimeUnits(level).Get(pid)...)
+		permutation = append(permutation, units...)
 	}
 
 	sort.Slice(permutation, func(i, j int) bool {
