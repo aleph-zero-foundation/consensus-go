@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 
+sadpanda = 'NO ENTRIES'
 
 class Plugin:
     """Parent class definition for all plugins."""
@@ -36,6 +37,8 @@ def multimean(datasets):
             full += data
             stats.append((mean(data), name))
     stats.sort()
+    if not full:
+        return sadpanda
     glob = mean(full)
     ret =  '    Global Average: %13.2f\n' % glob
     ret += '    Min Average: %13.2f (%s)\n' % stats[0]
@@ -102,7 +105,7 @@ class Timer(Plugin):
     def report(self):
         t = self.get_data()
         if not t:
-            return 'NO ENTRIES'
+            return sadpanda
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         ret += '    Min: %10d    ms\n' % min(t)
         ret += '    Max: %10d    ms\n' % max(t)
@@ -136,7 +139,7 @@ class Counter(Plugin):
     def report(self):
         d = self.get_data()
         if not d:
-            return 'NO ENTRIES'
+            return sadpanda
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         ret += '    Min: %10d\n' % min(d)
         ret += '    Max: %10d\n' % max(d)
@@ -170,7 +173,7 @@ class Histogram(Plugin):
     def report(self):
         d = self.get_data()
         if not d:
-            return 'NO ENTRIES'
+            return sadpanda
         h = {}
         for i in d:
             if i not in h:
@@ -242,7 +245,7 @@ class Delay(Plugin):
 
     def report(self):
         if len(self.data) == 0:
-            return 'NO SUCH EVENTS'
+            return sadpanda
         times = self.get_data()
         if max(times) <= self.thr:
             return 'NEGLIGIBLE'
@@ -442,7 +445,7 @@ class GossipStats(Plugin):
         ret +=  '    Failed:                   %5d\n'%self.failed
         ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
         if not self.times:
-            return ret + 'NO SUCCESSFUL SYNCS :(\n'
+            return ret + sadpanda +'\n'
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
         ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
@@ -494,7 +497,7 @@ class NetworkTraffic(Plugin):
         r = self.recv[self.skip:]
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         if not s:
-            return ret + 'NO ENTRIES\n'
+            return ret + sadpanda+ '\n'
         ret += '                Sent           Received\n'
         ret += '    Min: %10d       %10d\n' % (min(s), min(r))
         ret += '    Max: %10d       %10d\n' % (max(s), max(r))

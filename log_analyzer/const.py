@@ -59,6 +59,9 @@ ValidateService = 3
 GenerateService = 4
 MemLogService   = 5
 GossipService   = 6
-MCService       = 7
+FetchService    = 7
+MCService       = 8
+RetryingService = 9
+
 
 Genesis = "genesis"
