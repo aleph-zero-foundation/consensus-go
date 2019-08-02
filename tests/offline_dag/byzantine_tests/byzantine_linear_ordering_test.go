@@ -705,34 +705,35 @@ func countUnitsOnLevelOrHigher(dag gomel.Dag, level uint64) map[uint16]bool {
 
 // High-level description (without initialization):
 
-// Maintain two independent 'towers', first consisting of process voting for `1` and the other voting for `0`. Depending on the
-// value of the next common vote, their sizes are 'f' and 'N-f' respectively. For example, when the value of the next common
-// vote equals 1, then 1's tower consist of 'f' processes and the 0's tower of 'N-f'. This way the decision procedure is unable
-// to commit its value - common vote is different from the value that votes 1 (other side votes 'undecided' and so chooses the
-// common vote as its value). For simplicity, lets assume we are currently building units for one of the towers consisting of
-// 'N-f' processes. We keep building new levels on the same side until the value of the next common vote forces us to switch
-// sides, i.e. during the last round we created only 'f' prime units and so we are unable to create a new level without looking
-// at units from the other 'tower'. While building consecutive levels we enqueue all of the created units for the opposite side,
-// so after current side finishes or switches, the other one can reveal them one by one till it is able to jump on some level.
-// We also enqueue all read votes, since the other side will not be able to read them from the provided channel after we
-// processed them.
+// Maintain two independent 'towers' (subsets processes), first consisting of process voting for `1` and the other voting for
+// `0`. Depending on the value of the next common vote, their sizes are 'f' and 'N-f' respectively. For example, when the value
+// of the next common vote equals 1, then 1's tower consist of 'f' processes and the 0's tower of 'N-f'. This way the decision
+// procedure is unable to commit its value - common vote 1 is different from the value that was selected by the side having
+// super-majority of equal votes (other side votes 'undecided' and so chooses the common vote as its value). For simplicity,
+// lets assume we are currently building units for one of the towers consisting of 'N-f' processes. We keep building new levels
+// on the same side until the value of the next common vote forces us to switch sides, i.e. during the last round we created
+// only 'f' prime units and so we are unable to create a new level without looking at units from the other tower. While building
+// consecutive levels we enqueue all of the created units for the opposite side, so after current side finishes or switches, the
+// other one can reveal them one by one till it is able to create a unit of its succeeding level. We also caches all common
+// votes that we read, since the other side will not be able to read them from the provided channel after we processed them.
 
 // The initialization process, that is a few levels before the initial voting, is little bit tricky. We need to ensure that a
 // unit U_c for which we are deciding becomes popular before the initial voting starts, but also allow at most 2f processes to
 // record that it is popular on the voting level. This way it will not be decided 0 (as well as 1) at the round no
-// initialVoting+1. We achieve this goal by two means: extending common votes by some initial values and reverting the list
-// of processes that vote 1 on level initialVoting-1. Former allows us to treat the initialization similar way as any other
-// round. For details, see the `fixCommonVotes` function. Later, makes the unit U_c not being decided 1 by the 'fast' algorithm.
-// To this point, the extended common vote (0 for round `initialVoting`) forces us to make the unit U_c popular on level
-// `initialVoting-1` (subset of processes voting 1 being of size 2f+1). If we would not reverse processes on the 1's tower list,
-// then there would be a chance that processes on the zeros side would construct a proof of popularity of U_c, i.e. f+1 nodes
-// that are shared between 1's and 0's from round `initialVoting-1` would introduce, having them as parents, f new nodes that
-// are above U_c from ones side which would give us a quorum of processes that see U_c. After we reverse the 1's side, the 0's
-// side uses f shared nodes from round initialVoting-1 that are not able to introduce any new processes (till that round they
-// were building their levels alone using nodes from 0's side) and one additional processes that can only introduce f processes
-// above U_c that we already know, giving us f+1 processes above U_c in total.
+// initialVoting+1, since we made it popular, neither it is decided 1 because we did not show it to enough processes. We achieve
+// this goal by two means: extending common votes by some initial values and reverting the list of processes that vote 1 on
+// level initialVoting-1. Former allows us to treat the initialization similar way as any other round. For details, see the
+// `fixCommonVotes` function. Later, makes the unit U_c not being decided 1 by the 'fast' algorithm. To this point, the extended
+// common vote (0 for round `initialVoting`) forces us to make the unit U_c popular on level `initialVoting-1` (subset of
+// processes voting 1 being of size 2f+1). If we would not reverse processes on the 1's tower list, then there would be a chance
+// that processes on the zeros side would construct a proof of popularity of U_c, i.e. f+1 nodes that are shared between 1's and
+// 0's from round `initialVoting-1` would introduce, having them as parents, f new nodes that are above U_c from ones side which
+// would give us a quorum of processes that see U_c. After we reverse the 1's side, the 0's side uses f shared nodes from round
+// initialVoting-1 that are not able to introduce any new processes (till that round they were building their levels alone using
+// nodes from 0's side) and one additional processes that can only introduce f processes above U_c that we already know, giving
+// us f+1 processes above U_c in total.
 
-// *tower:                 1 (votes 1) tower        0 tower
+// tower:                  1 (votes 1) tower        0 tower
 //
 //                  1 |        ? (d+)               ? (v+)
 //                    |
