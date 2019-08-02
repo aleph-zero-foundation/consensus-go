@@ -13,72 +13,76 @@ func generateDagConfig(c *Committee) *gomel.DagConfig {
 	}
 }
 
-func generateSyncSetupConfig(conf *Configuration, c *Committee) *process.Sync {
-	return &process.Sync{
-		Pid:               c.Pid,
-		LocalAddress:      c.SetupAddresses[c.Pid],
-		RemoteAddresses:   c.SetupAddresses,
-		LocalMCAddress:    c.SetupMCAddresses[c.Pid],
-		RemoteMCAddresses: c.SetupMCAddresses,
-		OutSyncLimit:      conf.NOutSync,
-		InSyncLimit:       conf.NInSync,
-		Timeout:           time.Duration(conf.Timeout * float32(time.Second)),
-		Multicast:         conf.Multicast,
+func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*process.Sync {
+	nTypes := len(c.SetupAddresses)
+	syncConfs := make([]*process.Sync, nTypes)
+	for i := range syncConfs {
+		syncConfs[i] = &process.Sync{
+			Type:            conf.SyncSetup[i].Type,
+			Pid:             m.Pid,
+			LocalAddress:    c.SetupAddresses[i][m.Pid],
+			RemoteAddresses: c.SetupAddresses[i],
+			Params:          conf.SyncSetup[i].Params,
+			Fallback:        conf.SyncSetup[i].Fallback,
+		}
 	}
+	return syncConfs
 }
 
-func generateSyncConfig(conf *Configuration, c *Committee) *process.Sync {
-	return &process.Sync{
-		Pid:               c.Pid,
-		LocalAddress:      c.Addresses[c.Pid],
-		RemoteAddresses:   c.Addresses,
-		LocalMCAddress:    c.MCAddresses[c.Pid],
-		RemoteMCAddresses: c.MCAddresses,
-		OutSyncLimit:      conf.NOutSync,
-		InSyncLimit:       conf.NInSync,
-		Timeout:           time.Duration(conf.Timeout * float32(time.Second)),
-		Multicast:         conf.Multicast,
+func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process.Sync {
+	nTypes := len(conf.Sync)
+	syncConfs := make([]*process.Sync, nTypes)
+	for i := range syncConfs {
+		syncConfs[i] = &process.Sync{
+			Type:            conf.Sync[i].Type,
+			Pid:             m.Pid,
+			LocalAddress:    c.Addresses[i][m.Pid],
+			RemoteAddresses: c.Addresses[i],
+			Params:          conf.Sync[i].Params,
+			Fallback:        conf.Sync[i].Fallback,
+		}
 	}
+	return syncConfs
 }
 
-func generateCreateSetupConfig(conf *Configuration, c *Committee) *process.Create {
+func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
 	return &process.Create{
-		Pid:          c.Pid,
+		Pid:          m.Pid,
 		MaxParents:   int(conf.NParents),
 		PrimeOnly:    conf.PrimeOnly,
 		CanSkipLevel: false,
-		PrivateKey:   c.PrivateKey,
+		PrivateKey:   m.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
 		MaxLevel:     int(conf.LevelLimit),
 	}
 }
 
-func generateCreateConfig(conf *Configuration, c *Committee) *process.Create {
+func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
 	return &process.Create{
-		Pid:          c.Pid,
+		Pid:          m.Pid,
 		MaxParents:   int(conf.NParents),
 		PrimeOnly:    conf.PrimeOnly,
 		CanSkipLevel: conf.CanSkipLevel,
-		PrivateKey:   c.PrivateKey,
+		PrivateKey:   m.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
 		MaxLevel:     int(conf.LevelLimit),
 	}
 }
 
-func generateOrderSetupConfig(conf *Configuration, c *Committee) *process.Order {
+func generateOrderSetupConfig(conf *Configuration, m *Member, c *Committee) *process.Order {
 	return &process.Order{
-		Pid:             c.Pid,
+		Pid:             m.Pid,
 		VotingLevel:     int(conf.VotingLevel),
 		PiDeltaLevel:    int(conf.PiDeltaLevel),
 		OrderStartLevel: 6,
 	}
 }
 
-func generateOrderConfig(conf *Configuration, c *Committee) *process.Order {
+func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *process.Order {
 	return &process.Order{
-		Pid:             c.Pid,
+		Pid:             m.Pid,
 		VotingLevel:     int(conf.VotingLevel),
 		PiDeltaLevel:    int(conf.PiDeltaLevel),
 		OrderStartLevel: int(conf.OrderStartLevel),
@@ -97,17 +101,18 @@ func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 }
 
 // GenerateConfig translates the configuration and committee information into a process config.
-func (conf *Configuration) GenerateConfig(c *Committee) process.Config {
+func (conf *Configuration) GenerateConfig(m *Member, c *Committee) process.Config {
 	return process.Config{
 		Dag:         generateDagConfig(c),
-		Sync:        generateSyncConfig(conf, c),
-		SyncSetup:   generateSyncSetupConfig(conf, c),
-		Create:      generateCreateConfig(conf, c),
-		CreateSetup: generateCreateSetupConfig(conf, c),
-		Order:       generateOrderConfig(conf, c),
-		OrderSetup:  generateOrderSetupConfig(conf, c),
+		Sync:        generateSyncConfig(conf, m, c),
+		SyncSetup:   generateSyncSetupConfig(conf, m, c),
+		Create:      generateCreateConfig(conf, m, c),
+		CreateSetup: generateCreateSetupConfig(conf, m, c),
+		Order:       generateOrderConfig(conf, m, c),
+		OrderSetup:  generateOrderSetupConfig(conf, m, c),
 		TxValidate:  generateTxValidateConfig(),
 		TxGenerate:  generateTxGenerateConfig(conf),
 		MemLog:      conf.LogMemInterval,
+		Setup:       conf.Setup,
 	}
 }

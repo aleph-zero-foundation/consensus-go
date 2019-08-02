@@ -63,5 +63,4 @@ FetchService    = 7
 MCService       = 8
 RetryingService = 9
 
-
 Genesis = "genesis"

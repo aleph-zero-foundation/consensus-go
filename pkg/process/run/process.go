@@ -34,13 +34,18 @@ func startAll(services []process.Service) error {
 }
 
 // Process starts main and setup processes.
-func Process(config process.Config, setupLog zerolog.Logger, log zerolog.Logger, setup func(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger)) (gomel.Dag, error) {
+func Process(config process.Config, setupLog zerolog.Logger, log zerolog.Logger) (gomel.Dag, error) {
 	// rsCh is a channel shared between setup process and the main process.
 	// The setup process should create a random source and push it to the channel.
 	// The main process waits on the channel.
 	rsCh := make(chan gomel.RandomSource)
 
-	go setup(config, rsCh, setupLog)
+	if config.Setup == "urn" {
+		go urnSetup(config, rsCh, setupLog)
+	}
+	if config.Setup == "beacon" {
+		go beaconSetup(config, rsCh, setupLog)
+	}
 	return main(config, rsCh, log)
 }
 

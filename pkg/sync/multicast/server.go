@@ -18,6 +18,7 @@ func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, diale
 	proto := newProtocol(pid, dag, randomSource, requests, dialer, listener, callback, timeout, fallback, log)
 	return &server{
 			requests: requests,
+			fallback: fallback,
 			outPool:  sync.NewPool(uint(mcOutWPSize*dag.NProc()), proto.Out),
 			inPool:   sync.NewPool(uint(mcInWPSize*dag.NProc()), proto.In),
 		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
@@ -48,6 +49,7 @@ type request struct {
 
 type server struct {
 	requests chan<- request
+	fallback sync.Fallback
 	outPool  *sync.Pool
 	inPool   *sync.Pool
 }

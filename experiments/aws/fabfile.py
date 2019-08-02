@@ -53,13 +53,20 @@ def send_config(conn):
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     conn.put('data/config.json', repo_path)
 
+@task
+def send_keys_addrs(conn):
+    ''' Sends keys and addresses, and fixes ip address. '''
+    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
+    conn.put('data/committee.ka', repo_path+'/ka')
+    with conn.cd(repo_path):
+        conn.run(f'sed s/{conn.host}/$(hostname --ip-address)/g < ka > committee.ka')
 
 @task
 def send_data(conn, pid):
     ''' Sends keys, addresses, and parameters. '''
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
-    conn.put(f'data/{pid}.keys', repo_path)
-
+    conn.put(f'data/{pid}.pk', repo_path)
+    send_keys_addrs(conn)
     conn.put('data/config.json', repo_path)
 
 @task
@@ -80,10 +87,9 @@ def run_protocol(conn, pid, delay='0'):
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
         cmd = f'go run cmd/gomel/main.go \
-                    --address "$(hostname --ip-address):8888" \
-                    --keys {pid}.keys \
+                    --pk {pid}.pk\
+                    --keys_addrs committee.ka\
                     --config config.json \
-                    --db pkg/testdata/users.txt \
                     --dag {pid}.dag \
                     --delay {int(float(delay))}'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
@@ -95,10 +101,9 @@ def run_protocol_profiler(conn, pid, delay='0'):
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
         cmd = f'go run cmd/gomel/main.go \
-                    --address "$(hostname --ip-address):8888" \
-                    --keys {pid}.keys \
+                    --pk {pid}.pk\
+                    --keys_addrs committee.ka\
                     --config config.json \
-                    --db pkg/testdata/users.txt \
                     --dag {pid}.dag \
                     --delay {int(float(delay))}'
         if int(pid)%16 == 0 :
@@ -154,4 +159,5 @@ def get_log(conn, pid):
 def test(conn):
     ''' Tests if connection is ready '''
 
+    print(conn.host)
     conn.open()

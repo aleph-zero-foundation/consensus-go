@@ -1,54 +1,207 @@
 package sync
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/network/udp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/fallback"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 )
+
+// Note: it is required that every server type that is used as a fallback is initialized
+// before a server type that uses it as a fallback server.
 
 type service struct {
 	servers []sync.Server
 	log     zerolog.Logger
 }
 
-// NewService creates a new syncing service for the given dag, with the given config. Returns also a callback meant to be called after creating a new unit.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Sync, primeAlert gomel.Callback, log zerolog.Logger) (process.Service, gomel.Callback, error) {
-	pid := uint16(config.Pid)
+// Checks if all fallbacks have their corresponding configurations.
+func valid(configs []*process.Sync) error {
+	if len(configs) == 0 {
+		return gomel.NewConfigError("empty sync configuration")
+	}
+	for i, c := range configs {
+		if c.Fallback != "" {
+			f, internal := c.Fallback, c.Params["fallback"]
+			if f == "retrying" && internal != "gossip" && internal != "fetch" {
+				gomel.NewConfigError("defined retrying as fallback, but didn't specify correct fallback for it")
+			}
+			found := false
+			if f == "fetch" {
+				found = c.Type == "fetch"
+			}
+			for _, cPrev := range configs[:i] {
+				if cPrev.Type == f {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return gomel.NewConfigError("defined " + f + " as fallback, but there is no configuration for it")
+			}
+		}
+	}
+	return nil
+}
+
+// Builds fallback for process.Sync configuration
+func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.RandomSource, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
+	var fbk sync.Fallback
+	switch c.Fallback {
+	case "gossip":
+		reqChan := make(chan uint16)
+		fbk = fallback.NewGossip(reqChan)
+		return fbk, reqChan, nil, nil
+	case "fetch":
+		reqChan := make(chan fetch.Request)
+		fbk = fallback.NewFetch(dag, reqChan)
+		return fbk, nil, reqChan, nil
+	case "retrying":
+		var baseFbk sync.Fallback
+		log := log.With().Int(logging.Service, logging.RetryingService).Logger()
+		rif, err := strconv.ParseFloat(c.Params["retryingInterval"], 64)
+		ri := time.Duration(rif)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		switch c.Params["fallback"] {
+		case "gossip":
+			reqChan := make(chan uint16)
+			baseFbk = fallback.NewGossip(reqChan)
+			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
+			return fbk, reqChan, nil, nil
+		case "fetch":
+			reqChan := make(chan fetch.Request)
+			baseFbk = fallback.NewFetch(dag, reqChan)
+			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
+			return fbk, nil, reqChan, nil
+		default:
+			return nil, nil, nil, gomel.NewConfigError("fallback param for retrying cannot be empty")
+		}
+	default:
+		fbk = sync.NopFallback()
+	}
+	return fbk, nil, nil, nil
+}
+
+func isFallback(name string, configs []*process.Sync) int {
+	for i, c := range configs {
+		if c.Fallback == name {
+			return i
+		}
+	}
+	return -1
+}
+
+// NewService creates a new syncing service for the given dag, with the given config.
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, primeAlert gomel.Callback, log zerolog.Logger) (process.Service, gomel.Callback, error) {
+	if err := valid(configs); err != nil {
+		return nil, nil, err
+	}
+	pid := uint16(configs[0].Pid)
 	nProc := uint16(dag.NProc())
 	s := &service{log: log.With().Int(logging.Service, logging.SyncService).Logger()}
-	gossipLog := log.With().Int(logging.Service, logging.GossipService).Logger()
-	mcLog := log.With().Int(logging.Service, logging.MCService).Logger()
+	fallbacks := make(map[string]sync.Fallback)
+	callback := gomel.NopCallback
 
-	dialer, listener, err := tcp.NewNetwork(config.LocalAddress, config.RemoteAddresses, gossipLog)
-	if err != nil {
-		return nil, nil, err
-	}
-	peerSource := gossip.NewDefaultPeerSource(nProc, pid)
-	gossipProto := gossip.NewProtocol(pid, dag, randomSource, dialer, listener, peerSource, primeAlert, config.Timeout, gossipLog)
-	gossipServer := sync.NewDefaultServer(gossipProto, config.OutSyncLimit, config.InSyncLimit)
-	s.servers = append(s.servers, gossipServer)
+	for i, c := range configs {
+		var (
+			dialer   network.Dialer
+			listener network.Listener
+			server   sync.Server
+			fbk      sync.Fallback
+		)
+		tf, err := strconv.ParseFloat(c.Params["Timeout"], 64)
+		if err != nil {
+			return nil, nil, err
+		}
+		t := time.Duration(tf) * time.Second
+		switch c.Type {
+		case "multicast":
+			log = log.With().Int(logging.Service, logging.MCService).Logger()
+			var err error
+			switch c.Params["McType"] {
+			case "tcp":
+				dialer, listener, err = tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+			case "udp":
+				dialer, listener, err = udp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+			}
+			if err != nil {
+				return nil, nil, err
+			}
+			fbk = fallbacks[c.Fallback]
+			if fbk == nil {
+				fbk = sync.NopFallback()
+			}
+			server, callback = multicast.NewServer(pid, dag, randomSource, dialer, listener, primeAlert, t, fbk, log)
+		case "gossip":
+			log = log.With().Int(logging.Service, logging.GossipService).Logger()
 
-	switch config.Multicast {
-	case "tcp":
-		dialer, listener, err = tcp.NewNetwork(config.LocalMCAddress, config.RemoteMCAddresses, mcLog)
-	case "udp":
-		dialer, listener, err = udp.NewNetwork(config.LocalMCAddress, config.RemoteMCAddresses, mcLog)
-	default:
-		return s, gomel.NopCallback, nil
+			dialer, listener, err := tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			var peerSource gossip.PeerSource
+			if id := isFallback("fetch", configs[i+1:]); id != -1 {
+				fbk, reqChan, _, err := getFallback(configs[i+1+id], s, dag, randomSource, log)
+				fallbacks["gossip"] = fbk
+				if err != nil {
+					return nil, nil, err
+				}
+				peerSource = gossip.NewMixedPeerSource(nProc, pid, reqChan)
+			} else {
+				peerSource = gossip.NewDefaultPeerSource(nProc, pid)
+			}
+			nOut, err := strconv.Atoi(c.Params["nOut"])
+			if err != nil {
+				return nil, nil, err
+			}
+			nIn, err := strconv.Atoi(c.Params["nIn"])
+			if err != nil {
+				return nil, nil, err
+			}
+			server = gossip.NewServer(pid, dag, randomSource, dialer, listener, peerSource, primeAlert, t, log, uint(nOut), uint(nIn))
+		case "fetch":
+			log = log.With().Int(logging.Service, logging.FetchService).Logger()
+			dialer, listener, err := tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			var reqChan chan fetch.Request
+			if id := isFallback("fetch", configs[i+1:]); id != -1 || c.Fallback == "fetch" {
+				fbk, _, reqChan, err = getFallback(configs[i+1+id], s, dag, randomSource, log)
+				fallbacks["fetch"] = fbk
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+
+			fbk = fallbacks[c.Fallback]
+			nOut, err := strconv.Atoi(c.Params["nOut"])
+			if err != nil {
+				return nil, nil, err
+			}
+			nIn, err := strconv.Atoi(c.Params["nIn"])
+			if err != nil {
+				return nil, nil, err
+			}
+			server = fetch.NewServer(pid, dag, randomSource, reqChan, dialer, listener, primeAlert, t, fbk, log, uint(nOut), uint(nIn))
+		}
+		s.servers = append(s.servers, server)
 	}
-	if err != nil {
-		return nil, nil, err
-	}
-	multicastServer, callback := multicast.NewServer(pid, dag, randomSource, dialer, listener, primeAlert, config.Timeout, sync.NopFallback(), mcLog)
-	s.servers = append(s.servers, multicastServer)
 
 	return s, callback, nil
 }
@@ -62,13 +215,14 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
-	for _, server := range s.servers {
-		server.StopOut()
+	for i := len(s.servers) - 1; i >= 0; i-- {
+		s.servers[i].StopOut()
 	}
+
 	// let other processes sync with us some more
 	time.Sleep(5 * time.Second)
-	for _, server := range s.servers {
-		server.StopIn()
+	for i := len(s.servers) - 1; i >= 0; i-- {
+		s.servers[i].StopIn()
 	}
 	s.log.Info().Msg(logging.ServiceStopped)
 }

@@ -93,7 +93,7 @@ def launch_new_instances_in_region(n_processes=1, region_name=default_region_nam
     key_name = 'aleph'
     init_key_pair(region_name, key_name)
 
-    security_group_name = 'aleph'
+    security_group_name = 'alephGMF2'
     security_group_id = security_group_id_by_region(region_name, security_group_name)
 
     image_id = image_id_in_region(region_name)
@@ -453,7 +453,7 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
         c += len(ipl)
         ip_list.extend(ipl)
 
-    generate_keys(ip_list, 8888)
+    generate_keys(ip_list)
 
     color_print('waiting till ports are open on machines')
     wait('open 22', regions)
@@ -597,13 +597,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
 
     n_processes = len(ip2pid)
 
-    result_path = f'{name}_'\
-                  f'{n_processes}_'\
-                  f'{config["NParents"]}_'\
-                  f'{config["CreateDelay"]}_'\
-                  f'{config["NInSync"]}_'\
-                  f'{config["NOutSync"]}_'\
-                  f'{config["Txpu"]}'
+    result_path = f'{name}'
 
     color_print('move and rename dir')
     shutil.move('../results', result_path)

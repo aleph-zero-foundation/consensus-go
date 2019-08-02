@@ -28,6 +28,10 @@ func (f *fetchFallback) Run(pu gomel.Preunit) {
 	}
 }
 
+func (f *fetchFallback) Stop() {
+	close(f.requests)
+}
+
 // NewFetch creates a fallback that pushes fetch requests for unknown parents to the provided channel.
 func NewFetch(dag gomel.Dag, requests chan<- fetch.Request) sync.Fallback {
 	return &fetchFallback{

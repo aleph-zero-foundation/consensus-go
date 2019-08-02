@@ -31,6 +31,8 @@ func (f *fallback) Run(_ gomel.Preunit) {
 	*f = true
 }
 
+func (f *fallback) Stop() {}
+
 var _ = Describe("Protocol", func() {
 
 	var (

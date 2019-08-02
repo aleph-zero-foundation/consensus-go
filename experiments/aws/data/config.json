@@ -1,31 +1,57 @@
 {
-		"NParents": 128,
+	"NParents": 8,
 
-		"PrimeOnly": true,
+	"PrimeOnly": true,
 
-		"CreateDelay": 0.05,
+	"CanSkipLevel": true, 
 
-		"StepSize": 0.0,
+	"CreateDelay": 1.0,
 
-		"NInSync": 20,
+	"StepSize": 0.0,
 
-		"NOutSync": 15,
+	"Sync": [{
+		"Type": "gossip",
+		"Params": {
+			"nIn": "3",
+			"nOut": "2",
+			"Timeout": "2"},
+		"Fallback": ""
+		}, {
+		"Type": "fetch",
+		"Params": {
+			"nIn": "3",
+			"nOut": "2",
+			"Timeout": "2"},
+		"Fallback": "fetch"
+		}, {
+		"Type": "multicast",
+		"Params": {
+			"McType": "tcp",
+			"Timeout": "2"},
+		"Fallback": "fetch"
+		}],
 
-		"Txpu": 1,
+	"Setup": "urn",
 
-		"LevelLimit": 50,
+	"SyncSetup": [],
 
-		"VotingLevel": 3,
+	"Txpu": 1,
 
-		"PiDeltaLevel": 12,
+	"LevelLimit": 50,
 
-		"AddShares": 0,
+	"VotingLevel": 3,
 
-		"LogLevel": 1,
+	"PiDeltaLevel": 12,
 
-		"LogBuffer": 100000,
+	"AddShares": 0,
 
-		"LogMemInterval": 10,
+	"LogLevel": 0,
 
-		"LogHuman": false 
+	"LogBuffer": 100000,
+
+	"LogMemInterval": 10,
+
+	"LogHuman": false,
+
+    "OrderStartLevel": 0
 }

@@ -1,5 +1,6 @@
 '''Helper functions for shell'''
 
+import json
 import os
 from pathlib import Path
 from subprocess import call
@@ -43,7 +44,7 @@ def create_security_group(region_name, security_group_name):
     sg = ec2.create_security_group(GroupName=security_group_name, Description='ssh and gossip', VpcId=vpc_id)
 
     # authorize incomming connections to port 22 for ssh, mainly for debugging
-    # and to port 8888 for syncing the dags
+    # and to ports 9000, 10000, 11000 for syncing the dags
     sg.authorize_ingress(
         GroupName=security_group_name,
         IpPermissions=[
@@ -54,10 +55,22 @@ def create_security_group(region_name, security_group_name):
                 'ToPort': 22,
             },
             {
-                'FromPort': 8888,
+                'FromPort': 9000,
                 'IpProtocol': 'tcp',
                 'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
-                'ToPort': 8888,
+                'ToPort': 9000,
+            },
+            {
+                'FromPort': 10000,
+                'IpProtocol': 'tcp',
+                'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                'ToPort': 10000,
+            },
+            {
+                'FromPort': 11000,
+                'IpProtocol': 'tcp',
+                'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                'ToPort': 11000,
             }
         ]
     )
@@ -205,40 +218,30 @@ def read_aws_keys():
         return access_key_id, secret_access_key
 
 
-def generate_keys(ip_list, port):
+def generate_keys(ip_list):
     ''' Generate signing keys for the committee.'''
     n_processes = len(ip_list)
 
     os.chdir('data/')
+    with open('config.json', 'r') as f:
+        n_port = len(json.load(f)['Sync'])
     keys_path = glob('*.keys')
     pubs = None
-    if len(keys_path) == n_processes:
-        print('reusing keys')
-        # there are enough keys, we need only to update ips
-        for i, ip in enumerate(ip_list):
-            with open(f'{i}.keys', 'r') as f:
-                priv, _ = f.readline().split()
-                if pubs is None:
-                    pubs = []
-                    for line in f:
-                        pub, _ = line.split()
-                        pubs.append(pub)
-            with open(f'{i}.keys', 'w') as f:
-                f.write(f'{priv} {ip}:{port}\n')
-                for pub, ip in zip(pubs, ip_list):
-                    f.write(f'{pub} {ip}:{port}\n')
-    else:
-        print('removing old keys')
-        for kp in keys_path:
-            os.remove(kp)
-        print('genereting a new set of keys')
-        # we need to generate a new set of keys
-        with open('addresses', 'w') as f:
-            for ip in ip_list:
-                f.write(f'{ip}:{port}\n')
+    print('removing old keys')
+    for kp in keys_path:
+        os.remove(kp)
+    # we need to generate a new set of keys
+    with open('addresses', 'w') as f:
+        for ip in ip_list:
+            f.write('|')
+            for port in range(9,9+n_port):
+                if port != 9:
+                    f.write(' ')
+                f.write(f'{ip}:{port*1000}')
+            f.write('\n')
 
-        cmd = f'go run ../../../cmd/gomel-keys/main.go {n_processes} addresses'
-        call(cmd.split())
+    cmd = f'go run ../../../cmd/gomel-keys/main.go {n_processes} addresses'
+    call(cmd.split())
 
     os.chdir('..')
 
