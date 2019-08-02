@@ -32,6 +32,7 @@ regions = np.array(range(128)).reshape(8,-1)
 region_names = ['Virginia','California','Oregon','Ireland','Sao Paulo','Singapore','Sydney','Tokyo']
 
 driver.add_pipeline('', [
+    Filter(Service, GossipService),
     Filter(Event, [SyncStarted, SyncCompleted, DuplicatedUnit]),
     GossipPlots(regions, region_names),
     DuplUnitPlots(),
