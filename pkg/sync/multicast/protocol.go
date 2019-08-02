@@ -33,6 +33,13 @@ type protocol struct {
 }
 
 func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, requests <-chan request, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
+
+	logSuccess := func(_ gomel.Preunit, added gomel.Unit, err error) {
+		if err == nil {
+			log.Info().Int(logging.Creator, added.Creator()).Int(logging.Height, added.Height()).Msg(logging.AddedBCUnit)
+		}
+	}
+
 	return &protocol{
 		pid:          pid,
 		dag:          dag,
@@ -40,7 +47,7 @@ func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, req
 		requests:     requests,
 		dialer:       dialer,
 		listener:     listener,
-		callback:     callback,
+		callback:     gomel.MergeCallbacks(callback, logSuccess),
 		timeout:      timeout,
 		fallback:     fallback,
 		log:          log,
@@ -63,9 +70,6 @@ func (p *protocol) In() {
 		return
 	}
 	err = add.Unit(p.dag, p.randomSource, preunit, p.callback, p.fallback, p.log)
-	if err == nil {
-		p.log.Info().Int(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
-	}
 }
 
 func (p *protocol) Out() {
