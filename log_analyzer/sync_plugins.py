@@ -41,6 +41,87 @@ class MulticastStats(Plugin):
         return ret
 
 
+class FetchStats(Plugin):
+    """Plugin gathering statistics of outgoing fetches."""
+    name = 'Fetch stats (out only)'
+    def __init__(self):
+        self.data = {}
+
+    def process(self, entry):
+        if PID not in entry or OSID not in entry:
+            return entry
+        key = (entry[PID], entry[OSID])
+
+        if key not in self.data:
+            self.data[key] = {'dupl':0, 'fail':False}
+
+        if entry[Event] == SyncStarted:
+            self.data[key]['start'] = entry[Time]
+        elif entry[Event] == SyncCompleted:
+            self.data[key]['end'] = entry[Time]
+            self.data[key]['recv'] = entry[Recv]
+        elif entry[Event] == DuplicatedUnit:
+            self.data[key]['dupl'] += 1
+        elif entry[Level] == '3':
+            self.data[key]['fail'] = True
+        return entry
+
+    def finalize(self):
+        self.times = []
+        self.recv = []
+        self.dupl = []
+        self.totaldupl, self.failed, self.unfinished = 0,0,0
+        for d in self.data.values():
+            if d['fail']:
+                self.failed += 1
+            elif 'end' not in d:
+                self.unfinished += 1
+                continue
+            elif 'start' in d:
+                self.times.append(d['end']-d['start'])
+                self.recv.append(d['recv'])
+                self.dupl.append((d['dupl']/d['recv'] if d['recv'] > 0 else 0, d['recv']))
+                self.totaldupl += d['dupl']
+        self.times.sort()
+        self.recv.sort()
+        self.dupl.sort()
+
+    def get_data(self):
+        return self.times, self.totaldupl, sum(self.recv)
+
+    @staticmethod
+    def multistats(datasets):
+        ret = '    PID     Received    Duplicated\n'
+        for name in sorted(datasets.keys()):
+            _,d,r = datasets[name]
+            ret += f'     {name} {r:10} {d:10}\n'
+        ret += '\n  Duration [ms]\n'
+        ret += multimean({k:datasets[k][0] for k in datasets})
+        return ret
+
+    def report(self):
+        ret =   '    Fetches in total:         %5d\n'%len(self.data)
+        ret +=  '    Failed:                   %5d\n'%self.failed
+        ret +=  '    Unfinished:               %5d\n'%self.unfinished
+        if not self.times:
+            return ret + sadpanda +'\n'
+        ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
+        ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
+        ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
+        ret +=  '    Med time:            %13.2f ms\n\n'%median(self.times)
+        ret +=  '    Max units received:  %10d\n'%self.recv[-1]
+        ret +=  '    Avg units received:  %13.2f\n'%mean(self.recv)
+        ret +=  '    Med units received:  %13.2f\n\n'%median(self.recv)
+        ret +=  '    Max duplicated ratio:%13.2f (%d units)\n'%self.dupl[-1]
+        ret +=  '    Avg duplicated ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
+        ret +=  '    Med duplicated ratio:%13.2f\n'%median(i[0] for i in self.dupl)
+        ret +=  '    Largest duplicated ratio:\n'
+        for i in sorted(self.dupl, reverse=True)[:10]:
+            ret +=  '       %13.2f (%d units)\n'%i
+        ret += '\n'
+        return ret
+
+
 class GossipStats(Plugin):
     """Plugin gathering detailed statistics of syncs during gossip."""
     name = 'Gossip stats'
@@ -93,8 +174,7 @@ class GossipStats(Plugin):
         self.fsent = []
         self.frecv = []
         self.dupl = []
-        self.totaldupl = 0
-        self.addexc, self.failed, self.unfinished = 0,0,0
+        self.totaldupl, self.addexc, self.failed, self.unfinished = 0,0,0,0
         for d in values:
             if d['fail']:
                 self.failed += 1
@@ -160,7 +240,7 @@ class GossipStats(Plugin):
         ret +=  '    Avg duplicated ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
         ret +=  '    Med duplicated ratio:%13.2f\n'%median(i[0] for i in self.dupl)
         ret +=  '    Largest recv duplicated ratio:\n'
-        for i in sorted(self.dupl, key=lambda x: x[1], reverse=True)[:10]:
+        for i in sorted(self.dupl, reverse=True)[:10]:
             ret +=  '       %13.2f (%d units)\n'%i
         ret += '\n'
         return ret
