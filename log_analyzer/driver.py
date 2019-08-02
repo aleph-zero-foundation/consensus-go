@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from copy import deepcopy
-from plugins import Plotter
+from plotters import Plotter
 
 class Driver:
     """

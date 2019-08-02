@@ -13,6 +13,8 @@ from zipfile import ZipFile
 from driver import Driver
 from const import *
 from plugins import *
+from sync_plugins import *
+from plotters import *
 
 def lasttime(path, seek=128):
     with open(path, 'rb') as f:
