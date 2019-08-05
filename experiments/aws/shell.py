@@ -587,7 +587,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
                 collected += 1
                 if collected == logs_per_region:
                     break
-    run_task_for_ip('get-poset', [ip], parallel=0, pids=[pid])
+    run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
 
 
     color_print(f'{len(os.listdir("../results"))} files in ../results')
@@ -613,6 +613,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
             path = os.path.join(result_path, path)
             zf.write(path)
             os.remove(path)
+        zf.write('data/config.json')
 
     os.rmdir(result_path)
 
