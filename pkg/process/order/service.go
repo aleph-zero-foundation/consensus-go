@@ -57,7 +57,7 @@ func (s *service) attemptOrdering() {
 	for {
 		select {
 		case <-s.primeAlert:
-			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
+			for s.linearOrdering.DecideTiming() != nil {
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}

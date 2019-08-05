@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/rs/zerolog"
-
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
@@ -63,16 +62,10 @@ func dagMaxLevel(dag gomel.Dag) int {
 	return maxLevel
 }
 
-// DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
-func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
-	// If we have already decided we can read the answer from memory
-	if o.timingUnits.length() > level {
-		return o.timingUnits.get(level)
-	}
-	// We should decide on previous levels first
-	if o.timingUnits.length() < level {
-		return nil
-	}
+// DecideTiming tries to pick a next timing unit. Returns nil if it cannot be decided yet.
+func (o *ordering) DecideTiming() gomel.Unit {
+	level := o.timingUnits.length()
+
 	if dagMaxLevel(o.dag) < level+o.votingLevel {
 		return nil
 	}
@@ -87,7 +80,7 @@ func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
 		decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
 		if decision == popular {
 			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
-			o.timingUnits.pushBack(uc)
+			o.timingUnits.appendOrIgnore(level, uc)
 			result = uc
 			return false
 		}
