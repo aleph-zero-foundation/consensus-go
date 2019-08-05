@@ -58,13 +58,14 @@ func valid(configs []*process.Sync) error {
 // Builds fallback for process.Sync configuration
 func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.RandomSource, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
 	var fbk sync.Fallback
+	nProc := dag.NProc()
 	switch c.Fallback {
 	case "gossip":
-		reqChan := make(chan uint16)
+		reqChan := make(chan uint16, nProc)
 		fbk = fallback.NewGossip(reqChan)
 		return fbk, reqChan, nil, nil
 	case "fetch":
-		reqChan := make(chan fetch.Request)
+		reqChan := make(chan fetch.Request, nProc)
 		fbk = fallback.NewFetch(dag, reqChan)
 		return fbk, nil, reqChan, nil
 	case "retrying":
@@ -77,12 +78,12 @@ func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.
 		}
 		switch c.Params["fallback"] {
 		case "gossip":
-			reqChan := make(chan uint16)
+			reqChan := make(chan uint16, nProc)
 			baseFbk = fallback.NewGossip(reqChan)
 			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
 			return fbk, reqChan, nil, nil
 		case "fetch":
-			reqChan := make(chan fetch.Request)
+			reqChan := make(chan fetch.Request, nProc)
 			baseFbk = fallback.NewFetch(dag, reqChan)
 			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
 			return fbk, nil, reqChan, nil

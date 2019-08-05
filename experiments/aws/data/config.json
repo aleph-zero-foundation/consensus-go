@@ -1,26 +1,19 @@
 {
-	"NParents": 8,
+	"NParents": 128,
 
 	"PrimeOnly": true,
 
 	"CanSkipLevel": true, 
 
-	"CreateDelay": 1.0,
+	"CreateDelay": 0.1,
 
 	"StepSize": 0.0,
 
 	"Sync": [{
-		"Type": "gossip",
-		"Params": {
-			"nIn": "3",
-			"nOut": "2",
-			"Timeout": "2"},
-		"Fallback": ""
-		}, {
 		"Type": "fetch",
 		"Params": {
-			"nIn": "3",
-			"nOut": "2",
+			"nIn": "20",
+			"nOut": "15",
 			"Timeout": "2"},
 		"Fallback": "fetch"
 		}, {
