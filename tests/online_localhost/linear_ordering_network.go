@@ -57,18 +57,18 @@ func createAndStartProcess(
 	finished *sync.WaitGroup,
 	dags []gomel.Dag,
 ) error {
+	member := config.Member{
+		Pid:        id,
+		PrivateKey: privKey,
+	}
 	committee := config.Committee{
-		Pid:              id,
-		PrivateKey:       privKey,
-		PublicKeys:       pubKeys,
-		Addresses:        addresses,
-		SetupAddresses:   setupAddresses,
-		MCAddresses:      mcAddresses,
-		SetupMCAddresses: setupMCAddresses,
+		PublicKeys:     pubKeys,
+		SetupAddresses: [][]string{setupAddresses, setupMCAddresses},
+		Addresses:      [][]string{addresses, mcAddresses},
 	}
 	defaultAppConfig := config.NewDefaultConfiguration()
 	defaultAppConfig.OrderStartLevel = 6
-	config := defaultAppConfig.GenerateConfig(&committee)
+	config := defaultAppConfig.GenerateConfig(&member, &committee)
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
 
@@ -76,17 +76,16 @@ func createAndStartProcess(
 	if err != nil {
 		return err
 	}
-	setupLog = setupLog.With().Int("process_id", id).Logger()
 
 	log, err := logging.NewLogger("log"+strconv.Itoa(id)+".log", 0, 100000, false)
 	if err != nil {
 		return err
 	}
-	log = log.With().Int("process_id", id).Logger()
 
 	go func() {
-		dag, err := run.Process(config, setupLog, log, run.BeaconSetup)
+		dag, err := run.Process(config, setupLog, log)
 		if err != nil {
+			panic(err)
 			log.Err(err).Msg("failed to initialize a process")
 		}
 		dags[id] = dag
@@ -192,7 +191,7 @@ func checkOrderingFromLogs(nProc int, filenamePrefix string) bool {
 }
 
 func main() {
-	testSize := flag.Uint64("test_size", 4, "number of created processes; default is 4")
+	testSize := flag.Uint64("test_size", 10, "number of created processes; default is 10")
 	userDB := flag.String("user_db", "../../pkg/testdata/users.txt",
 		"file containing testdata for user accounts; default is a file containing names of superheros")
 	maxLevel := flag.Uint64("max_level", 12, "number of levels after which a process should finish; default is 12")
@@ -213,7 +212,6 @@ func main() {
 
 	// wait for all processes to finish
 	allDone.Wait()
-
 	// Sanity checks
 	if checkOrderingFromLogs(dags[0].NProc(), "setup_log") {
 		fmt.Println("Ordering in setup OK")
