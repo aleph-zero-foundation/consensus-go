@@ -16,10 +16,8 @@ from plugins import *
 from sync_plugins import *
 from plotters import *
 
-def lasttime(path, seek=128):
-    with open(path, 'rb') as f:
-        f.seek(-seek, os.SEEK_END)
-        return json.loads(f.readlines()[-1])[Time]
+pipelines_folder = join(dirname(__file__), 'pipelines')
+avail_pipes = [i[:-3] for i in os.listdir(pipelines_folder) if i.endswith('.py')]
 
 def extract(path):
     with ZipFile(path, 'r') as f:
@@ -28,13 +26,12 @@ def extract(path):
     return ret
 
 
-parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel. Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed). The file with pipelines (-p flag) can be a custom .py file or one of the predefined pipelines from the log analyzer source directory. Possible pipelines: default, basic, sync, plots.')
+parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel. Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed). The file with pipelines (-p flag) can be a custom .py file or one of the predefined pipelines from the log analyzer source directory. Possible pipelines: '+ ', '.join(avail_pipes))
 parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archived folder')
 parser.add_argument('-p', '--pipe', metavar='name', help='file with pipelines definitions')
 parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
 args = parser.parse_args()
 
-pipelines_folder = join(dirname(__file__), 'pipelines')
 
 if not args.pipe:
     pipelines = join(pipelines_folder, 'default.py')

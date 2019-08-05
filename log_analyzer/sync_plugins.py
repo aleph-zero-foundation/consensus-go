@@ -11,6 +11,8 @@ class MulticastStats(Plugin):
         self.err = 0
 
     def process(self, entry):
+        if entry[Service] != MCService:
+            return entry
         if entry[Event] == AddedBCUnit:
             self.succ += 1
         elif entry[Event] == UnknownParents:
@@ -22,14 +24,16 @@ class MulticastStats(Plugin):
         return entry
 
     def get_data(self):
-        return self.succ, self.miss, self.dupl
+        if self.succ+self.miss+self.dupl+self.err > 0:
+            return self.succ, self.miss, self.dupl
 
     @staticmethod
     def multistats(datasets):
         ret = '    PID     Success    Failed    Duplicated\n'
         for name in sorted(datasets.keys()):
-            s,m,d = datasets[name]
-            ret += f'     {name} {s:10} {m:10} {d:10}\n'
+            if datasets[name] is not None:
+                s,m,d = datasets[name]
+                ret += f'{name:>7} {s:10} {m:10} {d:10}\n'
         return ret
 
     def report(self):
@@ -48,7 +52,7 @@ class FetchStats(Plugin):
         self.data = {}
 
     def process(self, entry):
-        if PID not in entry or OSID not in entry:
+        if entry[Service] != FetchService or PID not in entry or OSID not in entry:
             return entry
         key = (entry[PID], entry[OSID])
 
@@ -87,16 +91,19 @@ class FetchStats(Plugin):
         self.dupl.sort()
 
     def get_data(self):
-        return self.times, self.totaldupl, sum(self.recv)
+        totalrecv = sum(self.recv)
+        if len(self.times) > 0 and totalrecv > 0:
+            return self.times, self.totaldupl, totalrecv
 
     @staticmethod
     def multistats(datasets):
         ret = '    PID     Received    Duplicated\n'
         for name in sorted(datasets.keys()):
-            _,d,r = datasets[name]
-            ret += f'     {name} {r:10} {d:10}\n'
+            if datasets[name] is not None:
+                _,d,r = datasets[name]
+                ret += f'{name:>7} {r:10} {d:10}\n'
         ret += '\n  Duration [ms]\n'
-        ret += multimean({k:datasets[k][0] for k in datasets})
+        ret += multimean({k:datasets[k][0] for k in datasets if datasets[k]})
         return ret
 
     def report(self):
@@ -131,6 +138,8 @@ class GossipStats(Plugin):
         self.out = {}
 
     def process(self, entry):
+        if entry[Service] != GossipService:
+            return entry
         if PID not in entry:
             return entry
         if OSID in entry:
@@ -199,19 +208,24 @@ class GossipStats(Plugin):
         self.dupl.sort()
 
     def get_data(self):
-        return self.times, self.totaldupl, sum(self.recv) + sum(self.frecv)
+        totalrecv = sum(self.recv) + sum(self.frecv)
+        if len(self.times) > 0 and totalrecv > 0:
+            return self.times, self.totaldupl, totalrecv
 
     @staticmethod
     def multistats(datasets):
         ret = '    PID     Received    Duplicated\n'
         for name in sorted(datasets.keys()):
-            _,d,r = datasets[name]
-            ret += f'     {name} {r:10} {d:10}\n'
+            if datasets[name] is not None:
+                _,d,r = datasets[name]
+                ret += f'{name:>7} {r:10} {d:10}\n'
         ret += '\n  Duration [ms]\n'
         ret += multimean({k:datasets[k][0] for k in datasets})
         return ret
 
     def report(self):
+        if len(self.inc)+len(self.out) == 0:
+            return sadpanda +'\n'
         ret =   '  (ignoring syncs that exchanged nothing)\n' if self.ig else ''
         ret +=  '    Syncs in total:           %5d\n'%(len(self.inc)+len(self.out))
         ret +=  '    Incoming:                 %5d\n'%len(self.inc)

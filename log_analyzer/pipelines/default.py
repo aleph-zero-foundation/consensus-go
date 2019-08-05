@@ -1,6 +1,6 @@
 SKIP = 5
 
-driver.add_pipeline('Create service', [
+driver.add_pipeline('Create', [
     Filter(Service, CreateService),
     CreateCounter(),
     Filter(Event, [UnitCreated, PrimeUnitCreated]),
@@ -8,7 +8,7 @@ driver.add_pipeline('Create service', [
     Timer('unit creation intervals', SKIP)
 ])
 
-driver.add_pipeline('Timing units', [
+driver.add_pipeline('Ordering', [
     Filter(Event, [NewTimingUnit, LinearOrderExtended]),
     Histogram('timing unit decision level', NewTimingUnit, lambda entry: (entry[Height] - entry[Round])),
     Histogram('dag levels above deciding prime unit', NewTimingUnit, lambda entry: (entry[Size] - entry[Height])),
@@ -18,16 +18,22 @@ driver.add_pipeline('Timing units', [
 ])
 
 driver.add_pipeline('Latency', [
-    Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]),
-    Delay('Latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
+    Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered, UnitBroadcasted]),
+    Delay('Ordering latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
+    Delay('Broadcasting latency', [UnitCreated, PrimeUnitCreated], UnitBroadcasted, lambda entry: entry[Height], SKIP),
 ])
 
-driver.add_pipeline('Gossip stats', [
+driver.add_pipeline('Gossip', [
     Filter(Service, GossipService),
     GossipStats(),
 ])
 
-driver.add_pipeline('Multicast stats', [
+driver.add_pipeline('Fetch', [
+    Filter(Service, FetchService),
+    FetchStats(),
+])
+
+driver.add_pipeline('Multicast', [
     Filter(Service, MCService),
     MulticastStats(),
     Histogram('number of missing parents', UnknownParents, lambda entry: entry[Size]),
