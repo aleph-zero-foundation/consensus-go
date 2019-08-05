@@ -76,9 +76,14 @@ type Configuration struct {
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
 		Type:     "gossip",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2"},
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "Timeout": "2"},
 		Fallback: "",
-	}}
+	}, SyncConfiguration{
+		Type:     "multicast",
+		Params:   map[string]string{"McType": "tcp", "Timeout": "2"},
+		Fallback: "",
+	},
+	}
 
 	result := Configuration{
 
@@ -96,7 +101,7 @@ func NewDefaultConfiguration() Configuration {
 
 		Setup: "urn",
 
-		Sync: []SyncConfiguration{},
+		Sync: syncConf,
 
 		Txpu: 1,
 
