@@ -10,6 +10,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
 
+// NewCoin returns a Coin random source generated using given seed.
+// This function should be used only for testing, as it is not safe.
 func NewCoin(nProc, pid, seed int) gomel.RandomSource {
 	rnd := rand.New(rand.NewSource(int64(seed)))
 	threshold := nProc/3 + 1
