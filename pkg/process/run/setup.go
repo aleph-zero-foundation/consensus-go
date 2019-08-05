@@ -13,7 +13,17 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
+
+// coinSetup deals a coin. Running a process with this setup
+// is equivalent to the version of without setup phase.
+func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
+	pid := config.Create.Pid
+	nProc := len(config.Dag.Keys)
+	rsCh <- tests.NewCoin(nProc, pid, 1234)
+	close(rsCh)
+}
 
 // beaconSetup is a setup described in the whitepaper
 func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
