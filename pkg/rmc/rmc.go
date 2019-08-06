@@ -26,7 +26,7 @@ func New(pubs []*bn256.VerificationKey, priv *bn256.SecretKey) *Protocol {
 	}
 }
 
-// AcceptData reads data from r, followed by the id and signature.
+// AcceptData reads the id from r, followed by the data and signature of the whole thing.
 // It verifies that the id matches the provided one, and that the signature was made by pid.
 // It returns the data itself, for protocol-independent verification.
 func (p *Protocol) AcceptData(id uint64, pid uint16, r io.Reader) ([]byte, error) {
