@@ -37,23 +37,22 @@ class Driver:
                 plugin.finalize()
 
     def report(self, name=None):
-        dataset, ret = (self.current, '') if name is None else (self.datasets[name], maketitle(name, 100, '#')+'\n')
+        dataset, ret = (self.current, '') if name is None else (self.datasets[name], maketitle(f'PROCESS {name}', 70, '#')+'\n\n')
         for title, pipeline in dataset.items():
             if title:
-                ret += maketitle(title, 80, '=') + '\n'
+                ret += maketitle(title, 60, '=') + '\n'
             for plugin in pipeline:
                 rep = plugin.report()
                 if plugin.name:
-                    ret += maketitle(plugin.name, 60, '-') + '\n'
+                    ret += maketitle(plugin.name, 60, '.') + '\n\n'
                 if rep:
                     ret += rep + '\n'
                 if isinstance(plugin, Plotter):
                     ret += plugin.saveplot(name) + '\n'
-            ret += '\n'
         return ret
 
     def summary(self):
-        ret = maketitle('GLOBAL STATS', 100, '#')+'\n'
+        ret = maketitle('GLOBAL STATS', 70, '#')+'\n\n'
         for pipeline in self.pipelines:
             pipesummary = ''
             for i, plugin in enumerate(self.pipelines[pipeline]):
@@ -61,10 +60,10 @@ class Driver:
                 if any(data.values()):
                     pluginsummary = plugin.__class__.multistats(data)
                     if pluginsummary:
-                        pipesummary += maketitle(plugin.name, 60, '-') + '\n'
+                        pipesummary += maketitle(plugin.name, 60, '.') + '\n'
                         pipesummary += pluginsummary
             if pipesummary:
-                ret += maketitle(pipeline, 80, '=') + '\n'
+                ret += maketitle(pipeline, 60, '=') + '\n'
                 ret += pipesummary
                 ret += '\n'
         return ret

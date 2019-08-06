@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 
-sadpanda = 'NO ENTRIES'
+sadpanda = 'NO ENTRIES\n'
 
 
 class Plugin:
@@ -330,7 +330,7 @@ class NetworkTraffic(Plugin):
         r = self.recv[self.skip:]
         ret =  '  (skipped first %d entries)\n'%self.skip if self.skip else ''
         if not s:
-            return ret + sadpanda+ '\n'
+            return ret + sadpanda
         ret += '                Sent           Received\n'
         ret += '    Min: %10d       %10d\n' % (min(s), min(r))
         ret += '    Max: %10d       %10d\n' % (max(s), max(r))

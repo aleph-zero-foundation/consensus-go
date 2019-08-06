@@ -37,6 +37,8 @@ class MulticastStats(Plugin):
         return ret
 
     def report(self):
+        if self.get_data() is None:
+            return sadpanda
         ret  =  '    Units added:               %5d\n'%self.succ
         ret +=  '    Units with missing parents:%5d\n'%self.miss
         ret +=  '    Duplicates received:       %5d\n'%self.dupl
@@ -107,11 +109,13 @@ class FetchStats(Plugin):
         return ret
 
     def report(self):
+        if len(self.data) == 0:
+            return sadpanda
         ret =   '    Fetches in total:         %5d\n'%len(self.data)
         ret +=  '    Failed:                   %5d\n'%self.failed
         ret +=  '    Unfinished:               %5d\n'%self.unfinished
         if not self.times:
-            return ret + sadpanda +'\n'
+            return ret + sadpanda
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
         ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
@@ -225,7 +229,7 @@ class GossipStats(Plugin):
 
     def report(self):
         if len(self.inc)+len(self.out) == 0:
-            return sadpanda +'\n'
+            return sadpanda
         ret =   '  (ignoring syncs that exchanged nothing)\n' if self.ig else ''
         ret +=  '    Syncs in total:           %5d\n'%(len(self.inc)+len(self.out))
         ret +=  '    Incoming:                 %5d\n'%len(self.inc)
@@ -233,7 +237,7 @@ class GossipStats(Plugin):
         ret +=  '    Failed:                   %5d\n'%self.failed
         ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
         if not self.times:
-            return ret + sadpanda +'\n'
+            return ret + sadpanda
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
         ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
