@@ -14,7 +14,7 @@ func generateDagConfig(c *Committee) *gomel.DagConfig {
 }
 
 func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*process.Sync {
-	nTypes := len(c.SetupAddresses)
+	nTypes := len(conf.SyncSetup)
 	syncConfs := make([]*process.Sync, nTypes)
 	for i := range syncConfs {
 		syncConfs[i] = &process.Sync{
@@ -98,12 +98,24 @@ func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 	}
 }
 
+func generateRMCConfig(conf *Configuration, m *Member, c *Committee) *process.RMC {
+	return &process.RMC{
+		Pid:             m.Pid,
+		LocalAddress:    c.RMCAddresses[m.Pid],
+		RemoteAddresses: c.RMCAddresses,
+		Pubs:            c.RMCVerificationKeys,
+		Priv:            m.RMCSecretKey,
+		Timeout:         time.Duration(2 * time.Second),
+	}
+}
+
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) process.Config {
 	return process.Config{
 		Dag:         generateDagConfig(c),
 		Sync:        generateSyncConfig(conf, m, c),
 		SyncSetup:   generateSyncSetupConfig(conf, m, c),
+		RMC:         generateRMCConfig(conf, m, c),
 		Create:      generateCreateConfig(conf, m, c),
 		CreateSetup: generateCreateSetupConfig(conf, m, c),
 		Order:       generateOrderConfig(conf, m, c),
