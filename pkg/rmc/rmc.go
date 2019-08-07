@@ -9,17 +9,17 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/multi"
 )
 
-// Protocol is a structure holding all data related to a series of reliable multicasts.
-type Protocol struct {
+// RMC is a structure holding all data related to a series of reliable multicasts.
+type RMC struct {
 	sync.RWMutex
 	keys *multi.Keychain
 	in   map[uint64]*incoming
 	out  map[uint64]*outgoing
 }
 
-// New creates an context for executing instances of the reliable multicast.
-func New(pubs []*bn256.VerificationKey, priv *bn256.SecretKey) *Protocol {
-	return &Protocol{
+// New creates a context for executing instances of the reliable multicast.
+func New(pubs []*bn256.VerificationKey, priv *bn256.SecretKey) *RMC {
+	return &RMC{
 		keys: multi.NewKeychain(pubs, priv),
 		in:   map[uint64]*incoming{},
 		out:  map[uint64]*outgoing{},
@@ -29,8 +29,8 @@ func New(pubs []*bn256.VerificationKey, priv *bn256.SecretKey) *Protocol {
 // AcceptData reads the id from r, followed by the data and signature of the whole thing.
 // It verifies that the id matches the provided one, and that the signature was made by pid.
 // It returns the data itself, for protocol-independent verification.
-func (p *Protocol) AcceptData(id uint64, pid uint16, r io.Reader) ([]byte, error) {
-	in, err := p.newIncomingInstance(id, pid)
+func (rmc *RMC) AcceptData(id uint64, pid uint16, r io.Reader) ([]byte, error) {
+	in, err := rmc.newIncomingInstance(id, pid)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +39,8 @@ func (p *Protocol) AcceptData(id uint64, pid uint16, r io.Reader) ([]byte, error
 
 // SendSignature writes the signature associated with id to w.
 // The signature signs the data together with the id.
-func (p *Protocol) SendSignature(id uint64, w io.Writer) error {
-	in, err := p.getIn(id)
+func (rmc *RMC) SendSignature(id uint64, w io.Writer) error {
+	in, err := rmc.getIn(id)
 	if err != nil {
 		return err
 	}
@@ -48,8 +48,8 @@ func (p *Protocol) SendSignature(id uint64, w io.Writer) error {
 }
 
 // AcceptProof reads a proof from r and verifies it is a proof that id succeeded.
-func (p *Protocol) AcceptProof(id uint64, r io.Reader) error {
-	in, err := p.getIn(id)
+func (rmc *RMC) AcceptProof(id uint64, r io.Reader) error {
+	in, err := rmc.getIn(id)
 	if err != nil {
 		return err
 	}
@@ -57,15 +57,15 @@ func (p *Protocol) AcceptProof(id uint64, r io.Reader) error {
 }
 
 // SendData writes data catenated with the id and signed by us to w.
-func (p *Protocol) SendData(id uint64, data []byte, w io.Writer) error {
-	if p.Status(id) != Unknown {
-		out, err := p.getOut(id)
+func (rmc *RMC) SendData(id uint64, data []byte, w io.Writer) error {
+	if rmc.Status(id) != Unknown {
+		out, err := rmc.getOut(id)
 		if err != nil {
 			return err
 		}
 		return out.sendData(w)
 	}
-	out, err := p.newOutgoingInstance(id, data)
+	out, err := rmc.newOutgoingInstance(id, data)
 	if err != nil {
 		return err
 	}
@@ -74,8 +74,8 @@ func (p *Protocol) SendData(id uint64, data []byte, w io.Writer) error {
 
 // AcceptSignature reads a signature from r and verifies it represents pid signing the data associated with id.
 // It returns true when at least threshold signatures have been gathered, and the proof has been accumulated.
-func (p *Protocol) AcceptSignature(id uint64, pid uint16, r io.Reader) (bool, error) {
-	out, err := p.getOut(id)
+func (rmc *RMC) AcceptSignature(id uint64, pid uint16, r io.Reader) (bool, error) {
+	out, err := rmc.getOut(id)
 	if err != nil {
 		return false, err
 	}
@@ -83,8 +83,8 @@ func (p *Protocol) AcceptSignature(id uint64, pid uint16, r io.Reader) (bool, er
 }
 
 // SendProof writes the proof associated with id to w.
-func (p *Protocol) SendProof(id uint64, w io.Writer) error {
-	out, err := p.getOut(id)
+func (rmc *RMC) SendProof(id uint64, w io.Writer) error {
+	out, err := rmc.getOut(id)
 	if err != nil {
 		return err
 	}
@@ -92,8 +92,8 @@ func (p *Protocol) SendProof(id uint64, w io.Writer) error {
 }
 
 // SendFinished writes the data and proof associated with id to w.
-func (p *Protocol) SendFinished(id uint64, w io.Writer) error {
-	ins, err := p.get(id)
+func (rmc *RMC) SendFinished(id uint64, w io.Writer) error {
+	ins, err := rmc.get(id)
 	if err != nil {
 		return err
 	}
@@ -101,10 +101,10 @@ func (p *Protocol) SendFinished(id uint64, w io.Writer) error {
 }
 
 // AcceptFinished reads a pair of data and proof from r and verifies it corresponds to a successfuly finished RMC.
-func (p *Protocol) AcceptFinished(id uint64, pid uint16, r io.Reader) ([]byte, error) {
-	in, err := p.getIn(id)
+func (rmc *RMC) AcceptFinished(id uint64, pid uint16, r io.Reader) ([]byte, error) {
+	in, err := rmc.getIn(id)
 	if err != nil {
-		in, err = p.newIncomingInstance(id, pid)
+		in, err = rmc.newIncomingInstance(id, pid)
 		if err != nil {
 			return nil, err
 		}
@@ -113,8 +113,8 @@ func (p *Protocol) AcceptFinished(id uint64, pid uint16, r io.Reader) ([]byte, e
 }
 
 // Status returns the state corresponding to id.
-func (p *Protocol) Status(id uint64) Status {
-	ins, err := p.get(id)
+func (rmc *RMC) Status(id uint64) Status {
+	ins, err := rmc.get(id)
 	if err != nil {
 		return Unknown
 	}
@@ -123,8 +123,8 @@ func (p *Protocol) Status(id uint64) Status {
 
 // Data returns the raw data corresponding to id.
 // If the status differs from Finished, this data might be unreliable!
-func (p *Protocol) Data(id uint64) []byte {
-	ins, err := p.get(id)
+func (rmc *RMC) Data(id uint64) []byte {
+	ins, err := rmc.get(id)
 	if err != nil {
 		return nil
 	}
@@ -133,60 +133,60 @@ func (p *Protocol) Data(id uint64) []byte {
 
 // Clear removes all information concerning id.
 // After a clear the state is Unknown until any further calls with id.
-func (p *Protocol) Clear(id uint64) {
-	p.Lock()
-	defer p.Unlock()
-	delete(p.in, id)
-	delete(p.out, id)
+func (rmc *RMC) Clear(id uint64) {
+	rmc.Lock()
+	defer rmc.Unlock()
+	delete(rmc.in, id)
+	delete(rmc.out, id)
 }
 
-func (p *Protocol) newIncomingInstance(id uint64, pid uint16) (*incoming, error) {
-	result := newIncoming(id, pid, p.keys)
-	p.Lock()
-	defer p.Unlock()
-	if _, ok := p.in[id]; ok {
+func (rmc *RMC) newIncomingInstance(id uint64, pid uint16) (*incoming, error) {
+	result := newIncoming(id, pid, rmc.keys)
+	rmc.Lock()
+	defer rmc.Unlock()
+	if _, ok := rmc.in[id]; ok {
 		return nil, errors.New("duplicate incoming")
 	}
-	p.in[id] = result
+	rmc.in[id] = result
 	return result, nil
 }
 
-func (p *Protocol) newOutgoingInstance(id uint64, data []byte) (*outgoing, error) {
-	result := newOutgoing(id, data, p.keys)
-	p.Lock()
-	defer p.Unlock()
-	if _, ok := p.out[id]; ok {
+func (rmc *RMC) newOutgoingInstance(id uint64, data []byte) (*outgoing, error) {
+	result := newOutgoing(id, data, rmc.keys)
+	rmc.Lock()
+	defer rmc.Unlock()
+	if _, ok := rmc.out[id]; ok {
 		return nil, errors.New("duplicate outgoing")
 	}
-	p.out[id] = result
+	rmc.out[id] = result
 	return result, nil
 }
 
-func (p *Protocol) getIn(id uint64) (*incoming, error) {
-	p.RLock()
-	defer p.RUnlock()
-	result, ok := p.in[id]
+func (rmc *RMC) getIn(id uint64) (*incoming, error) {
+	rmc.RLock()
+	defer rmc.RUnlock()
+	result, ok := rmc.in[id]
 	if !ok {
 		return nil, errors.New("unknown incoming")
 	}
 	return result, nil
 }
 
-func (p *Protocol) getOut(id uint64) (*outgoing, error) {
-	p.RLock()
-	defer p.RUnlock()
-	result, ok := p.out[id]
+func (rmc *RMC) getOut(id uint64) (*outgoing, error) {
+	rmc.RLock()
+	defer rmc.RUnlock()
+	result, ok := rmc.out[id]
 	if !ok {
 		return nil, errors.New("unknown outgoing")
 	}
 	return result, nil
 }
 
-func (p *Protocol) get(id uint64) (*instance, error) {
-	if in, err := p.getIn(id); err == nil {
+func (rmc *RMC) get(id uint64) (*instance, error) {
+	if in, err := rmc.getIn(id); err == nil {
 		return &in.instance, nil
 	}
-	if out, err := p.getOut(id); err == nil {
+	if out, err := rmc.getOut(id); err == nil {
 		return &out.instance, nil
 	}
 	return nil, errors.New("unknown instance")

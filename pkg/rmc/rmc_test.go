@@ -13,7 +13,7 @@ import (
 
 var _ = Describe("Rmc", func() {
 	var (
-		protos  []*Protocol
+		rmcs    []*RMC
 		data    []byte
 		readers [][]io.Reader
 		writers [][]io.Writer
@@ -24,7 +24,7 @@ var _ = Describe("Rmc", func() {
 		n = 10
 		pubs := make([]*bn256.VerificationKey, n)
 		privs := make([]*bn256.SecretKey, n)
-		protos = make([]*Protocol, n)
+		rmcs = make([]*RMC, n)
 		readers = make([][]io.Reader, n)
 		writers = make([][]io.Writer, n)
 		for i := range pubs {
@@ -32,8 +32,8 @@ var _ = Describe("Rmc", func() {
 			pubs[i], privs[i], err = bn256.GenerateKeys()
 			Expect(err).NotTo(HaveOccurred())
 		}
-		for i := range protos {
-			protos[i] = New(pubs, privs[i])
+		for i := range rmcs {
+			rmcs[i] = New(pubs, privs[i])
 			readers[i] = make([]io.Reader, n)
 			writers[i] = make([]io.Writer, n)
 			for j := range readers[i] {
@@ -43,8 +43,8 @@ var _ = Describe("Rmc", func() {
 	})
 	CorrectCast := func(myPid uint16, id uint64) {
 		defer GinkgoRecover()
-		proto := protos[myPid]
-		for i := range protos {
+		proto := rmcs[myPid]
+		for i := range rmcs {
 			if uint16(i) == myPid {
 				continue
 			}
@@ -52,7 +52,7 @@ var _ = Describe("Rmc", func() {
 			_, err := proto.AcceptSignature(id, uint16(i), readers[i][myPid])
 			Expect(err).NotTo(HaveOccurred())
 		}
-		for i := range protos {
+		for i := range rmcs {
 			if uint16(i) == myPid {
 				continue
 			}
@@ -61,7 +61,7 @@ var _ = Describe("Rmc", func() {
 	}
 	CorrectReceive := func(myPid, otherPid uint16, id uint64) {
 		defer GinkgoRecover()
-		proto := protos[myPid]
+		proto := rmcs[myPid]
 		locData, err := proto.AcceptData(id, otherPid, readers[otherPid][myPid])
 		Expect(err).NotTo(HaveOccurred())
 		Expect(locData).To(Equal(data))
@@ -76,7 +76,7 @@ var _ = Describe("Rmc", func() {
 			defer wg.Done()
 			CorrectCast(0, id)
 		}()
-		for i := range protos {
+		for i := range rmcs {
 			if i == 0 {
 				continue
 			}
