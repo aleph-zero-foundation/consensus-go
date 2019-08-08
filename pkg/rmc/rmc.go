@@ -11,10 +11,10 @@ import (
 
 // RMC is a structure holding all data related to a series of reliable multicasts.
 type RMC struct {
-	sync.RWMutex
-	keys *multi.Keychain
-	in   map[uint64]*incoming
-	out  map[uint64]*outgoing
+	inMx, outMx sync.RWMutex
+	keys        *multi.Keychain
+	in          map[uint64]*incoming
+	out         map[uint64]*outgoing
 }
 
 // New creates a context for executing instances of the reliable multicast.
@@ -134,16 +134,18 @@ func (rmc *RMC) Data(id uint64) []byte {
 // Clear removes all information concerning id.
 // After a clear the state is Unknown until any further calls with id.
 func (rmc *RMC) Clear(id uint64) {
-	rmc.Lock()
-	defer rmc.Unlock()
+	rmc.inMx.Lock()
+	defer rmc.inMx.Unlock()
+	rmc.outMx.Lock()
+	defer rmc.outMx.Unlock()
 	delete(rmc.in, id)
 	delete(rmc.out, id)
 }
 
 func (rmc *RMC) newIncomingInstance(id uint64, pid uint16) (*incoming, error) {
 	result := newIncoming(id, pid, rmc.keys)
-	rmc.Lock()
-	defer rmc.Unlock()
+	rmc.inMx.Lock()
+	defer rmc.inMx.Unlock()
 	if _, ok := rmc.in[id]; ok {
 		return nil, errors.New("duplicate incoming")
 	}
@@ -153,8 +155,8 @@ func (rmc *RMC) newIncomingInstance(id uint64, pid uint16) (*incoming, error) {
 
 func (rmc *RMC) newOutgoingInstance(id uint64, data []byte) (*outgoing, error) {
 	result := newOutgoing(id, data, rmc.keys)
-	rmc.Lock()
-	defer rmc.Unlock()
+	rmc.outMx.Lock()
+	defer rmc.outMx.Unlock()
 	if _, ok := rmc.out[id]; ok {
 		return nil, errors.New("duplicate outgoing")
 	}
@@ -163,8 +165,8 @@ func (rmc *RMC) newOutgoingInstance(id uint64, data []byte) (*outgoing, error) {
 }
 
 func (rmc *RMC) getIn(id uint64) (*incoming, error) {
-	rmc.RLock()
-	defer rmc.RUnlock()
+	rmc.inMx.RLock()
+	defer rmc.inMx.RUnlock()
 	result, ok := rmc.in[id]
 	if !ok {
 		return nil, errors.New("unknown incoming")
@@ -173,8 +175,8 @@ func (rmc *RMC) getIn(id uint64) (*incoming, error) {
 }
 
 func (rmc *RMC) getOut(id uint64) (*outgoing, error) {
-	rmc.RLock()
-	defer rmc.RUnlock()
+	rmc.outMx.RLock()
+	defer rmc.outMx.RUnlock()
 	result, ok := rmc.out[id]
 	if !ok {
 		return nil, errors.New("unknown outgoing")
