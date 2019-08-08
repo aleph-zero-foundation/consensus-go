@@ -602,20 +602,26 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
     color_print('move and rename dir')
     shutil.move('../results', result_path)
 
+    color_print('unzip downloaded logs')
     for path in os.listdir(result_path):
         path = os.path.join(result_path, path)
         with zipfile.ZipFile(path, 'r') as zf:
             zf.extractall(result_path)
         os.remove(path)
 
+    color_print('zip the dir with all the files')
     with zipfile.ZipFile(result_path+'.zip', 'w') as zf:
         for path in os.listdir(result_path):
             path = os.path.join(result_path, path)
             zf.write(path)
             os.remove(path)
-        zf.write('data/config.json')
+        path = os.path.join(result_path, 'config.json')
+        shutil.copyfile('data/config.json', path)
+        zf.write(path)
+        os.remove(path)
 
     os.rmdir(result_path)
+    color_print('done')
 
 #======================================================================================
 #                                        shortcuts

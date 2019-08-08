@@ -90,7 +90,7 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 			// this is the first time we need this hash
 			f.missing = append(f.missing, h)
 		}
-		f.neededFor[*h] = append(neededFor, &ourHash)
+		f.neededFor[*h] = append(neededFor, pu.Hash())
 	}
 	return true
 }
