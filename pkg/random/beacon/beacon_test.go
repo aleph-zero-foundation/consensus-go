@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -128,8 +129,8 @@ var _ = Describe("Beacon", func() {
 					votes := u.RandomSourceData()
 					votes[dag[0].NProc()-1] = 2
 					// preparing fake proof
-					proof := big.NewInt(int64(20190718))
-					proofBytes, _ := proof.GobEncode()
+					proof := bn256.NewSecretKey(big.NewInt(int64(20190718)))
+					proofBytes := proof.Marshal()
 					var buf bytes.Buffer
 					binary.Write(&buf, binary.LittleEndian, uint16(len(proofBytes)))
 					buf.Write(proofBytes)

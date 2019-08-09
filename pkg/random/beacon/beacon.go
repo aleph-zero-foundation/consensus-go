@@ -2,8 +2,8 @@ package beacon
 
 import (
 	"errors"
-	"math/big"
 
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
@@ -41,14 +41,14 @@ type Beacon struct {
 	// shares[i] is a map of the form
 	// hash of a unit => the share for the i-th tcoin contained in the unit
 	shares       []*random.SyncCSMap
-	polyVerifier tcoin.PolyVerifier
+	polyVerifier bn256.PolyVerifier
 }
 
 // vote is a vote for a tcoin
 // proof = nil means that the tcoin is correct
 // proof != nil means gives proof that the tcoin is incorrect
 type vote struct {
-	proof *big.Int
+	proof *bn256.SecretKey
 }
 
 func (v *vote) isCorrect() bool {
@@ -71,7 +71,7 @@ func (b *Beacon) Init(dag gomel.Dag) {
 	b.subcoins = make([]map[int]bool, n)
 	b.tcoins = make([]*tcoin.ThresholdCoin, n)
 	b.shares = make([]*random.SyncCSMap, n)
-	b.polyVerifier = tcoin.NewPolyVerifier(n, n/3+1)
+	b.polyVerifier = bn256.NewPolyVerifier(n, n/3+1)
 
 	for i := 0; i < dag.NProc(); i++ {
 		b.votes[i] = make([]*vote, dag.NProc())
