@@ -1,7 +1,6 @@
 package multicast
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -11,9 +10,8 @@ import (
 )
 
 // NewServer returns a server
-func NewServer(pid uint16, nProc int, state *rmc.State, requests chan Request, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
+func NewServer(pid uint16, nProc int, state *rmc.RMC, requests chan Request, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
 
-	fmt.Println("RMC SERVER STARRTED")
 	proto := newProtocol(pid, nProc, requests, state, accepted, dialer, listener, timeout, log)
 	return &Server{
 		requests: requests,

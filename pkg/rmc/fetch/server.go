@@ -1,7 +1,6 @@
 package fetch
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -12,7 +11,7 @@ import (
 )
 
 // NewServer returns a server
-func NewServer(pid uint16, dag gomel.Dag, rs gomel.RandomSource, state *rmc.State, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
+func NewServer(pid uint16, dag gomel.Dag, rs gomel.RandomSource, state *rmc.RMC, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
 	proto := newProtocol(pid, dag, rs, requests, state, dialer, listener, timeout, log)
 	return &Server{
 		requests: requests,
@@ -31,7 +30,6 @@ type Server struct {
 func (s *Server) Start() {
 	s.outPool.Start()
 	s.inPool.Start()
-	fmt.Println("FECZ STARTED")
 }
 
 func (s *Server) StopIn() {

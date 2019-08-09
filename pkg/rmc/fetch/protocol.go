@@ -22,14 +22,14 @@ type protocol struct {
 	pid      uint16
 	nProc    int
 	requests chan gomel.Preunit
-	state    *rmc.State
+	state    *rmc.RMC
 	dialer   network.Dialer
 	listener network.Listener
 	timeout  time.Duration
 	log      zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, state *rmc.State, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, state *rmc.RMC, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
 	return &protocol{
 		rs:       rs,
 		pid:      pid,

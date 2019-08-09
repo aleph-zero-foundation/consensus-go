@@ -12,16 +12,15 @@ type protocol struct {
 	pid      uint16
 	nProc    int
 	requests chan Request
-	state    *rmc.State
+	state    *rmc.RMC
 	accepted chan []byte
 	dialer   network.Dialer
 	listener network.Listener
 	timeout  time.Duration
 	log      zerolog.Logger
-	inUse    []*rmc.Mutex
 }
 
-func newProtocol(pid uint16, nProc int, requests chan Request, state *rmc.State, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, nProc int, requests chan Request, state *rmc.RMC, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
 	return &protocol{
 		pid:      pid,
 		nProc:    nProc,
@@ -51,7 +50,6 @@ func (p *protocol) In() {
 	}
 	switch msgType {
 	case SendData:
-		//fmt.Println("JESTEM ", p.pid, " <= DANE ", pid)
 		_, err := p.state.AcceptData(id, pid, conn)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
@@ -65,7 +63,6 @@ func (p *protocol) In() {
 		conn.Flush()
 	case SendFinished:
 		_, err := p.state.AcceptFinished(id, pid, conn)
-		//fmt.Println("JESTEM", p.pid, "<= DOWOD", id, "OD ", pid)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
 			return
@@ -94,7 +91,6 @@ func (p *protocol) Out() {
 
 	switch r.msgType {
 	case SendData:
-		//fmt.Println("JESTEM ", p.pid, "DANE => ", r.pid)
 		err := p.state.SendData(r.id, r.data, conn)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
@@ -118,7 +114,6 @@ func (p *protocol) Out() {
 		}
 	case SendFinished:
 		err := p.state.SendFinished(r.id, conn)
-		//fmt.Println("JESTEM ", p.pid, "DOWOD => ", r.pid)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
 			return
