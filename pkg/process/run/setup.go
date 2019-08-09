@@ -11,7 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
-	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/process/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
@@ -41,11 +41,11 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	if err != nil {
 		return
 	}
-	syncService, requestMulticast, err := sync.NewService(dag, rs, config.SyncSetup, primeAlert, log)
+	rmcService, requestRMC, err := rmc.NewService(dag, rs, config.RMC, log)
 	if err != nil {
 		return
 	}
-	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(requestMulticast, primeAlert), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(requestRMC, primeAlert), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return
 	}
@@ -53,7 +53,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	if err != nil {
 		return
 	}
-	services := []process.Service{createService, orderService, memlogService, syncService}
+	services := []process.Service{createService, orderService, memlogService, rmcService}
 
 	err = startAll(services)
 	if err != nil {
@@ -82,7 +82,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	// We need to figure out a condition for stopping the setup phase syncs
 	// For now just syncing for the next minute
 	time.Sleep(60 * time.Second)
-	syncService.Stop()
+	rmcService.Stop()
 	<-dagFinished
 	dag.Stop()
 }

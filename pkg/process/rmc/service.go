@@ -9,45 +9,70 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/rmc"
+	"gitlab.com/alephledger/consensus-go/pkg/rmc/fetch"
+	"gitlab.com/alephledger/consensus-go/pkg/rmc/multicast"
 )
 
 type service struct {
-	dag              gomel.Dag
-	rs               gomel.RandomSource
-	pid              int
-	requests         <-chan []byte
-	accepted         chan []byte
-	internalRequests chan rmc.Request
-	server           *rmc.Server
-	log              zerolog.Logger
+	dag           gomel.Dag
+	rs            gomel.RandomSource
+	pid           int
+	units         chan gomel.Unit
+	accepted      chan []byte
+	mcRequests    chan multicast.Request
+	mcServer      *multicast.Server
+	fetchServer   *fetch.Server
+	fetchRequests chan gomel.Preunit
+	log           zerolog.Logger
 }
 
 // NewService creates a new service for rmc
-func NewService(dag gomel.Dag, rs gomel.RandomSource, requests <-chan []byte, config process.RMC, log zerolog.Logger) (process.Service, error) {
-	dialer, listener, err := tcp.NewNetwork(config.LocalAddress, config.RemoteAddresses, log)
+func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log zerolog.Logger) (process.Service, gomel.Callback, error) {
+	state := rmc.New(config.Pubs, config.Priv)
+
+	dialer, listener, err := tcp.NewNetwork(config.LocalAddress[0], config.RemoteAddresses[0], log)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	internalRequests := make(chan rmc.Request)
-	accepted := make(chan []byte)
-	server := rmc.NewServer(uint16(config.Pid), config.Pubs, config.Priv, internalRequests, accepted, dialer, listener, config.Timeout, log)
+	mcRequests := make(chan multicast.Request, 1000)
+	accepted := make(chan []byte, 1000)
+	mcServer := multicast.NewServer(uint16(config.Pid), dag.NProc(), state, mcRequests, accepted, dialer, listener, config.Timeout, log)
+
+	dialer, listener, err = tcp.NewNetwork(config.LocalAddress[1], config.RemoteAddresses[1], log)
+	if err != nil {
+		return nil, nil, err
+	}
+	fetchRequests := make(chan gomel.Preunit, 10)
+	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, state, fetchRequests, dialer, listener, config.Timeout, log)
+
+	units := make(chan gomel.Unit, 1000)
 
 	return &service{
-		dag:              dag,
-		rs:               rs,
-		pid:              config.Pid,
-		requests:         requests,
-		accepted:         accepted,
-		internalRequests: internalRequests,
-		server:           server,
-		log:              log,
-	}, nil
+			dag:           dag,
+			rs:            rs,
+			pid:           config.Pid,
+			units:         units,
+			accepted:      accepted,
+			mcRequests:    mcRequests,
+			mcServer:      mcServer,
+			fetchServer:   fetchServer,
+			fetchRequests: fetchRequests,
+			log:           log,
+		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
+			if err != nil {
+				return
+			}
+			units <- unit
+		}, nil
+}
+
+func getID(u gomel.Unit, nProc int) uint64 {
+	return uint64(u.Creator() + nProc*u.Height())
 }
 
 func (s *service) translator() {
-	id := uint64(s.pid)
 	for {
-		data, ok := <-s.requests
+		unit, ok := <-s.units
 		if !ok {
 			return
 		}
@@ -55,9 +80,13 @@ func (s *service) translator() {
 			if i == s.pid {
 				continue
 			}
-			s.internalRequests <- rmc.NewRequest(rmc.SendData, id, uint16(i), data)
+			id := getID(unit, s.dag.NProc())
+			data, err := rmc.EncodeUnit(unit)
+			if err != nil {
+				continue
+			}
+			s.mcRequests <- multicast.NewRequest(id, uint16(i), data, multicast.SendData)
 		}
-		id += uint64(s.dag.NProc())
 	}
 }
 
@@ -67,12 +96,16 @@ func (s *service) validator() {
 		if !ok {
 			return
 		}
-		if u, err := rmc.DecodeUnit(data); u != nil || err != nil {
-			// do sth with the unit or handle the error
+		if pu, err := rmc.DecodePreunit(data); pu != nil || err != nil {
 			if err != nil {
 				continue
 			}
-			s.dag.AddUnit(u, s.rs, gomel.NopCallback)
+			s.dag.AddUnit(pu, s.rs, func(preunit gomel.Preunit, u gomel.Unit, err error) {
+				switch err.(type) {
+				case *gomel.UnknownParents:
+					s.fetchRequests <- pu
+				}
+			})
 		}
 	}
 }
@@ -80,14 +113,19 @@ func (s *service) validator() {
 func (s *service) Start() error {
 	go s.translator()
 	go s.validator()
-	s.server.Start()
+	s.mcServer.Start()
+	s.fetchServer.Start()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 func (s *service) Stop() {
-	s.server.StopOut()
+	s.mcServer.StopOut()
+	s.fetchServer.StopOut()
 	time.Sleep(5 * time.Second)
-	s.server.StopIn()
+	s.mcServer.StopIn()
+	s.fetchServer.StopIn()
+	close(s.units)
+	close(s.accepted)
 	s.log.Info().Msg(logging.ServiceStopped)
 }

@@ -32,3 +32,19 @@ func AcceptGreeting(conn network.Connection) (pid uint16, id uint64, msgType byt
 	msgType = data[10]
 	return
 }
+
+func SendStatus(conn network.Connection, status Status) error {
+	_, err := conn.Write([]byte{byte(status)})
+	return err
+}
+
+func AcceptStatus(conn network.Connection) (status Status, id uint64, err error) {
+	var data [5]byte
+	_, err = io.ReadFull(conn, data[:])
+	if err != nil {
+		return
+	}
+	id = binary.LittleEndian.Uint64(data[1:5])
+	status = Status(data[0])
+	return
+}

@@ -10,14 +10,14 @@ import (
 type category byte
 
 const (
-	Unit category = iota
-	Alert
+	unit category = iota
+	alert
 )
 
 func EncodeUnit(u gomel.Unit) ([]byte, error) {
 	var buf bytes.Buffer
 
-	buf.Write([]byte{byte(Unit)})
+	buf.Write([]byte{byte(unit)})
 
 	encoder := custom.NewEncoder(&buf)
 	err := encoder.EncodeUnit(u)
@@ -27,8 +27,8 @@ func EncodeUnit(u gomel.Unit) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func DecodeUnit(data []byte) (gomel.Preunit, error) {
-	if data[0] != byte(Unit) {
+func DecodePreunit(data []byte) (gomel.Preunit, error) {
+	if data[0] != byte(unit) {
 		return nil, nil
 	}
 	decoder := custom.NewDecoder(bytes.NewReader(data[1:]))

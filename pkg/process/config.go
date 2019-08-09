@@ -36,8 +36,8 @@ type Sync struct {
 // RMC represents a complete configuration needed for a rmc service to start.
 type RMC struct {
 	Pid             uint16
-	LocalAddress    string
-	RemoteAddresses []string
+	LocalAddress    []string
+	RemoteAddresses [][]string
 	Pubs            []*bn256.VerificationKey
 	Priv            *bn256.SecretKey
 	Timeout         time.Duration

@@ -81,16 +81,7 @@ func NewDefaultConfiguration() Configuration {
 	},
 	}
 
-	syncSetupConf := []SyncConfiguration{SyncConfiguration{
-		Type:     "gossip",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "Timeout": "2"},
-		Fallback: "",
-	}, SyncConfiguration{
-		Type:     "multicast",
-		Params:   map[string]string{"McType": "tcp", "Timeout": "2"},
-		Fallback: "",
-	},
-	}
+	syncSetupConf := []SyncConfiguration{}
 
 	result := Configuration{
 
@@ -104,11 +95,11 @@ func NewDefaultConfiguration() Configuration {
 
 		StepSize: 0.0,
 
-		SyncSetup: syncConf,
+		SyncSetup: syncSetupConf,
 
 		Setup: "coin",
 
-		Sync: syncSetupConf,
+		Sync: syncConf,
 
 		Txpu: 1,
 
