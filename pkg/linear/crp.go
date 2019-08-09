@@ -47,10 +47,13 @@ func splitProcesses(nProc int, prefixLen int, level int, tu gomel.Unit) ([]int, 
 	}
 	pids := make([]int, nProc)
 	for pid := range pids {
-		pids[pid] = (pid + level + tu.Creator()) % nProc
+		pids[pid] = (pid + level) % nProc
 	}
 	if tu == nil {
 		return pids[:prefixLen], pids[prefixLen:]
+	}
+	for pid := range pids {
+		pids[pid] = (pids[pid] + tu.Creator()) % nProc
 	}
 	return pids[:prefixLen], pids[prefixLen:]
 }
