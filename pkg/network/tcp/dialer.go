@@ -21,8 +21,7 @@ func newDialer(remoteAddrs []string, log zerolog.Logger) network.Dialer {
 }
 
 func (d *dialer) Dial(pid uint16) (network.Connection, error) {
-	dialer := &net.Dialer{Deadline: time.Now().Add(time.Second * 2)}
-	link, err := dialer.Dial("tcp", d.remoteAddrs[pid])
+	link, err := net.DialTimeout("tcp", d.remoteAddrs[pid], time.Second*2)
 	if err != nil {
 		return nil, err
 	}
