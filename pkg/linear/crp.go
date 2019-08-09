@@ -47,13 +47,11 @@ func splitProcesses(nProc int, prefixLen int, level int, tu gomel.Unit) ([]int, 
 	}
 	pids := make([]int, nProc)
 	for pid := range pids {
-		pids[pid] = (pid + level) % nProc
+		pids[pid] = (pid + level + tu.Creator()) % nProc
 	}
 	if tu == nil {
 		return pids[:prefixLen], pids[prefixLen:]
 	}
-	// Here we can use previous timing unit to return a result
-	// which cannot be predicted before previous timing was chosen
 	return pids[:prefixLen], pids[prefixLen:]
 }
 
