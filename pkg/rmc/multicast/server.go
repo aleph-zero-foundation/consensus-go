@@ -9,14 +9,14 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-// NewServer returns a server
+// NewServer returns a server that runs rmc protocol
 func NewServer(pid uint16, nProc int, state *rmc.RMC, requests chan Request, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
 
 	proto := newProtocol(pid, nProc, requests, state, accepted, dialer, listener, timeout, log)
 	return &Server{
 		requests: requests,
-		outPool:  sync.NewPool(uint(5), proto.Out),
-		inPool:   sync.NewPool(uint(5), proto.In),
+		outPool:  sync.NewPool(uint(nProc), proto.Out),
+		inPool:   sync.NewPool(uint(nProc), proto.In),
 	}
 }
 

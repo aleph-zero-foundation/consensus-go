@@ -10,7 +10,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-// NewServer returns a server
+// NewServer returns a server that runs fetch for rmc protocol
 func NewServer(pid uint16, dag gomel.Dag, rs gomel.RandomSource, state *rmc.RMC, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
 	proto := newProtocol(pid, dag, rs, requests, state, dialer, listener, timeout, log)
 	return &Server{

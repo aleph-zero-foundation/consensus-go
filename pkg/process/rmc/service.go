@@ -13,8 +13,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/rmc/multicast"
 )
 
+// Some magic numbers for rmc. All below are ratios, they get multiplied with nProc.
 const (
-	// Some magic numbers for rmc. All below are ratios, they get multiplied with nProc.
 	mcRequestsSize    = 10
 	mcAcceptedSize    = 2
 	fetchRequestsSize = 1
@@ -81,8 +81,8 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 		}, nil
 }
 
-// getID returns rmc id for a given unit
-func getID(u gomel.Unit, nProc int) uint64 {
+// unitRMCid returns rmc id for a given unit
+func unitRMCid(u gomel.Unit, nProc int) uint64 {
 	return uint64(u.Creator()) + uint64(nProc)*uint64(u.Height())
 }
 
@@ -98,7 +98,7 @@ func (s *service) translator() {
 			if i == s.pid {
 				continue
 			}
-			id := getID(unit, s.dag.NProc())
+			id := unitRMCid(unit, s.dag.NProc())
 			data, err := rmc.EncodeUnit(unit)
 			if err != nil {
 				continue
