@@ -53,7 +53,7 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
 func newDealingUnit(creator, NProc int, data []byte, rs gomel.RandomSource) gomel.Preunit {
-	rsData := rs.DataToInclude(creator, nil, 0)
+	rsData, _ := rs.DataToInclude(creator, nil, 0)
 	return NewPreunit(creator, []*gomel.Hash{}, data, rsData)
 }
 
@@ -221,7 +221,10 @@ func NewNonSkippingUnit(dag gomel.Dag, creator int, data []byte, rs gomel.Random
 		sort.Slice(parents[1:], func(i, j int) bool {
 			return parents[i+1].Level() < parents[j+1].Level()
 		})
-		rsData := rs.DataToInclude(creator, parents, level+1)
+		rsData, err := rs.DataToInclude(creator, parents, level+1)
+		if err != nil {
+			return nil, err
+		}
 		return NewPreunit(creator, hashes(parents), data, rsData), nil
 	}
 	return nil, &noAvailableParents{}
@@ -270,6 +273,9 @@ func NewUnit(dag gomel.Dag, creator int, desiredParents int, data []byte, rs gom
 	if len(parents) < 2 || (requirePrime && !isPrime) {
 		return nil, &noAvailableParents{}
 	}
-	rsData := rs.DataToInclude(creator, parents, resultLevel)
+	rsData, err := rs.DataToInclude(creator, parents, resultLevel)
+	if err != nil {
+		return nil, err
+	}
 	return NewPreunit(creator, hashes(parents), data, rsData), nil
 }

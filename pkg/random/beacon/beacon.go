@@ -246,10 +246,10 @@ func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
 
 // DataToInclude returns data which should be included in the unit under
 // creation with given creator and set of parents
-func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []byte {
+func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) ([]byte, error) {
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
-		return tcoin.Deal(nProc, nProc/3+1)
+		return tcoin.Deal(nProc, nProc/3+1), nil
 	}
 	if level == votingLevel {
 		votes := make([]*vote, b.dag.NProc())
@@ -259,7 +259,7 @@ func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []b
 				votes[u.Creator()] = verifyTCoin(b.tcoins[u.Creator()])
 			}
 		}
-		return marshallVotes(votes)
+		return marshallVotes(votes), nil
 	}
 	if level >= sharesLevel {
 		cses := make([]*tcoin.CoinShare, b.dag.NProc())
@@ -268,9 +268,9 @@ func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) []b
 				cses[pid] = b.tcoins[pid].CreateCoinShare(level)
 			}
 		}
-		return marshallShares(cses)
+		return marshallShares(cses), nil
 	}
-	return []byte{}
+	return []byte{}, nil
 }
 
 func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {

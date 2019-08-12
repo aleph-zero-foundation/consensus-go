@@ -13,5 +13,5 @@ type RandomSource interface {
 	Update(Unit)
 	// DataToInclude returns data which should be included in the unit under
 	// creation with given creator and set of parents
-	DataToInclude(creator int, parents []Unit, level int) []byte
+	DataToInclude(creator int, parents []Unit, level int) ([]byte, error)
 }

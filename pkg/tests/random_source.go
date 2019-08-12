@@ -39,6 +39,6 @@ func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
 
 // ToInclude returns data which should be included in the unit under creation
 // with given creator and set of parents.
-func (*testRandomSource) DataToInclude(int, []gomel.Unit, int) []byte {
-	return nil
+func (*testRandomSource) DataToInclude(int, []gomel.Unit, int) ([]byte, error) {
+	return nil, nil
 }

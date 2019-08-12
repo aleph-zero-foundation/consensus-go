@@ -277,6 +277,20 @@ type Coin struct {
 	sgn *bn256.Signature
 }
 
+// Unmarshal creates coin from its byte representation
+func (c *Coin) Unmarshal(data []byte) error {
+	if len(data) != bn256.SignatureLength {
+		return errors.New("unmarshalling of coin failed. Wrong data length")
+	}
+	sgn := new(bn256.Signature)
+	sgn, err := sgn.Unmarshal(data)
+	if err != nil {
+		return err
+	}
+	c.sgn = sgn
+	return nil
+}
+
 // RandomBytes returns randomBytes from the coin
 func (c *Coin) RandomBytes() []byte {
 	return c.sgn.Marshal()
@@ -375,7 +389,6 @@ func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
 
 	var sum *bn256.Signature
 	summands := make(chan *bn256.Signature)
-	ok := true
 
 	var wg sync.WaitGroup
 	for _, sh := range shares {
@@ -392,10 +405,6 @@ func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
 
 	for elem := range summands {
 		sum = bn256.AddSignatures(sum, elem)
-	}
-
-	if !ok {
-		return nil, false
 	}
 
 	return &Coin{sgn: sum}, true
