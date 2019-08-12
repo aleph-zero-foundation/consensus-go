@@ -2,7 +2,10 @@ package coin
 
 import (
 	"errors"
+	"math/big"
+	"math/rand"
 
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
@@ -27,6 +30,26 @@ func New(nProc, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool)
 		coinShares:    random.NewSyncCSMap(),
 		shareProvider: shareProvider,
 	}
+}
+
+// NewFixedCoin returns a Coin random source generated using the given seed.
+// This function should be used only for testing, as it is not safe,
+// because all the secrets could be revealed knowing the seed.
+func NewFixedCoin(nProc, pid, seed int) gomel.RandomSource {
+	rnd := rand.New(rand.NewSource(int64(seed)))
+	threshold := nProc/3 + 1
+
+	shareProviders := make(map[int]bool)
+	for i := 0; i < nProc; i++ {
+		shareProviders[i] = true
+	}
+
+	coeffs := make([]*big.Int, threshold)
+	for i := 0; i < threshold; i++ {
+		coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Order)
+	}
+
+	return New(nProc, pid, tcoin.New(nProc, pid, coeffs), shareProviders)
 }
 
 // Init initialize the coin with given dag

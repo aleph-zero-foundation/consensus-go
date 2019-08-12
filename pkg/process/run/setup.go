@@ -13,7 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
-	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
 
 // coinSetup deals a coin. Running a process with this setup
@@ -21,7 +21,7 @@ import (
 func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	pid := config.Create.Pid
 	nProc := len(config.Dag.Keys)
-	rsCh <- tests.NewCoin(nProc, pid, 1234)
+	rsCh <- coin.NewFixedCoin(nProc, pid, 1234)
 	close(rsCh)
 }
 
