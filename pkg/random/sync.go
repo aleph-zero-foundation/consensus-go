@@ -58,3 +58,37 @@ func (sm *SyncTCMap) Get(h *gomel.Hash) *tcoin.ThresholdCoin {
 	defer sm.RUnlock()
 	return sm.contents[*h]
 }
+
+type SyncBytesSlice struct {
+	sync.RWMutex
+	contents [][]byte
+}
+
+func NewSyncBytesSlice() *SyncBytesSlice {
+	return &SyncBytesSlice{
+		contents: [][]byte{},
+	}
+}
+
+func (s *SyncBytesSlice) AppendOrIgnore(level int, bytes []byte) {
+	s.Lock()
+	defer s.Unlock()
+	if len(s.contents) == level {
+		s.contents = append(s.contents, bytes)
+	}
+}
+
+func (s *SyncBytesSlice) Length() int {
+	s.RLock()
+	defer s.RUnlock()
+	return len(s.contents)
+}
+
+func (s *SyncBytesSlice) Get(pos int) []byte {
+	s.RLock()
+	defer s.RUnlock()
+	if pos < len(s.contents) {
+		return s.contents[pos]
+	}
+	return nil
+}
