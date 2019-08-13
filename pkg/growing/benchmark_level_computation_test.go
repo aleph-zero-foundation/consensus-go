@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 type dagFactory struct{}

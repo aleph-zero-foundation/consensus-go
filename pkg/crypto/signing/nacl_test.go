@@ -6,7 +6,7 @@ import (
 
 	. "gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 var _ = Describe("Signatures", func() {
