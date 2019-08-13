@@ -28,26 +28,25 @@ func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gome
 var _ = Describe("Protocol", func() {
 
 	var (
-		dags    []*dag
-		rs      []gomel.RandomSource
-		servs   []sync.Server
-		ls      []network.Listener
-		d       *tests.Dialer
-		request gomel.Callback
-		serv    sync.Server
-		theUnit gomel.Unit
+		dags     []*dag
+		rs       []gomel.RandomSource
+		servs    []sync.Server
+		netservs []network.Server
+		request  gomel.Callback
+		serv     sync.Server
+		theUnit  gomel.Unit
 	)
 
 	BeforeEach(func() {
-		d, ls = tests.NewNetwork(10)
+		netservs = tests.NewNetwork(10)
 	})
 
 	JustBeforeEach(func() {
-		serv, request = NewServer(0, dags[0], rs[0], d, ls[0], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
+		serv, request = NewServer(0, dags[0], rs[0], netservs[0], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
 		servs = []sync.Server{serv}
 		serv.Start()
 		for i := 1; i < 10; i++ {
-			serv, _ = NewServer(uint16(i), dags[i], rs[i], d, ls[i], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
+			serv, _ = NewServer(uint16(i), dags[i], rs[i], netservs[i], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
 			servs = append(servs, serv)
 			serv.Start()
 		}
@@ -81,7 +80,7 @@ var _ = Describe("Protocol", func() {
 				for i := 0; i < 10; i++ {
 					servs[i].StopOut()
 				}
-				d.Close()
+				tests.CloseNetwork(netservs)
 				for i := 0; i < 10; i++ {
 					servs[i].StopIn()
 				}

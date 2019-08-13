@@ -21,8 +21,7 @@ type protocol struct {
 	dag          gomel.Dag
 	randomSource gomel.RandomSource
 	reqs         <-chan Request
-	dialer       network.Dialer
-	listener     network.Listener
+	netserv      network.Server
 	syncIds      []uint32
 	callback     gomel.Callback
 	timeout      time.Duration
@@ -33,15 +32,14 @@ type protocol struct {
 // NewProtocol returns a new fetching protocol.
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
 	nProc := uint16(dag.NProc())
 	return &protocol{
 		pid:          pid,
 		dag:          dag,
 		randomSource: randomSource,
 		reqs:         reqs,
-		dialer:       dialer,
-		listener:     listener,
+		netserv:      netserv,
 		syncIds:      make([]uint32, nProc),
 		callback:     callback,
 		timeout:      timeout,
@@ -51,7 +49,7 @@ func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, req
 }
 
 func (p *protocol) In() {
-	conn, err := p.listener.Listen(p.timeout)
+	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
 	}
@@ -95,7 +93,7 @@ func (p *protocol) Out() {
 		return
 	}
 	remotePid := r.Pid
-	conn, err := p.dialer.Dial(remotePid)
+	conn, err := p.netserv.Dial(remotePid)
 	if err != nil {
 		p.log.Error().Str("where", "fetchProtocol.out.dial").Msg(err.Error())
 		return

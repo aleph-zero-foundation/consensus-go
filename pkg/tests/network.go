@@ -49,47 +49,48 @@ func NewConnection() (network.Connection, network.Connection) {
 	return &connection{r1, w2}, &connection{r2, w1}
 }
 
-// Dialer implements network.Dialer and has an additional method for closing it.
-type Dialer struct {
-	dialChan []chan<- network.Connection
+// Server implements network.Server. Afterwards it needs to be closed with Close().
+type Server struct {
+	dialChans  []chan network.Connection
+	listenChan chan network.Connection
 }
 
-// Dial creates a new connection, pushes one end to the associated listener and return the other.
-func (d *Dialer) Dial(k uint16) (network.Connection, error) {
+// Dial creates a new connection, pushes one end to the associated dial channel and return the other.
+func (s *Server) Dial(k uint16) (network.Connection, error) {
 	out, in := NewConnection()
-	d.dialChan[k] <- in
+	s.dialChans[k] <- in
 	return out, nil
 }
 
-// Close makes all listeners associated with this dialer return errors.
-func (d *Dialer) Close() {
-	for _, ch := range d.dialChan {
-		close(ch)
-	}
-}
-
-type listener struct {
-	listenChan <-chan network.Connection
-}
-
-func (l *listener) Listen(_ time.Duration) (network.Connection, error) {
-	conn, ok := <-l.listenChan
+// Listen picks up a connection from the listen channel
+func (s *Server) Listen(_ time.Duration) (network.Connection, error) {
+	conn, ok := <-s.listenChan
 	if !ok {
 		return nil, errors.New("done")
 	}
 	return conn, nil
 }
 
-// NewNetwork returns a dialer and a slice of listeners. When the dialer is used,
-// it returns a connection corresponding to an endpoint that has been pushed to the corresponding listener.
-// This is not suitable for bigger tests, unfortunately, some form of combining listeners might be needed.
-func NewNetwork(length int) (*Dialer, []network.Listener) {
-	chans := make([]chan<- network.Connection, length)
-	listeners := make([]network.Listener, length)
-	for i := range listeners {
-		locChan := make(chan network.Connection)
-		chans[i] = locChan
-		listeners[i] = &listener{locChan}
+// CloseNetwork closes all the dial channels.
+func CloseNetwork(servers []network.Server) {
+	for _, ns := range servers {
+		if s, ok := ns.(*Server); ok {
+			close(s.listenChan)
+		}
 	}
-	return &Dialer{chans}, listeners
+}
+
+// NewNetwork returns a slice of interconnected servers that simulate the network of the given size.
+func NewNetwork(length int) []network.Server {
+	channels := make([]chan network.Connection, length)
+	for i := range channels {
+		channels[i] = make(chan network.Connection)
+	}
+	servers := make([]network.Server, length)
+	for i := range servers {
+		servers[i] = &Server{
+			dialChans:  channels,
+			listenChan: channels[i]}
+	}
+	return servers
 }

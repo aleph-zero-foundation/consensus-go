@@ -13,9 +13,9 @@ import (
 )
 
 // NewServer returns a server that runs multicast protocol and callback for create service
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, gomel.Callback) {
+func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, gomel.Callback) {
 	requests := make(chan request, requestsSize*dag.NProc())
-	proto := newProtocol(pid, dag, randomSource, requests, dialer, listener, callback, timeout, fallback, log)
+	proto := newProtocol(pid, dag, randomSource, requests, netserv, callback, timeout, fallback, log)
 	return &server{
 			requests: requests,
 			fallback: fallback,

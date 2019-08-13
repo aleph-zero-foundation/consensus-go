@@ -42,12 +42,11 @@ var _ = Describe("Protocol", func() {
 		fallenBack fallback
 		proto1     gsync.Protocol
 		proto2     gsync.Protocol
-		d          network.Dialer
-		ls         []network.Listener
+		servs      []network.Server
 	)
 
 	BeforeEach(func() {
-		d, ls = tests.NewNetwork(10)
+		servs = tests.NewNetwork(10)
 		fallenBack = false
 		reqs = make(chan Request)
 	})
@@ -55,10 +54,10 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		trs1 := tests.NewTestRandomSource()
 		trs1.Init(dag1)
-		proto1 = NewProtocol(0, dag1, trs1, reqs, d, ls[0], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
+		proto1 = NewProtocol(0, dag1, trs1, reqs, servs[0], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
 		trs2 := tests.NewTestRandomSource()
 		trs2.Init(dag2)
-		proto2 = NewProtocol(1, dag2, trs2, reqs, d, ls[1], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
+		proto2 = NewProtocol(1, dag2, trs2, reqs, servs[1], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
 	})
 
 	Describe("with only two participants", func() {

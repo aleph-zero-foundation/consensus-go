@@ -24,15 +24,14 @@ type protocol struct {
 	dag          gomel.Dag
 	randomSource gomel.RandomSource
 	requests     <-chan request
-	dialer       network.Dialer
-	listener     network.Listener
+	netserv      network.Server
 	callback     gomel.Callback
 	timeout      time.Duration
 	fallback     sync.Fallback
 	log          zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, requests <-chan request, dialer network.Dialer, listener network.Listener, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
+func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, requests <-chan request, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
 
 	logSuccess := func(_ gomel.Preunit, added gomel.Unit, err error) {
 		if err == nil {
@@ -45,8 +44,7 @@ func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, req
 		dag:          dag,
 		randomSource: randomSource,
 		requests:     requests,
-		dialer:       dialer,
-		listener:     listener,
+		netserv:      netserv,
 		callback:     gomel.MergeCallbacks(callback, logSuccess),
 		timeout:      timeout,
 		fallback:     fallback,
@@ -55,7 +53,7 @@ func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, req
 }
 
 func (p *protocol) In() {
-	conn, err := p.listener.Listen(p.timeout)
+	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.In.Listen").Msg(err.Error())
 		return
@@ -77,7 +75,7 @@ func (p *protocol) Out() {
 	if !ok {
 		return
 	}
-	conn, err := p.dialer.Dial(r.pid)
+	conn, err := p.netserv.Dial(r.pid)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.Out.Dial").Msg(err.Error())
 		return

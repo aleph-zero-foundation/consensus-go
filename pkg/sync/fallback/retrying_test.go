@@ -26,13 +26,12 @@ var _ = Describe("Retrying", func() {
 		fallback *Retrying
 		proto    gsync.Protocol
 		protos   []gsync.Protocol
-		d        *tests.Dialer
-		ls       []network.Listener
+		servs    []network.Server
 		interval time.Duration
 	)
 
 	BeforeEach(func() {
-		d, ls = tests.NewNetwork(10)
+		servs = tests.NewNetwork(10)
 		reqs = make(chan fetch.Request, 100)
 	})
 
@@ -42,11 +41,11 @@ var _ = Describe("Retrying", func() {
 		rs1.Init(dag)
 		fallback = NewRetrying(baseFallback, dag, rs1, interval, zerolog.Nop())
 		fallback.Start()
-		proto = fetch.NewProtocol(0, dag, rs1, reqs, d, ls[0], gomel.NopCallback, time.Second, fallback, zerolog.Nop())
+		proto = fetch.NewProtocol(0, dag, rs1, reqs, servs[0], gomel.NopCallback, time.Second, fallback, zerolog.Nop())
 		for i, op := range dags {
 			trs := tests.NewTestRandomSource()
 			trs.Init(op)
-			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, trs, reqs, d, ls[i+1], gomel.NopCallback, time.Second, nil, zerolog.Nop()))
+			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, trs, reqs, servs[i+1], gomel.NopCallback, time.Second, nil, zerolog.Nop()))
 		}
 	})
 
@@ -74,7 +73,7 @@ var _ = Describe("Retrying", func() {
 				interval = 10 * time.Millisecond
 				dag, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 				op, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
-				for range ls {
+				for range servs {
 					dags = append(dags, op)
 				}
 				dags = dags[1:]
@@ -129,7 +128,7 @@ var _ = Describe("Retrying", func() {
 				}
 				atomic.StoreInt32(&quit, 1)
 				close(reqs)
-				d.Close()
+				tests.CloseNetwork(servs)
 				wg.Wait()
 				close(done)
 			}, 30)

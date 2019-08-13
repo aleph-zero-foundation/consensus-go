@@ -15,12 +15,11 @@ import (
 var _ = Describe("Greeting", func() {
 
 	var (
-		ls []network.Listener
-		d  network.Dialer
+		servs []network.Server
 	)
 
 	BeforeEach(func() {
-		d, ls = tests.NewNetwork(2)
+		servs = tests.NewNetwork(2)
 	})
 
 	Context("correctly", func() {
@@ -29,13 +28,13 @@ var _ = Describe("Greeting", func() {
 			var wg sync.WaitGroup
 			wg.Add(2)
 			go func() {
-				conn, err := d.Dial(0)
+				conn, err := servs[1].Dial(0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(Greet(conn, 1, 2)).To(Succeed())
 				wg.Done()
 			}()
 			go func() {
-				conn, err := ls[0].Listen(time.Second)
+				conn, err := servs[0].Listen(time.Second)
 				Expect(err).NotTo(HaveOccurred())
 				pid, sid, err := AcceptGreeting(conn)
 				Expect(err).NotTo(HaveOccurred())
