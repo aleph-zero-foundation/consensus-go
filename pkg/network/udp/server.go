@@ -32,8 +32,8 @@ func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger
 	}, nil
 }
 
-func (s *server) Listen(deadline time.Duration) (network.Connection, error) {
-	s.listener.SetDeadline(time.Now().Add(deadline))
+func (s *server) Listen(timeout time.Duration) (network.Connection, error) {
+	s.listener.SetDeadline(time.Now().Add(timeout))
 	buffer := make([]byte, (1 << 16))
 	n, _, err := s.listener.ReadFromUDP(buffer)
 	if err != nil {
@@ -45,7 +45,7 @@ func (s *server) Listen(deadline time.Duration) (network.Connection, error) {
 	return conn, nil
 }
 
-func (s *server) Dial(pid uint16) (network.Connection, error) {
+func (s *server) Dial(pid uint16, timeout time.Duration) (network.Connection, error) {
 	// can consider setting a timeout here, yet DialUDP is non-blocking, so there should be no need
 	link, err := net.Dial("udp", s.remoteAddrs[pid])
 	if err != nil {

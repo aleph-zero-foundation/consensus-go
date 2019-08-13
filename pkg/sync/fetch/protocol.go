@@ -93,7 +93,7 @@ func (p *protocol) Out() {
 		return
 	}
 	remotePid := r.Pid
-	conn, err := p.netserv.Dial(remotePid)
+	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "fetchProtocol.out.dial").Msg(err.Error())
 		return

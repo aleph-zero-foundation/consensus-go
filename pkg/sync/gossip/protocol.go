@@ -77,7 +77,7 @@ func (p *protocol) Out() {
 		return
 	}
 	defer m.release()
-	conn, err := p.netserv.Dial(remotePid)
+	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "gossip.Out.dial").Msg(err.Error())
 		return

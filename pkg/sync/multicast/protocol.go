@@ -75,7 +75,7 @@ func (p *protocol) Out() {
 	if !ok {
 		return
 	}
-	conn, err := p.netserv.Dial(r.pid)
+	conn, err := p.netserv.Dial(r.pid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.Out.Dial").Msg(err.Error())
 		return

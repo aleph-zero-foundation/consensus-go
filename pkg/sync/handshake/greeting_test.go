@@ -28,7 +28,7 @@ var _ = Describe("Greeting", func() {
 			var wg sync.WaitGroup
 			wg.Add(2)
 			go func() {
-				conn, err := servs[1].Dial(0)
+				conn, err := servs[1].Dial(0, time.Second)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(Greet(conn, 1, 2)).To(Succeed())
 				wg.Done()

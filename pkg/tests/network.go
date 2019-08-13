@@ -56,7 +56,7 @@ type Server struct {
 }
 
 // Dial creates a new connection, pushes one end to the associated dial channel and return the other.
-func (s *Server) Dial(k uint16) (network.Connection, error) {
+func (s *Server) Dial(k uint16, _ time.Duration) (network.Connection, error) {
 	out, in := NewConnection()
 	s.dialChans[k] <- in
 	return out, nil
