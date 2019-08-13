@@ -24,10 +24,10 @@ type service struct {
 	pid           int
 	dag           gomel.Dag
 	rs            gomel.RandomSource
-	units         chan gomel.Unit
+	units         <-chan gomel.Unit
 	accepted      chan []byte
-	mcRequests    chan multicast.Request
 	fetchRequests chan gomel.Preunit
+	mcRequests    chan *multicast.Request
 	mcServer      *multicast.Server
 	fetchServer   *fetch.Server
 	log           zerolog.Logger
@@ -35,7 +35,7 @@ type service struct {
 
 // NewService creates a new service for rmc.
 // It returns the service and a callback for creator to call on unit creation.
-func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log zerolog.Logger) (process.Service, gomel.Callback, error) {
+func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log zerolog.Logger) (process.Service, chan<- gomel.Unit, error) {
 	// state contains information about all rmc exchanges
 	state := rmc.New(config.Pubs, config.Priv)
 
@@ -45,7 +45,7 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 	}
 
 	// mcRequests is a channel for requests to multicast
-	mcRequests := make(chan multicast.Request, mcRequestsSize*dag.NProc())
+	mcRequests := make(chan *multicast.Request, mcRequestsSize*dag.NProc())
 	// accepted is a channel for succesfully multicasted data
 	accepted := make(chan []byte, mcAcceptedSize*dag.NProc())
 	mcServer := multicast.NewServer(uint16(config.Pid), dag.NProc(), state, mcRequests, accepted, dialer, listener, config.Timeout, log)
@@ -60,7 +60,7 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, state, fetchRequests, dialer, listener, config.Timeout, log)
 
 	// units is a channel on which create service should send newly created units for rmc
-	units := make(chan gomel.Unit)
+	units := make(chan gomel.Unit, 10)
 
 	return &service{
 			dag:           dag,
@@ -73,37 +73,29 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 			fetchServer:   fetchServer,
 			fetchRequests: fetchRequests,
 			log:           log,
-		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
-			if err != nil {
-				return
-			}
-			units <- unit
-		}, nil
-}
-
-// unitRMCid returns rmc id for a given unit
-func unitRMCid(u gomel.Unit, nProc int) uint64 {
-	return uint64(u.Creator()) + uint64(nProc)*uint64(u.Height())
+		},
+		units,
+		nil
 }
 
 // translator reads units created by the create service
 // and creates multicast requests to all other pids.
 func (s *service) translator() {
 	for {
-		unit, ok := <-s.units
-		if !ok {
+		unit, isOpen := <-s.units
+		if !isOpen {
 			return
 		}
-		for i := 0; i < s.dag.NProc(); i++ {
-			if i == s.pid {
+		for pid := 0; pid < s.dag.NProc(); pid++ {
+			if pid == s.pid {
 				continue
 			}
-			id := unitRMCid(unit, s.dag.NProc())
-			data, err := rmc.EncodeUnit(unit)
+			req, err := multicast.NewUnitSendRequest(unit, uint16(pid), s.dag.NProc())
 			if err != nil {
+				s.log.Error().Str("where", "multicast.NewUnitSendRequest").Msg(err.Error())
 				continue
 			}
-			s.mcRequests <- multicast.NewRequest(id, uint16(i), data, multicast.SendData)
+			s.mcRequests <- req
 		}
 	}
 }
@@ -111,18 +103,22 @@ func (s *service) translator() {
 // validator validates succesfully multicasted data
 func (s *service) validator() {
 	for {
-		data, ok := <-s.accepted
-		if !ok {
+		data, isOpen := <-s.accepted
+		if !isOpen {
+			close(s.fetchRequests)
 			return
 		}
-		if pu, err := rmc.DecodePreunit(data); pu != nil || err != nil {
+		if pu, err := multicast.DecodePreunit(data); pu != nil || err != nil {
 			if err != nil {
+				s.log.Error().Str("where", "multicast.DecodePreunit").Msg(err.Error())
 				continue
 			}
 			s.dag.AddUnit(pu, s.rs, func(preunit gomel.Preunit, u gomel.Unit, err error) {
-				switch err.(type) {
-				case *gomel.UnknownParents:
-					s.fetchRequests <- pu
+				if err != nil {
+					switch err.(type) {
+					case *gomel.UnknownParents:
+						s.fetchRequests <- pu
+					}
 				}
 			})
 		}
@@ -140,11 +136,10 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	s.mcServer.StopOut()
-	s.fetchServer.StopOut()
+	s.fetchServer.StopIn()
 	time.Sleep(5 * time.Second)
 	s.mcServer.StopIn()
-	s.fetchServer.StopIn()
-	close(s.units)
+	s.fetchServer.StopOut()
 	close(s.accepted)
 	s.log.Info().Msg(logging.ServiceStopped)
 }

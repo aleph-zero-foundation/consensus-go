@@ -41,11 +41,11 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	if err != nil {
 		return
 	}
-	rmcService, requestRMC, err := rmc.NewService(dag, rs, config.RMC, log)
+	rmcService, unitsToRMC, err := rmc.NewService(dag, rs, config.RMC, log)
 	if err != nil {
 		return
 	}
-	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(requestRMC, primeAlert), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(gomel.ChannelCallback(unitsToRMC), primeAlert), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return
 	}
@@ -85,4 +85,5 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	rmcService.Stop()
 	<-dagFinished
 	dag.Stop()
+	close(unitsToRMC)
 }

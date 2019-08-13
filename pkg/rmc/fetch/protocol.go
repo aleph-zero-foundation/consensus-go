@@ -1,42 +1,36 @@
 package fetch
 
 import (
+	"encoding/binary"
+	"errors"
+	"io"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/rmc"
-)
-
-const (
-	SendData byte = iota
-	AcceptData
-	SendProof
-	AcceptProof
 )
 
 type protocol struct {
 	dag      gomel.Dag
 	rs       gomel.RandomSource
 	pid      uint16
-	nProc    int
 	requests chan gomel.Preunit
-	state    *rmc.RMC
 	dialer   network.Dialer
 	listener network.Listener
 	timeout  time.Duration
 	log      zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, state *rmc.RMC, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
 	return &protocol{
+		dag:      dag,
 		rs:       rs,
 		pid:      pid,
-		dag:      dag,
-		nProc:    dag.NProc(),
 		requests: requests,
-		state:    state,
 		dialer:   dialer,
 		listener: listener,
 		timeout:  timeout,
@@ -51,39 +45,31 @@ func (p *protocol) In() {
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
-	_, id, _, err := rmc.AcceptGreeting(conn)
+	u, err := receiveUnit(conn, p.dag)
 	if err != nil {
-		p.log.Error().Str("where", "fetchProtocol.in.greeting").Msg(err.Error())
+		p.log.Error().Str("where", "fetchProtocol.in.getPreunit").Msg(err.Error())
 		return
 	}
-	rmc.SendStatus(conn, p.state.Status(id))
-	switch p.state.Status(id) {
-	case rmc.Data:
-		p.state.SendData(id, p.state.Data(id), conn)
-	case rmc.Signed:
-		p.state.SendSignature(id, conn)
-	case rmc.Finished:
-		p.state.SendFinished(id, conn)
+	heights, err := receiveHeights(conn, p.dag.NProc())
+	if err != nil {
+		p.log.Error().Str("where", "fetchProtocol.in.getHeights").Msg(err.Error())
+		return
+	}
+	units := getUnits(p.dag, u, heights)
+	if err != nil {
+		p.log.Error().Str("where", "fetchProtocol.in.getUnits").Msg(err.Error())
+		return
+	}
+	err = sendUnits(conn, units)
+	if err != nil {
+		log.Error().Str("where", "fetchProtocol.in.sendUnits").Msg(err.Error())
+		return
 	}
 }
 
 func (p *protocol) Out() {
-	pu, ok := <-p.requests
-	for {
-		time.Sleep(1 * time.Second)
-		ok := false
-		p.dag.AddUnit(pu, p.rs, func(_ gomel.Preunit, u gomel.Unit, err error) {
-			if u != nil {
-				ok = true
-			}
-		})
-		if ok {
-			return
-		}
-	}
-
-	return
-	if !ok {
+	pu, isOpen := <-p.requests
+	if !isOpen {
 		return
 	}
 	pid := uint16(pu.Creator())
@@ -94,25 +80,174 @@ func (p *protocol) Out() {
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
-	/*err = rmc.Greet(conn, r.pid, r.id, r.msgType)
+	err = sendPu(conn, pu)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.Out.Dial").Msg(err.Error())
-		return
-	}*/
-	status, id, err := rmc.AcceptStatus(conn)
-	if err != nil {
-		p.log.Error().Str("where", "multicast.Out.Dial").Msg(err.Error())
+		log.Error().Str("where", "fetchProtocol.out.sendPu").Msg(err.Error())
 		return
 	}
+	err = sendHeights(conn, p.dag)
+	if err != nil {
+		log.Error().Str("where", "fetchProtocol.out.sendHeights").Msg(err.Error())
+		return
+	}
+	pus, err := receivePreunits(conn)
+	if err != nil {
+		log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
+		return
+	}
+	err = addUnits(pus, pu, p.dag, p.rs)
+	if err != nil {
+		log.Error().Str("where", "fetchProtocol.out.addUnits").Msg(err.Error())
+		return
+	}
+}
 
-	switch status {
-	case rmc.Unknown:
-		return
-	case rmc.Data:
-		p.state.AcceptData(id, pid, conn)
-	case rmc.Signed:
-		p.state.AcceptSignature(id, pid, conn)
-	case rmc.Finished:
-		p.state.AcceptFinished(id, pid, conn)
+func receiveUnit(conn network.Connection, dag gomel.Dag) (gomel.Unit, error) {
+	hash := &gomel.Hash{}
+	_, err := io.ReadFull(conn, hash[:])
+	if err != nil {
+		return nil, err
 	}
+	units := dag.Get([]*gomel.Hash{hash})
+	if units[0] == nil {
+		return nil, errors.New("Unknown unit")
+	}
+	return units[0], nil
+}
+
+func receiveHeights(conn network.Connection, nProc int) ([]int, error) {
+	buf := make([]byte, 4*nProc)
+	_, err := io.ReadFull(conn, buf)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]int, nProc)
+	for pid := range result {
+		result[pid] = int(binary.LittleEndian.Uint32(buf[(4 * pid):(4*pid + 4)]))
+	}
+	return result, nil
+}
+
+func getUnits(dag gomel.Dag, u gomel.Unit, heights []int) []gomel.Unit {
+	result := []gomel.Unit{}
+	for pid, units := range u.Floor() {
+		if len(units) == 0 {
+			continue
+		}
+		var err error
+		v := units[0]
+		for v.Height() >= heights[pid] {
+			result = append(result, v)
+			v, err = gomel.Predecessor(v)
+			if err != nil {
+				break
+			}
+		}
+	}
+	return result
+}
+
+func sendUnits(conn network.Connection, units []gomel.Unit) error {
+	buf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(buf, uint32(len(units)))
+	conn.Write(buf)
+
+	encoder := custom.NewEncoder(conn)
+	for _, u := range units {
+		err := encoder.EncodeUnit(u)
+		if err != nil {
+			return err
+		}
+	}
+	return conn.Flush()
+}
+
+func sendPu(conn network.Connection, pu gomel.Preunit) error {
+	_, err := conn.Write(pu.Hash()[:])
+	if err != nil {
+		return err
+	}
+	return conn.Flush()
+}
+
+func sendHeights(conn network.Connection, dag gomel.Dag) error {
+	heights := make([]int, 0, dag.NProc())
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+		if len(units) == 0 {
+			heights = append(heights, -1)
+			return true
+		}
+		heights = append(heights, units[0].Height())
+		return true
+	})
+	buf := make([]byte, 4)
+	for _, h := range heights {
+		// we are sending first height that is missing per pid
+		binary.LittleEndian.PutUint32(buf, uint32(h+1))
+		conn.Write(buf)
+	}
+	return conn.Flush()
+}
+
+func receivePreunits(conn network.Connection) ([]gomel.Preunit, error) {
+	buf := make([]byte, 4)
+	_, err := io.ReadFull(conn, buf)
+	if err != nil {
+		return nil, err
+	}
+	nUnits := binary.LittleEndian.Uint32(buf)
+	result := make([]gomel.Preunit, nUnits)
+	decoder := custom.NewDecoder(conn)
+	for i := range result {
+		result[i], err = decoder.DecodePreunit()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func addUnits(pus []gomel.Preunit, pu gomel.Preunit, dag gomel.Dag, rs gomel.RandomSource) error {
+	preunitByHash := make(map[gomel.Hash]gomel.Preunit)
+	for _, p := range pus {
+		preunitByHash[*p.Hash()] = p
+	}
+	var dfsAdd func(p gomel.Preunit) bool
+	dfsAdd = func(p gomel.Preunit) bool {
+		parents := dag.Get(p.Parents())
+		for i, parent := range parents {
+			if parent == nil {
+				parentOutOfDag := p.Parents()[i]
+				if received, ok := preunitByHash[*parentOutOfDag]; ok {
+					if !dfsAdd(received) {
+						return false
+					}
+				}
+			}
+		}
+		var wg sync.WaitGroup
+		wg.Add(1)
+		ok := true
+		dag.AddUnit(p, rs, func(_ gomel.Preunit, u gomel.Unit, err error) {
+			defer wg.Done()
+			if err != nil {
+				switch err.(type) {
+				case *gomel.DuplicateUnit:
+				default:
+					ok = false
+				}
+			} else {
+			}
+		})
+		wg.Wait()
+		if ok {
+			return true
+		}
+		return false
+	}
+	success := dfsAdd(pu)
+	if !success {
+		return errors.New("fetched info wasn't enough to add the preunit")
+	}
+	return nil
 }

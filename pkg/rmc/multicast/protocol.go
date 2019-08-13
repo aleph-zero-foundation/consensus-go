@@ -11,7 +11,7 @@ import (
 type protocol struct {
 	pid      uint16
 	nProc    int
-	requests chan Request
+	requests chan *Request
 	state    *rmc.RMC
 	accepted chan []byte
 	dialer   network.Dialer
@@ -20,7 +20,7 @@ type protocol struct {
 	log      zerolog.Logger
 }
 
-func newProtocol(pid uint16, nProc int, requests chan Request, state *rmc.RMC, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, nProc int, requests chan *Request, state *rmc.RMC, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
 	return &protocol{
 		pid:      pid,
 		nProc:    nProc,
@@ -49,7 +49,7 @@ func (p *protocol) In() {
 		return
 	}
 	switch msgType {
-	case SendData:
+	case sendData:
 		_, err := p.state.AcceptData(id, pid, conn)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
@@ -61,7 +61,7 @@ func (p *protocol) In() {
 			return
 		}
 		conn.Flush()
-	case SendFinished:
+	case sendFinished:
 		_, err := p.state.AcceptFinished(id, pid, conn)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
@@ -90,7 +90,7 @@ func (p *protocol) Out() {
 	}
 
 	switch r.msgType {
-	case SendData:
+	case sendData:
 		err := p.state.SendData(r.id, r.data, conn)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
@@ -109,10 +109,10 @@ func (p *protocol) Out() {
 				if uint16(i) == p.pid {
 					continue
 				}
-				p.requests <- NewRequest(r.id, uint16(i), r.data, SendFinished)
+				p.requests <- NewRequest(r.id, uint16(i), r.data, sendFinished)
 			}
 		}
-	case SendFinished:
+	case sendFinished:
 		err := p.state.SendFinished(r.id, conn)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
