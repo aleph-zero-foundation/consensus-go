@@ -37,6 +37,5 @@ func (s *Server) StopIn() {
 }
 
 func (s *Server) StopOut() {
-	close(s.requests)
 	s.outPool.Stop()
 }
