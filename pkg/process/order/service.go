@@ -34,7 +34,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 	primeAlert := make(chan struct{}, 1)
 	return &service{
 			pid:                 config.Pid,
-			linearOrdering:      linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel, config.OrderStartLevel, log),
+			linearOrdering:      linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel, config.OrderStartLevel, config.CRPFixedPrefix, log),
 			orderedUnits:        orderedUnits,
 			extendOrderRequests: make(chan int, 10),
 			primeAlert:          primeAlert,
@@ -57,7 +57,7 @@ func (s *service) attemptOrdering() {
 	for {
 		select {
 		case <-s.primeAlert:
-			for s.linearOrdering.DecideTimingOnLevel(s.currentRound) != nil {
+			for s.linearOrdering.DecideTiming() != nil {
 				s.extendOrderRequests <- s.currentRound
 				s.currentRound++
 			}

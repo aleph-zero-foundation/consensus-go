@@ -63,36 +63,6 @@ var _ = Describe("Coin", func() {
 			}
 		}
 	})
-	Describe("GetCRP", func() {
-		Context("On a given level", func() {
-			It("Should return a permutation of pids", func() {
-				perm := rs[0].GetCRP(3)
-				Expect(len(perm)).To(Equal(dag[0].NProc()))
-				elems := make(map[int]bool)
-				for _, pid := range perm {
-					elems[pid] = true
-				}
-				Expect(len(elems)).To(Equal(dag[0].NProc()))
-			})
-			It("Should return the same permutation for all pid", func() {
-				perm := make([][]int, n)
-				for pid := 0; pid < n; pid++ {
-					perm[pid] = rs[pid].GetCRP(2)
-				}
-				for pid := 1; pid < n; pid++ {
-					for i := range perm[pid] {
-						Expect(perm[pid][i]).To(Equal(perm[pid-1][i]))
-					}
-				}
-			})
-			Context("On too high level", func() {
-				It("Should return nil", func() {
-					perm := rs[0].GetCRP(11)
-					Expect(perm).To(BeNil())
-				})
-			})
-		})
-	})
 	Describe("CheckCompliance", func() {
 		Context("on a prime unit created by a share provider", func() {
 			Context("without random source data", func() {

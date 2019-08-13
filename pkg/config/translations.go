@@ -77,6 +77,7 @@ func generateOrderSetupConfig(conf *Configuration, m *Member, c *Committee) *pro
 		VotingLevel:     int(conf.VotingLevel),
 		PiDeltaLevel:    int(conf.PiDeltaLevel),
 		OrderStartLevel: 6,
+		CRPFixedPrefix:  int(conf.CRPFixedPrefix),
 	}
 }
 
@@ -86,6 +87,7 @@ func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *process.
 		VotingLevel:     int(conf.VotingLevel),
 		PiDeltaLevel:    int(conf.PiDeltaLevel),
 		OrderStartLevel: int(conf.OrderStartLevel),
+		CRPFixedPrefix:  int(conf.CRPFixedPrefix),
 	}
 }
 

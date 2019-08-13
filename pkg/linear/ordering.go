@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/rs/zerolog"
-
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
@@ -19,6 +18,7 @@ type ordering struct {
 	votingLevel         int
 	piDeltaLevel        int
 	orderStartLevel     int
+	crpFixedPrefix      int
 	proofMemo           map[[2]gomel.Hash]bool
 	voteMemo            map[[2]gomel.Hash]vote
 	piMemo              map[[2]gomel.Hash]vote
@@ -28,7 +28,7 @@ type ordering struct {
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, log zerolog.Logger) gomel.LinearOrdering {
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 	return &ordering{
 		dag:                 dag,
 		randomSource:        rs,
@@ -38,6 +38,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaL
 		votingLevel:         votingLevel,
 		piDeltaLevel:        piDeltaLevel,
 		orderStartLevel:     orderStartLevel,
+		crpFixedPrefix:      crpFixedPrefix,
 		proofMemo:           make(map[[2]gomel.Hash]bool),
 		voteMemo:            make(map[[2]gomel.Hash]vote),
 		piMemo:              make(map[[2]gomel.Hash]vote),
@@ -61,29 +62,34 @@ func dagMaxLevel(dag gomel.Dag) int {
 	return maxLevel
 }
 
-// DecideTimingOnLevel tries to pick a timing unit on a given level. Returns nil if it cannot be decided yet.
-func (o *ordering) DecideTimingOnLevel(level int) gomel.Unit {
-	// If we have already decided we can read the answer from memory
-	if o.timingUnits.length() > level {
-		return o.timingUnits.get(level)
-	}
+// DecideTiming tries to pick a next timing unit. Returns nil if it cannot be decided yet.
+func (o *ordering) DecideTiming() gomel.Unit {
+	level := o.timingUnits.length()
+
 	if dagMaxLevel(o.dag) < level+o.votingLevel {
 		return nil
 	}
-	for _, pid := range o.randomSource.GetCRP(level) {
-		for _, uc := range o.dag.PrimeUnits(level).Get(pid) {
-			decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
-			if decision == popular {
-				o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
-				o.timingUnits.pushBack(uc)
-				return uc
-			}
-			if decision == undecided {
-				return nil
-			}
-		}
+
+	var previousTU gomel.Unit
+	if level > o.orderStartLevel {
+		previousTU = o.timingUnits.get(level - 1)
 	}
-	return nil
+
+	var result gomel.Unit
+	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
+		decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
+		if decision == popular {
+			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
+			o.timingUnits.appendOrIgnore(level, uc)
+			result = uc
+			return false
+		}
+		if decision == undecided {
+			return false
+		}
+		return true
+	})
+	return result
 }
 
 // getAntichainLayers for a given timing unit tu, returns all the units in its timing round

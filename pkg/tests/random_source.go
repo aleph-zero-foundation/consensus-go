@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"strconv"
+
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -18,19 +20,12 @@ func (rs *testRandomSource) Init(dag gomel.Dag) {
 	rs.nProc = dag.NProc()
 }
 
-// GetCRP is a dummy implementation of a common random permutation
-func (rs *testRandomSource) GetCRP(nonce int) []int {
-	permutation := make([]int, rs.nProc)
-	for i := 0; i < rs.nProc; i++ {
-		permutation[i] = (i + nonce) % rs.nProc
-	}
-	return permutation
-}
-
 // RandomBytes returns a sequence of random bits for a given unit
 // it returns hash of u
-func (rs *testRandomSource) RandomBytes(uTossing gomel.Unit, _ int) []byte {
-	return uTossing.Hash()[:]
+func (rs *testRandomSource) RandomBytes(pid, level int) []byte {
+	answer := make([]byte, 32)
+	answer = append(answer, []byte(strconv.Itoa(pid+level))...)
+	return answer
 }
 
 // Update updates the RandomSource with data included in the unit

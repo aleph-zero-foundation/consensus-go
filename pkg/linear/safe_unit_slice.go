@@ -12,19 +12,18 @@ type safeUnitSlice struct {
 }
 
 func newSafeUnitSlice(nEmpty int) *safeUnitSlice {
-	contents := []gomel.Unit{}
-	for i := 0; i < nEmpty; i++ {
-		contents = append(contents, nil)
-	}
+	contents := make([]gomel.Unit, nEmpty)
 	return &safeUnitSlice{
 		contents: contents,
 	}
 }
 
-func (s *safeUnitSlice) pushBack(u gomel.Unit) {
+func (s *safeUnitSlice) appendOrIgnore(level int, u gomel.Unit) {
 	s.Lock()
 	defer s.Unlock()
-	s.contents = append(s.contents, u)
+	if len(s.contents) == level {
+		s.contents = append(s.contents, u)
+	}
 }
 
 func (s *safeUnitSlice) length() int {

@@ -40,9 +40,6 @@ func Process(config process.Config, setupLog zerolog.Logger, log zerolog.Logger)
 	// The main process waits on the channel.
 	rsCh := make(chan gomel.RandomSource)
 
-	if config.Setup == "urn" {
-		go urnSetup(config, rsCh, setupLog)
-	}
 	if config.Setup == "beacon" {
 		go beaconSetup(config, rsCh, setupLog)
 	}
