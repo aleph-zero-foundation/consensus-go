@@ -7,24 +7,25 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// crpIterate iterates over all the units on a given level in random order
-// until the given function returns false.
+// crpIterate iterates over all the prime units on a given level in random order.
+// It calls the given work function on each of the units until the function
+// returns false or the contents run out.
 // The underlying random permutation of units is generated in two steps
 // (1) the prefix is based only on the previous timing unit and hashes of units
 // (2) the sufix is computed using the random source
 // Second part of the permutation is being calculated only when needed.
-// i.e. given function returns true on all the units in the prefix.
+// i.e. given work function returns true on all the units in the prefix.
 //
 // The function itself returns
 // - false when generating sufix of the permutation failed (because the dag
 //   haven't reached high enough level to reveal randomBytes needed)
 // - true otherwise
-func (o *ordering) crpIterate(level int, previousTU gomel.Unit, f func(gomel.Unit) bool) bool {
+func (o *ordering) crpIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
 	prefix, sufix := splitProcesses(o.dag.NProc(), o.crpFixedPrefix, level, previousTU)
 
 	perm := defaultPermutation(o.dag, level, prefix)
 	for _, u := range perm {
-		if !f(u) {
+		if !work(u) {
 			return true
 		}
 	}
@@ -34,7 +35,7 @@ func (o *ordering) crpIterate(level int, previousTU gomel.Unit, f func(gomel.Uni
 		return false
 	}
 	for _, u := range perm {
-		if !f(u) {
+		if !work(u) {
 			return true
 		}
 	}
