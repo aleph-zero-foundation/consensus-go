@@ -33,6 +33,38 @@ type ThresholdCoin struct {
 	sks       []*bn256.SecretKey
 }
 
+// New returns a thresholdCoin based on given slice of coefficients
+func New(nProc, pid int, coeffs []*big.Int) *ThresholdCoin {
+	threshold := len(coeffs)
+	secret := coeffs[threshold-1]
+
+	globalVK := bn256.NewVerificationKey(secret)
+
+	var wg sync.WaitGroup
+	var sks = make([]*bn256.SecretKey, nProc)
+	var vks = make([]*bn256.VerificationKey, nProc)
+
+	for i := 0; i < nProc; i++ {
+		wg.Add(1)
+		go func(ind int) {
+			defer wg.Done()
+			secret := poly(coeffs, big.NewInt(int64(ind+1)))
+			sks[ind] = bn256.NewSecretKey(secret)
+			vks[ind] = bn256.NewVerificationKey(secret)
+		}(i)
+	}
+	wg.Wait()
+
+	return &ThresholdCoin{
+		Threshold: threshold,
+		pid:       pid,
+		globalVK:  globalVK,
+		vks:       vks,
+		sks:       sks,
+		sk:        sks[pid],
+	}
+}
+
 // Deal returns byte representation of a threshold coin
 // with given threshold and number of processes
 func Deal(nProcesses, threshold int) []byte {
