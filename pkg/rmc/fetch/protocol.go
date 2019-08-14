@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -25,7 +24,7 @@ type protocol struct {
 	log      zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
 	return &protocol{
 		dag:      dag,
 		rs:       rs,
@@ -62,7 +61,7 @@ func (p *protocol) In() {
 	}
 	err = sendUnits(conn, units)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.in.sendUnits").Msg(err.Error())
+		p.log.Error().Str("where", "fetchProtocol.in.sendUnits").Msg(err.Error())
 		return
 	}
 }
@@ -75,29 +74,29 @@ func (p *protocol) Out() {
 	pid := uint16(pu.Creator())
 	conn, err := p.dialer.Dial(pid)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.Out.Dial").Msg(err.Error())
+		p.log.Error().Str("where", "fetchProtocol.Out.Dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
 	err = sendPu(conn, pu)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.out.sendPu").Msg(err.Error())
+		p.log.Error().Str("where", "fetchProtocol.out.sendPu").Msg(err.Error())
 		return
 	}
 	err = sendHeights(conn, p.dag)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.out.sendHeights").Msg(err.Error())
+		p.log.Error().Str("where", "fetchProtocol.out.sendHeights").Msg(err.Error())
 		return
 	}
 	pus, err := receivePreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
+		p.log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
 		return
 	}
 	err = addUnits(pus, pu, p.dag, p.rs)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.out.addUnits").Msg(err.Error())
+		p.log.Error().Str("where", "fetchProtocol.out.addUnits").Msg(err.Error())
 		return
 	}
 }

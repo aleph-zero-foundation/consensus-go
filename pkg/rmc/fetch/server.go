@@ -12,7 +12,7 @@ import (
 
 // NewServer returns a server that runs fetch for rmc protocol
 func NewServer(pid uint16, dag gomel.Dag, rs gomel.RandomSource, state *rmc.RMC, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
-	proto := newProtocol(pid, dag, rs, requests, dialer, listener, timeout, log)
+	proto := NewProtocol(pid, dag, rs, requests, dialer, listener, timeout, log)
 	return &Server{
 		requests: requests,
 		outPool:  sync.NewPool(uint(5), proto.Out),

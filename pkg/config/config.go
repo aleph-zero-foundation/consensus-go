@@ -97,7 +97,7 @@ func NewDefaultConfiguration() Configuration {
 
 		SyncSetup: syncSetupConf,
 
-		Setup: "coin",
+		Setup: "beacon",
 
 		Sync: syncConf,
 
