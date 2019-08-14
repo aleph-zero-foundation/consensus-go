@@ -189,7 +189,7 @@ func (c *coin) combineShares(level int) ([]byte, error) {
 				continue
 			}
 			cs := c.coinShares.Get(v.Hash())
-			if cs != nil && c.tc.VerifyCoinShare(cs, level) {
+			if cs != nil {
 				shares = append(shares, cs)
 				shareCollected[v.Creator()] = true
 				if len(shares) == c.tc.Threshold {
