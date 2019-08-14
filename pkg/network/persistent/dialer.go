@@ -12,13 +12,15 @@ import (
 )
 
 type dialer struct {
-	link   net.Conn
-	conns  map[uint64]*conn
-	lastID uint64
-	mx     sync.Mutex
-	wg     *sync.WaitGroup
-	quit   *int32
-	log    zerolog.Logger
+	link       net.Conn
+	conns      map[uint64]*conn
+	remoteAddr string
+	timeout    time.Duration
+	lastID     uint64
+	mx         sync.Mutex
+	wg         *sync.WaitGroup
+	quit       *int32
+	log        zerolog.Logger
 }
 
 func newDialer(remoteAddress string, timeout time.Duration, wg *sync.WaitGroup, quit *int32, log zerolog.Logger) (*dialer, error) {
@@ -27,11 +29,13 @@ func newDialer(remoteAddress string, timeout time.Duration, wg *sync.WaitGroup, 
 		return nil, err
 	}
 	return &dialer{
-		link:  link,
-		conns: make(map[uint64]*conn),
-		wg:    wg,
-		quit:  quit,
-		log:   log,
+		link:       link,
+		conns:      make(map[uint64]*conn),
+		remoteAddr: remoteAddress,
+		timeout:    timeout,
+		wg:         wg,
+		quit:       quit,
+		log:        log,
 	}, nil
 }
 
@@ -47,27 +51,50 @@ func (d *dialer) start() {
 			_, err := io.ReadFull(d.link, hdr)
 			if err != nil {
 				d.log.Error().Str("where", "persistent.dialer.header").Msg(err.Error())
-				return
+				d.reconnect()
+				continue
 			}
 			id, size := parseHeader(hdr)
 			buf := make([]byte, size)
 			_, err = io.ReadFull(d.link, buf)
 			if err != nil {
 				d.log.Error().Str("where", "persistent.dialer.body").Msg(err.Error())
-				return
+				d.reconnect()
+				continue
 			}
-			if conn, ok := d.conns[id]; ok {
+			d.mx.Lock()
+			conn, ok := d.conns[id]
+			d.mx.Unlock()
+			if ok {
 				conn.append(buf)
 			} else {
-				d.log.Error().Str("where", "persistent.dialer").Msg("incorrect connection ID")
+				d.log.Error().Str("where", "persistent.dialer").Msg("incorrect conn ID")
 			}
-
 		}
 	}()
 }
 
+func (d *dialer) reconnect() error {
+	d.stop()
+	link, err := net.DialTimeout("tcp", d.remoteAddr, d.timeout)
+	if err != nil {
+		return err
+	}
+	d.mx.Lock()
+	defer d.mx.Unlock()
+	d.link = link
+	d.conns = make(map[uint64]*conn)
+	d.lastID = 0
+	return nil
+}
+
 func (d *dialer) stop() {
 	d.link.Close()
+	d.mx.Lock()
+	defer d.mx.Unlock()
+	for _, conn := range d.conns {
+		conn.Close()
+	}
 }
 
 func (d *dialer) dial() network.Connection {

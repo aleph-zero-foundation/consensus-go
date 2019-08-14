@@ -102,7 +102,7 @@ func (c *conn) Flush() error {
 
 func (c *conn) Close() error {
 	// T0D0: remove from conns map, maybe send some special signal
-	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Msg(logging.ConnectionClosed)
+	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
 	return nil
 }
 

@@ -43,6 +43,9 @@ func (l *listener) start() {
             _, err := io.ReadFull(l.link, hdr)
             if err != nil {
                 l.log.Error().Str("where", "persistent.listener.header").Msg(err.Error())
+                for _, conn := range l.conns {
+                    conn.Close()
+                }
                 return
             }
             id, size := parseHeader(hdr)
@@ -50,6 +53,9 @@ func (l *listener) start() {
             _, err = io.ReadFull(l.link, buf)
             if err != nil {
                 l.log.Error().Str("where", "persistent.listener.body").Msg(err.Error())
+                for _, conn := range l.conns {
+                    conn.Close()
+                }
                 return
             }
             if conn, ok := l.conns[id]; ok {
