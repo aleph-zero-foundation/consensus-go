@@ -134,6 +134,8 @@ func (c *coin) CheckCompliance(u gomel.Unit) error {
 				return errors.New("incorrect random bytes")
 			}
 		}
+	} else if u.RandomSourceData() != nil {
+		return errors.New("random source data should be empty")
 	}
 	return nil
 }
