@@ -213,6 +213,13 @@ func addUnits(pus []gomel.Preunit, pu gomel.Preunit, dag gomel.Dag, rs gomel.Ran
 		preunitByHash[*p.Hash()] = p
 	}
 	var dfsAdd func(p gomel.Preunit) bool
+	// dfsAdd tries to add given preunit p to the dag,
+	// using the received set of preunits: preunitByHash
+	// to lookup missing parents.
+	//
+	// We are calling this function only on "trusted" preunits
+	// i.e. preunits that either comes from RMC
+	// or are parents of trusted unit.
 	dfsAdd = func(p gomel.Preunit) bool {
 		parents := dag.Get(p.Parents())
 		for i, parent := range parents {
@@ -236,7 +243,6 @@ func addUnits(pus []gomel.Preunit, pu gomel.Preunit, dag gomel.Dag, rs gomel.Ran
 				default:
 					ok = false
 				}
-			} else {
 			}
 		})
 		wg.Wait()

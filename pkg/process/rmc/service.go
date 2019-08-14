@@ -34,7 +34,8 @@ type service struct {
 }
 
 // NewService creates a new service for rmc.
-// It returns the service and a callback for creator to call on unit creation.
+// It returns the service and a unit channel
+// for creator to send newly created units.
 func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log zerolog.Logger) (process.Service, chan<- gomel.Unit, error) {
 	// state contains information about all rmc exchanges
 	state := rmc.New(config.Pubs, config.Priv)
@@ -136,10 +137,10 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	s.mcServer.StopOut()
-	s.fetchServer.StopIn()
+	s.fetchServer.StopOut()
 	time.Sleep(5 * time.Second)
 	s.mcServer.StopIn()
-	s.fetchServer.StopOut()
+	s.fetchServer.StopIn()
 	close(s.accepted)
 	s.log.Info().Msg(logging.ServiceStopped)
 }
