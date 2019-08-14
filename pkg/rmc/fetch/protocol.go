@@ -11,6 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 type protocol struct {
@@ -24,7 +25,9 @@ type protocol struct {
 	log      zerolog.Logger
 }
 
-func NewProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+// NewProtocol returns an instance of protocol for fetching all the missing
+// ancestors of a unit received from rmc
+func NewProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) gsync.Protocol {
 	return &protocol{
 		dag:      dag,
 		rs:       rs,

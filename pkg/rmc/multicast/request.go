@@ -69,6 +69,8 @@ func encodeUnit(u gomel.Unit) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// DecodePreunit checks wheather the given data is representing a unit
+// and decodes it using the method from custom package
 func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	if data[0] != byte(unit) {
 		return nil, errors.New("given data doesn't represent a unit")
