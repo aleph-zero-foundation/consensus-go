@@ -14,7 +14,7 @@
             "Params": {
                 "nIn": "3",
                 "nOut": "2",
-                "Timeout": "2"},
+                "timeout": "2"},
             "Fallback": ""
         }],
 

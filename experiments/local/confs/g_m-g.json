@@ -14,13 +14,13 @@
             "Params": {
                 "nIn": "3",
                 "nOut": "2",
-                "Timeout": "2"},
+                "timeout": "2"},
             "Fallback": ""
         }, {
             "Type": "multicast",
             "Params": {
-                "McType": "tcp",
-                "Timeout": "2"},
+                "mcType": "tcp",
+                "timeout": "2"},
             "Fallback": "gossip"
         } ],
 

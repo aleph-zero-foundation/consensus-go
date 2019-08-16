@@ -9,20 +9,24 @@
 
 	"StepSize": 0.0,
 
-	"Sync": [{
-		"Type": "fetch",
-		"Params": {
-			"nIn": "20",
-			"nOut": "15",
-			"Timeout": "2"},
-		"Fallback": "fetch"
-		}, {
-		"Type": "multicast",
-		"Params": {
-			"McType": "tcp",
-			"Timeout": "2"},
-		"Fallback": "fetch"
-		}],
+    "Sync": [{
+        "Type": "fetch",
+        "Params": {
+            "nIn": "20",
+            "nOut": "40",
+            "timeout": "2",
+            "retryingFallback": "fetch",
+            "retryingInterval": "0.3"
+            },
+        "Fallback": "retrying"
+        }, {
+        "Type": "multicast",
+        "Params": {
+            "mcType": "tcp",
+            "timeout": "2"
+        },
+        "Fallback": "retrying"
+    }],
 
 	"Setup": "coin",
 
