@@ -18,13 +18,13 @@
             "Fallback": ""
         }],
 
-        "Setup": "urn",
+        "Setup": "coin",
 
         "SyncSetup": [],
 
 		"Txpu": 1,
 
-		"LevelLimit": 50,
+		"LevelLimit": 20,
 
 		"VotingLevel": 3,
 
@@ -40,5 +40,7 @@
 
 		"LogHuman": false,
 
-	    "OrderStartLevel": 0
+	    "OrderStartLevel": 0,
+
+		"CRPFixedPrefix": 5
 }
