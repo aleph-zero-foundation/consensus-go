@@ -31,19 +31,19 @@ func valid(configs []*process.Sync) error {
 	if len(configs) == 0 {
 		return gomel.NewConfigError("empty sync configuration")
 	}
-    definedFbks := map[string]bool{}
+	definedFbks := map[string]bool{}
 	for i, c := range configs {
 		if c.Fallback == "" {
-            continue
-        }
+			continue
+		}
 		f := c.Fallback
-        if definedFbks[f] {
-            continue
-        }
-        definedFbks[f] = true
-        if f == "retrying" {
-            f = c.Params["retryingFallback"]
-        }
+		if definedFbks[f] {
+			continue
+		}
+		definedFbks[f] = true
+		if f == "retrying" {
+			f = c.Params["retryingFallback"]
+		}
 		found := false
 		if f == "fetch" {
 			found = c.Type == "fetch"
@@ -143,8 +143,8 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 				dialer, listener, err = tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
 			case "udp":
 				dialer, listener, err = udp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
-            default:
-                return nil, nil, gomel.NewConfigError("wrong multicast type")
+			default:
+				return nil, nil, gomel.NewConfigError("wrong multicast type")
 			}
 			if err != nil {
 				return nil, nil, err
@@ -163,7 +163,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 
 			var peerSource gossip.PeerSource
-			if id := isFallback("fetch", configs[i+1:]); id != -1  || (c.Fallback == "retrying" && c.Params["retryingFallback"] == "gossip"){
+			if id := isFallback("fetch", configs[i+1:]); id != -1 || (c.Fallback == "retrying" && c.Params["retryingFallback"] == "gossip") {
 				fbk, reqChan, _, err := getFallback(configs[i+1+id], s, dag, randomSource, log)
 				fallbacks["gossip"] = fbk
 				if err != nil {
@@ -190,9 +190,15 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 
 			var reqChan chan fetch.Request
-			if id := isFallback("fetch", configs[i+1:]); id != -1 || c.Fallback == "fetch" || (c.Fallback == "retrying" && c.Params["retryingFallback"]=="fetch") {
+			if id := isFallback("fetch", configs[i+1:]); id != -1 || c.Fallback == "fetch" || (c.Fallback == "retrying" && c.Params["retryingFallback"] == "fetch") {
 				fbk, _, reqChan, err = getFallback(configs[i+1+id], s, dag, randomSource, log)
-				fallbacks["fetch"] = fbk
+				if id != 1 || c.Fallback == "fetch" {
+					fallbacks["fetch"] = fbk
+				}
+				if c.Fallback == "retrying" && c.Params["retryingFallback"] == "fetch" {
+					fallbacks["retrying"] = fbk
+				}
+
 				if err != nil {
 					return nil, nil, err
 				}
