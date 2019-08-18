@@ -45,12 +45,11 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaL
 
 	standardVoter := newStandardVoter(dag, uint64(votingLevel), newSimpleInitialVoter(), defaultVoter)
 	standardDecider := newStandardDecider(dag, standardVoter)
-	fastInitialDecider, fastDecider := newPairOfFastDeciders(dag, fiv, uint64(votingLevel), defaultVoter)
+	fastDecider := newFastDecider(dag, fiv, uint64(votingLevel), defaultVoter)
 	piDeltaDecider := newPiDelta(dag, uint64(piDeltaLevel), fiv, coinToss)
 
 	decisionMakers := []decide{
 		standardDecider,
-		fastInitialDecider,
 		fastDecider,
 		piDeltaDecider,
 	}
