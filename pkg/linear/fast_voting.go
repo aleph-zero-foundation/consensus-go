@@ -59,13 +59,17 @@ func (fv *fastInitialDecider) decide(uc, u gomel.Unit) vote {
 // Which means that at least 2/3 * N processes created a unit w such that:
 // (1) uc <= w <= v
 // (2) level(w) <= level(v) - 2 or level(w) = level(v) - 1 and w is a prime unit
-func (fv *fastInitialVoting) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
+func (fv *fastInitialVoting) provesPopularity(uc gomel.Unit, v gomel.Unit) (isPopular bool) {
 	if uc.Level() >= v.Level() || !uc.Below(v) {
 		return false
 	}
 	if result, ok := fv.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}]; ok {
 		return result
 	}
+
+	defer func() {
+		fv.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = isPopular
+	}()
 
 	level := v.Level()
 	nProcValid := 0
@@ -84,17 +88,14 @@ func (fv *fastInitialVoting) provesPopularity(uc gomel.Unit, v gomel.Unit) bool 
 			if reachedBottom == nil && w.Above(uc) {
 				nProcValid++
 				if fv.dag.IsQuorum(nProcValid) {
-					fv.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = true
 					return true
 				}
 				break
 			}
 		}
 		if !fv.dag.IsQuorum(nProcValid + nProcNotSeen) {
-			fv.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = false
 			return false
 		}
 	}
-	fv.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = false
 	return false
 }
