@@ -31,7 +31,11 @@ func newChanReader(size int) *chanReader {
 }
 
 func (cr *chanReader) Read(b []byte) (int, error) {
-	return bytes.NewReader(<-cr.ch).Read(b)
+	if buf, ok := <-cr.ch; ok {
+		return bytes.NewReader(buf).Read(b)
+	}
+	return 0, errors.New("Read on a closed connection")
+
 }
 
 type conn struct {
@@ -64,9 +68,6 @@ func newConn(id uint64, link net.Conn, log zerolog.Logger) *conn {
 }
 
 func (c *conn) Read(b []byte) (int, error) {
-	if atomic.LoadInt32(&c.closed) > 0 {
-		return 0, errors.New("Read on a closed connection")
-	}
 	n, err := c.reader.Read(b)
 	c.recv += uint32(n)
 	return n, err

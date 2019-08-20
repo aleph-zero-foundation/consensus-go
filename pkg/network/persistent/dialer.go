@@ -105,7 +105,7 @@ func (d *dialer) dial() network.Connection {
 	d.mx.Lock()
 	defer d.mx.Unlock()
 	conn := newConn(d.lastID, d.link, d.log)
-	d.conns[d.lastID] = newConn(d.lastID, d.link, d.log)
+	d.conns[d.lastID] = conn
 	d.lastID++
 	return conn
 }
