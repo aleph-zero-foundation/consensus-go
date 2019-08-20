@@ -318,6 +318,8 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 	}
 }
 
+// NewEachInSequenceUnitCreator returns an instance of type UnitCreator that on every call attempts to create a new unit using
+// a creator which is a direct successor of the previous one (i.e. 0, 1, 2...).
 func NewEachInSequenceUnitCreator(unitFactory Creator) UnitCreator {
 	nextCreator := 0
 	return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Preunit, error) {
