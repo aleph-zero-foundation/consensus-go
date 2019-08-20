@@ -17,7 +17,7 @@ type votingResult struct {
 	unpopular uint64
 }
 
-// Vote of u on popularity of uc as described by the fast consensus algorithm
+// Creates a defaultVote which is deterministic for first few rounds and uses provided coinToss for later rounds.
 func newDefaultVote(votingLevel int, coinToss coinToss) defaultVote {
 	return func(uc gomel.Unit, u gomel.Unit) vote {
 		r := u.Level() - uc.Level() - votingLevel
@@ -62,12 +62,12 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 	return undecided
 }
 
-// coinToss at unit uTossing (necessarily at level >= ADD_SHARES + 1)
+// Creates a new instance of coinToss using a given RandomSource.
 // With low probability the toss may fail -- typically because of adversarial behavior of some process(es).
 // uc - the unit whose popularity decision is being considered by tossing a coin
 //      this param is used only in case when the simpleCoin is used, otherwise
 //      the result of coin toss is meant to be a function of uTossing.level() only
-// uTossing - the unit that is tossing a coin
+// uTossing - the unit that is tossing a coin (necessarily at level >= ADD_SHARES + 1)
 // returns: false or true -- a (pseudo)random bit, impossible to predict before (uTossing.level - 1) was reached
 func newCoin(rs gomel.RandomSource) coinToss {
 	return func(uc gomel.Unit, uTossing gomel.Unit) bool {
@@ -80,9 +80,9 @@ func newCoin(rs gomel.RandomSource) coinToss {
 	}
 }
 
-// Decides if uc is popular (i.e. it can be used as a timing unit)
-// Returns vote, level on which the decision was made and current dag level
-func (o *ordering) decideUnitIsPopular(uc gomel.Unit) (vote, int, int) {
+// Decides if uc is popular (i.e. it can be used as a timing unit).
+// Returns vote, level on which the decision was made and current dag level.
+func (o *ordering) decideUnitIsPopular(uc gomel.Unit) (decision vote, decisionLevel int, dagLevel int) {
 	dagLevelReached := dagMaxLevel(o.dag)
 	if result, ok := o.decisionMemo[*uc.Hash()]; ok {
 		return result, -1, dagLevelReached
@@ -91,11 +91,9 @@ func (o *ordering) decideUnitIsPopular(uc gomel.Unit) (vote, int, int) {
 	for level := uc.Level() + 1; level <= dagLevelReached; level++ {
 		decision := undecided
 
-		decisionMakers := o.decisionMakers
-
 		o.dag.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				for _, decisionMaker := range decisionMakers {
+				for _, decisionMaker := range o.decisionMakers {
 					if curDecision := decisionMaker.decide(uc, v); curDecision != undecided {
 						decision = curDecision
 						return false

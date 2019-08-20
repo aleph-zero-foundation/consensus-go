@@ -5,13 +5,11 @@ import (
 )
 
 type standardDecider struct {
-	dag  gomel.Dag
 	vote *standardVoter
 }
 
-func newStandardDecider(dag gomel.Dag, vote *standardVoter) *standardDecider {
+func newStandardDecider(vote *standardVoter) *standardDecider {
 	return &standardDecider{
-		dag:  dag,
 		vote: vote,
 	}
 }
@@ -60,16 +58,16 @@ func (rv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
 	if cachedResult, ok := rv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}]; ok {
 		return cachedResult
 	}
+
 	defer func() {
 		rv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}] = result
 	}()
+
 	if r == rv.votingRound {
 		if rv.initialVoting.vote(uc, u) == popular {
-			result = popular
-			return
+			return popular
 		}
-		result = unpopular
-		return
+		return unpopular
 	}
 	voter := func(uc, u gomel.Unit) vote {
 		result := rv.vote(uc, u)
@@ -79,8 +77,7 @@ func (rv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
 		return result
 	}
 	votesLevelBelow := voteUsingPrimeAncestors(uc, u, rv.dag, voter)
-	result = superMajority(rv.dag, votesLevelBelow)
-	return
+	return superMajority(rv.dag, votesLevelBelow)
 }
 
 type simpleInitialVoter struct {
