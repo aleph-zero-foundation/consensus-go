@@ -10,6 +10,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
+const (
+	bufSize = 32000
+)
+
 type conn struct {
 	link   net.Conn
 	reader *bufio.Reader
@@ -23,8 +27,8 @@ type conn struct {
 func newConn(link net.Conn, log zerolog.Logger) network.Connection {
 	return &conn{
 		link:   link,
-		reader: bufio.NewReader(link),
-		writer: bufio.NewWriter(link),
+		reader: bufio.NewReaderSize(link, bufSize),
+		writer: bufio.NewWriterSize(link, bufSize),
 		log:    log,
 	}
 }
