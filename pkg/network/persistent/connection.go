@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"net"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -14,7 +15,7 @@ import (
 
 const (
 	headerSize = 12
-	bufSize    = 2 << 15
+	bufSize    = 1 << 16
 )
 
 func parseHeader(header []byte) (uint64, uint32) {
@@ -42,7 +43,7 @@ type conn struct {
 	header []byte
 	sent   uint32
 	recv   uint32
-	mx     sync.Mutex
+	closed int32
 	log    zerolog.Logger
 }
 
@@ -63,12 +64,18 @@ func newConn(id uint64, link net.Conn, log zerolog.Logger) *conn {
 }
 
 func (c *conn) Read(b []byte) (int, error) {
+	if atomic.LoadInt32(&c.closed) > 0 {
+		return 0, errors.New("Read on a closed connection")
+	}
 	n, err := c.reader.Read(b)
 	c.recv += uint32(n)
 	return n, err
 }
 
 func (c *conn) Write(b []byte) (int, error) {
+	if atomic.LoadInt32(&c.closed) > 0 {
+		return 0, errors.New("Write on a closed connection")
+	}
 	written, n := 0, 0
 	var err error
 	for written < len(b) {
@@ -86,9 +93,14 @@ func (c *conn) Write(b []byte) (int, error) {
 }
 
 func (c *conn) Flush() error {
-	binary.LittleEndian.PutUint32(c.header[8:], uint32(c.writer.Buffered()))
-	c.mx.Lock()
-	defer c.mx.Unlock()
+	if atomic.LoadInt32(&c.closed) > 0 {
+		return errors.New("Flush on a closed connection")
+	}
+	buf := c.writer.Buffered()
+	if buf == 0 {
+		return nil
+	}
+	binary.LittleEndian.PutUint32(c.header[8:], uint32(buf))
 	_, err := c.link.Write(c.header)
 	if err != nil {
 		return err
@@ -101,7 +113,17 @@ func (c *conn) Flush() error {
 }
 
 func (c *conn) Close() error {
-	// T0D0: remove from conns map, maybe send some special signal
+	if !atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
+		return nil
+	}
+	header := make([]byte, headerSize)
+	binary.LittleEndian.PutUint64(header, c.id)
+	binary.LittleEndian.PutUint32(header[8:], uint32(0))
+	_, err := c.link.Write(header)
+	if err != nil {
+		return err
+	}
+	close(c.queue.ch)
 	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
 	return nil
 }
@@ -122,5 +144,7 @@ func (c *conn) SetLogger(log zerolog.Logger) {
 }
 
 func (c *conn) append(b []byte) {
-	c.queue.ch <- b
+	if atomic.LoadInt32(&c.closed) == 0 {
+		c.queue.ch <- b
+	}
 }

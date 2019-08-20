@@ -43,22 +43,23 @@ func (l *listener) start() {
             _, err := io.ReadFull(l.link, hdr)
             if err != nil {
                 l.log.Error().Str("where", "persistent.listener.header").Msg(err.Error())
-                for _, conn := range l.conns {
-                    conn.Close()
-                }
+                l.stop()
                 return
             }
             id, size := parseHeader(hdr)
+            conn, ok := l.conns[id]
+            if ok && size == 0 {
+                conn.Close()
+                continue
+            }
             buf := make([]byte, size)
             _, err = io.ReadFull(l.link, buf)
             if err != nil {
                 l.log.Error().Str("where", "persistent.listener.body").Msg(err.Error())
-                for _, conn := range l.conns {
-                    conn.Close()
-                }
+                l.stop()
                 return
             }
-            if conn, ok := l.conns[id]; ok {
+            if ok {
                 conn.append(buf)
             } else {
                 nc := newConn(id, l.link, l.log)
@@ -68,4 +69,11 @@ func (l *listener) start() {
             }
         }
     }()
+}
+
+func (l *listener) stop() {
+    l.link.Close()
+    for _, conn := range l.conns {
+        conn.Close()
+    }
 }

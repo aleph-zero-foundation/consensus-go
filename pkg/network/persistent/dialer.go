@@ -55,6 +55,13 @@ func (d *dialer) start() {
 				continue
 			}
 			id, size := parseHeader(hdr)
+			d.mx.Lock()
+			conn, ok := d.conns[id]
+			d.mx.Unlock()
+			if ok && size == 0 {
+				conn.Close()
+				continue
+			}
 			buf := make([]byte, size)
 			_, err = io.ReadFull(d.link, buf)
 			if err != nil {
@@ -62,9 +69,6 @@ func (d *dialer) start() {
 				d.reconnect()
 				continue
 			}
-			d.mx.Lock()
-			conn, ok := d.conns[id]
-			d.mx.Unlock()
 			if ok {
 				conn.append(buf)
 			} else {
@@ -74,23 +78,23 @@ func (d *dialer) start() {
 	}()
 }
 
-func (d *dialer) reconnect() error {
+func (d *dialer) reconnect() {
 	d.stop()
 	link, err := net.DialTimeout("tcp", d.remoteAddr, d.timeout)
 	if err != nil {
-		return err
+		d.log.Error().Str("where", "persistent.dialer.reconnect").Msg(err.Error())
+		return
 	}
 	d.mx.Lock()
 	defer d.mx.Unlock()
 	d.link = link
 	d.conns = make(map[uint64]*conn)
 	d.lastID = 0
-	return nil
 }
 
 func (d *dialer) stop() {
-	d.link.Close()
 	d.mx.Lock()
+	d.link.Close()
 	defer d.mx.Unlock()
 	for _, conn := range d.conns {
 		conn.Close()
