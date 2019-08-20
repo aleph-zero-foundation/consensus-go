@@ -44,10 +44,7 @@ func newDefaultVote(votingLevel int, coinToss coinToss) defaultVote {
 func simpleCoin(u gomel.Unit, level int) bool {
 	index := level % (8 * len(u.Hash()))
 	byteIndex, bitIndex := index/8, index%8
-	if u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0 {
-		return true
-	}
-	return false
+	return u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0
 }
 
 // Checks if votes for popular or unpopular make a quorum.

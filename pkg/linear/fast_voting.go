@@ -21,33 +21,33 @@ func (fv *fastInitialVoting) vote(uc, u gomel.Unit) vote {
 }
 
 type fastDecider struct {
-	fv          *fastInitialVoting
-	fastDecider *standardDecider
+	fastInitiaVoting *fastInitialVoting
+	fastDecider      *standardDecider
 }
 
 func newFastDecider(
 	dag gomel.Dag,
-	fv *fastInitialVoting,
+	fiv *fastInitialVoting,
 	votingRound uint64,
 	defaultVote defaultVote,
 ) *fastDecider {
-	fastStandardVoter := newStandardVoter(dag, votingRound, fv, defaultVote)
+	fastStandardVoter := newStandardVoter(dag, votingRound, fiv, defaultVote)
 	fastStandardDecider := newStandardDecider(fastStandardVoter)
 	return &fastDecider{
-		fv:          fv,
-		fastDecider: fastStandardDecider,
+		fastInitiaVoting: fiv,
+		fastDecider:      fastStandardDecider,
 	}
 }
 
-func (fv *fastDecider) decide(uc, u gomel.Unit) vote {
+func (fd *fastDecider) decide(uc, u gomel.Unit) vote {
 	if u.Level() < uc.Level() {
 		return undecided
 	}
 	r := uint64(u.Level() - uc.Level())
-	if r >= fv.fastDecider.vote.votingRound {
-		return fv.fastDecider.decide(uc, u)
+	if r >= fd.fastDecider.vote.votingRound {
+		return fd.fastDecider.decide(uc, u)
 	}
-	if fv.fv.vote(uc, u) == popular {
+	if fd.fastInitiaVoting.vote(uc, u) == popular {
 		return popular
 	}
 	return undecided
