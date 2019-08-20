@@ -404,7 +404,7 @@ func testPrimeFloodingScenario(forkingStrategy forkingStrategy) error {
 		verifier,
 	)
 
-	return helpers.Test(pubKeys, privKeys, testingRoutine)
+	return helpers.Test(pubKeys, privKeys, helpers.NewDefaultConfigurations(nProcesses), testingRoutine)
 }
 
 func testSimpleForkingScenario(forkingStrategy forkingStrategy) error {
@@ -425,7 +425,7 @@ func testSimpleForkingScenario(forkingStrategy forkingStrategy) error {
 		verifier,
 	)
 
-	return helpers.Test(pubKeys, privKeys, testingRoutine)
+	return helpers.Test(pubKeys, privKeys, helpers.NewDefaultConfigurations(nProcesses), testingRoutine)
 }
 
 func testRandomForking(forkingStrategy forkingStrategy) error {
@@ -447,7 +447,7 @@ func testRandomForking(forkingStrategy forkingStrategy) error {
 		verifier,
 	)
 
-	return helpers.Test(pubKeys, privKeys, testingRoutine)
+	return helpers.Test(pubKeys, privKeys, helpers.NewDefaultConfigurations(nProcesses), testingRoutine)
 }
 
 func testForkingChangingParents(forker forker) error {
@@ -524,7 +524,7 @@ func testForkingChangingParents(forker forker) error {
 		verifier,
 	)
 
-	return helpers.Test(pubKeys, privKeys, testingRoutine)
+	return helpers.Test(pubKeys, privKeys, helpers.NewDefaultConfigurations(nProcesses), testingRoutine)
 }
 
 // NOTE this was copied from voting.go
@@ -1084,8 +1084,7 @@ func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan b
 	return fixedVotes
 }
 
-func longTimeUndecidedStrategy(startLevel *uint64, initialVotingRound uint64, numberOfDeterministicRounds uint64) (func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler, func([]gomel.Dag) bool) {
-
+func longTimeUndecidedStrategy(startLevel *uint64, initialVotingRound uint64, numberOfDeterministicRounds uint64, crp func(level uint64) uint16) (func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler, func([]gomel.Dag) bool) {
 	alreadyTriggered := false
 	var lastCreated gomel.Unit
 	resultAdder := func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) helpers.AddingHandler {
@@ -1098,7 +1097,7 @@ func longTimeUndecidedStrategy(startLevel *uint64, initialVotingRound uint64, nu
 				seen[uint16(unit.Creator())] = true
 			}
 			if dags[0].IsQuorum(len(seen)) {
-				if unit.Creator() != rss[0].GetCRP(int(*startLevel))[0] {
+				if unit.Creator() != int(crp(*startLevel)) {
 					lastCreated = unit
 					return true
 				} else {
@@ -1119,7 +1118,7 @@ func longTimeUndecidedStrategy(startLevel *uint64, initialVotingRound uint64, nu
 				ids[ix] = uint16(ix)
 			}
 
-			triggeringDag := uint16(rss[0].GetCRP(int(*startLevel))[0])
+			triggeringDag := crp(*startLevel)
 			fmt.Println("triggering dag no", triggeringDag)
 			triggeringPreunit, err := creating.NewUnit(
 				dags[triggeringDag],
@@ -1165,43 +1164,62 @@ func testLongTimeUndecidedStrategy() error {
 	const (
 		nProcesses                  = 21
 		nUnits                      = 1000
-		maxParents                  = 2
-		initialVotingRound          = uint64(3)
-		numberOfDeterministicRounds = uint64(60)
+		maxParents                  = nProcesses
+		numberOfDeterministicRounds = uint64(50)
 	)
 
-	startLevel := uint64(10)
+	conf := config.NewDefaultConfiguration()
+	conf.PiDeltaLevel = uint(numberOfDeterministicRounds + 1)
+
+	configurations := make([]config.Configuration, nProcesses)
+	for pid := range configurations {
+		configurations[pid] = conf
+	}
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
+	// NOTE following 4 lines are supposed to enforce a unit of creator 1 being first on crp for level 1
+	unitCreator := helpers.NewEachInSequenceUnitCreator(helpers.NewDefaultCreator(nProcesses))
+	conf.CRPFixedPrefix = 1
+	startLevel := uint64(1)
+	crp := func(uint64) uint16 { return 1 }
 
-	unitAdder, stopCondition := longTimeUndecidedStrategy(&startLevel, initialVotingRound, numberOfDeterministicRounds)
+	unitAdder, stopCondition :=
+		longTimeUndecidedStrategy(&startLevel, uint64(conf.VotingLevel), numberOfDeterministicRounds, crp)
 
-	checkIfUndecidedVerifier := func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
-		fmt.Println("starting the undecided checker")
+	checkIfUndecidedVerifier :=
+		func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
+			fmt.Println("starting the undecided checker")
 
-		config := config.NewDefaultConfiguration()
-		config.VotingLevel = uint(initialVotingRound)
-		config.PiDeltaLevel = uint(numberOfDeterministicRounds + 1)
+			logger, _ := logging.NewLogger("stdout", conf.LogLevel, 100000, false)
 
-		logger, _ := logging.NewLogger("stdout", config.LogLevel, 100000, false)
+			errorsCount := 0
+			for pid, dag := range dags {
+				ordering := linear.NewOrdering(
+					dag,
+					rss[pid],
+					int(conf.VotingLevel),
+					int(conf.PiDeltaLevel),
+					int(conf.OrderStartLevel),
+					int(conf.CRPFixedPrefix),
+					logger,
+				)
 
-		errorsCount := 0
-		for pid, dag := range dags {
-			ordering := linear.NewOrdering(dag, rss[pid], int(config.VotingLevel), int(config.PiDeltaLevel), int(config.OrderStartLevel), logger)
-			if unit := ordering.DecideTimingOnLevel(int(startLevel)); unit != nil {
-				fmt.Println("some dag already decided - error")
-				errorsCount++
+				for tu := ordering.DecideTiming(); tu != nil && tu.Level() < int(startLevel); {
+					tu = ordering.DecideTiming()
+				}
+				if unit := ordering.DecideTiming(); unit != nil && unit.Level() >= int(startLevel) {
+					fmt.Println("some dag already decided - error", unit.Level(), unit.Creator())
+					errorsCount++
+				}
 			}
+			if errorsCount > 0 {
+				fmt.Println("number of errors", errorsCount)
+				return fmt.Errorf("dags were suppose to not decide on this level - number of errors %d", errorsCount)
+			}
+			fmt.Println("dags were unable to make a decision after", numberOfDeterministicRounds, "rounds")
+			return nil
 		}
-		if errorsCount > 0 {
-			fmt.Println("number of errors", errorsCount)
-			return fmt.Errorf("dags were suppose to not decide on this level - number of errors %d", errorsCount)
-		}
-		fmt.Println("dags were unable to make a decision after", numberOfDeterministicRounds, "rounds")
-		return nil
-	}
 
 	testingRoutine := helpers.NewTestingRoutineWithStopCondition(
 		func([]gomel.Dag, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
@@ -1210,7 +1228,7 @@ func testLongTimeUndecidedStrategy() error {
 		stopCondition,
 	)
 
-	return helpers.Test(pubKeys, privKeys, testingRoutine)
+	return helpers.Test(pubKeys, privKeys, configurations, testingRoutine)
 }
 
 var _ = Describe("Byzantine Dag Test", func() {

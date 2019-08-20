@@ -14,7 +14,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/random/urn"
+	// "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
+	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
 
 const (
@@ -276,6 +277,16 @@ func GenerateKeys(nProcesses int) ([]gomel.PublicKey, []gomel.PrivateKey) {
 	return pubKeys, privKeys
 }
 
+// NewDefaultConfiguration creates a slice of a given size containing default configurations.
+func NewDefaultConfigurations(nProcesses int) []config.Configuration {
+	defaultConfig := config.NewDefaultConfiguration()
+	configs := make([]config.Configuration, nProcesses)
+	for pid := range configs {
+		configs[pid] = defaultConfig
+	}
+	return configs
+}
+
 // NewDefaultUnitCreator returns an implementation of the UnitCreator type that tries to build a unit using a randomly selected
 // dag.
 func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
@@ -307,11 +318,43 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 	}
 }
 
+func NewEachInSequenceUnitCreator(unitFactory Creator) UnitCreator {
+	nextCreator := 0
+	return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Preunit, error) {
+		attempts := 0
+		for {
+			attempts++
+			if attempts%50 == 0 {
+				fmt.Println("Attempt no", attempts, "of creating a new unit")
+			}
+
+			creator := nextCreator
+			dag := dags[creator]
+
+			pu, err := unitFactory(dag, uint16(creator), privKeys[creator], rss[creator])
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
+				continue
+			}
+			if pu == nil {
+				fmt.Fprintf(os.Stderr, "Creator %d was unable to build a unit\n", creator)
+				continue
+			}
+			pu.SetSignature(privKeys[creator].Sign(pu))
+			fmt.Fprintf(os.Stderr, "Unit created by dag no %d", creator)
+			fmt.Fprintln(os.Stderr, "")
+
+			nextCreator = (nextCreator + 1) % len(dags)
+			return pu, nil
+		}
+	}
+}
+
 func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), int(generalConfig.OrderStartLevel), logger)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), int(generalConfig.OrderStartLevel), generalConfig.CRPFixedPrefix, logger)
 		level := 0
 		orderedUnits := ordering.TimingRound(level)
 		for orderedUnits != nil {
@@ -335,13 +378,13 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 	go func() {
 
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), int(generalConfig.OrderStartLevel), logger)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
 		level := 0
-		timingUnit := ordering.DecideTimingOnLevel(level)
+		timingUnit := ordering.DecideTiming()
 		for timingUnit != nil {
 			units <- timingUnit
 			level++
-			timingUnit = ordering.DecideTimingOnLevel(level)
+			timingUnit = ordering.DecideTiming()
 		}
 		fmt.Printf("maximal decided level of dag no %d: %d", pid, level)
 		fmt.Println()
@@ -522,14 +565,13 @@ func NewNoOpVerifier() DagVerifier {
 func Test(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
+	configurations []config.Configuration,
 	testingRoutine *TestingRoutine,
 ) error {
 
 	nProcesses := len(pubKeys)
 	dags := make([]gomel.Dag, 0, nProcesses)
 	pids := make([]uint16, 0, nProcesses)
-	generalConfig := config.NewDefaultConfiguration()
-	configurations := make([]config.Configuration, 0, nProcesses)
 	rss := make([]gomel.RandomSource, 0, nProcesses)
 
 	for pid := uint16(0); len(dags) < nProcesses; pid++ {
@@ -538,8 +580,7 @@ func Test(
 		dags = append(dags, dag)
 
 		pids = append(pids, pid)
-		configurations = append(configurations, generalConfig)
-		rs := urn.New(int(pid))
+		rs := coin.NewFixedCoin(nProcesses, int(pid), 0)
 		rs.Init(dag)
 		rss = append(rss, rs)
 	}
