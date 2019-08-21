@@ -83,7 +83,7 @@ func NewDefaultConfiguration() Configuration {
 		Fallback: "",
 	}, SyncConfiguration{
 		Type:     "multicast",
-		Params:   map[string]string{"McType": "tcp", "timeout": "2"},
+		Params:   map[string]string{"mcType": "tcp", "timeout": "2"},
 		Fallback: "",
 	},
 	}
