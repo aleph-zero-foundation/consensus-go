@@ -47,7 +47,7 @@ type Create struct {
 type Order struct {
 	Pid             int
 	VotingLevel     int
-	PiDeltaLevel    int
+	DecidingLevel   int
 	OrderStartLevel int
 	CRPFixedPrefix  int
 }

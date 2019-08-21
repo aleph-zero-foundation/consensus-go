@@ -52,8 +52,8 @@ type Configuration struct {
 	// The level at which the first voting round occurs, this is "t" from the write-up.
 	VotingLevel uint
 
-	// The level at which to switch from the "fast" to the pi_delta algorithm.
-	PiDeltaLevel uint
+	// The level at which we are first time executing the deciding procedure.
+	DecidingLevel uint
 
 	// The level at which to start adding coin shares to units.
 	// It is safe to make it PiDeltaLevel - 1.
@@ -113,9 +113,9 @@ func NewDefaultConfiguration() Configuration {
 
 		LevelLimit: 20,
 
-		VotingLevel: 3,
+		VotingLevel: 1,
 
-		PiDeltaLevel: 12,
+		DecidingLevel: 3,
 
 		AddShares: 0,
 
@@ -131,6 +131,5 @@ func NewDefaultConfiguration() Configuration {
 
 		CRPFixedPrefix: 5,
 	}
-	result.AddShares = result.PiDeltaLevel - 1
 	return result
 }

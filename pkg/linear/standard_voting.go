@@ -5,12 +5,14 @@ import (
 )
 
 type standardDecider struct {
-	vote *standardVoter
+	vote          *standardVoter
+	decidingRound uint64
 }
 
-func newStandardDecider(vote *standardVoter) *standardDecider {
+func newStandardDecider(vote *standardVoter, decidingRound uint64) *standardDecider {
 	return &standardDecider{
-		vote: vote,
+		vote:          vote,
+		decidingRound: decidingRound,
 	}
 }
 
@@ -19,7 +21,7 @@ func (nv *standardDecider) decide(uc, u gomel.Unit) vote {
 		return undecided
 	}
 	r := uint64(u.Level() - uc.Level())
-	if r <= nv.vote.votingRound {
+	if r < nv.decidingRound {
 		return undecided
 	}
 	decision := nv.vote.vote(uc, u)
@@ -33,16 +35,16 @@ type standardVoter struct {
 	dag           gomel.Dag
 	votingRound   uint64
 	initialVoting voter
-	defaultVote   defaultVote
+	coinToss      coinToss
 	votingMemo    map[[2]gomel.Hash]vote
 }
 
-func newStandardVoter(dag gomel.Dag, votingRound uint64, initialVoting voter, defaultVote defaultVote) *standardVoter {
+func newStandardVoter(dag gomel.Dag, votingRound uint64, initialVoting voter, coinToss coinToss) *standardVoter {
 	return &standardVoter{
 		dag:           dag,
 		votingRound:   votingRound,
 		initialVoting: initialVoting,
-		defaultVote:   defaultVote,
+		coinToss:      coinToss,
 		votingMemo:    make(map[[2]gomel.Hash]vote),
 	}
 }
@@ -69,6 +71,7 @@ func (rv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
 		}
 		return unpopular
 	}
+
 	voter := func(uc, u gomel.Unit) vote {
 		result := rv.vote(uc, u)
 		if result == undecided {
@@ -78,6 +81,24 @@ func (rv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
 	}
 	votesLevelBelow := voteUsingPrimeAncestors(uc, u, rv.dag, voter)
 	return superMajority(rv.dag, votesLevelBelow)
+}
+
+func (rv *standardVoter) defaultVote(uc, u gomel.Unit) (result vote) {
+	r := u.Level() - uc.Level()
+	if r <= 0 {
+		// "Default vote is asked on too low unit level."
+		return undecided
+	}
+	if r <= 3 {
+		return popular
+	}
+	if r == 4 {
+		return unpopular
+	}
+	if rv.coinToss(uc, u) {
+		return popular
+	}
+	return unpopular
 }
 
 type simpleInitialVoter struct {

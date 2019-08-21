@@ -75,7 +75,7 @@ func generateOrderSetupConfig(conf *Configuration, m *Member, c *Committee) *pro
 	return &process.Order{
 		Pid:             m.Pid,
 		VotingLevel:     int(conf.VotingLevel),
-		PiDeltaLevel:    int(conf.PiDeltaLevel),
+		DecidingLevel:   int(conf.DecidingLevel),
 		OrderStartLevel: 6,
 		CRPFixedPrefix:  int(conf.CRPFixedPrefix),
 	}
@@ -85,7 +85,7 @@ func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *process.
 	return &process.Order{
 		Pid:             m.Pid,
 		VotingLevel:     int(conf.VotingLevel),
-		PiDeltaLevel:    int(conf.PiDeltaLevel),
+		DecidingLevel:   int(conf.DecidingLevel),
 		OrderStartLevel: int(conf.OrderStartLevel),
 		CRPFixedPrefix:  int(conf.CRPFixedPrefix),
 	}

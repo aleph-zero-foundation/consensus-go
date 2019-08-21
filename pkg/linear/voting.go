@@ -17,27 +17,6 @@ type votingResult struct {
 	unpopular uint64
 }
 
-// Creates a defaultVote which is deterministic for first few rounds and uses provided coinToss for later rounds.
-func newDefaultVote(votingLevel int, coinToss coinToss) defaultVote {
-	return func(uc gomel.Unit, u gomel.Unit) vote {
-		r := u.Level() - uc.Level() - votingLevel
-		if r <= 0 {
-			// "Default vote is asked on too low unit level."
-			return undecided
-		}
-		if r == 1 {
-			return popular
-		}
-		if r == 2 {
-			return unpopular
-		}
-		if coinToss(uc, u) {
-			return popular
-		}
-		return unpopular
-	}
-}
-
 // Deterministic function of a unit and level
 // It is implemented as level-th bit of unit hash
 // return 1 or 0
