@@ -91,34 +91,15 @@ func (c *coin) Update(u gomel.Unit) {
 // then if the creator is a share provider marshalled coin share should follow
 // (3) every other unit should have empty random source data
 func (c *coin) CheckCompliance(u gomel.Unit) error {
-	if gomel.Dealing(u) {
-		if c.shareProvider[u.Creator()] {
-			cs := new(tcoin.CoinShare)
-			err := cs.Unmarshal(u.RandomSourceData())
-			if err != nil {
-				return err
-			}
-			return nil
-		} else if u.RandomSourceData() != nil {
-			return errors.New("random source data should be empty")
-		}
-		return nil
+	if gomel.Dealing(u) && c.shareProvider[u.Creator()] {
+		return new(tcoin.CoinShare).Unmarshal(u.RandomSourceData())
 	}
 
-	if gomel.Prime(u) && c.shareProvider[u.Creator()] {
+	if gomel.Prime(u) && !gomel.Dealing(u) {
 		if len(u.RandomSourceData()) < bn256.SignatureLength {
 			return errors.New("random source data too short")
 		}
-		cs := new(tcoin.CoinShare)
-		err := cs.Unmarshal(u.RandomSourceData()[bn256.SignatureLength:])
-		if err != nil {
-			return err
-		}
-	}
-	if gomel.Prime(u) {
-		if len(u.RandomSourceData()) < bn256.SignatureLength {
-			return errors.New("random source data too short")
-		}
+
 		uRandomBytes := u.RandomSourceData()[:bn256.SignatureLength]
 		if rb := c.randomBytes.Get(u.Level() - 1); rb != nil {
 			if subtle.ConstantTimeCompare(rb, uRandomBytes) != 1 {
@@ -134,7 +115,17 @@ func (c *coin) CheckCompliance(u gomel.Unit) error {
 				return errors.New("incorrect random bytes")
 			}
 		}
-	} else if u.RandomSourceData() != nil {
+
+		if c.shareProvider[u.Creator()] {
+			err := new(tcoin.CoinShare).Unmarshal(u.RandomSourceData()[bn256.SignatureLength:])
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if u.RandomSourceData() != nil {
 		return errors.New("random source data should be empty")
 	}
 	return nil
@@ -156,9 +147,9 @@ func (c *coin) DataToInclude(creator int, parents []gomel.Unit, level int) ([]by
 	}
 	if parents[0].Level() != level {
 		var rb []byte
-		if c.randomBytes.Get(level-1) != nil {
+		if rbl := c.randomBytes.Get(level - 1); rbl != nil {
 			rb = make([]byte, bn256.SignatureLength)
-			copy(rb, c.randomBytes.Get(level-1))
+			copy(rb, rbl)
 		} else {
 			var err error
 			rb, err = c.combineShares(level - 1)
