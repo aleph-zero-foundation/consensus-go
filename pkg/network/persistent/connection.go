@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -48,6 +49,7 @@ type conn struct {
 	sent   uint32
 	recv   uint32
 	closed int32
+	mx     sync.Mutex
 	log    zerolog.Logger
 }
 
@@ -97,6 +99,8 @@ func (c *conn) Flush() error {
 	if atomic.LoadInt32(&c.closed) > 0 {
 		return errors.New("Flush on a closed connection")
 	}
+	c.mx.Lock()
+	defer c.mx.Unlock()
 	buf := c.writer.Buffered()
 	if buf == 0 {
 		return nil
@@ -120,12 +124,13 @@ func (c *conn) Close() error {
 	header := make([]byte, headerSize)
 	binary.LittleEndian.PutUint64(header, c.id)
 	binary.LittleEndian.PutUint32(header[8:], uint32(0))
+	c.mx.Lock()
+	defer c.mx.Unlock()
 	_, err := c.link.Write(header)
 	if err != nil {
 		return err
 	}
-	close(c.queue.ch)
-	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
+	c.finalize()
 	return nil
 }
 
@@ -144,8 +149,19 @@ func (c *conn) SetLogger(log zerolog.Logger) {
 	c.log = log
 }
 
-func (c *conn) append(b []byte) {
+func (c *conn) enqueue(b []byte) {
 	if atomic.LoadInt32(&c.closed) == 0 {
 		c.queue.ch <- b
 	}
+}
+
+func (c *conn) localClose() {
+	if atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
+		c.finalize()
+	}
+}
+
+func (c *conn) finalize() {
+	close(c.queue.ch)
+	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
 }

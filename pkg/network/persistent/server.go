@@ -14,11 +14,11 @@ import (
 type server struct {
 	localAddr   string
 	remoteAddrs []string
-	dialers     []*dialer
-	listeners   []*listener
+	callers     []*link
+	receivers   []*link
 	queue       chan network.Connection
 	tcpListener *net.TCPListener
-	mx          sync.Mutex
+	mx          []sync.Mutex
 	wg          sync.WaitGroup
 	quit        int32
 	log         zerolog.Logger
@@ -30,27 +30,21 @@ func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger
 	s := &server{
 		localAddr:   localAddress,
 		remoteAddrs: remoteAddresses,
-		dialers:     make([]*dialer, nProc),
-		listeners:   make([]*listener, 0, nProc),
+		callers:     make([]*link, nProc),
+		receivers:   make([]*link, 0, nProc),
 		queue:       make(chan network.Connection, 5*nProc),
+		mx:          make([]sync.Mutex, nProc),
 		log:         log,
 	}
 	return s, nil
 }
 
 func (s *server) Dial(pid uint16, timeout time.Duration) (network.Connection, error) {
-	s.mx.Lock()
-	if s.dialers[pid] == nil {
-		nd, err := newDialer(s.remoteAddrs[pid], timeout, &s.wg, &s.quit, s.log)
-		if err != nil {
-			s.mx.Unlock()
-			return nil, err
-		}
-		s.dialers[pid] = nd
-		nd.start()
+	caller, err := s.getCaller(pid, timeout)
+	if err != nil {
+		return nil, err
 	}
-	s.mx.Unlock()
-	return s.dialers[pid].dial(), nil
+	return caller.call(), nil
 }
 
 func (s *server) Listen(timeout time.Duration) (network.Connection, error) {
@@ -75,31 +69,40 @@ func (s *server) Start() error {
 	go func() {
 		s.wg.Add(1)
 		defer s.wg.Done()
-		for {
-			if atomic.LoadInt32(&s.quit) > 0 {
-				return
-			}
-			link, err := s.tcpListener.Accept()
+		for atomic.LoadInt32(&s.quit) == 0 {
+			ln, err := s.tcpListener.Accept()
 			if err != nil {
 				continue
 			}
-			nl := newListener(link, s.queue, &s.wg, &s.quit, s.log)
-			s.listeners = append(s.listeners, nl)
-			nl.start()
+			newLink := newLink(ln, s.queue, &s.wg, &s.quit, s.log)
+			s.receivers = append(s.receivers, newLink)
+			newLink.start()
 		}
 	}()
-
 	return nil
-
 }
 
 func (s *server) Stop() {
 	atomic.StoreInt32(&s.quit, 1)
-	for _, d := range s.dialers {
-		if d != nil {
-			d.stop()
+	for _, link := range s.callers {
+		if link != nil {
+			link.stop()
 		}
 	}
 	s.tcpListener.Close()
 	s.wg.Wait()
+}
+
+func (s *server) getCaller(pid uint16, timeout time.Duration) (*link, error) {
+	s.mx[pid].Lock()
+	defer s.mx[pid].Unlock()
+	if s.callers[pid] == nil || s.callers[pid].isDead() {
+		ln, err := net.DialTimeout("tcp", s.remoteAddrs[pid], timeout)
+		if err != nil {
+			return nil, err
+		}
+		newLink := newLink(ln, nil, &s.wg, &s.quit, s.log)
+		s.callers[pid] = newLink
+	}
+	return s.callers[pid], nil
 }
