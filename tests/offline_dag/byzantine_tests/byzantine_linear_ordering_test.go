@@ -638,7 +638,6 @@ func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 	return len(missingForDag1) > 0 || len(missingForDag2) > 0, nil
 }
 
-// TopoSort sort units topologically.
 func topoSort(units map[gomel.Unit]bool) []gomel.Unit {
 	result := make([]gomel.Unit, 0, len(units))
 	return buildReverseDfsOrder(units, result)
@@ -723,12 +722,12 @@ func countUnitsOnLevelOrHigher(dag gomel.Dag, level uint64) map[uint16]bool {
 // other one can reveal them one by one till it is able to create a unit of its succeeding level. We also caches all common
 // votes that we read, since the other side will not be able to read them from the provided channel after we processed them.
 
-// The initialization process, that is a few levels before the initial voting, is little bit tricky. We need to ensure that a
+// The initialization process, which is all levels before the initial voting, is little bit tricky. We need to ensure that a
 // unit U_c for which we are deciding becomes popular before the initial voting starts, but also allow at most 2f processes to
 // record that it is popular on the voting level. This way it will not be decided 0 (as well as 1) at the round no
-// initialVoting+1, since we made it popular, neither it is decided 1 because we did not show it to enough processes. We achieve
-// this goal by two means: extending common votes by some initial values and reverting the list of processes that vote 1 on
-// level initialVoting-1. Former allows us to treat the initialization similar way as any other round. For details, see the
+// initialVoting+1, since we made it popular, neither it will be decided 1 because we did not show it to enough processes. We
+// achieve this goal by two means: extending common votes by some initial values and reverting the list of processes that vote 1
+// on level initialVoting-1. Former allows us to treat the initialization similar way as any other round. For details, see the
 // `fixCommonVotes` function. Later, makes the unit U_c not being decided 1 by the 'fast' algorithm. To this point, the extended
 // common vote (0 for round `initialVoting`) forces us to make the unit U_c popular on level `initialVoting-1` (subset of
 // processes voting 1 being of size 2f+1). If we would not reverse processes on the 1's tower list, then there would be a chance
@@ -1149,8 +1148,7 @@ func longTimeUndecidedStrategy(startLevel *uint64, initialVotingRound uint64, nu
 			ids[triggeringDag], ids[0] = ids[0], ids[triggeringDag]
 			rssCopy[triggeringDag], rssCopy[0] = rssCopy[0], rssCopy[triggeringDag]
 
-			// move the last creator to the left side, so we will not ask it will observer some new units before we ask it to
-			// create a new one
+			// move the last creator to the left side, so it will observer some new units before we ask it to create a new one
 			dagsCopy[lastCreated.Creator()], dagsCopy[1] = dagsCopy[1], dagsCopy[lastCreated.Creator()]
 			privKeysCopy[lastCreated.Creator()], privKeysCopy[1] = privKeysCopy[1], privKeysCopy[lastCreated.Creator()]
 			ids[lastCreated.Creator()], ids[1] = ids[1], ids[lastCreated.Creator()]
