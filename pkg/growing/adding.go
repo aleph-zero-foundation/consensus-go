@@ -85,7 +85,7 @@ func (dag *Dag) prepareUnit(ub *unitBuilt) error {
 	if err != nil {
 		return err
 	}
-	err = dag.checkBasicParentsCorrectness(ub.result)
+	err = checkBasicParentsCorrectness(ub.result)
 	if err != nil {
 		return err
 	}

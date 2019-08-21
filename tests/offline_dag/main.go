@@ -3,82 +3,48 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"sync"
 
-	"gitlab.com/alephledger/consensus-go/pkg/creating"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/growing"
-	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/tests/offline_dag/helpers"
 )
 
 func runOfflineTest() {
-	// size of the test
-	nProcesses := 50
-	maxParents := 10
-	nUnits := 5000
+	const (
+		nProcesses = 50
+		nUnits     = 5000
+		maxParents = 10
+	)
 
-	pubKeys := make([]gomel.PublicKey, nProcesses)
-	privKeys := make([]gomel.PrivateKey, nProcesses)
-
-	for pid := 0; pid < nProcesses; pid++ {
-		pubKeys[pid], privKeys[pid], _ = signing.GenerateKeys()
-	}
-
-	config := &gomel.DagConfig{pubKeys}
-	dags := make([]gomel.Dag, nProcesses)
-	rses := make([]gomel.RandomSource, nProcesses)
-
-	// start goroutines waiting for a preunit and adding it to its' dag
-	for pid := 0; pid < nProcesses; pid++ {
-		dags[pid] = growing.NewDag(config)
-		rses[pid] = tests.NewTestRandomSource()
-		rses[pid].Init(dags[pid])
-	}
-
-	for i := 0; i < nUnits; i++ {
-		// the following loop tries to create a one unit and after a success
-		// it sends it to other dags and stops
-		var pu gomel.Preunit
-		for {
-			// choose the unit creator and create a unit
-			creator := rand.Intn(nProcesses)
-			dag := dags[creator]
-			rs := rses[creator]
-			var err error
-			if pu, err = creating.NewUnit(dag, creator, maxParents, []byte{}, rs, true); err != nil {
-				continue
+	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
+	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
+	defaultAdder := helpers.NewDefaultAdder()
+	unitAdder := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+		err := defaultAdder(dags, rss, preunit)
+		if err != nil {
+			switch err.(type) {
+			case *gomel.DuplicateUnit:
+				fmt.Println(err)
+			default:
+				fmt.Println(err)
 			}
-			pu.SetSignature(privKeys[creator].Sign(pu))
-
-			// add the unit to creator's dag
-			if i%50 == 0 {
-				fmt.Println("Adding unit no", i, "out of", nUnits)
-			}
-			break
 		}
+		return nil
+	}
+	createUnitAdder := func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) helpers.AddingHandler {
+		return unitAdder
+	}
+	verifier := helpers.NewDefaultVerifier()
+	testingRoutine := helpers.NewDefaultTestingRoutine(
+		func([]gomel.Dag, []gomel.PrivateKey) helpers.UnitCreator { return unitCreator },
+		createUnitAdder,
+		verifier,
+	)
 
-		// send the unit to other dags
-		var wg sync.WaitGroup
-		wg.Add(nProcesses)
-		for j := 0; j < nProcesses; j++ {
-			dags[j].AddUnit(pu, rses[j], func(pu gomel.Preunit, u gomel.Unit, err error) {
-				defer wg.Done()
-				if err != nil {
-					switch err.(type) {
-					case *gomel.DuplicateUnit:
-						fmt.Println(err)
-					default:
-						fmt.Println(err)
-					}
-				}
-			})
-		}
-		wg.Wait()
+	if err := helpers.Test(pubKeys, privKeys, testingRoutine); err != nil {
+		fmt.Println("test failed")
 	}
 }
 
