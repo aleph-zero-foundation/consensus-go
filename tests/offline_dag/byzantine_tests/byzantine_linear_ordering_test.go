@@ -64,7 +64,10 @@ func createForkUsingNewUnit(parentsCount int) forker {
 		freshData := generateFreshData(preunit.Data())
 		parentUnits := dag.Get(parents)
 		level := helpers.ComputeLevel(dag, parentUnits)
-		rsData := rs.DataToInclude(pu.Creator(), parentUnits, int(level))
+		rsData, err := rs.DataToInclude(pu.Creator(), parentUnits, int(level))
+		if err != nil {
+			return nil, err
+		}
 		return creating.NewPreunit(pu.Creator(), parents, freshData, rsData), nil
 	}
 }
@@ -139,7 +142,10 @@ func createForkWithRandomParents(parentsCount int, rand *rand.Rand) forker {
 		}
 		freshData := generateFreshData(preunit.Data())
 		level := helpers.ComputeLevel(dag, parentUnits)
-		rsData := rs.DataToInclude(preunit.Creator(), parentUnits, int(level))
+		rsData, err := rs.DataToInclude(preunit.Creator(), parentUnits, int(level))
+		if err != nil {
+			return nil, err
+		}
 		return creating.NewPreunit(preunit.Creator(), parents, freshData, rsData), nil
 	}
 }
@@ -950,10 +956,12 @@ func makeDagsUndecidedForLongTime(
 			leftSide = dags[:ones]
 			leftKeys = privateKeys[:ones]
 			leftIds = ids[:ones]
+			leftRss = rss[:ones]
 		} else {
 			rightSide = dags[ones:]
 			rightKeys = privateKeys[ones:]
 			rightIds = ids[ones:]
+			rightRss = rss[ones:]
 		}
 
 		// synchronize all dags for the current round
