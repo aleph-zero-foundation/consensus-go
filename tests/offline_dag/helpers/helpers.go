@@ -277,7 +277,7 @@ func GenerateKeys(nProcesses int) ([]gomel.PublicKey, []gomel.PrivateKey) {
 	return pubKeys, privKeys
 }
 
-// NewDefaultConfiguration creates a slice of a given size containing default configurations.
+// NewDefaultConfigurations creates a slice of a given size containing default configurations.
 func NewDefaultConfigurations(nProcesses int) []config.Configuration {
 	defaultConfig := config.NewDefaultConfiguration()
 	configs := make([]config.Configuration, nProcesses)
