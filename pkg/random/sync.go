@@ -58,3 +58,43 @@ func (sm *SyncTCMap) Get(h *gomel.Hash) *tcoin.ThresholdCoin {
 	defer sm.RUnlock()
 	return sm.contents[*h]
 }
+
+// SyncBytesSlice is a threadsafe implementation of slice of bytes slices
+type SyncBytesSlice struct {
+	sync.RWMutex
+	contents [][]byte
+}
+
+// NewSyncBytesSlice returns an empty SyncBytesSlice
+func NewSyncBytesSlice() *SyncBytesSlice {
+	return &SyncBytesSlice{
+		contents: [][]byte{},
+	}
+}
+
+// AppendOrIgnore appends given data at the end of the slice if the current
+// legnth of the slice is equal to the given length, otherwise it does nothing.
+func (s *SyncBytesSlice) AppendOrIgnore(length int, data []byte) {
+	s.Lock()
+	defer s.Unlock()
+	if len(s.contents) == length {
+		s.contents = append(s.contents, data)
+	}
+}
+
+// Length returns number of elements in the slice
+func (s *SyncBytesSlice) Length() int {
+	s.RLock()
+	defer s.RUnlock()
+	return len(s.contents)
+}
+
+// Get returns an element of the slice
+func (s *SyncBytesSlice) Get(pos int) []byte {
+	s.RLock()
+	defer s.RUnlock()
+	if pos < len(s.contents) {
+		return s.contents[pos]
+	}
+	return nil
+}
