@@ -128,8 +128,8 @@ func (f *Retrying) gotHash(h *gomel.Hash) {
 		if f.required[*hh] == 0 {
 			f.addUnit(f.backlog[*hh])
 			delete(f.required, *hh)
-			delete(f.backlog, *hh)
 			f.log.Info().Str(logging.Hash, gomel.Nickname(f.backlog[*hh])).Msg(logging.RemovedFromBacklog)
+			delete(f.backlog, *hh)
 			hashesAdded = append(hashesAdded, hh)
 		}
 	}
