@@ -56,8 +56,9 @@ func CombineParentsFloorsPerProc(parents []Unit, pid int, out *[]Unit) {
 	}
 }
 
-// HasSelfForkingEvidence returns true iff given set of parents proves that the creator made a fork.
-func HasSelfForkingEvidence(parents []Unit, creator int) bool {
+// HasSelfForkingEvidence returns true iff given set of parents proves that the creator (that is parents[0].Creator())
+// made a fork.
+func HasSelfForkingEvidence(parents []Unit) bool {
 	if len(parents) == 0 {
 		return false
 	}
@@ -65,7 +66,7 @@ func HasSelfForkingEvidence(parents []Unit, creator int) bool {
 	// check whether collection of these maximal units has a single maximal element
 	var storage [1]Unit
 	combinedFloor := storage[:0]
-	CombineParentsFloorsPerProc(parents, creator, &combinedFloor)
+	CombineParentsFloorsPerProc(parents, parents[0].Creator(), &combinedFloor)
 	if len(combinedFloor) > 1 {
 		return true
 	}
@@ -82,7 +83,7 @@ func HasForkingEvidence(u Unit, creator int) bool {
 	if creator != u.Creator() {
 		return len(u.Floor()[creator]) > 1
 	}
-	return HasSelfForkingEvidence(u.Parents(), creator)
+	return HasSelfForkingEvidence(u.Parents())
 }
 
 // Predecessor of a unit is one of its parents, the one created by the same process as the given unit.
