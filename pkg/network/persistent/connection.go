@@ -38,6 +38,14 @@ func (cr *chanReader) Read(b []byte) (int, error) {
 
 }
 
+// conn implements network.Connection interface and represents a "virtual connection", many of which utilize the same TCP link.
+// each virtual connection has a unique id and every data sent through the common TCP link is prefixed with a 12 bytes header
+// consisting of connection ID (8 bytes) and the length of data (4 bytes).
+// Writes are buffered and the actual network traffic happens only on Flush (which needs to be invoked manually) or when the buffer is full.
+// Reads are also buffered and they read byte slices from the channel populated by the link supervising this conn.
+// Close consists of sending the lone header with data length 0. After closing the conn, calling Write or Flush returns an error, reading is
+// still possible until the underlying channel is depleted.
+// NOTE: Write() and Flush() are NOT thread safe!
 type conn struct {
 	id     uint64
 	link   net.Conn
@@ -106,6 +114,7 @@ func (c *conn) Flush() error {
 	if err != nil {
 		return err
 	}
+	c.sent += uint32(c.bufLen)
 	c.bufLen = 0
 	return nil
 }
