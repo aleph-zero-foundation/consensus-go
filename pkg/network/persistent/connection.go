@@ -77,9 +77,7 @@ func newConn(id uint64, link net.Conn, log zerolog.Logger) *conn {
 }
 
 func (c *conn) Read(b []byte) (int, error) {
-	n, err := c.reader.Read(b)
-	c.recv += uint32(n)
-	return n, err
+	return c.reader.Read(b)
 }
 
 func (c *conn) Write(b []byte) (int, error) {
@@ -152,6 +150,7 @@ func (c *conn) SetLogger(log zerolog.Logger) {
 func (c *conn) enqueue(b []byte) {
 	if atomic.LoadInt32(&c.closed) == 0 {
 		c.queue.ch <- b
+		c.recv += uint32(len(b))
 	}
 }
 
