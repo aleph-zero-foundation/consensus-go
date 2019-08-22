@@ -106,6 +106,9 @@ func (l *link) isDead() bool {
 func (l *link) stop() {
 	l.mx.Lock()
 	defer l.mx.Unlock()
+	if l.tcpLink == nil {
+		return
+	}
 	l.tcpLink.Close()
 	l.tcpLink = nil
 	for _, conn := range l.conns {

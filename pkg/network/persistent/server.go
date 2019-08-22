@@ -91,6 +91,9 @@ func (s *server) Stop() {
 			link.stop()
 		}
 	}
+	for _, link := range s.receivers {
+		link.stop()
+	}
 	s.tcpListener.Close()
 	s.wg.Wait()
 }
@@ -105,6 +108,7 @@ func (s *server) getCaller(pid uint16, timeout time.Duration) (*link, error) {
 		}
 		newLink := newLink(ln, nil, &s.wg, &s.quit, s.log)
 		s.callers[pid] = newLink
+		newLink.start()
 	}
 	return s.callers[pid], nil
 }
