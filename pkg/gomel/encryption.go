@@ -10,10 +10,10 @@ func CTEq(c1, c2 CipherText) bool {
 	return bytes.Equal(s, r)
 }
 
-// EncryptionKey is used for encrypting data
+// EncryptionKey is used for encrypting messages 
 type EncryptionKey interface {
-	// Encrypt encrypts data
-	Encrypt([]byte) CipherText
+	// Encrypt encrypts message
+	Encrypt([]byte) (CipherText, error)
 	// Encode encodes the encryption key in base 64.
 	Encode() string
 }
@@ -21,7 +21,7 @@ type EncryptionKey interface {
 // DecryptionKey is used for decrypting ciphertexts encrypted with corresponding encryption key
 type DecryptionKey interface {
 	// Decrypt decrypts ciphertext that was encrypted with corresponding encryption key
-	Decrypt([]byte) CipherText
+	Decrypt(CipherText) ([]byte, error)
 	// Encode encodes the decryption key in base 64.
 	Encode() string
 }
