@@ -5,24 +5,28 @@
 
         "CanSkipLevel": true, 
 
-		"CreateDelay": 0.1,
+		"CreateDelay": 1.1,
 
 		"StepSize": 0.0,
 
         "Sync": [{
-            "Type": "gossip",
+            "Type": "fetch",
             "Params": {
                 "nIn": "3",
                 "nOut": "2",
-                "timeout": "2"},
-            "Fallback": ""
-        }, {
+                "timeout": "2",
+                "retryingFallback": "fetch",
+                "retryingInterval": "0.1"
+            },
+            "Fallback": "retrying"
+            }, {
             "Type": "multicast",
             "Params": {
                 "mcType": "tcp",
-                "timeout": "2"},
-            "Fallback": ""
-        } ],
+                "timeout": "2"
+            },
+            "Fallback": "retrying"
+        }],
 
         "Setup": "coin",
 
@@ -40,14 +44,13 @@
 
 		"LogLevel": 1,
 
-		"LogBuffer": 100000,
+		"LogBuffer": 10000,
 
 		"LogMemInterval": 10,
 
 		"LogHuman": false,
 
 	    "OrderStartLevel": 0,
-
 
 		"CRPFixedPrefix": 5
 }

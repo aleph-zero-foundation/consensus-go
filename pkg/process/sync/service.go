@@ -31,25 +31,31 @@ func valid(configs []*process.Sync) error {
 	if len(configs) == 0 {
 		return gomel.NewConfigError("empty sync configuration")
 	}
+	definedFbks := map[string]bool{}
 	for i, c := range configs {
-		if c.Fallback != "" {
-			f, internal := c.Fallback, c.Params["fallback"]
-			if f == "retrying" && internal != "gossip" && internal != "fetch" {
-				gomel.NewConfigError("defined retrying as fallback, but didn't specify correct fallback for it")
+		if c.Fallback == "" {
+			continue
+		}
+		f := c.Fallback
+		if definedFbks[f] {
+			continue
+		}
+		definedFbks[f] = true
+		if f == "retrying" {
+			f = c.Params["retryingFallback"]
+		}
+		found := false
+		if f == "fetch" {
+			found = c.Type == "fetch"
+		}
+		for _, cPrev := range configs[:i] {
+			if cPrev.Type == f {
+				found = true
+				break
 			}
-			found := false
-			if f == "fetch" {
-				found = c.Type == "fetch"
-			}
-			for _, cPrev := range configs[:i] {
-				if cPrev.Type == f {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return gomel.NewConfigError("defined " + f + " as fallback, but there is no configuration for it")
-			}
+		}
+		if !found {
+			return gomel.NewConfigError("defined " + f + " as fallback, but there is no configuration for it")
 		}
 	}
 	return nil
@@ -58,13 +64,14 @@ func valid(configs []*process.Sync) error {
 // Builds fallback for process.Sync configuration
 func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.RandomSource, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
 	var fbk sync.Fallback
+	nProc := dag.NProc()
 	switch c.Fallback {
 	case "gossip":
-		reqChan := make(chan uint16)
+		reqChan := make(chan uint16, nProc)
 		fbk = fallback.NewGossip(reqChan)
 		return fbk, reqChan, nil, nil
 	case "fetch":
-		reqChan := make(chan fetch.Request)
+		reqChan := make(chan fetch.Request, nProc)
 		fbk = fallback.NewFetch(dag, reqChan)
 		return fbk, nil, reqChan, nil
 	case "retrying":
@@ -75,14 +82,14 @@ func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		switch c.Params["fallback"] {
+		switch c.Params["retryingFallback"] {
 		case "gossip":
-			reqChan := make(chan uint16)
+			reqChan := make(chan uint16, nProc)
 			baseFbk = fallback.NewGossip(reqChan)
 			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
 			return fbk, reqChan, nil, nil
 		case "fetch":
-			reqChan := make(chan fetch.Request)
+			reqChan := make(chan fetch.Request, nProc)
 			baseFbk = fallback.NewFetch(dag, reqChan)
 			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
 			return fbk, nil, reqChan, nil
@@ -122,7 +129,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			server   sync.Server
 			fbk      sync.Fallback
 		)
-		tf, err := strconv.ParseFloat(c.Params["Timeout"], 64)
+		tf, err := strconv.ParseFloat(c.Params["timeout"], 64)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -131,11 +138,13 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		case "multicast":
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			var err error
-			switch c.Params["McType"] {
+			switch c.Params["mcType"] {
 			case "tcp":
 				dialer, listener, err = tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
 			case "udp":
 				dialer, listener, err = udp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+			default:
+				return nil, nil, gomel.NewConfigError("wrong multicast type")
 			}
 			if err != nil {
 				return nil, nil, err
@@ -154,7 +163,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 
 			var peerSource gossip.PeerSource
-			if id := isFallback("fetch", configs[i+1:]); id != -1 {
+			if id := isFallback("fetch", configs[i+1:]); id != -1 || (c.Fallback == "retrying" && c.Params["retryingFallback"] == "gossip") {
 				fbk, reqChan, _, err := getFallback(configs[i+1+id], s, dag, randomSource, log)
 				fallbacks["gossip"] = fbk
 				if err != nil {
@@ -181,9 +190,15 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 
 			var reqChan chan fetch.Request
-			if id := isFallback("fetch", configs[i+1:]); id != -1 || c.Fallback == "fetch" {
+			if id := isFallback("fetch", configs[i+1:]); id != -1 || c.Fallback == "fetch" || (c.Fallback == "retrying" && c.Params["retryingFallback"] == "fetch") {
 				fbk, _, reqChan, err = getFallback(configs[i+1+id], s, dag, randomSource, log)
-				fallbacks["fetch"] = fbk
+				if id != 1 || c.Fallback == "fetch" {
+					fallbacks["fetch"] = fbk
+				}
+				if c.Fallback == "retrying" && c.Params["retryingFallback"] == "fetch" {
+					fallbacks["retrying"] = fbk
+				}
+
 				if err != nil {
 					return nil, nil, err
 				}

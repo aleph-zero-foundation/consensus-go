@@ -14,17 +14,17 @@
             "Params": {
                 "nIn": "3",
                 "nOut": "2",
-                "Timeout": "2"},
+                "timeout": "2"},
             "Fallback": ""
         }],
 
-        "Setup": "urn",
+        "Setup": "coin",
 
         "SyncSetup": [],
 
 		"Txpu": 1,
 
-		"LevelLimit": 50,
+		"LevelLimit": 20,
 
 		"VotingLevel": 3,
 
@@ -40,5 +40,7 @@
 
 		"LogHuman": false,
 
-	    "OrderStartLevel": 0
+	    "OrderStartLevel": 0,
+
+		"CRPFixedPrefix": 5
 }
