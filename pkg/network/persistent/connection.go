@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -44,27 +43,27 @@ type conn struct {
 	link   net.Conn
 	queue  *chanReader
 	reader *bufio.Reader
-	writer *bufio.Writer
-	header []byte
+	frame  []byte
+	buffer []byte
+	bufLen int
 	sent   uint32
 	recv   uint32
 	closed int32
-	mx     sync.Mutex
 	log    zerolog.Logger
 }
 
 //newConn creates a Connection with given id that wraps a tcp connection link
 func newConn(id uint64, link net.Conn, log zerolog.Logger) *conn {
-	header := make([]byte, headerSize)
-	binary.LittleEndian.PutUint64(header, id)
+	frame := make([]byte, headerSize+bufSize)
+	binary.LittleEndian.PutUint64(frame, id)
 	queue := newChanReader(32)
 	return &conn{
 		id:     id,
 		link:   link,
 		queue:  queue,
 		reader: bufio.NewReaderSize(queue, bufSize),
-		writer: bufio.NewWriterSize(link, bufSize),
-		header: header,
+		frame:  frame,
+		buffer: frame[headerSize:],
 		log:    log,
 	}
 }
@@ -79,41 +78,35 @@ func (c *conn) Write(b []byte) (int, error) {
 	if atomic.LoadInt32(&c.closed) > 0 {
 		return 0, errors.New("Write on a closed connection")
 	}
-	written, n := 0, 0
-	var err error
-	for written < len(b) {
-		n, err = c.writer.Write(b[written:])
-		written += n
-		if err == bufio.ErrBufferFull {
-			err = c.Flush()
-		}
+	total := 0
+	copied := copy(c.buffer[c.bufLen:], b)
+	c.bufLen += copied
+	total += copied
+	for total < len(b) {
+		err := c.Flush()
 		if err != nil {
-			break
+			return total, err
 		}
+		copied = copy(c.buffer[c.bufLen:], b[total:])
+		c.bufLen += copied
+		total += copied
 	}
-	c.sent += uint32(written)
-	return written, err
+	return total, nil
 }
 
 func (c *conn) Flush() error {
 	if atomic.LoadInt32(&c.closed) > 0 {
 		return errors.New("Flush on a closed connection")
 	}
-	c.mx.Lock()
-	defer c.mx.Unlock()
-	buf := c.writer.Buffered()
-	if buf == 0 {
+	if c.bufLen == 0 {
 		return nil
 	}
-	binary.LittleEndian.PutUint32(c.header[8:], uint32(buf))
-	_, err := c.link.Write(c.header)
+	binary.LittleEndian.PutUint32(c.frame[8:], uint32(c.bufLen))
+	_, err := c.link.Write(c.frame[:(headerSize + c.bufLen)])
 	if err != nil {
 		return err
 	}
-	err = c.writer.Flush()
-	if err != nil {
-		return err
-	}
+	c.bufLen = 0
 	return nil
 }
 
@@ -123,9 +116,7 @@ func (c *conn) Close() error {
 	}
 	header := make([]byte, headerSize)
 	binary.LittleEndian.PutUint64(header, c.id)
-	binary.LittleEndian.PutUint32(header[8:], uint32(0))
-	c.mx.Lock()
-	defer c.mx.Unlock()
+	binary.LittleEndian.PutUint32(header[8:], 0)
 	_, err := c.link.Write(header)
 	if err != nil {
 		return err
