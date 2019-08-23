@@ -11,13 +11,13 @@ import (
 
 // ConfigurationLoader is an abstraction for parsing configurations from a given io.Reader instance.
 type ConfigurationLoader interface {
-	// LoadConfiguration parses instance of the Configuration type using a given instance of io.Reader.
+	// LoadConfiguration parses an instance of the Configuration type using a given an instance of io.Reader.
 	LoadConfiguration(io.Reader, *Configuration) error
 }
 
 // ConfigurationWriter is an abstraction for storing configurations using a given instance of io.Writer.
 type ConfigurationWriter interface {
-	// StoreConfiguration outputs a human readable representation of the Configuration using provided io.Writer.
+	// StoreConfiguration outputs a representation of the Configuration using the provided io.Writer.
 	StoreConfiguration(io.Writer, *Configuration) error
 }
 

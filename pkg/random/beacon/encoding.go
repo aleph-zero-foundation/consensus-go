@@ -10,14 +10,14 @@ import (
 )
 
 // This could be encoded in a more optimal way.
-// For exmaple we could have use a bitset
-// We start with very simple but inefficient implementation
+// For exmaple we could use a bitset.
+// We start with very simple but inefficient implementation.
 //
-// Votes are encoded one by one. Byte representation of a vote is
+// Votes are encoded one by one. The byte representation of a vote is
 // (1) vote type (1 byte), 0 - nil, 1 - yes, 2 - no
-// in the case when vote type is 2 then follows
-// (2) length of proof (2 bytes)
-// (3) proof itself encoed in Gob (as much as declared in 2)
+// in the case when vote type is 2 it is followed by
+// (2) the length of the marshalled proof (2 bytes)
+// (3) the marshalled proof itself (as much as declared in 2).
 func marshallVotes(votes []*vote) []byte {
 	var buf bytes.Buffer
 	for _, v := range votes {
@@ -74,9 +74,9 @@ func unmarshallVotes(data []byte, nProc int) ([]*vote, error) {
 
 // Shares are encoded in the following way:
 // (1) 0 or 1 (1 byte) indicating if the share is nil or not nil respectively
-// in the case when share is not nil then follows
-// (2) length of the marshalled share (2 bytes)
-// (3) marshalled share (as much as declared in 2)
+// if this byte is 1, it is followed by
+// (2) the length of the marshalled share (2 bytes)
+// (3) the marshalled share (as much as declared in 2)
 func marshallShares(cses []*tcoin.CoinShare) []byte {
 	var buf bytes.Buffer
 	for _, cs := range cses {

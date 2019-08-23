@@ -10,8 +10,8 @@ func (h *Hash) Short() string {
 	return base64.StdEncoding.EncodeToString(h[:8])
 }
 
-// LessThan checks if h is less than k in a lexicographic order.
-// This is used to create linear order on hashes
+// LessThan checks if h is less than k in lexicographic order.
+// This is used to create a linear order on hashes.
 func (h *Hash) LessThan(k *Hash) bool {
 	for i := 0; i < len(h); i++ {
 		if h[i] < k[i] {
@@ -23,7 +23,7 @@ func (h *Hash) LessThan(k *Hash) bool {
 	return false
 }
 
-// XOR returns xor of two hashes
+// XOR returns xor of two hashes.
 func XOR(h *Hash, k *Hash) *Hash {
 	var result Hash
 	for i := range result {
@@ -32,7 +32,7 @@ func XOR(h *Hash, k *Hash) *Hash {
 	return &result
 }
 
-// XOREqual updates hash to be a xor with given argument
+// XOREqual updates hash to be a xor with given argument.
 func (h *Hash) XOREqual(k *Hash) {
 	for i := range h {
 		h[i] ^= k[i]

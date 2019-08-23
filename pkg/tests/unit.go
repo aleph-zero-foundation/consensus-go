@@ -75,10 +75,6 @@ func (u *unit) Below(v gomel.Unit) bool {
 	return false
 }
 
-func (u *unit) Above(v gomel.Unit) bool {
-	return v.Below(u)
-}
-
 func (u *unit) HasForkingEvidence(creator int) bool {
 	return false
 }

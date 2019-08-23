@@ -1,3 +1,4 @@
+// Package add implements functions for adding units to the dag in ways appropriate for various synchronisation methods.
 package add
 
 import (
@@ -27,7 +28,6 @@ func handleFailure(errorAddr *error, fallback gsync.Fallback, log zerolog.Logger
 }
 
 // Unit adds a preunit to the dag and returns an error if it fails.
-// It also returns whether it successfully added a prime unit.
 func Unit(dag gomel.Dag, randomSource gomel.RandomSource, preunit gomel.Preunit, callback gomel.Callback, fallback gsync.Fallback, log zerolog.Logger) error {
 	var wg sync.WaitGroup
 	var err error
@@ -42,7 +42,6 @@ func Unit(dag gomel.Dag, randomSource gomel.RandomSource, preunit gomel.Preunit,
 }
 
 // Antichain adds an antichain of preunits to the dag and reports a composite error if it fails.
-// It also returns whether it successfully added a prime unit.
 func Antichain(dag gomel.Dag, randomSource gomel.RandomSource, preunits []gomel.Preunit, callback gomel.Callback, fallback gsync.Fallback, log zerolog.Logger) *AggregateError {
 	var wg sync.WaitGroup
 	problem := &AggregateError{

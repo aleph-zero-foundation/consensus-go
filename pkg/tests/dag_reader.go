@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -9,10 +10,9 @@ import (
 	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/transactions"
 )
 
-// ReadDag reads dag from the given reader and creates it using given dag factory
+// ReadDag reads a dag description from the given reader and builds the dag using the given dag factory.
 func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
@@ -56,9 +56,9 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 				parents = append(parents, preunitHashes[[3]int{creator, height, version}])
 			}
 		}
-		txsEncoded := transactions.Encode([]transactions.Tx{transactions.Tx{ID: txID}})
-		txsCompressed, _ := transactions.Compress(txsEncoded, 5)
-		pu := NewPreunit(puCreator, parents, txsCompressed, nil)
+		unitData := make([]byte, 4)
+		binary.LittleEndian.PutUint32(unitData, txID)
+		pu := NewPreunit(puCreator, parents, unitData, nil)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
 		var addingError error
@@ -78,7 +78,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	return dag, nil
 }
 
-// CreateDagFromTestFile reads dag from given test file and uses factory to create the dag
+// CreateDagFromTestFile reads a dag description from the given test file and uses the factory to build the dag.
 func CreateDagFromTestFile(filename string, df gomel.DagFactory) (gomel.Dag, error) {
 	file, err := os.Open(filename)
 	defer file.Close()

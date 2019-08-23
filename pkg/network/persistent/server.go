@@ -25,7 +25,7 @@ type server struct {
 }
 
 // NewServer initializes network setup for the given local address and the set of remote addresses.
-// Returns an object the implements BOTH network.Server and process.Service interface.
+// Returns an object that implements BOTH network.Server and process.Service interfaces.
 // It needs to be started as a service to activate listening for incoming TCP connections.
 func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Server, error) {
 	nProc := len(remoteAddresses)

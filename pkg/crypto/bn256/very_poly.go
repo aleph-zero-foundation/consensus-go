@@ -10,13 +10,13 @@ import (
 )
 
 // PolyVerifier is a struct which can verify if the given sequence is a polynomial sequence
-// of bounded degree
+// of bounded degree.
 type PolyVerifier struct {
 	vector []*big.Int
 }
 
-// Verify verifies if the given sequence of elems is a polynomial sequence
-// with bounded degree
+// Verify if the given sequence of elems is a polynomial sequence
+// with bounded degree.
 func (pv *PolyVerifier) Verify(elems []*VerificationKey) bool {
 	if len(elems) != len(pv.vector) {
 		// wrong number of elems
@@ -50,8 +50,8 @@ func (pv *PolyVerifier) Verify(elems []*VerificationKey) bool {
 }
 
 // NewPolyVerifier returns a verifier of polynomial sequences
-// of degree at most f and length n
-// We assume 0 <= f <= n-1
+// of degree at most f and length n.
+// We assume 0 <= f <= n-1.
 func NewPolyVerifier(n, f int) PolyVerifier {
 	// Here are some constants needed for computation of
 	// the inverse of the Vandermonde's matrix V(1,2,...,n)

@@ -1,3 +1,6 @@
+// Package logging sets up logging for gomel.
+//
+// It also contains decoders for translating logfile into human readable form.
 package logging
 
 import (

@@ -1,3 +1,4 @@
+// Package run defines a function for running the whole protocol, using services defined in other packages.
 package run
 
 import (
@@ -33,7 +34,7 @@ func startAll(services []process.Service) error {
 	return nil
 }
 
-// Process starts main and setup processes.
+// Process starts the main and setup processes.
 func Process(config process.Config, setupLog zerolog.Logger, log zerolog.Logger) (gomel.Dag, error) {
 	// rsCh is a channel shared between setup process and the main process.
 	// The setup process should create a random source and push it to the channel.

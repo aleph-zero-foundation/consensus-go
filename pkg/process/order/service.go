@@ -1,3 +1,4 @@
+// Package order implements a service for computing the linear order of units.
 package order
 
 import (
@@ -11,12 +12,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
-// Order service is sorting units in linear order
-// - attemptTimingRequests is an external channel from which we read that we should run attemptTimingDecision
-// - orderedUnits is an output channel where we write units in linear order
-// - extendOrderRequests is a channel used by the go routine which is choosing timing units to inform
-//   the go routine which is ordering units that a new timingUnit has been chosen
-// - currentRound is the round up to which we have chosen timing units
 type service struct {
 	pid                 int
 	linearOrdering      gomel.LinearOrdering
@@ -29,7 +24,10 @@ type service struct {
 	log                 zerolog.Logger
 }
 
-// NewService is a constructor of an ordering service
+// NewService constructs an ordering service.
+// This service sorts units in linear order.
+// orderedUnits is an output channel where it writes these units in order.
+// Ordering is attempted when the returned callback is called on a prime unit.
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, gomel.Callback, error) {
 	primeAlert := make(chan struct{}, 1)
 	return &service{
@@ -82,7 +80,6 @@ func (s *service) extendOrder() {
 	s.wg.Done()
 }
 
-// Start is a function which starts the service
 func (s *service) Start() error {
 	s.wg.Add(2)
 	go s.attemptOrdering()
@@ -91,7 +88,6 @@ func (s *service) Start() error {
 	return nil
 }
 
-// Stop is the function that stops the service
 func (s *service) Stop() {
 	close(s.exitChan)
 	s.wg.Wait()

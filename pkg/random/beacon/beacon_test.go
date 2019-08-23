@@ -190,10 +190,6 @@ func (um *unitMock) Below(v gomel.Unit) bool {
 	return um.u.Below(v)
 }
 
-func (um *unitMock) Above(v gomel.Unit) bool {
-	return um.u.Above(v)
-}
-
 func (um *unitMock) Floor() [][]gomel.Unit {
 	return um.u.Floor()
 }

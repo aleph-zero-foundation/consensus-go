@@ -1,3 +1,9 @@
+// Package udp wraps UDP packets in network.Connections.
+//
+// Since UDP packets are not real connections the abstraction is not an exact fit.
+// Due to that, the connections are either read- or write-only and have other restrictions.
+// In particular the write-only connection allows to write only up to 65 507 bytes,
+// while the read-only reads the data from only one packet.
 package udp
 
 import (

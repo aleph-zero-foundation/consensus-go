@@ -17,7 +17,7 @@ import (
 )
 
 // coinSetup deals a coin. Running a process with this setup
-// is equivalent to the version of without setup phase.
+// is equivalent to the version without a setup phase.
 func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	pid := config.Create.Pid
 	nProc := len(config.Dag.Keys)
@@ -25,7 +25,7 @@ func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolo
 	close(rsCh)
 }
 
-// beaconSetup is a setup described in the whitepaper
+// beaconSetup is the setup described in the whitepaper.
 func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	defer close(rsCh)
 	dagFinished := make(chan struct{})

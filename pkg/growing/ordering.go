@@ -41,7 +41,7 @@ func (u *unit) aboveWithinProc(v *unit) (bool, error) {
 	return v.belowWithinProc(u)
 }
 
-// Below checks if a unit u is less than or euqal to a unit v
+// Below checks if a unit u is less than or euqal to a unit v.
 func (u *unit) Below(v gomel.Unit) bool {
 	var V *unit
 	var ok bool
@@ -55,9 +55,4 @@ func (u *unit) Below(v gomel.Unit) bool {
 		}
 	}
 	return false
-}
-
-// Above checks if a unit u is greater than a unit v
-func (u *unit) Above(v gomel.Unit) bool {
-	return v.Below(u)
 }

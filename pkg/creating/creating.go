@@ -1,3 +1,10 @@
+// Package creating contains functions responsible for creating new units.
+//
+// It also contains a publicly available implementation of a preunit.
+//
+// All units created using functions in this package will have parents created by distinct processes
+// and satisfyint the expand primes rule. The first parent will also be the predecessor.
+// Units created by processes known to be forking at the moment of creation will never be chosen as parents.
 package creating
 
 import (
@@ -71,7 +78,7 @@ func maxLevel(mu gomel.SlottedUnits) int {
 	return result
 }
 
-// splitByBelow returns a split of the units in su into parts that are either visible or invisible to units
+// splitByBelow returns a split of the units in su into parts that are either visible or invisible to units.
 func splitByBelow(su gomel.SlottedUnits, units []gomel.Unit) *visionSplit {
 	result := newVisionSplit()
 	su.Iterate(func(primes []gomel.Unit) bool {

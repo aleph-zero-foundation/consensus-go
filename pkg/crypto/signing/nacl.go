@@ -1,3 +1,4 @@
+// Package signing implements unit signing using the NaCl library.
 package signing
 
 import (
@@ -12,12 +13,12 @@ type publicKeyData *[32]byte
 
 type privateKeyData *[64]byte
 
-// publicKey implements PublicKey interface using NaCl library.
+// publicKey implements PublicKey interface using the NaCl library.
 type publicKey struct {
 	data publicKeyData
 }
 
-// privateKey implements PrivateKey interface using NaCl library.
+// privateKey implements PrivateKey interface using the NaCl library.
 type privateKey struct {
 	data privateKeyData
 }

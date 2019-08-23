@@ -1,7 +1,7 @@
 package logging
 
 // Shortcuts for event types.
-// Any event that happens multiple times should have a single character representation
+// Any event that happens multiple times should have a single character representation.
 const (
 	ServiceStarted        = "A"
 	ServiceStopped        = "B"
@@ -40,7 +40,7 @@ const (
 	RemovedFromBacklog    = "i"
 )
 
-// eventTypeDict maps short event names to human readable form
+// eventTypeDict maps short event names to human readable form.
 var eventTypeDict = map[string]string{
 	ServiceStarted:        "service started",
 	ServiceStopped:        "service stopped",
@@ -78,7 +78,7 @@ var eventTypeDict = map[string]string{
 	RemovedFromBacklog:    "removed unit from retrying backlog",
 }
 
-// Field names
+// Field names.
 const (
 	Time      = "T"
 	Level     = "L"
@@ -101,7 +101,7 @@ const (
 	Hash      = "#"
 )
 
-// fieldNameDict maps short field names to human readable form
+// fieldNameDict maps short field names to human readable form.
 var fieldNameDict = map[string]string{
 	Time:      "time",
 	Level:     "level",
@@ -124,7 +124,7 @@ var fieldNameDict = map[string]string{
 	Hash:      "hash",
 }
 
-// Service types
+// Service types.
 const (
 	CreateService int = iota
 	OrderService
@@ -138,7 +138,7 @@ const (
 	RetryingService
 )
 
-// serviceTypeDict maps integer service types to human readable names
+// serviceTypeDict maps integer service types to human readable names.
 var serviceTypeDict = map[int]string{
 	CreateService:   "CREATE",
 	OrderService:    "ORDER",
@@ -152,5 +152,5 @@ var serviceTypeDict = map[int]string{
 	RetryingService: "RETRY",
 }
 
-// Genesis was better with Phil Collins
+// Genesis was better with Phil Collins.
 const Genesis = "genesis"

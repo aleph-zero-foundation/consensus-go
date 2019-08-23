@@ -6,7 +6,7 @@ import (
 
 type testDagFactory struct{}
 
-// NewTestDagFactory returns instation of testDagFactory --- factory creating test dags
+// NewTestDagFactory returns a factory for creating test dags.
 func NewTestDagFactory() gomel.DagFactory {
 	return testDagFactory{}
 }

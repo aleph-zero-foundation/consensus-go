@@ -1,3 +1,7 @@
+// Package coin implements the coin random source.
+//
+// It is meant to be used in the main process.
+// The result of the setup phase should be a consensus on this random source.
 package coin
 
 import (
@@ -21,10 +25,8 @@ type coin struct {
 	randomBytes   *random.SyncBytesSlice
 }
 
-// New returns a Coin RandomSource based on fixed thresholdCoin with given
+// New returns a Coin RandomSource based on fixed thresholdCoin with the given
 // set of share providers.
-// It is meant to be used in the main process.
-// The result of the setup phase should be a consensus on this random source.
 func New(nProc, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool) gomel.RandomSource {
 	return &coin{
 		pid:           pid,
@@ -55,19 +57,19 @@ func NewFixedCoin(nProc, pid, seed int) gomel.RandomSource {
 	return New(nProc, pid, tcoin.New(nProc, pid, coeffs), shareProviders)
 }
 
-// Init initialize the coin with given dag
+// Init initializes the coin with the given dag.
 func (c *coin) Init(dag gomel.Dag) {
 	c.dag = dag
 }
 
 // RandomBytes returns a sequence of random bits for a given level.
 // The first argument is irrelevant for this random source.
-// It returns nil when the dag haven't reached level+1 level yet.
+// It returns nil when the dag hasn't reached level+1 yet.
 func (c *coin) RandomBytes(_ int, level int) []byte {
 	return c.randomBytes.Get(level)
 }
 
-// Update updates the RandomSource with data included in the preunit
+// Update the RandomSource with data included in the preunit.
 func (c *coin) Update(u gomel.Unit) {
 	if gomel.Prime(u) && c.shareProvider[u.Creator()] {
 		cs := new(tcoin.CoinShare)
@@ -86,10 +88,10 @@ func (c *coin) Update(u gomel.Unit) {
 
 // CheckCompliance checks if the random source data included in the unit
 // is correct. The following rules should be satisfied:
-// (1) dealing unit created by a share provider should contain marshalled share
-// (2) non-dealing prime unit should start with random bytes from previous level,
-// then if the creator is a share provider marshalled coin share should follow
-// (3) every other unit should have empty random source data
+//  (1) A dealing unit created by a share provider should contain a marshalled share
+//  (2) A non-dealing prime unit should start with random bytes from the previous level,
+//  followed by a marshalled coin share, if the creator is a share provider.
+//  (3) Every other unit's random source data should be empty.
 func (c *coin) CheckCompliance(u gomel.Unit) error {
 	if gomel.Dealing(u) && c.shareProvider[u.Creator()] {
 		return new(tcoin.CoinShare).Unmarshal(u.RandomSourceData())
@@ -131,12 +133,12 @@ func (c *coin) CheckCompliance(u gomel.Unit) error {
 	return nil
 }
 
-// DataToInclude returns data which should be included in the unit under creation
-// with given creator and set of parents.
-// If the unit under creation is the first unit on its level (>0) the coin shares
-// from previous level are being combined.
+// DataToInclude returns data which should be included in a unit
+// with the given creator and set of parents.
+// If the unit is the first unit on its level (>0) the coin shares
+// from the previous level will be combined.
 // If the shares don't combine to the correct random bytes for previous level
-// it returns an error. This means that someone had put a wrong coin share
+// it returns an error. This means that someone had included a wrong coin share
 // and we should start an alert.
 func (c *coin) DataToInclude(creator int, parents []gomel.Unit, level int) ([]byte, error) {
 	if len(parents) == 0 {

@@ -1,3 +1,6 @@
+// Package gossip implements a protocol for synchronising dags through gossiping.
+//
+// This protocol should always succeed with adding units received from honest peers, so it needs no fallback.
 package gossip
 
 import (

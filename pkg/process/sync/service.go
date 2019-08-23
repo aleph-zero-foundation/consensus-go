@@ -1,3 +1,4 @@
+// Package sync implements a service that creates and runs all the necessary syncing servers.
 package sync
 
 import (
@@ -63,7 +64,7 @@ func valid(configs []*process.Sync) error {
 	return nil
 }
 
-// Builds fallback for process.Sync configuration
+// Builds fallback for process.Sync configuration.
 func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.RandomSource, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
 	var fbk sync.Fallback
 	nProc := dag.NProc()
@@ -114,6 +115,9 @@ func isFallback(name string, configs []*process.Sync) int {
 }
 
 // NewService creates a new syncing service for the given dag, with the given config.
+// When units received from a sync are added to the poset primeAlert is called on them.
+// The returned callback should be called on units created by this process after they are added to the poset.
+// It is used to multicast newly created units, when multicast is in use.
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, primeAlert gomel.Callback, log zerolog.Logger) (process.Service, gomel.Callback, error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err

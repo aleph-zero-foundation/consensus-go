@@ -7,19 +7,17 @@ type Unit interface {
 	BaseUnit
 	// Height of a unit is the length of the path between this unit and a dealing unit in the (induced) sub-dag containing all units produced by the same creator.
 	Height() int
-	// Parents of this unit, with predecessor being the first element of returned slice.
+	// Parents of this unit, with predecessor being the first element of the returned slice.
 	Parents() []Unit
 	// Level of this unit in the dag, as defined in the Aleph protocol whitepaper.
 	Level() int
-	// Below tells if this unit is below the given unit.
+	// Below checks if this unit is below the given unit.
 	Below(Unit) bool
-	// Above is a counterpart to Below.
-	Above(Unit) bool
 	// Floor returns a collection of units containing, for each process, all maximal units created by that process below the unit.
 	Floor() [][]Unit
 }
 
-// CombineParentsFloorsPerProc combines floors of provided parents just for a given creator.
+// CombineParentsFloorsPerProc combines floors of the provided parents just for a given creator.
 // The result will be appended to the 'out' parameter.
 func CombineParentsFloorsPerProc(parents []Unit, pid int, out *[]Unit) {
 
@@ -31,7 +29,7 @@ func CombineParentsFloorsPerProc(parents []Unit, pid int, out *[]Unit) {
 			found, ri := false, -1
 			for ix, v := range (*out)[startIx:] {
 
-				if w.Above(v) {
+				if v.Below(w) {
 					found = true
 					ri = ix
 					// we can now break out of the loop since if we would find any other index for storing `w` it would be a
@@ -56,7 +54,7 @@ func CombineParentsFloorsPerProc(parents []Unit, pid int, out *[]Unit) {
 	}
 }
 
-// HasSelfForkingEvidence returns true iff given set of parents proves that the creator (that is parents[0].Creator())
+// HasSelfForkingEvidence returns true iff the given set of parents proves that the creator (that is parents[0].Creator())
 // made a fork.
 func HasSelfForkingEvidence(parents []Unit) bool {
 	if len(parents) == 0 {
@@ -95,7 +93,7 @@ func Predecessor(u Unit) (Unit, error) {
 	return pars[0], nil
 }
 
-// Prime checks whether given unit is a prime unit.
+// Prime checks whether the given unit is a prime unit.
 func Prime(u Unit) bool {
 	p, err := Predecessor(u)
 	if err != nil {
@@ -113,16 +111,6 @@ func Dealing(u Unit) bool {
 func BelowAny(u Unit, us []Unit) bool {
 	for _, v := range us {
 		if v != nil && u.Below(v) {
-			return true
-		}
-	}
-	return false
-}
-
-// AboveAny checks whether u is above any of the units in us.
-func AboveAny(u Unit, us []Unit) bool {
-	for _, v := range us {
-		if v != nil && v.Below(u) {
 			return true
 		}
 	}

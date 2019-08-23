@@ -1,3 +1,7 @@
+// Package bn256 is a wrapper around github.com/cloudflare/bn256.
+//
+// In addition to generating and using keypairs for signing, it also contains functions
+// needed to implement more involved cryptography, like threshold signatures and multisignatures.
 package bn256
 
 import (

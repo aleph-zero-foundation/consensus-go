@@ -8,10 +8,10 @@ import (
 )
 
 // CreateRandomNonForking creates a random test dag when given
-// nProcesses - number of processes
-// minParents - minimal number of unit parents (valid for non-dealing units)
-// maxParents - maximal number of unit parents (valid for non-dealing units)
-// nUnits     - number of units to include in the dag
+//  nProcesses - number of processes
+//  minParents - minimal number of unit's parents (valid for non-dealing units)
+//  maxParents - maximal number of unit's parents (valid for non-dealing units)
+//  nUnits     - number of units to include in the dag
 func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	dag := newDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})

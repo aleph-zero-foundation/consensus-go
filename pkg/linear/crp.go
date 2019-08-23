@@ -13,12 +13,12 @@ import (
 // The underlying random permutation of units is generated in two steps
 // (1) the prefix is based only on the previous timing unit and hashes of units
 // (2) the sufix is computed using the random source
-// Second part of the permutation is being calculated only when needed.
-// i.e. given work function returns true on all the units in the prefix.
+// The second part of the permutation is being calculated only when needed,
+// i.e. the given work function returns true on all the units in the prefix.
 //
 // The function itself returns
-// - false when generating sufix of the permutation failed (because the dag
-//   haven't reached high enough level to reveal randomBytes needed)
+// - false when generating the sufix of the permutation failed (because the dag
+//   hasn't reached a high enough level to reveal the randomBytes needed)
 // - true otherwise
 func (o *ordering) crpIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
 	prefix, sufix := splitProcesses(o.dag.NProc(), o.crpFixedPrefix, level, previousTU)

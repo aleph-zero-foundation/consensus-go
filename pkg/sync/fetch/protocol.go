@@ -1,3 +1,7 @@
+// Package fetch implements a mechanism of fetching specific units with known hashes.
+//
+// This protocol cannot be used for general syncing, because usually we don't know the hashes of units we would like to receive in advance.
+// It is only useful as a fallback mechanism.
 package fetch
 
 import (

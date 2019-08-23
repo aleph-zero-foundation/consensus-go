@@ -35,7 +35,7 @@ func (pu *preunit) RandomSourceData() []byte {
 	return pu.rsData
 }
 
-// Data returns data embedded in the preunit.
+// Data embedded in the preunit.
 func (pu *preunit) Data() []byte {
 	return pu.data
 }
@@ -60,12 +60,12 @@ func (pu *preunit) Parents() []*gomel.Hash {
 	return pu.parents
 }
 
-// SetSignature sets signature of the preunit.
+// SetSignature sets the signature of the preunit.
 func (pu *preunit) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-// computeHash computes preunit's hash value and puts it in the corresponding field.
+// computeHash computes the preunit's hash value and saves it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	creatorBytes := make([]byte, 2)

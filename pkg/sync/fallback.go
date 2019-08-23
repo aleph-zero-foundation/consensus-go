@@ -6,7 +6,7 @@ import "gitlab.com/alephledger/consensus-go/pkg/gomel"
 type Fallback interface {
 	// Run takes the unit with unknown parents and falls back appropriately.
 	Run(gomel.Preunit)
-	// Stop stops the underlying service.
+	// Stop the underlying service.
 	Stop()
 }
 
@@ -16,7 +16,7 @@ func (f noop) Run(gomel.Preunit) {}
 
 func (f noop) Stop() {}
 
-// NopFallback is a fallback that does nothing
+// NopFallback is a fallback that does nothing.
 func NopFallback() Fallback {
 	return noop{}
 }

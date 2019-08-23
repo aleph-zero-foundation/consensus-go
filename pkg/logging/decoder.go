@@ -15,8 +15,8 @@ type decoder struct {
 }
 
 // NewDecoder creates a decoder that writes to the given writer.
-// Decoder implements io.Writer that takes []bytes with single
-// log event in JSON and writes it in human readable form
+// Decoder implements io.Writer that takes []bytes with a single
+// log event in JSON and writes it in human readable form.
 func NewDecoder(writer io.Writer) io.Writer {
 	return &decoder{writer: writer}
 }

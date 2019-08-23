@@ -1,3 +1,10 @@
+// Package gomel defines all the interfaces representing basic components for executing the Aleph protocol.
+//
+// The main components defined in this package are:
+//  1. The unit and preunit representing the information produced by a single process in a single round of the protocol.
+//  2. The dag, containing all the units created by processes and representing the partial order between them.
+//  3. The random source interacting with the dag to generate randomness needed for the protocol.
+//  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
 // Callback is a generic function called during AddUnit on the Preunit that is being added, and the resulting Unit (if successful) or encountered error (if not).

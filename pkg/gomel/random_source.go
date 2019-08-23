@@ -1,17 +1,19 @@
 package gomel
 
-// RandomSource is an interface for sharing random source between units
+// RandomSource represents a source of randomness needed to run the protocol.
+// It specifies what kind of data should be included in units,
+// and can use this data to generate random bytes.
 type RandomSource interface {
-	// Init initialize the random source with given dag
+	// Init initializes the random source with the given dag.
 	Init(Dag)
-	// RandomBytes returns a random bits for a given process and level
+	// RandomBytes returns random bytes for a given process and level.
 	RandomBytes(int, int) []byte
-	// CheckCompliance checks wheather the data included in the preunit
-	// is compliant
+	// CheckCompliance checks whether the data included in the unit
+	// is compliant.
 	CheckCompliance(Unit) error
-	// Update updates the RandomSource with data included in the preunit
+	// Update the RandomSource with the data included in the unit.
 	Update(Unit)
-	// DataToInclude returns data which should be included in the unit under
-	// creation with given creator and set of parents
+	// DataToInclude returns data which should be included in a unit
+	// with the given creator and set of parents.
 	DataToInclude(creator int, parents []Unit, level int) ([]byte, error)
 }

@@ -1,3 +1,7 @@
+// Package validate implements a transaction validation service.
+//
+// The service actually only logs that some data has been validated.
+// It exists only for testing purposes and will be massively rewritten in the future.
 package validate
 
 import (

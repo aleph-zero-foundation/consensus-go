@@ -10,35 +10,34 @@ type testRandomSource struct {
 	nProc int
 }
 
-// NewTestRandomSource returns a simple RandomSource for testing
+// NewTestRandomSource returns a simple RandomSource for testing.
 func NewTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
 }
 
-// Init initialize the random source with given dag
+// Init initializes the random source with the given dag.
 func (rs *testRandomSource) Init(dag gomel.Dag) {
 	rs.nProc = dag.NProc()
 }
 
-// RandomBytes returns a sequence of random bits for a given unit
-// it returns hash of u
+// RandomBytes returns a sequence of "random" bits for a given unit.
+// It bases the sequence only on the pid and level, ignoring the unit itself.
 func (rs *testRandomSource) RandomBytes(pid, level int) []byte {
 	answer := make([]byte, 32)
 	answer = append(answer, []byte(strconv.Itoa(pid+level))...)
 	return answer
 }
 
-// Update updates the RandomSource with data included in the unit
+// Update is a noop.
 func (*testRandomSource) Update(gomel.Unit) {
 }
 
-// CheckCompliance checks wheather the random source data incldued in the unit is correct
+// CheckCompliance accepts everything.
 func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
 	return nil
 }
 
-// ToInclude returns data which should be included in the unit under creation
-// with given creator and set of parents.
+// ToInclude always returns nil.
 func (*testRandomSource) DataToInclude(int, []gomel.Unit, int) ([]byte, error) {
 	return nil, nil
 }

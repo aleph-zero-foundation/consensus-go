@@ -14,7 +14,7 @@ type unitBuilt struct {
 }
 
 // AddUnit adds the provided Preunit to the dag as a Unit.
-// When done calls the callback.
+// When done, it calls the callback.
 func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
 	if pu.Creator() < 0 || pu.Creator() >= dag.nProcesses {
 		callback(pu, nil, gomel.NewDataError("Invalid creator."))
