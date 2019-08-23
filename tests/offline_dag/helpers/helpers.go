@@ -14,7 +14,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	// "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
 
@@ -356,7 +355,7 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 	units := make(chan gomel.Unit)
 	go func() {
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), int(generalConfig.OrderStartLevel), generalConfig.CRPFixedPrefix, logger)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.DecidingLevel), int(generalConfig.OrderStartLevel), generalConfig.CRPFixedPrefix, logger)
 		level := 0
 		orderedUnits := ordering.TimingRound(level)
 		for orderedUnits != nil {
@@ -380,7 +379,7 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 	go func() {
 
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.PiDeltaLevel), generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
+		ordering := linear.NewOrdering(dag, rs, int(generalConfig.VotingLevel), int(generalConfig.DecidingLevel), generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
 		level := 0
 		timingUnit := ordering.DecideTiming()
 		for timingUnit != nil {
@@ -563,11 +562,67 @@ func NewNoOpVerifier() DagVerifier {
 	}
 }
 
-// Test is a helper function that performs a single test using provided TestingRoutineFactory.
+type testRandomSource struct{}
+
+func newTestRandomSource() gomel.RandomSource {
+	return &testRandomSource{}
+}
+
+func (rs *testRandomSource) Init(dag gomel.Dag) {
+}
+
+func (rs *testRandomSource) RandomBytes(pid, level int) []byte {
+	return nil
+}
+
+func (*testRandomSource) Update(gomel.Unit) {
+}
+
+func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
+	return nil
+}
+
+func (*testRandomSource) DataToInclude(int, []gomel.Unit, int) ([]byte, error) {
+	return nil, nil
+}
+
+// Test is a helper function that performs a single test using provided TestingRoutineFactory and the FixedCoin as RandomSource.
 func Test(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
 	configurations []config.Configuration,
+	testingRoutine *TestingRoutine,
+) error {
+	rssProvider := func(pid uint16, dag gomel.Dag) gomel.RandomSource {
+		rs := coin.NewFixedCoin(dag.NProc(), int(pid), 0)
+		rs.Init(dag)
+		return rs
+	}
+	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
+}
+
+// Test is a helper function that performs a single test using provided TestingRoutineFactory
+// and testRandomSource as RandomSource.
+func TestUsingTestRandomSource(
+	pubKeys []gomel.PublicKey,
+	privKeys []gomel.PrivateKey,
+	configurations []config.Configuration,
+	testingRoutine *TestingRoutine,
+) error {
+	rssProvider := func(pid uint16, dag gomel.Dag) gomel.RandomSource {
+		rs := newTestRandomSource()
+		rs.Init(dag)
+		return rs
+	}
+	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
+}
+
+// Test is a helper function that performs a single test using provided TestingRoutineFactory.
+func TestUsingRandomSourceProvider(
+	pubKeys []gomel.PublicKey,
+	privKeys []gomel.PrivateKey,
+	configurations []config.Configuration,
+	rssProvider func(pid uint16, dag gomel.Dag) gomel.RandomSource,
 	testingRoutine *TestingRoutine,
 ) error {
 
@@ -582,8 +637,7 @@ func Test(
 		dags = append(dags, dag)
 
 		pids = append(pids, pid)
-		rs := coin.NewFixedCoin(nProcesses, int(pid), 0)
-		rs.Init(dag)
+		rs := rssProvider(pid, dag)
 		rss = append(rss, rs)
 	}
 
