@@ -75,7 +75,7 @@ func createForkUsingNewUnit(parentsCount int) forker {
 func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
 	var storage [1]gomel.Unit
 	combinedFloor := storage[:0]
-	growing.CombineParentsFloorsPerProc(parents, int(creator), &combinedFloor)
+	gomel.CombineParentsFloorsPerProc(parents, int(creator), &combinedFloor)
 	if len(combinedFloor) > 1 {
 		return true
 	}
