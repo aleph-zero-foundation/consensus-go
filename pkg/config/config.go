@@ -55,10 +55,6 @@ type Configuration struct {
 	// The level at which we are first time executing the deciding procedure.
 	DecidingLevel uint
 
-	// The level at which to start adding coin shares to units.
-	// It is safe to make it PiDeltaLevel - 1.
-	AddShares uint
-
 	// Log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic.
 	LogLevel int
 
@@ -116,8 +112,6 @@ func NewDefaultConfiguration() Configuration {
 		VotingLevel: 1,
 
 		DecidingLevel: 3,
-
-		AddShares: 0,
 
 		LogLevel: 1,
 

@@ -1150,8 +1150,6 @@ func testLongTimeUndecidedStrategy() error {
 	startLevel := uint64(1)
 	crp := func(uint64) uint16 { return 1 }
 
-	conf.AddShares = uint(numberOfDeterministicRounds + 1)
-
 	configurations := make([]config.Configuration, nProcesses)
 	for pid := range configurations {
 		configurations[pid] = conf
