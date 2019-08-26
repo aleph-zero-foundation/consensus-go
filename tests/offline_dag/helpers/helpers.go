@@ -601,7 +601,7 @@ func Test(
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
 }
 
-// Test is a helper function that performs a single test using provided TestingRoutineFactory
+// TestUsingTestRandomSource is a helper function that performs a single test using provided TestingRoutineFactory
 // and testRandomSource as RandomSource.
 func TestUsingTestRandomSource(
 	pubKeys []gomel.PublicKey,
@@ -617,7 +617,7 @@ func TestUsingTestRandomSource(
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
 }
 
-// Test is a helper function that performs a single test using provided TestingRoutineFactory.
+// TestUsingRandomSourceProvider is a helper function that performs a single test using provided TestingRoutineFactory.
 func TestUsingRandomSourceProvider(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
