@@ -9,10 +9,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-type decide interface {
-	decide(uc, u gomel.Unit) vote
-}
-
 type voter interface {
 	vote(uc, u gomel.Unit) vote
 }
@@ -30,7 +26,7 @@ type ordering struct {
 	orderStartLevel     int
 	crpFixedPrefix      int
 	decisionMemo        map[gomel.Hash]vote
-	decisionMakers      []decide
+	decisionMakers      []*standardDecider
 	log                 zerolog.Logger
 }
 
@@ -39,9 +35,9 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, deciding
 
 	coinToss := newCoin(rs)
 	standardVoter := newStandardVoter(dag, uint64(votingLevel), newSimpleInitialVoter(), coinToss)
-	standardDecider := newStandardDecider(standardVoter, uint64(decidingLevel))
+	stdDecider := newStandardDecider(standardVoter, uint64(decidingLevel))
 
-	decisionMakers := []decide{standardDecider}
+	decisionMakers := []*standardDecider{stdDecider}
 
 	return &ordering{
 		dag:                 dag,

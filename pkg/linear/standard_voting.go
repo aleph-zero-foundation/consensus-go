@@ -16,16 +16,15 @@ func newStandardDecider(vote *standardVoter, decidingRound uint64) *standardDeci
 	}
 }
 
-func (nv *standardDecider) decide(uc, u gomel.Unit) vote {
+func (sd *standardDecider) decide(uc, u gomel.Unit) vote {
 	if uc.Level() > u.Level() {
 		return undecided
 	}
-	r := uint64(u.Level() - uc.Level())
-	if r < nv.decidingRound {
+	if uint64(u.Level()-uc.Level()) < sd.decidingRound {
 		return undecided
 	}
-	decision := nv.vote.vote(uc, u)
-	if decision != undecided && decision == nv.vote.defaultVote(uc, u) {
+	decision := sd.vote.vote(uc, u)
+	if decision != undecided && decision == sd.vote.defaultVote(uc, u) {
 		return decision
 	}
 	return undecided
@@ -49,41 +48,38 @@ func newStandardVoter(dag gomel.Dag, votingRound uint64, initialVoting voter, co
 	}
 }
 
-func (rv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
+func (sv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
 	if uc.Level() > u.Level() {
 		return undecided
 	}
 	r := uint64(u.Level() - uc.Level())
-	if r < rv.votingRound {
+	if r < sv.votingRound {
 		return undecided
 	}
-	if cachedResult, ok := rv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}]; ok {
+	if cachedResult, ok := sv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}]; ok {
 		return cachedResult
 	}
 
 	defer func() {
-		rv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}] = result
+		sv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}] = result
 	}()
 
-	if r == rv.votingRound {
-		if rv.initialVoting.vote(uc, u) == popular {
-			return popular
-		}
-		return unpopular
+	if r == sv.votingRound {
+		return sv.initialVoting.vote(uc, u)
 	}
 
 	voter := func(uc, u gomel.Unit) vote {
-		result := rv.vote(uc, u)
+		result := sv.vote(uc, u)
 		if result == undecided {
-			result = rv.defaultVote(uc, u)
+			result = sv.defaultVote(uc, u)
 		}
 		return result
 	}
-	votesLevelBelow := voteUsingPrimeAncestors(uc, u, rv.dag, voter)
-	return superMajority(rv.dag, votesLevelBelow)
+	votesLevelBelow := voteUsingPrimeAncestors(uc, u, sv.dag, voter)
+	return superMajority(sv.dag, votesLevelBelow)
 }
 
-func (rv *standardVoter) defaultVote(uc, u gomel.Unit) (result vote) {
+func (sv *standardVoter) defaultVote(uc, u gomel.Unit) (result vote) {
 	r := u.Level() - uc.Level()
 	if r <= 0 {
 		// "Default vote is asked on too low unit level."
@@ -95,7 +91,7 @@ func (rv *standardVoter) defaultVote(uc, u gomel.Unit) (result vote) {
 	if r == 4 {
 		return unpopular
 	}
-	if rv.coinToss(uc, u) {
+	if sv.coinToss(uc, u) {
 		return popular
 	}
 	return unpopular

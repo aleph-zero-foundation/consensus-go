@@ -48,7 +48,7 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 func newCoin(rs gomel.RandomSource) coinToss {
 	return func(uc gomel.Unit, uTossing gomel.Unit) bool {
 		level := uTossing.Level() - 1
-		randomBytes := rs.RandomBytes(uTossing.Creator(), uTossing.Level()-1)
+		randomBytes := rs.RandomBytes(uTossing.Creator(), level)
 		if randomBytes == nil {
 			return simpleCoin(uc, level)
 		}
