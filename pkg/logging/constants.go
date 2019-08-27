@@ -36,6 +36,8 @@ const (
 	UnitBroadcasted       = "e"
 	UnknownParents        = "f"
 	AddedBCUnit           = "g"
+	AddedToBacklog        = "h"
+	RemovedFromBacklog    = "i"
 )
 
 // eventTypeDict maps short event names to human readable form
@@ -72,6 +74,8 @@ var eventTypeDict = map[string]string{
 	UnitBroadcasted:       "sent a unit through multicast",
 	UnknownParents:        "unable to add unit due to missing parents",
 	AddedBCUnit:           "successfully added unit from multicast",
+	AddedToBacklog:        "added unit to retrying backlog",
+	RemovedFromBacklog:    "removed unit from retrying backlog",
 }
 
 // Field names
@@ -93,6 +97,7 @@ const (
 	Creator   = "C"
 	NParents  = "A"
 	Memory    = "M"
+	Hash      = "#"
 )
 
 // fieldNameDict maps short field names to human readable form
@@ -114,6 +119,7 @@ var fieldNameDict = map[string]string{
 	Creator:   "creator",
 	NParents:  "parents",
 	Memory:    "bytes",
+	Hash:      "hash",
 }
 
 // Service types

@@ -8,11 +8,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-// Retrying is a wrapper for a fallback that continously tries adding the problematic preunits to the dag.
+// Retrying is a wrapper for a fallback that continuously tries adding the problematic preunits to the dag.
 type Retrying struct {
 	dag       gomel.Dag
 	rs        gomel.RandomSource
@@ -45,6 +46,7 @@ func NewRetrying(inner gsync.Fallback, dag gomel.Dag, rs gomel.RandomSource, int
 // Run executes the fallback and memorizes the preunit for later retries.
 func (f *Retrying) Run(pu gomel.Preunit) {
 	if f.addToBacklog(pu) {
+		f.log.Info().Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.AddedToBacklog)
 		f.inner.Run(pu)
 	}
 }
@@ -126,6 +128,7 @@ func (f *Retrying) gotHash(h *gomel.Hash) {
 		if f.required[*hh] == 0 {
 			f.addUnit(f.backlog[*hh])
 			delete(f.required, *hh)
+			f.log.Info().Str(logging.Hash, gomel.Nickname(f.backlog[*hh])).Msg(logging.RemovedFromBacklog)
 			delete(f.backlog, *hh)
 			hashesAdded = append(hashesAdded, hh)
 		}

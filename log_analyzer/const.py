@@ -33,6 +33,8 @@ SentFreshUnits        = "d"
 UnitBroadcasted       = "e"
 UnknownParents        = "f"
 AddedBCUnit           = "g"
+AddedToBacklog        = "h"
+RemovedFromBacklog    = "i"
 
 Time      = "T"
 Level     = "L"
@@ -51,6 +53,7 @@ FreshRecv = "G"
 Creator   = "C"
 NParents  = "A"
 Memory    = "M"
+Hash      = "#"
 
 CreateService   = 0
 OrderService    = 1

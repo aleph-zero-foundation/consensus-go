@@ -34,9 +34,10 @@ driver.add_pipeline('Fetch', [
 ])
 
 driver.add_pipeline('Multicast', [
-    Filter(Service, MCService),
+    Filter(Service, [MCService, RetryingService]),
     MulticastStats(),
     Histogram('number of missing parents', UnknownParents, lambda entry: entry[Size]),
+    Delay('Backlog stay', AddedToBacklog, RemovedFromBacklog, lambda entry: entry[Hash], SKIP),
 ])
 
 driver.add_pipeline('Network traffic', NetworkTraffic())
