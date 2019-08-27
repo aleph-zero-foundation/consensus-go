@@ -16,7 +16,7 @@ func sendDagInfo(info dagInfo, conn network.Connection) error {
 			return err
 		}
 	}
-	return conn.Flush()
+	return nil
 }
 
 func getDagInfo(nProc int, conn network.Connection) (dagInfo, error) {
@@ -29,31 +29,6 @@ func getDagInfo(nProc int, conn network.Connection) (dagInfo, error) {
 		info[i] = pi
 	}
 	return info, nil
-}
-
-func sendUnits(units []gomel.Unit, conn network.Connection) error {
-	err := encodeUnits(conn, toLayers(units))
-	if err != nil {
-		return err
-	}
-	return conn.Flush()
-}
-
-func getPreunits(conn network.Connection) ([][]gomel.Preunit, int, error) {
-	return decodeUnits(conn)
-}
-
-func sendRequests(req requests, theirDagInfo dagInfo, conn network.Connection) error {
-	err := encodeRequests(conn, req, theirDagInfo)
-	if err != nil {
-		return err
-	}
-	return conn.Flush()
-}
-
-func getRequests(nProc int, myDagInfo dagInfo, conn network.Connection) (requests, error) {
-	result, err := decodeRequests(conn, myDagInfo)
-	return result, err
 }
 
 // addUnits adds the provided units to the dag, assuming they are divided into antichains as described in toLayers
@@ -117,41 +92,47 @@ func (p *protocol) inExchange(conn network.Connection) {
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
-	err = sendUnits(units, conn)
+	err = encodeUnits(conn, toLayers(units))
 	if err != nil {
-		log.Error().Str("where", "gossip.In.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.encodeUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 
 	req := requestsToSend(p.dag, theirDagInfo, newStaticHashSet(nil))
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(req, theirDagInfo, conn)
+	err = encodeRequests(conn, req, theirDagInfo)
 	if err != nil {
-		log.Error().Str("where", "gossip.In.sendRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.encodeRequests").Msg(err.Error())
+		return
+	}
+
+	err = conn.Flush()
+	if err != nil {
+		log.Error().Str("where", "gossip.In.Flush").Msg(err.Error())
 		return
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := getPreunits(conn)
+	theirPreunitsReceived, nReceived, err := decodeUnits(conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.In.getPreunits").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.decodeUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirFreshPreunitsReceived, nFreshReceived, err := getPreunits(conn)
+	theirFreshPreunitsReceived, nFreshReceived, err := decodeUnits(conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.In.getPreunits fresh").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.decodeUnits fresh").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nFreshReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetRequests)
-	theirRequests, err := getRequests(nProc, dagInfo, conn)
+	theirRequests, err := decodeRequests(conn, dagInfo)
 	if err != nil {
-		log.Error().Str("where", "gossip.In.getRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.In.decodeRequests").Msg(err.Error())
 		return
 	}
 
@@ -163,11 +144,17 @@ func (p *protocol) inExchange(conn network.Connection) {
 			return
 		}
 		log.Debug().Msg(logging.SendUnits)
-		err = sendUnits(units, conn)
+		err = encodeUnits(conn, toLayers(units))
 		if err != nil {
-			log.Error().Str("where", "gossip.In.sendUnits(extra round)").Msg(err.Error())
+			log.Error().Str("where", "gossip.In.encodeUnits(extra round)").Msg(err.Error())
 			return
 		}
+		err = conn.Flush()
+		if err != nil {
+			log.Error().Str("where", "gossip.In.Flush(extra round)").Msg(err.Error())
+			return
+		}
+
 		log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 	}
 
@@ -214,6 +201,12 @@ func (p *protocol) outExchange(conn network.Connection) {
 		return
 	}
 
+	err := conn.Flush()
+	if err != nil {
+		log.Error().Str("where", "gossip.Out.Flush(first)").Msg(err.Error())
+		return
+	}
+
 	log.Debug().Msg(logging.GetDagInfo)
 	theirDagInfo, err := getDagInfo(nProc, conn)
 	if err != nil {
@@ -222,17 +215,17 @@ func (p *protocol) outExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := getPreunits(conn)
+	theirPreunitsReceived, nReceived, err := decodeUnits(conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.Out.getPreunits").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.decodeUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetRequests)
-	theirRequests, err := getRequests(nProc, dagInfo, conn)
+	theirRequests, err := decodeRequests(conn, dagInfo)
 	if err != nil {
-		log.Error().Str("where", "gossip.Out.getRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.decodeRequests").Msg(err.Error())
 		return
 	}
 
@@ -243,9 +236,9 @@ func (p *protocol) outExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.SendUnits)
-	err = sendUnits(units, conn)
+	err = encodeUnits(conn, toLayers(units))
 	if err != nil {
-		log.Error().Str("where", "gossip.Out.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.encodeUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
@@ -259,26 +252,32 @@ func (p *protocol) outExchange(conn network.Connection) {
 	freshUnitsUnknown := theirPreunitsHashSet.filterOutKnownUnits(freshUnits)
 
 	log.Debug().Msg(logging.SendFreshUnits)
-	err = sendUnits(freshUnitsUnknown, conn)
+	err = encodeUnits(conn, toLayers(freshUnitsUnknown))
 	if err != nil {
-		log.Error().Str("where", "gossip.Out.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.encodeUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(freshUnitsUnknown)).Msg(logging.SentFreshUnits)
 	req := requestsToSend(p.dag, theirDagInfo, theirPreunitsHashSet)
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(req, theirDagInfo, conn)
+	err = encodeRequests(conn, req, theirDagInfo)
 	if err != nil {
-		log.Error().Str("where", "gossip.Out.sendRequests").Msg(err.Error())
+		log.Error().Str("where", "gossip.Out.encodeRequests").Msg(err.Error())
+		return
+	}
+
+	err = conn.Flush()
+	if err != nil {
+		log.Error().Str("where", "gossip.Out.Flush(second)").Msg(err.Error())
 		return
 	}
 
 	if nonempty(req) {
 		log.Info().Msg(logging.AdditionalExchange)
 		log.Debug().Msg(logging.GetPreunits)
-		theirPreunitsReceived, nReceived, err = getPreunits(conn)
+		theirPreunitsReceived, nReceived, err = decodeUnits(conn)
 		if err != nil {
-			log.Error().Str("where", "gossip.Out.getPreunits(extra round)").Msg(err.Error())
+			log.Error().Str("where", "gossip.Out.decodeUnits(extra round)").Msg(err.Error())
 			return
 		}
 		log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
