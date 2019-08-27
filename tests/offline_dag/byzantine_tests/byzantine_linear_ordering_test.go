@@ -533,18 +533,31 @@ func simpleCoin(u gomel.Unit, level int) bool {
 	return u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0
 }
 
+func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan bool {
+	fixedVotes := make(chan bool)
+	go func() {
+		for it := uint64(0); it < initialVotingRound; it++ {
+			fixedVotes <- true
+		}
+		for vote := range commonVotes {
+			fixedVotes <- vote
+		}
+		close(fixedVotes)
+	}()
+	return fixedVotes
+}
+
 func newDefaultCommonVote(uc gomel.Unit, initialVotingRound uint64, lastDeterministicRound uint64) <-chan bool {
 	commonVotes := make(chan bool)
 	go func() {
-		for it := uint64(0); it < initialVotingRound; it++ {
-			commonVotes <- true
-		}
+		commonVotes <- true
 		commonVotes <- false
+		commonVotes <- true
 
 		// use the simplecoin to predict future common votes
 		lastLevel := uc.Level() + int(initialVotingRound) + int(lastDeterministicRound)
-		for level := uc.Level() + int(initialVotingRound) + 2; level < lastLevel; level++ {
-			commonVotes <- simpleCoin(uc, level-1)
+		for round := int(initialVotingRound + 4); uc.Level()+round < lastLevel; round++ {
+			commonVotes <- simpleCoin(uc, round)
 		}
 		close(commonVotes)
 	}()
@@ -715,15 +728,16 @@ func countUnitsOnLevelOrHigher(dag gomel.Dag, level uint64) map[uint16]bool {
 // record that it is popular on the voting level. This way it will not be decided 0 (as well as 1) at the round no
 // initialVoting+1, since we made it popular, neither it will be decided 1 because we did not show it to enough processes. We
 // achieve this goal by two means: extending common votes by some initial values and reverting the list of processes that vote 1
-// on level initialVoting-1. Former allows us to treat the initialization similar way as any other round. Later, makes the unit
-// U_c not being decided 1 by the 'fast' algorithm. To this point, the extended common vote (0 for round `initialVoting`) forces
-// us to make the unit U_c popular on level `initialVoting-1` (subset of processes voting 1 being of size 2f+1). If we would not
-// reverse processes on the 1's tower list, then there would be a chance that processes on the zeros side would construct a
-// proof of popularity of U_c, i.e. f+1 nodes that are shared between 1's and 0's from round `initialVoting-1` would introduce,
-// having them as parents, f new nodes that are above U_c from ones side which would give us a quorum of processes that see U_c.
-// After we reverse the 1's side, the 0's side uses f shared nodes from round initialVoting-1 that are not able to introduce any
-// new processes (till that round they were building their levels alone using nodes from 0's side) and one additional processes
-// that can only introduce f processes above U_c that we already know, giving us f+1 processes above U_c in total.
+// on level initialVoting-1. Former allows us to treat the initialization similar way as any other round. For details, see the
+// `fixCommonVotes` function. Later, makes the unit U_c not being decided 1 by the 'fast' algorithm. To this point, the extended
+// common vote (0 for round `initialVoting`) forces us to make the unit U_c popular on level `initialVoting-1` (subset of
+// processes voting 1 being of size 2f+1). If we would not reverse processes on the 1's tower list, then there would be a chance
+// that processes on the zeros side would construct a proof of popularity of U_c, i.e. f+1 nodes that are shared between 1's and
+// 0's from round `initialVoting-1` would introduce, having them as parents, f new nodes that are above U_c from ones side which
+// would give us a quorum of processes that see U_c. After we reverse the 1's side, the 0's side uses f shared nodes from round
+// initialVoting-1 that are not able to introduce any new processes (till that round they were building their levels alone using
+// nodes from 0's side) and one additional processes that can only introduce f processes above U_c that we already know, giving
+// us f+1 processes above U_c in total.
 
 // tower:                  1 (votes 1) tower        0 tower
 //
@@ -753,6 +767,8 @@ func makeDagsUndecidedForLongTime(
 	// 1) decisionUnit is already added to its owner's dag but every other dag is at the same level or lower
 	// 2) author of the decisionUnit is first on the list of dags
 	fmt.Println("decision level", decisionUnit.Level())
+
+	commonVotes = fixCommonVotes(commonVotes, initialVotingRound)
 
 	// left side are 'ones' (processes voting for 1) and right are 'zeros'
 
