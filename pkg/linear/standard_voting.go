@@ -4,6 +4,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+const (
+	deterministicSuffix = 10
+)
+
 type standardDecider struct {
 	vote          *standardVoter
 	decidingRound uint64
@@ -105,17 +109,17 @@ func newCommonVote(initialVotingRound uint64, coinToss coinToss) commonVote {
 		if u.Level() <= uc.Level() {
 			return undecided
 		}
-		r := uint64(u.Level() - uc.Level())
+		r := uint64(u.Level() - uc.Level() - 1)
 		if r <= initialVotingRound {
 			// "Default vote is asked on too low unit level."
 			return undecided
 		}
-		r = r - initialVotingRound - 1
-		if r <= 3 {
-			if r == 2 {
-				return unpopular
+		r = r - initialVotingRound
+		if r <= deterministicSuffix {
+			if r%2 == 1 {
+				return popular
 			}
-			return popular
+			return unpopular
 		}
 		if coinToss(uc, u) {
 			return popular
