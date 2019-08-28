@@ -19,7 +19,7 @@ const (
 )
 
 func parseHeader(header []byte) (uint64, uint32) {
-	return binary.LittleEndian.Uint64(header), binary.LittleEndian.Uint32(header[8:])
+	return binary.LittleEndian.Uint64(header[:8]), binary.LittleEndian.Uint32(header[8:])
 }
 
 type chanReader struct {
@@ -56,7 +56,7 @@ type conn struct {
 	bufLen int
 	sent   uint32
 	recv   uint32
-	closed int32
+	closed int64
 	log    zerolog.Logger
 }
 
@@ -81,7 +81,7 @@ func (c *conn) Read(b []byte) (int, error) {
 }
 
 func (c *conn) Write(b []byte) (int, error) {
-	if atomic.LoadInt32(&c.closed) > 0 {
+	if atomic.LoadInt64(&c.closed) > 0 {
 		return 0, errors.New("Write on a closed connection")
 	}
 	total := 0
@@ -101,7 +101,7 @@ func (c *conn) Write(b []byte) (int, error) {
 }
 
 func (c *conn) Flush() error {
-	if atomic.LoadInt32(&c.closed) > 0 {
+	if atomic.LoadInt64(&c.closed) > 0 {
 		return errors.New("Flush on a closed connection")
 	}
 	if c.bufLen == 0 {
@@ -118,7 +118,7 @@ func (c *conn) Flush() error {
 }
 
 func (c *conn) Close() error {
-	if !atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
+	if !atomic.CompareAndSwapInt64(&c.closed, 0, 1) {
 		return nil
 	}
 	header := make([]byte, headerSize)
@@ -148,14 +148,14 @@ func (c *conn) SetLogger(log zerolog.Logger) {
 }
 
 func (c *conn) enqueue(b []byte) {
-	if atomic.LoadInt32(&c.closed) == 0 {
+	if atomic.LoadInt64(&c.closed) == 0 {
 		c.queue.ch <- b
 		c.recv += uint32(len(b))
 	}
 }
 
 func (c *conn) localClose() {
-	if atomic.CompareAndSwapInt32(&c.closed, 0, 1) {
+	if atomic.CompareAndSwapInt64(&c.closed, 0, 1) {
 		c.finalize()
 	}
 }
