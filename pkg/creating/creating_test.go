@@ -6,7 +6,7 @@ import (
 
 	. "gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 var _ = Describe("Creating", func() {

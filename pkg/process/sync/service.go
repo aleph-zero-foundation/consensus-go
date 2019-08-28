@@ -8,6 +8,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/consensus-go/pkg/network/persistent"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/network/udp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
@@ -22,8 +23,9 @@ import (
 // before a server type that uses it as a fallback server.
 
 type service struct {
-	servers []sync.Server
-	log     zerolog.Logger
+	servers     []sync.Server
+	subservices []process.Service
+	log         zerolog.Logger
 }
 
 // Checks if all fallbacks have their corresponding configurations.
@@ -124,10 +126,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 
 	for i, c := range configs {
 		var (
-			dialer   network.Dialer
-			listener network.Listener
-			server   sync.Server
-			fbk      sync.Fallback
+			netserv network.Server
+			server  sync.Server
+			fbk     sync.Fallback
 		)
 		tf, err := strconv.ParseFloat(c.Params["timeout"], 64)
 		if err != nil {
@@ -140,9 +141,12 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			var err error
 			switch c.Params["mcType"] {
 			case "tcp":
-				dialer, listener, err = tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+				netserv, err = tcp.NewServer(c.LocalAddress, c.RemoteAddresses, log)
 			case "udp":
-				dialer, listener, err = udp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+				netserv, err = udp.NewServer(c.LocalAddress, c.RemoteAddresses, log)
+			case "pers":
+				netserv, err = persistent.NewServer(c.LocalAddress, c.RemoteAddresses, log)
+				s.subservices = append(s.subservices, netserv.(process.Service))
 			default:
 				return nil, nil, gomel.NewConfigError("wrong multicast type")
 			}
@@ -153,11 +157,11 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if fbk == nil {
 				fbk = sync.NopFallback()
 			}
-			server, callback = multicast.NewServer(pid, dag, randomSource, dialer, listener, primeAlert, t, fbk, log)
+			server, callback = multicast.NewServer(pid, dag, randomSource, netserv, primeAlert, t, fbk, log)
 		case "gossip":
 			log = log.With().Int(logging.Service, logging.GossipService).Logger()
 
-			dialer, listener, err := tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+			netserv, err := tcp.NewServer(c.LocalAddress, c.RemoteAddresses, log)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -181,10 +185,10 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server = gossip.NewServer(pid, dag, randomSource, dialer, listener, peerSource, primeAlert, t, log, uint(nOut), uint(nIn))
+			server = gossip.NewServer(pid, dag, randomSource, netserv, peerSource, primeAlert, t, log, uint(nOut), uint(nIn))
 		case "fetch":
 			log = log.With().Int(logging.Service, logging.FetchService).Logger()
-			dialer, listener, err := tcp.NewNetwork(c.LocalAddress, c.RemoteAddresses, log)
+			netserv, err := tcp.NewServer(c.LocalAddress, c.RemoteAddresses, log)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -213,7 +217,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server = fetch.NewServer(pid, dag, randomSource, reqChan, dialer, listener, primeAlert, t, fbk, log, uint(nOut), uint(nIn))
+			server = fetch.NewServer(pid, dag, randomSource, reqChan, netserv, primeAlert, t, fbk, log, uint(nOut), uint(nIn))
 		}
 		s.servers = append(s.servers, server)
 	}
@@ -222,6 +226,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 }
 
 func (s *service) Start() error {
+	for _, service := range s.subservices {
+		service.Start()
+	}
 	for _, server := range s.servers {
 		server.Start()
 	}
@@ -238,6 +245,9 @@ func (s *service) Stop() {
 	time.Sleep(5 * time.Second)
 	for i := len(s.servers) - 1; i >= 0; i-- {
 		s.servers[i].StopIn()
+	}
+	for _, service := range s.subservices {
+		service.Stop()
 	}
 	s.log.Info().Msg(logging.ServiceStopped)
 }

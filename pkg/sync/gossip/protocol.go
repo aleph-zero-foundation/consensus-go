@@ -15,8 +15,7 @@ type protocol struct {
 	pid          uint16
 	dag          gomel.Dag
 	randomSource gomel.RandomSource
-	dialer       network.Dialer
-	listener     network.Listener
+	netserv      network.Server
 	peerSource   PeerSource
 	callback     gomel.Callback
 	timeout      time.Duration
@@ -26,7 +25,7 @@ type protocol struct {
 }
 
 // NewProtocol returns a new gossiping protocol.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dialer network.Dialer, listener network.Listener, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger) sync.Protocol {
 	nProc := uint16(dag.NProc())
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
@@ -36,8 +35,7 @@ func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dia
 		pid:          pid,
 		dag:          dag,
 		randomSource: randomSource,
-		dialer:       dialer,
-		listener:     listener,
+		netserv:      netserv,
 		peerSource:   peerSource,
 		callback:     callback,
 		timeout:      timeout,
@@ -48,7 +46,7 @@ func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, dia
 }
 
 func (p *protocol) In() {
-	conn, err := p.listener.Listen(p.timeout)
+	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
 	}
@@ -79,7 +77,7 @@ func (p *protocol) Out() {
 		return
 	}
 	defer m.release()
-	conn, err := p.dialer.Dial(remotePid)
+	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "gossip.Out.dial").Msg(err.Error())
 		return
