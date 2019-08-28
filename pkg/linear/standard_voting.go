@@ -38,20 +38,18 @@ func (sd *standardDecider) decide(uc, u gomel.Unit) vote {
 }
 
 type standardVoter struct {
-	dag           gomel.Dag
-	votingRound   uint64
-	initialVoting voter
-	coinToss      coinToss
-	votingMemo    map[[2]gomel.Hash]vote
+	dag         gomel.Dag
+	votingRound uint64
+	commonVote  commonVote
+	votingMemo  map[[2]gomel.Hash]vote
 }
 
-func newStandardVoter(dag gomel.Dag, votingRound uint64, initialVoting voter, coinToss coinToss) *standardVoter {
+func newStandardVoter(dag gomel.Dag, votingRound uint64, commonVote commonVote) *standardVoter {
 	return &standardVoter{
-		dag:           dag,
-		votingRound:   votingRound,
-		initialVoting: initialVoting,
-		coinToss:      coinToss,
-		votingMemo:    make(map[[2]gomel.Hash]vote),
+		dag:         dag,
+		votingRound: votingRound,
+		commonVote:  commonVote,
+		votingMemo:  make(map[[2]gomel.Hash]vote),
 	}
 }
 
@@ -72,7 +70,7 @@ func (sv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
 	}()
 
 	if r == sv.votingRound {
-		return sv.initialVoting.vote(uc, u)
+		return sv.initialVote(uc, u)
 	}
 
 	initialized := false
@@ -95,40 +93,35 @@ func (sv *standardVoter) vote(uc, u gomel.Unit) (result vote) {
 	return superMajority(sv.dag, votesLevelBelow)
 }
 
-func (sv *standardVoter) commonVote(uc, u gomel.Unit) vote {
-	if u.Level() <= uc.Level() {
-		return undecided
-	}
-	r := uint64(u.Level() - uc.Level())
-	if r <= sv.votingRound {
-		// "Default vote is asked on too low unit level."
-		return undecided
-	}
-	r = r - sv.votingRound
-	if r <= 2 {
-		if r == 1 {
-			return unpopular
-		}
-		return popular
-	}
-	if sv.coinToss(uc, u) {
-		return popular
-	}
-	return unpopular
-}
-
-type simpleInitialVoter struct {
-}
-
-func newSimpleInitialVoter() simpleInitialVoter {
-	return simpleInitialVoter{}
-}
-
-func (simpleInitialVoter) vote(uc, u gomel.Unit) vote {
+func (sv *standardVoter) initialVote(uc, u gomel.Unit) vote {
 	if uc.Below(u) {
 		return popular
 	}
 	return unpopular
+}
+
+func newCommonVote(initialVotingRound uint64, coinToss coinToss) commonVote {
+	return func(uc, u gomel.Unit) vote {
+		if u.Level() <= uc.Level() {
+			return undecided
+		}
+		r := uint64(u.Level() - uc.Level())
+		if r <= initialVotingRound {
+			// "Default vote is asked on too low unit level."
+			return undecided
+		}
+		r = r - initialVotingRound - 1
+		if r <= 3 {
+			if r == 2 {
+				return unpopular
+			}
+			return popular
+		}
+		if coinToss(uc, u) {
+			return popular
+		}
+		return unpopular
+	}
 }
 
 func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u gomel.Unit) (vote vote, finish bool)) (votesLevelBelow votingResult) {

@@ -9,11 +9,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-type voter interface {
-	vote(uc, u gomel.Unit) vote
-}
-
 type coinToss func(uc, u gomel.Unit) bool
+
+type commonVote func(uc, u gomel.Unit) vote
 
 // Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
@@ -31,10 +29,10 @@ type ordering struct {
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, decidingLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingRound int, decidingLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 
 	coinToss := newCoin(rs)
-	standardVoter := newStandardVoter(dag, uint64(votingLevel), newSimpleInitialVoter(), coinToss)
+	standardVoter := newStandardVoter(dag, uint64(votingRound), newCommonVote(uint64(votingRound), coinToss))
 	stdDecider := newStandardDecider(standardVoter, uint64(decidingLevel))
 
 	decisionMakers := []*standardDecider{stdDecider}
