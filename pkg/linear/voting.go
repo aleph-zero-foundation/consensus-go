@@ -69,12 +69,11 @@ func (o *ordering) decideUnitIsPopular(uc gomel.Unit) (decision vote, decisionLe
 
 		o.dag.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				for _, decisionMaker := range o.decisionMakers {
-					if curDecision := decisionMaker.decide(uc, v); curDecision != undecided {
-						decision = curDecision
-						return false
-					}
+				if curDecision := o.decisionMaker.decide(uc, v); curDecision != undecided {
+					decision = curDecision
+					return false
 				}
+
 			}
 			return true
 		})

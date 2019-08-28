@@ -24,7 +24,7 @@ type ordering struct {
 	orderStartLevel     int
 	crpFixedPrefix      int
 	decisionMemo        map[gomel.Hash]vote
-	decisionMakers      []*standardDecider
+	decisionMaker       *superMajorityDecider
 	log                 zerolog.Logger
 }
 
@@ -32,10 +32,8 @@ type ordering struct {
 func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingRound int, decidingLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 
 	coinToss := newCoin(rs)
-	standardVoter := newStandardVoter(dag, uint64(votingRound), newCommonVote(uint64(votingRound), coinToss))
-	stdDecider := newStandardDecider(standardVoter, uint64(decidingLevel))
-
-	decisionMakers := []*standardDecider{stdDecider}
+	standardVoter := newSuperMajorityVoter(dag, uint64(votingRound), newCommonVote(uint64(votingRound), coinToss))
+	stdDecider := newSuperMajorityDecider(standardVoter, uint64(decidingLevel))
 
 	return &ordering{
 		dag:                 dag,
@@ -47,7 +45,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingRound int, deciding
 		orderStartLevel:     orderStartLevel,
 		crpFixedPrefix:      crpFixedPrefix,
 		decisionMemo:        make(map[gomel.Hash]vote),
-		decisionMakers:      decisionMakers,
+		decisionMaker:       stdDecider,
 		log:                 log,
 	}
 }
