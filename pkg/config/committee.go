@@ -80,6 +80,9 @@ func LoadMember(r io.Reader) (*Member, error) {
 
 func parseCommitteeLine(line string) (string, string, []string, []string, error) {
 	s := strings.Split(line, "|")
+	if len(s) < 4 {
+		return "", "", nil, nil, errors.New(malformedData)
+	}
 	pk, vk, setupAddrs, addrs := s[0], s[1], s[2], s[3]
 	if len(pk) == 0 {
 		return "", "", nil, nil, errors.New(malformedData)
