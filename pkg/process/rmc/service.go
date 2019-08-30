@@ -61,7 +61,7 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, state, fetchRequests, netserv, config.Timeout, log)
 
 	// units is a channel on which create service should send newly created units for rmc
-	units := make(chan gomel.Unit, 10)
+	units := make(chan gomel.Unit)
 
 	return &service{
 			dag:           dag,
