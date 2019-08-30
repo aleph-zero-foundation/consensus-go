@@ -9,11 +9,13 @@ const (
 )
 
 type superMajorityDecider struct {
-	vote          *superMajorityVoter
+	vote          *singleMindedVoter
 	decidingRound uint64
 }
 
-func newSuperMajorityDecider(vote *superMajorityVoter, decidingRound uint64) *superMajorityDecider {
+func newSuperMajorityDecider(dag gomel.Dag, votingRound, decidingRound uint64, coinToss coinToss) *superMajorityDecider {
+	commonVote := newCommonVote(votingRound, coinToss)
+	vote := newSingleMindedVoter(dag, votingRound, commonVote)
 	return &superMajorityDecider{
 		vote:          vote,
 		decidingRound: decidingRound,
@@ -27,29 +29,42 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	if uint64(u.Level()-uc.Level()) < smd.decidingRound {
 		return undecided
 	}
-	commonVote := smd.vote.commonVote(uc, u)
+	commonVote := smd.vote.lazyCommonVote(uc, u)
 	result := undecided
 	voter := func(uc, uPrA gomel.Unit) (vote, bool) {
-		vote := smd.vote.vote(uc, uPrA)
-		if vote != undecided && vote == commonVote {
-			result = vote
-			return vote, true
+		superMajorityVote := smd.decideUsingSuperMajority(uc, uPrA)
+		if superMajorityVote != undecided && superMajorityVote == commonVote() {
+			result = superMajorityVote
+			return result, true
 		}
-		return vote, false
+		return superMajorityVote, false
 	}
 	voteUsingPrimeAncestors(uc, u, smd.vote.dag, voter)
 	return result
 }
 
-type superMajorityVoter struct {
+func (smd *superMajorityDecider) decideUsingSuperMajority(uc, u gomel.Unit) vote {
+	commonVote := smd.vote.lazyCommonVote(uc, u)
+	voter := func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
+		result := smd.vote.vote(uc, uPrA)
+		if result == undecided {
+			result = commonVote()
+		}
+		return result, false
+	}
+	result := voteUsingPrimeAncestors(uc, u, smd.vote.dag, voter)
+	return superMajority(smd.vote.dag, result)
+}
+
+type singleMindedVoter struct {
 	dag         gomel.Dag
 	votingRound uint64
 	commonVote  commonVote
 	votingMemo  map[[2]gomel.Hash]vote
 }
 
-func newSuperMajorityVoter(dag gomel.Dag, votingRound uint64, commonVote commonVote) *superMajorityVoter {
-	return &superMajorityVoter{
+func newSingleMindedVoter(dag gomel.Dag, votingRound uint64, commonVote commonVote) *singleMindedVoter {
+	return &singleMindedVoter{
 		dag:         dag,
 		votingRound: votingRound,
 		commonVote:  commonVote,
@@ -57,7 +72,7 @@ func newSuperMajorityVoter(dag gomel.Dag, votingRound uint64, commonVote commonV
 	}
 }
 
-func (smv *superMajorityVoter) vote(uc, u gomel.Unit) (result vote) {
+func (smv *singleMindedVoter) vote(uc, u gomel.Unit) (result vote) {
 	if uc.Level() >= u.Level() {
 		return undecided
 	}
@@ -86,10 +101,10 @@ func (smv *superMajorityVoter) vote(uc, u gomel.Unit) (result vote) {
 		return result, false
 	}
 	votesLevelBelow := voteUsingPrimeAncestors(uc, u, smv.dag, voter)
-	return superMajority(smv.dag, votesLevelBelow)
+	return singleMinded(votesLevelBelow)
 }
 
-func (smv *superMajorityVoter) lazyCommonVote(uc, u gomel.Unit) func() vote {
+func (smv *singleMindedVoter) lazyCommonVote(uc, u gomel.Unit) func() vote {
 	initialized := false
 	var commonVoteValue vote
 	return func() vote {
@@ -101,7 +116,7 @@ func (smv *superMajorityVoter) lazyCommonVote(uc, u gomel.Unit) func() vote {
 	}
 }
 
-func (smv *superMajorityVoter) initialVote(uc, u gomel.Unit) vote {
+func (smv *singleMindedVoter) initialVote(uc, u gomel.Unit) vote {
 	if uc.Below(u) {
 		return popular
 	}
@@ -157,6 +172,9 @@ func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u g
 		}
 		if votesZero {
 			votesLevelBelow.unpopular++
+		}
+		if !(votesOne || votesZero) {
+			votesLevelBelow.undecided++
 		}
 		if finish {
 			return false

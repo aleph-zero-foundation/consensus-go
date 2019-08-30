@@ -15,6 +15,7 @@ const (
 type votingResult struct {
 	popular   uint64
 	unpopular uint64
+	undecided uint64
 }
 
 // Deterministic function of a unit and level
@@ -33,6 +34,20 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 		return popular
 	}
 	if dag.IsQuorum(int(votes.unpopular)) {
+		return unpopular
+	}
+	return undecided
+}
+
+// Checks if everyone voted for the same value.
+func singleMinded(votingResult votingResult) vote {
+	if votingResult.undecided > 0 {
+		return undecided
+	}
+	if votingResult.popular > 0 && votingResult.unpopular == 0 {
+		return popular
+	}
+	if votingResult.unpopular > 0 && votingResult.popular == 0 {
 		return unpopular
 	}
 	return undecided
