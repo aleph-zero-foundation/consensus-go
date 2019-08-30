@@ -1,4 +1,4 @@
-[![Build Status](https://gitlab.com/alephledger/consensus-go/badges/devel/build.svg)](https://gitlab.com/alephledger/consensus-go/commits/devel)
+[![Build Status](https://gitlab.com/alephledger/consensus-go/badges/devel/build.svg)](https://gitlab.com/alephledger/consensus-go/commits/devel) [![Coverage Report](https://gitlab.com/alephledger/consensus-go/badges/devel/coverage.svg)](https://gitlab.com/alephledger/consensus-go/commits/devel)
 
 # consensus-go
 
