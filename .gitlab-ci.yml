@@ -33,7 +33,7 @@ race_detector:
     - .gitlab/ci/make_race.sh ${TOTEST}
 
 code_coverage_report:
-  stage: test
+  stage: build
   script:
     - .gitlab/ci/make_coverage.sh ${TOTEST} coverage.cov coverage.output coverage.html
   artifacts:
@@ -41,6 +41,7 @@ code_coverage_report:
       - coverage.output
       - coverage.html
     expire_in: 1 week
+  coverage: '/^total:\s*\(statements\)\s*(\d+(?:\.\d+)?%)/'
 
 lint_code:
   stage: test

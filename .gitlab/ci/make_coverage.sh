@@ -24,10 +24,10 @@ done ;
 echo 'mode: count' > "${COV_FILE}" ;
 tail -q -n +2 "${COVERAGE_DIR}"/*.cov >> "${COV_FILE}" ;
 
-# Display the global code coverage
-go tool cover -func="${COV_FILE}" -o ${REPORT_OUTPUT} ;
+# Display and store the global code coverage
+go tool cover -func="${COV_FILE}" | tee ${REPORT_OUTPUT} ;
 
 # If needed, generate HTML report
-if [ ! -z "$4" ]; then
+if [ ! -z "$HTML_REPORT_OUTPUT" ]; then
     go tool cover -html="${COV_FILE}" -o ${HTML_REPORT_OUTPUT} ;
 fi
