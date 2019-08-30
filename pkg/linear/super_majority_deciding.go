@@ -10,10 +10,10 @@ const (
 
 type superMajorityDecider struct {
 	vote          *singleMindedVoter
-	decidingRound uint64
+	decidingRound int
 }
 
-func newSuperMajorityDecider(dag gomel.Dag, votingRound, decidingRound uint64, coinToss coinToss) *superMajorityDecider {
+func newSuperMajorityDecider(dag gomel.Dag, votingRound, decidingRound int, coinToss coinToss) *superMajorityDecider {
 	commonVote := newCommonVote(votingRound, coinToss)
 	vote := newSingleMindedVoter(dag, votingRound, commonVote)
 	return &superMajorityDecider{
@@ -26,7 +26,7 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	if uc.Level() >= u.Level() {
 		return undecided
 	}
-	if uint64(u.Level()-uc.Level()) < smd.decidingRound {
+	if u.Level()-uc.Level() < smd.decidingRound {
 		return undecided
 	}
 	commonVote := smd.vote.lazyCommonVote(uc, u)
@@ -58,12 +58,12 @@ func (smd *superMajorityDecider) decideUsingSuperMajority(uc, u gomel.Unit) vote
 
 type singleMindedVoter struct {
 	dag         gomel.Dag
-	votingRound uint64
+	votingRound int
 	commonVote  commonVote
 	votingMemo  map[[2]gomel.Hash]vote
 }
 
-func newSingleMindedVoter(dag gomel.Dag, votingRound uint64, commonVote commonVote) *singleMindedVoter {
+func newSingleMindedVoter(dag gomel.Dag, votingRound int, commonVote commonVote) *singleMindedVoter {
 	return &singleMindedVoter{
 		dag:         dag,
 		votingRound: votingRound,
@@ -76,7 +76,7 @@ func (smv *singleMindedVoter) vote(uc, u gomel.Unit) (result vote) {
 	if uc.Level() >= u.Level() {
 		return undecided
 	}
-	r := uint64(u.Level() - uc.Level())
+	r := u.Level() - uc.Level()
 	if r < smv.votingRound {
 		return undecided
 	}
@@ -123,12 +123,12 @@ func (smv *singleMindedVoter) initialVote(uc, u gomel.Unit) vote {
 	return unpopular
 }
 
-func newCommonVote(initialVotingRound uint64, coinToss coinToss) commonVote {
+func newCommonVote(initialVotingRound int, coinToss coinToss) commonVote {
 	return func(uc, u gomel.Unit) vote {
 		if u.Level() <= uc.Level() {
 			return undecided
 		}
-		r := uint64(u.Level() - uc.Level() - 1)
+		r := u.Level() - uc.Level() - 1
 		if r <= initialVotingRound {
 			// "Default vote is asked on too low unit level."
 			return undecided

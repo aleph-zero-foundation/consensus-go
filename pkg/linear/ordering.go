@@ -32,7 +32,7 @@ type ordering struct {
 func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingRound int, decidingLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 
 	coinToss := newCoin(rs)
-	stdDecider := newSuperMajorityDecider(dag, uint64(votingRound), uint64(decidingLevel), coinToss)
+	stdDecider := newSuperMajorityDecider(dag, votingRound, decidingLevel, coinToss)
 
 	return &ordering{
 		dag:                 dag,
