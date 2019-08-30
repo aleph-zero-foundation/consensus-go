@@ -1160,6 +1160,7 @@ func testLongTimeUndecidedStrategy() error {
 		nUnits                      = 1000
 		maxParents                  = nProcesses
 		numberOfDeterministicRounds = uint64(50)
+		decidingLevel               = uint64(3)
 	)
 
 	conf := config.NewDefaultConfiguration()
@@ -1178,7 +1179,7 @@ func testLongTimeUndecidedStrategy() error {
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
 	unitAdder, stopCondition :=
-		longTimeUndecidedStrategy(&startLevel, uint64(conf.DecidingLevel), numberOfDeterministicRounds, crp)
+		longTimeUndecidedStrategy(&startLevel, decidingLevel, numberOfDeterministicRounds, crp)
 
 	checkIfUndecidedVerifier :=
 		func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
@@ -1191,8 +1192,6 @@ func testLongTimeUndecidedStrategy() error {
 				ordering := linear.NewOrdering(
 					dag,
 					rss[pid],
-					int(conf.VotingLevel),
-					int(conf.DecidingLevel),
 					int(conf.OrderStartLevel),
 					int(conf.CRPFixedPrefix),
 					logger,

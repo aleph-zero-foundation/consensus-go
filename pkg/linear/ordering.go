@@ -29,10 +29,10 @@ type ordering struct {
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingRound int, decidingLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 
 	coinToss := newCoin(rs)
-	stdDecider := newSuperMajorityDecider(dag, votingRound, decidingLevel, coinToss)
+	stdDecider := newSuperMajorityDecider(dag, coinToss)
 
 	return &ordering{
 		dag:                 dag,
@@ -40,7 +40,6 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingRound int, deciding
 		timingUnits:         newSafeUnitSlice(orderStartLevel),
 		unitPositionInOrder: make(map[gomel.Hash]int),
 		orderedUnits:        []gomel.Unit{},
-		decidingLevel:       decidingLevel,
 		orderStartLevel:     orderStartLevel,
 		crpFixedPrefix:      crpFixedPrefix,
 		decisionMemo:        make(map[gomel.Hash]vote),

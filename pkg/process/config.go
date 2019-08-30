@@ -46,8 +46,6 @@ type Create struct {
 // Order represents a complete configuration needed for an ordering service to start.
 type Order struct {
 	Pid             int
-	VotingLevel     int
-	DecidingLevel   int
 	OrderStartLevel int
 	CRPFixedPrefix  int
 }

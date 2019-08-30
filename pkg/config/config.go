@@ -49,12 +49,6 @@ type Configuration struct {
 	// When a unit of this level is added to the dag, the process shuts down.
 	LevelLimit uint
 
-	// The level at which the first voting round occurs, this is "t" from the write-up.
-	VotingLevel uint
-
-	// The level at which we are first time executing the deciding procedure.
-	DecidingLevel uint
-
 	// Log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic.
 	LogLevel int
 
@@ -108,10 +102,6 @@ func NewDefaultConfiguration() Configuration {
 		Txpu: 1,
 
 		LevelLimit: 20,
-
-		VotingLevel: 1,
-
-		DecidingLevel: 3,
 
 		LogLevel: 1,
 

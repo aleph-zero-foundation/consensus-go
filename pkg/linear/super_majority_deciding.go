@@ -5,20 +5,20 @@ import (
 )
 
 const (
+	decidingRound       = 3
+	votingRound         = 1
 	deterministicPrefix = 10
 )
 
 type superMajorityDecider struct {
-	vote          *unanimousVoter
-	decidingRound int
+	vote *unanimousVoter
 }
 
-func newSuperMajorityDecider(dag gomel.Dag, votingRound, decidingRound int, coinToss coinToss) *superMajorityDecider {
-	commonVote := newCommonVote(votingRound, coinToss)
-	vote := newUnanimousVoter(dag, votingRound, commonVote)
+func newSuperMajorityDecider(dag gomel.Dag, coinToss coinToss) *superMajorityDecider {
+	commonVote := newCommonVote(coinToss)
+	vote := newUnanimousVoter(dag, commonVote)
 	return &superMajorityDecider{
-		vote:          vote,
-		decidingRound: decidingRound,
+		vote: vote,
 	}
 }
 
@@ -26,7 +26,7 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	if uc.Level() >= u.Level() {
 		return undecided
 	}
-	if u.Level()-uc.Level() < smd.decidingRound {
+	if u.Level()-uc.Level() < decidingRound {
 		return undecided
 	}
 	commonVote := smd.vote.lazyCommonVote(uc, u)
@@ -57,18 +57,16 @@ func (smd *superMajorityDecider) decideUsingSuperMajority(uc, u gomel.Unit) vote
 }
 
 type unanimousVoter struct {
-	dag         gomel.Dag
-	votingRound int
-	commonVote  commonVote
-	votingMemo  map[[2]gomel.Hash]vote
+	dag        gomel.Dag
+	commonVote commonVote
+	votingMemo map[[2]gomel.Hash]vote
 }
 
-func newUnanimousVoter(dag gomel.Dag, votingRound int, commonVote commonVote) *unanimousVoter {
+func newUnanimousVoter(dag gomel.Dag, commonVote commonVote) *unanimousVoter {
 	return &unanimousVoter{
-		dag:         dag,
-		votingRound: votingRound,
-		commonVote:  commonVote,
-		votingMemo:  make(map[[2]gomel.Hash]vote),
+		dag:        dag,
+		commonVote: commonVote,
+		votingMemo: make(map[[2]gomel.Hash]vote),
 	}
 }
 
@@ -77,7 +75,7 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 		return undecided
 	}
 	r := u.Level() - uc.Level()
-	if r < uv.votingRound {
+	if r < votingRound {
 		return undecided
 	}
 	if cachedResult, ok := uv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}]; ok {
@@ -88,7 +86,7 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 		uv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}] = result
 	}()
 
-	if r == uv.votingRound {
+	if r == votingRound {
 		return uv.initialVote(uc, u)
 	}
 
@@ -123,17 +121,17 @@ func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
 	return unpopular
 }
 
-func newCommonVote(initialVotingRound int, coinToss coinToss) commonVote {
+func newCommonVote(coinToss coinToss) commonVote {
 	return func(uc, u gomel.Unit) vote {
 		if u.Level() <= uc.Level() {
 			return undecided
 		}
 		r := u.Level() - uc.Level() - 1
-		if r <= initialVotingRound {
+		if r <= votingRound {
 			// "Default vote is asked on too low unit level."
 			return undecided
 		}
-		r = r - initialVotingRound
+		r = r - votingRound
 		if r <= deterministicPrefix {
 			if r%2 == 1 {
 				return popular
