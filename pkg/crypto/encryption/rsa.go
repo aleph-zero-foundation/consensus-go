@@ -1,4 +1,4 @@
-package encryption
+package encrypt
 
 import (
     "crypto/rand"
@@ -18,6 +18,15 @@ type encryptionKey struct {
 // decryptionKey implements DecryptionKey interface using stdlib crypto/rsa
 type decryptionKey struct {
 	decKey *rsa.PrivateKey
+}
+
+// GenerateKeys creates a pair of keys for encryption/decryption
+func GenerateKeys () (gomel.EncryptionKey, gomel.DecryptionKey, error) {
+    privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+    if err != nil {
+        return nil, nil, err
+    }
+    return encKey{&privKey.PublicKey}, decKey{&privKey}, nil
 }
 
 func (ek *encryptionKey) Encrypt(msg []byte) (gomel.CipherText, error) {
