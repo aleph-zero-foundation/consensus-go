@@ -19,29 +19,27 @@ type protocol struct {
 	rs       gomel.RandomSource
 	pid      uint16
 	requests chan gomel.Preunit
-	dialer   network.Dialer
-	listener network.Listener
+	netserv  network.Server
 	timeout  time.Duration
 	log      zerolog.Logger
 }
 
 // NewProtocol returns an instance of protocol for fetching all the missing
 // ancestors of a unit received from rmc
-func NewProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) gsync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, rs gomel.RandomSource, requests chan gomel.Preunit, netserv network.Server, timeout time.Duration, log zerolog.Logger) gsync.Protocol {
 	return &protocol{
 		dag:      dag,
 		rs:       rs,
 		pid:      pid,
 		requests: requests,
-		dialer:   dialer,
-		listener: listener,
+		netserv:  netserv,
 		timeout:  timeout,
 		log:      log,
 	}
 }
 
 func (p *protocol) In() {
-	conn, err := p.listener.Listen(p.timeout)
+	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
 	}
@@ -75,7 +73,7 @@ func (p *protocol) Out() {
 		return
 	}
 	pid := uint16(pu.Creator())
-	conn, err := p.dialer.Dial(pid)
+	conn, err := p.netserv.Dial(pid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "fetchProtocol.Out.Dial").Msg(err.Error())
 		return

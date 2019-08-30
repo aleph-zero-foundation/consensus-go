@@ -40,7 +40,7 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 	// state contains information about all rmc exchanges
 	state := rmc.New(config.Pubs, config.Priv)
 
-	dialer, listener, err := tcp.NewNetwork(config.LocalAddress[0], config.RemoteAddresses[0], log)
+	netserv, err := tcp.NewServer(config.LocalAddress[0], config.RemoteAddresses[0], log)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -49,16 +49,16 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 	mcRequests := make(chan *multicast.Request, mcRequestsSize*dag.NProc())
 	// accepted is a channel for succesfully multicasted data
 	accepted := make(chan []byte, mcAcceptedSize*dag.NProc())
-	mcServer := multicast.NewServer(uint16(config.Pid), dag.NProc(), state, mcRequests, accepted, dialer, listener, config.Timeout, log)
+	mcServer := multicast.NewServer(uint16(config.Pid), dag.NProc(), state, mcRequests, accepted, netserv, config.Timeout, log)
 
-	dialer, listener, err = tcp.NewNetwork(config.LocalAddress[1], config.RemoteAddresses[1], log)
+	netserv, err = tcp.NewServer(config.LocalAddress[1], config.RemoteAddresses[1], log)
 	if err != nil {
 		return nil, nil, err
 	}
 	// fetchRequests is a channel for preunits which has been succesfully multicasted
 	// but we cannot add them to the poset due to uknownParents error.
 	fetchRequests := make(chan gomel.Preunit, fetchRequestsSize*dag.NProc())
-	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, state, fetchRequests, dialer, listener, config.Timeout, log)
+	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, state, fetchRequests, netserv, config.Timeout, log)
 
 	// units is a channel on which create service should send newly created units for rmc
 	units := make(chan gomel.Unit, 10)

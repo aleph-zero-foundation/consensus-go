@@ -10,9 +10,9 @@ import (
 )
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, nProc int, state *rmc.RMC, requests chan *Request, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *Server {
+func NewServer(pid uint16, nProc int, state *rmc.RMC, requests chan *Request, accepted chan []byte, netserv network.Server, timeout time.Duration, log zerolog.Logger) *Server {
 
-	proto := newProtocol(pid, nProc, requests, state, accepted, dialer, listener, timeout, log)
+	proto := newProtocol(pid, nProc, requests, state, accepted, netserv, timeout, log)
 	return &Server{
 		requests: requests,
 		outPool:  sync.NewPool(uint(nProc), proto.Out),

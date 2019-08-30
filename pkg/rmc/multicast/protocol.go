@@ -14,28 +14,26 @@ type protocol struct {
 	requests chan *Request
 	state    *rmc.RMC
 	accepted chan []byte
-	dialer   network.Dialer
-	listener network.Listener
+	netserv  network.Server
 	timeout  time.Duration
 	log      zerolog.Logger
 }
 
-func newProtocol(pid uint16, nProc int, requests chan *Request, state *rmc.RMC, accepted chan []byte, dialer network.Dialer, listener network.Listener, timeout time.Duration, log zerolog.Logger) *protocol {
+func newProtocol(pid uint16, nProc int, requests chan *Request, state *rmc.RMC, accepted chan []byte, netserv network.Server, timeout time.Duration, log zerolog.Logger) *protocol {
 	return &protocol{
 		pid:      pid,
 		nProc:    nProc,
 		requests: requests,
 		state:    state,
 		accepted: accepted,
-		dialer:   dialer,
-		listener: listener,
+		netserv:  netserv,
 		timeout:  timeout,
 		log:      log,
 	}
 }
 
 func (p *protocol) In() {
-	conn, err := p.listener.Listen(p.timeout)
+	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
 		return
@@ -76,7 +74,7 @@ func (p *protocol) Out() {
 	if !ok {
 		return
 	}
-	conn, err := p.dialer.Dial(r.pid)
+	conn, err := p.netserv.Dial(r.pid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
 		return
@@ -98,13 +96,12 @@ func (p *protocol) Out() {
 		}
 		conn.Flush()
 
-		statusBefore := p.state.Status(r.id)
 		finished, err := p.state.AcceptSignature(r.id, r.pid, conn)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
 			return
 		}
-		if finished && statusBefore != rmc.Finished {
+		if finished {
 			for i := 0; i < p.nProc; i++ {
 				if uint16(i) == p.pid {
 					continue
