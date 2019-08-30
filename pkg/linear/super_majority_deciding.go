@@ -5,17 +5,17 @@ import (
 )
 
 const (
-	deterministicSuffix = 10
+	deterministicPrefix = 10
 )
 
 type superMajorityDecider struct {
-	vote          *singleMindedVoter
+	vote          *unanimousVoter
 	decidingRound int
 }
 
 func newSuperMajorityDecider(dag gomel.Dag, votingRound, decidingRound int, coinToss coinToss) *superMajorityDecider {
 	commonVote := newCommonVote(votingRound, coinToss)
-	vote := newSingleMindedVoter(dag, votingRound, commonVote)
+	vote := newUnanimousVoter(dag, votingRound, commonVote)
 	return &superMajorityDecider{
 		vote:          vote,
 		decidingRound: decidingRound,
@@ -56,15 +56,15 @@ func (smd *superMajorityDecider) decideUsingSuperMajority(uc, u gomel.Unit) vote
 	return superMajority(smd.vote.dag, result)
 }
 
-type singleMindedVoter struct {
+type unanimousVoter struct {
 	dag         gomel.Dag
 	votingRound int
 	commonVote  commonVote
 	votingMemo  map[[2]gomel.Hash]vote
 }
 
-func newSingleMindedVoter(dag gomel.Dag, votingRound int, commonVote commonVote) *singleMindedVoter {
-	return &singleMindedVoter{
+func newUnanimousVoter(dag gomel.Dag, votingRound int, commonVote commonVote) *unanimousVoter {
+	return &unanimousVoter{
 		dag:         dag,
 		votingRound: votingRound,
 		commonVote:  commonVote,
@@ -72,51 +72,51 @@ func newSingleMindedVoter(dag gomel.Dag, votingRound int, commonVote commonVote)
 	}
 }
 
-func (smv *singleMindedVoter) vote(uc, u gomel.Unit) (result vote) {
+func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 	if uc.Level() >= u.Level() {
 		return undecided
 	}
 	r := u.Level() - uc.Level()
-	if r < smv.votingRound {
+	if r < uv.votingRound {
 		return undecided
 	}
-	if cachedResult, ok := smv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}]; ok {
+	if cachedResult, ok := uv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}]; ok {
 		return cachedResult
 	}
 
 	defer func() {
-		smv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}] = result
+		uv.votingMemo[[2]gomel.Hash{*uc.Hash(), *u.Hash()}] = result
 	}()
 
-	if r == smv.votingRound {
-		return smv.initialVote(uc, u)
+	if r == uv.votingRound {
+		return uv.initialVote(uc, u)
 	}
 
-	commonVote := smv.lazyCommonVote(uc, u)
+	commonVote := uv.lazyCommonVote(uc, u)
 	voter := func(uc, uPrA gomel.Unit) (vote, bool) {
-		result := smv.vote(uc, uPrA)
+		result := uv.vote(uc, uPrA)
 		if result == undecided {
 			result = commonVote()
 		}
 		return result, false
 	}
-	votesLevelBelow := voteUsingPrimeAncestors(uc, u, smv.dag, voter)
-	return singleMinded(votesLevelBelow)
+	votesLevelBelow := voteUsingPrimeAncestors(uc, u, uv.dag, voter)
+	return unanimousVoting(votesLevelBelow)
 }
 
-func (smv *singleMindedVoter) lazyCommonVote(uc, u gomel.Unit) func() vote {
+func (uv *unanimousVoter) lazyCommonVote(uc, u gomel.Unit) func() vote {
 	initialized := false
 	var commonVoteValue vote
 	return func() vote {
 		if !initialized {
-			commonVoteValue = smv.commonVote(uc, u)
+			commonVoteValue = uv.commonVote(uc, u)
 			initialized = true
 		}
 		return commonVoteValue
 	}
 }
 
-func (smv *singleMindedVoter) initialVote(uc, u gomel.Unit) vote {
+func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
 	if uc.Below(u) {
 		return popular
 	}
@@ -134,7 +134,7 @@ func newCommonVote(initialVotingRound int, coinToss coinToss) commonVote {
 			return undecided
 		}
 		r = r - initialVotingRound
-		if r <= deterministicSuffix {
+		if r <= deterministicPrefix {
 			if r%2 == 1 {
 				return popular
 			}

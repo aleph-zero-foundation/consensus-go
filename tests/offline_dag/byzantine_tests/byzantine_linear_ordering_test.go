@@ -549,9 +549,9 @@ func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan b
 
 func newDefaultCommonVote(uc gomel.Unit, initialVotingRound uint64, lastDeterministicRound uint64) <-chan bool {
 	commonVotes := make(chan bool)
-	const deterministicSuffix = 10
+	const deterministicPrefix = 10
 	go func() {
-		for round := 0; round < deterministicSuffix; round++ {
+		for round := 0; round < deterministicPrefix; round++ {
 			if round%2 == 0 {
 				commonVotes <- false
 			}
@@ -560,7 +560,7 @@ func newDefaultCommonVote(uc gomel.Unit, initialVotingRound uint64, lastDetermin
 
 		// use the simplecoin to predict future common votes
 		lastLevel := uc.Level() + int(lastDeterministicRound)
-		for round := int(initialVotingRound) + deterministicSuffix; uc.Level()+round < lastLevel; round++ {
+		for round := int(initialVotingRound) + deterministicPrefix; uc.Level()+round < lastLevel; round++ {
 			commonVotes <- simpleCoin(uc, round)
 		}
 		close(commonVotes)

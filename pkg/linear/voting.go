@@ -40,7 +40,7 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 }
 
 // Checks if everyone voted for the same value.
-func singleMinded(votingResult votingResult) vote {
+func unanimousVoting(votingResult votingResult) vote {
 	if votingResult.undecided > 0 {
 		return undecided
 	}
