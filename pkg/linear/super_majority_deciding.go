@@ -31,28 +31,51 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	}
 	commonVote := smd.vote.lazyCommonVote(uc, u)
 	result := undecided
-	voter := func(uc, uPrA gomel.Unit) (vote, bool) {
-		superMajorityVote := smd.decideUsingSuperMajority(uc, uPrA)
+	voteUsingPrimeAncestors(uc, u, smd.vote.dag, func(uc, uPrA gomel.Unit) (vote, bool) {
+		superMajorityVote := smd.decideUsingSuperMajorityOfVotes(uc, uPrA)
 		if superMajorityVote != undecided && superMajorityVote == commonVote() {
 			result = superMajorityVote
 			return result, true
 		}
 		return superMajorityVote, false
-	}
-	voteUsingPrimeAncestors(uc, u, smd.vote.dag, voter)
+	})
 	return result
 }
 
-func (smd *superMajorityDecider) decideUsingSuperMajority(uc, u gomel.Unit) vote {
+func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Unit) vote {
 	commonVote := smd.vote.lazyCommonVote(uc, u)
-	voter := func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
+	var votingResult votingResult
+	result := voteUsingPrimeAncestors(uc, u, smd.vote.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
 		result := smd.vote.vote(uc, uPrA)
 		if result == undecided {
 			result = commonVote()
 		}
+		updated := false
+		switch result {
+		case popular:
+			votingResult.popular++
+			updated = true
+		case unpopular:
+			votingResult.unpopular++
+			updated = true
+		}
+		if updated {
+			if superMajority(smd.vote.dag, votingResult) != undecided {
+				return result, true
+			}
+		} else {
+			// fast fail
+			test := votingResult
+			remaining := uint64(smd.vote.dag.NProc() - uPrA.Creator() - 1)
+			test.popular += remaining
+			test.unpopular += remaining
+			if superMajority(smd.vote.dag, test) == undecided {
+				return result, true
+			}
+		}
+
 		return result, false
-	}
-	result := voteUsingPrimeAncestors(uc, u, smd.vote.dag, voter)
+	})
 	return superMajority(smd.vote.dag, result)
 }
 
@@ -91,15 +114,24 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 	}
 
 	commonVote := uv.lazyCommonVote(uc, u)
-	voter := func(uc, uPrA gomel.Unit) (vote, bool) {
+	var lastVote *vote
+	voteUsingPrimeAncestors(uc, u, uv.dag, func(uc, uPrA gomel.Unit) (vote, bool) {
 		result := uv.vote(uc, uPrA)
 		if result == undecided {
 			result = commonVote()
 		}
+		if lastVote != nil {
+			if *lastVote != result {
+				*lastVote = undecided
+				return result, true
+			}
+		} else if result != undecided {
+			lastVote = &result
+		}
 		return result, false
-	}
-	votesLevelBelow := voteUsingPrimeAncestors(uc, u, uv.dag, voter)
-	return unanimousVoting(votesLevelBelow)
+
+	})
+	return *lastVote
 }
 
 func (uv *unanimousVoter) lazyCommonVote(uc, u gomel.Unit) func() vote {
@@ -143,41 +175,4 @@ func newCommonVote(coinToss coinToss) commonVote {
 		}
 		return unpopular
 	}
-}
-
-func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u gomel.Unit) (vote vote, finish bool)) (votesLevelBelow votingResult) {
-	dag.PrimeUnits(u.Level() - 1).Iterate(func(primes []gomel.Unit) bool {
-		votesOne := false
-		votesZero := false
-		finish := false
-		for _, v := range primes {
-			if !v.Below(u) {
-				continue
-			}
-			vote := undecided
-			vote, finish = voter(uc, v)
-			if vote == popular {
-				votesOne = true
-			} else if vote == unpopular {
-				votesZero = true
-			}
-			if finish || (votesOne && votesZero) {
-				break
-			}
-		}
-		if votesOne {
-			votesLevelBelow.popular++
-		}
-		if votesZero {
-			votesLevelBelow.unpopular++
-		}
-		if !(votesOne || votesZero) {
-			votesLevelBelow.undecided++
-		}
-		if finish {
-			return false
-		}
-		return true
-	})
-	return votesLevelBelow
 }

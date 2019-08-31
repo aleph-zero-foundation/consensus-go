@@ -15,7 +15,6 @@ const (
 type votingResult struct {
 	popular   uint64
 	unpopular uint64
-	undecided uint64
 }
 
 // Deterministic function of a unit and level
@@ -34,20 +33,6 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 		return popular
 	}
 	if dag.IsQuorum(int(votes.unpopular)) {
-		return unpopular
-	}
-	return undecided
-}
-
-// Checks if everyone voted for the same value.
-func unanimousVoting(votingResult votingResult) vote {
-	if votingResult.undecided > 0 {
-		return undecided
-	}
-	if votingResult.popular > 0 && votingResult.unpopular == 0 {
-		return popular
-	}
-	if votingResult.unpopular > 0 && votingResult.popular == 0 {
 		return unpopular
 	}
 	return undecided
@@ -100,4 +85,38 @@ func (o *ordering) decideUnitIsPopular(uc gomel.Unit) (decision vote, decisionLe
 	}
 
 	return undecided, -1, dagLevelReached
+}
+
+func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u gomel.Unit) (vote vote, finish bool)) (votesLevelBelow votingResult) {
+	dag.PrimeUnits(u.Level() - 1).Iterate(func(primes []gomel.Unit) bool {
+		votesOne := false
+		votesZero := false
+		finish := false
+		for _, v := range primes {
+			if !v.Below(u) {
+				continue
+			}
+			vote := undecided
+			vote, finish = voter(uc, v)
+			if vote == popular {
+				votesOne = true
+			} else if vote == unpopular {
+				votesZero = true
+			}
+			if finish || (votesOne && votesZero) {
+				break
+			}
+		}
+		if votesOne {
+			votesLevelBelow.popular++
+		}
+		if votesZero {
+			votesLevelBelow.unpopular++
+		}
+		if finish {
+			return false
+		}
+		return true
+	})
+	return votesLevelBelow
 }
