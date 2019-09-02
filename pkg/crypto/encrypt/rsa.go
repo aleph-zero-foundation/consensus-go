@@ -1,11 +1,12 @@
 package encrypt
 
 import (
+    "math/big"
     "crypto/rand"
 	"crypto/rsa"
     "crypto/sha256"
-	"encoding/base64"
-	"errors"
+    "strconv"
+    "strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -26,19 +27,36 @@ func GenerateKeys () (gomel.EncryptionKey, gomel.DecryptionKey, error) {
     if err != nil {
         return nil, nil, err
     }
-    return encKey{&privKey.PublicKey}, decKey{&privKey}, nil
+    return &encryptionKey{&privKey.PublicKey}, &decryptionKey{privKey}, nil
 }
 
 func (ek *encryptionKey) Encrypt(msg []byte) (gomel.CipherText, error) {
     return rsa.EncryptOAEP(sha256.New(), rand.Reader, ek.encKey, msg, nil)
 }
 
-func (ek *encryptionKey) Encode() []byte {
-}
-
 func (dk *decryptionKey) Decrypt(ct gomel.CipherText) ([]byte, error) {
     return rsa.DecryptOAEP(sha256.New(), rand.Reader, dk.decKey, ct, nil)
 }
 
-func (dk *decryptionKey) Encode() []byte {
+func (dk *encryptionKey) Encode() string {
+    return dk.encKey.N.Text(32) + "|" + strconv.Itoa(dk.encKey.E)
+}
+
+func NewEncryptionKey(text string) (*encryptionKey, error) {
+    data := strings.Split(text, "|")
+    if len(data) != 2 {
+        return nil, gomel.NewDataError("wrong format of encryption key")
+    }
+	N, ok := new(big.Int).SetString(data[0], 32)
+    if !ok {
+        return nil, gomel.NewDataError("wrong format of encryption key")
+    }
+    if N.Sign() != 1 {
+        return nil, gomel.NewDataError("wrong format of encryption key")
+    }
+    E, err := strconv.Atoi(data[1])
+    if err != nil {
+        return nil, err
+    }
+    return &encryptionKey{&rsa.PublicKey{N, E}}, nil
 }
