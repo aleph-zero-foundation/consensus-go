@@ -2,7 +2,7 @@ package gomel
 
 import "bytes"
 
-// Cipher represents encrypted data
+// CipherText represents encrypted data
 type CipherText []byte
 
 // CTEq checks ciphertexts' equality
@@ -10,7 +10,7 @@ func CTEq(c1, c2 CipherText) bool {
 	return bytes.Equal(c1, c2)
 }
 
-// EncryptionKey is used for encrypting messages 
+// EncryptionKey is used for encrypting messages
 type EncryptionKey interface {
 	// Encrypt encrypts message
 	Encrypt([]byte) (CipherText, error)
