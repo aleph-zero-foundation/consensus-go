@@ -9,15 +9,14 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 var _ = Describe("Encryption", func() {
 
 	var (
-		ek  gomel.EncryptionKey
-		dk  gomel.DecryptionKey
-		ct  gomel.CipherText
+		ek  EncryptionKey
+		dk  DecryptionKey
+		ct  CipherText
 		err error
 	)
 
@@ -71,6 +70,6 @@ var _ = Describe("Encryption", func() {
 	})
 })
 
-func eq(ek1, ek2 gomel.EncryptionKey) bool {
+func eq(ek1, ek2 EncryptionKey) bool {
 	return ek1.Encode() == ek2.Encode()
 }

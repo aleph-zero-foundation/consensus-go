@@ -22,7 +22,7 @@ type decryptionKey struct {
 }
 
 // GenerateKeys creates a pair of keys for encryption/decryption
-func GenerateKeys() (gomel.EncryptionKey, gomel.DecryptionKey, error) {
+func GenerateKeys() (EncryptionKey, DecryptionKey, error) {
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, nil, err
@@ -30,11 +30,11 @@ func GenerateKeys() (gomel.EncryptionKey, gomel.DecryptionKey, error) {
 	return &encryptionKey{&privKey.PublicKey}, &decryptionKey{privKey}, nil
 }
 
-func (ek *encryptionKey) Encrypt(msg []byte) (gomel.CipherText, error) {
+func (ek *encryptionKey) Encrypt(msg []byte) (CipherText, error) {
 	return rsa.EncryptOAEP(sha256.New(), rand.Reader, ek.encKey, msg, nil)
 }
 
-func (dk *decryptionKey) Decrypt(ct gomel.CipherText) ([]byte, error) {
+func (dk *decryptionKey) Decrypt(ct CipherText) ([]byte, error) {
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, dk.decKey, ct, nil)
 }
 
@@ -43,7 +43,7 @@ func (ek *encryptionKey) Encode() string {
 }
 
 // NewEncryptionKey creates encryptionKey from string representation
-func NewEncryptionKey(text string) (gomel.EncryptionKey, error) {
+func NewEncryptionKey(text string) (EncryptionKey, error) {
 	data := strings.Split(text, "|")
 	if len(data) != 2 {
 		return nil, gomel.NewDataError("wrong format of encryption key")

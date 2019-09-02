@@ -1,4 +1,4 @@
-package gomel
+package encrypt
 
 import "bytes"
 
