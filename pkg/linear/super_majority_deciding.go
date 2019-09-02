@@ -158,6 +158,7 @@ func newCommonVote(coinToss coinToss) commonVote {
 		if u.Level() <= uc.Level() {
 			return undecided
 		}
+		// round for which we are returning a common vote
 		r := u.Level() - uc.Level() - 1
 		if r <= votingRound {
 			// "Default vote is asked on too low unit level."
