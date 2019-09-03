@@ -27,7 +27,7 @@ type ordering struct {
 // NewOrdering creates an Ordering wrapper around a given dag.
 func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 
-	stdDecider := newSuperMajorityDecider(dag)
+	stdDecider := newSuperMajorityDecider(dag, rs)
 
 	return &ordering{
 		dag:                 dag,

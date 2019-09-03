@@ -14,8 +14,8 @@ type superMajorityDecider struct {
 	*unanimousVoter
 }
 
-func newSuperMajorityDecider(dag gomel.Dag) *superMajorityDecider {
-	vote := newUnanimousVoter(dag)
+func newSuperMajorityDecider(dag gomel.Dag, rs gomel.RandomSource) *superMajorityDecider {
+	vote := newUnanimousVoter(dag, rs)
 	return &superMajorityDecider{vote}
 }
 
@@ -119,9 +119,10 @@ type unanimousVoter struct {
 	votingMemo map[[2]gomel.Hash]vote
 }
 
-func newUnanimousVoter(dag gomel.Dag) *unanimousVoter {
+func newUnanimousVoter(dag gomel.Dag, rs gomel.RandomSource) *unanimousVoter {
 	return &unanimousVoter{
 		dag:        dag,
+		rs:         rs,
 		votingMemo: make(map[[2]gomel.Hash]vote),
 	}
 }
