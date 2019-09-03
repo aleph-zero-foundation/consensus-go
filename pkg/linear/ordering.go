@@ -20,14 +20,14 @@ type ordering struct {
 	orderedUnits        []gomel.Unit
 	orderStartLevel     int
 	crpFixedPrefix      int
-	deciderGovernor     deciderGovernor
+	decider             *superMajorityDecider
 	log                 zerolog.Logger
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
 func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 
-	stdDeciderGorvernor := newDeciderGovernor(dag)
+	stdDecider := newSuperMajorityDecider(dag)
 
 	return &ordering{
 		dag:                 dag,
@@ -37,7 +37,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpF
 		orderedUnits:        []gomel.Unit{},
 		orderStartLevel:     orderStartLevel,
 		crpFixedPrefix:      crpFixedPrefix,
-		deciderGovernor:     stdDeciderGorvernor,
+		decider:             stdDecider,
 		log:                 log,
 	}
 }
@@ -72,7 +72,7 @@ func (o *ordering) DecideTiming() gomel.Unit {
 
 	var result gomel.Unit
 	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
-		decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc, dagMaxLevel)
+		decision, decidedOn, dagLevel := o.decider.decideUnitIsPopular(uc, dagMaxLevel)
 		if decision == popular {
 			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 			o.timingUnits.appendOrIgnore(level, uc)

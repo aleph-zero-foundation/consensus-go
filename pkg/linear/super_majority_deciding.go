@@ -10,19 +10,6 @@ const (
 	deterministicPrefix = 10
 )
 
-type deciderGovernor struct {
-	smd *superMajorityDecider
-}
-
-func newDeciderGovernor(dag gomel.Dag) deciderGovernor {
-	return deciderGovernor{smd: newSuperMajorityDecider(dag)}
-}
-
-func (dg deciderGovernor) initializeDecider(uc gomel.Unit, maxDagLevel int) (decider *superMajorityDecider, maxDecisionLevel int) {
-	decider = dg.smd
-	return decider, decider.getMaximalLevelAtWhichWeCanDecide(uc, maxDagLevel)
-}
-
 type superMajorityDecider struct {
 	*unanimousVoter
 }
@@ -37,6 +24,34 @@ func (smd *superMajorityDecider) getMaxDecisionLevel(uc gomel.Unit, dagMaxLevelR
 		return dagMaxLevelReached
 	}
 	return (dagMaxLevelReached - 2)
+}
+
+// Decides if uc is popular (i.e. it can be used as a timing unit).
+// Returns vote, level on which the decision was made and current dag level.
+func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel int) (decision vote, decisionLevel int, dagLevel int) {
+	maxDecisionLevel := smd.getMaximalLevelAtWhichWeCanDecide(uc, dagMaxLevel)
+
+	for level := uc.Level() + decidingRound; level <= maxDecisionLevel; level++ {
+		decision := undecided
+
+		smd.dag.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
+			for _, v := range primes {
+				if curDecision := smd.decide(uc, v); curDecision != undecided {
+					decision = curDecision
+					return false
+				}
+
+			}
+			return true
+		})
+
+		if decision != undecided {
+			return decision, level, dagMaxLevel
+		}
+	}
+
+	return undecided, -1, dagMaxLevel
+
 }
 
 func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
@@ -169,6 +184,15 @@ func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
 		return popular
 	}
 	return unpopular
+}
+
+// Deterministic function of a unit and level
+// It is implemented as level-th bit of unit hash
+// return 1 or 0
+func simpleCoin(u gomel.Unit, level int) bool {
+	index := level % (8 * len(u.Hash()))
+	byteIndex, bitIndex := index/8, index%8
+	return u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0
 }
 
 // Toss a coin using a given RandomSource.
