@@ -20,7 +20,6 @@ type ordering struct {
 	orderedUnits        []gomel.Unit
 	orderStartLevel     int
 	crpFixedPrefix      int
-	decisionMemo        map[gomel.Hash]vote
 	deciderGovernor     deciderGovernor
 	log                 zerolog.Logger
 }
@@ -38,7 +37,6 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpF
 		orderedUnits:        []gomel.Unit{},
 		orderStartLevel:     orderStartLevel,
 		crpFixedPrefix:      crpFixedPrefix,
-		decisionMemo:        make(map[gomel.Hash]vote),
 		deciderGovernor:     stdDeciderGorvernor,
 		log:                 log,
 	}

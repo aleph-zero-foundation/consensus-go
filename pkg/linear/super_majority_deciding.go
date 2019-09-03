@@ -18,20 +18,18 @@ func newDeciderGovernor(dag gomel.Dag) deciderGovernor {
 	return deciderGovernor{smd: newSuperMajorityDecider(dag)}
 }
 
-func (dg deciderGovernor) initializeDecider(uc gomel.Unit, maxDagLevel int) (decider *superMajorityDecider, maxLevel int) {
+func (dg deciderGovernor) initializeDecider(uc gomel.Unit, maxDagLevel int) (decider *superMajorityDecider, maxDecisionLevel int) {
 	decider = dg.smd
-	return decider, decider.getMaximalLevelForDecision(uc, maxDagLevel)
+	return decider, decider.getMaximalLevelAtWhichWeCanDecide(uc, maxDagLevel)
 }
 
 type superMajorityDecider struct {
-	vote *unanimousVoter
+	*unanimousVoter
 }
 
 func newSuperMajorityDecider(dag gomel.Dag) *superMajorityDecider {
 	vote := newUnanimousVoter(dag)
-	return &superMajorityDecider{
-		vote: vote,
-	}
+	return &superMajorityDecider{vote}
 }
 
 func (smd *superMajorityDecider) getMaxDecisionLevel(uc gomel.Unit, dagMaxLevelReached int) (maxAvailableLevel int) {
@@ -48,7 +46,7 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	if u.Level()-uc.Level() < decidingRound {
 		return undecided
 	}
-	commonVote := smd.vote.lazyCommonVote(uc, u.Level(), smd.vote.dag)
+	commonVote := smd.lazyCommonVote(uc, u.Level(), smd.dag)
 	result := smd.decideUsingSuperMajorityOfVotes(uc, u)
 	if result != undecided && result == commonVote() {
 		return result
@@ -57,10 +55,10 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 }
 
 func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Unit) vote {
-	commonVote := smd.vote.lazyCommonVote(uc, u.Level()-1, smd.vote.dag)
+	commonVote := smd.lazyCommonVote(uc, u.Level()-1, smd.dag)
 	var votingResult votingResult
-	result := voteUsingPrimeAncestors(uc, u, smd.vote.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
-		result := smd.vote.vote(uc, uPrA)
+	result := voteUsingPrimeAncestors(uc, u, smd.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
+		result := smd.vote(uc, uPrA)
 		if result == undecided {
 			result = commonVote()
 		}
@@ -74,26 +72,26 @@ func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Uni
 			updated = true
 		}
 		if updated {
-			if superMajority(smd.vote.dag, votingResult) != undecided {
+			if superMajority(smd.dag, votingResult) != undecided {
 				return result, true
 			}
 		} else {
 			// fast fail
 			test := votingResult
-			remaining := uint64(smd.vote.dag.NProc() - uPrA.Creator() - 1)
+			remaining := uint64(smd.dag.NProc() - uPrA.Creator() - 1)
 			test.popular += remaining
 			test.unpopular += remaining
-			if superMajority(smd.vote.dag, test) == undecided {
+			if superMajority(smd.dag, test) == undecided {
 				return result, true
 			}
 		}
 
 		return result, false
 	})
-	return superMajority(smd.vote.dag, result)
+	return superMajority(smd.dag, result)
 }
 
-func (smd *superMajorityDecider) getMaximalLevelForDecision(uc gomel.Unit, dagMaxLevel int) int {
+func (smd *superMajorityDecider) getMaximalLevelAtWhichWeCanDecide(uc gomel.Unit, dagMaxLevel int) int {
 	if dagMaxLevel-uc.Level() <= deterministicPrefix {
 		return dagMaxLevel
 	}
@@ -173,10 +171,17 @@ func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
 	return unpopular
 }
 
+// Toss a coin using a given RandomSource.
+// With low probability the toss may fail -- typically because of adversarial behavior of some process(es).
+// uc - the unit whose popularity decision is being considered by tossing a coin
+//      this param is used only in case when the simpleCoin is used, otherwise
+//      the result of coin toss is meant to be a function of round only
+// round - round for which we are tossing the coin
+// returns: false or true -- a (pseudo)random bit, impossible to predict before level (round + 1) was reached
 func coinToss(rs gomel.RandomSource, uc gomel.Unit, round int, dag gomel.Dag) bool {
 	randomBytes := rs.RandomBytes(uc.Creator(), round+1)
 	if randomBytes == nil {
-		if simpleCoin(uc, round+1) {
+		if simpleCoin(uc, round) {
 			return true
 		}
 		return false
