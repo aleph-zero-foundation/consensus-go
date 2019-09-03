@@ -39,21 +39,22 @@ func (dk *decryptionKey) Decrypt(ct CipherText) ([]byte, error) {
 }
 
 func (ek *encryptionKey) Encode() string {
-	return ek.encKey.N.Text(32) + "|" + strconv.Itoa(ek.encKey.E)
+	return ek.encKey.N.Text(big.MaxBase) + "|" + strconv.Itoa(ek.encKey.E)
 }
 
 // NewEncryptionKey creates encryptionKey from string representation
 func NewEncryptionKey(text string) (EncryptionKey, error) {
+	msg := "wrong format of encryption key"
 	data := strings.Split(text, "|")
 	if len(data) != 2 {
-		return nil, gomel.NewDataError("wrong format of encryption key")
+		return nil, gomel.NewDataError(msg)
 	}
-	N, ok := new(big.Int).SetString(data[0], 32)
+	N, ok := new(big.Int).SetString(data[0], big.MaxBase)
 	if !ok {
-		return nil, gomel.NewDataError("wrong format of encryption key")
+		return nil, gomel.NewDataError(msg)
 	}
 	if N.Sign() != 1 {
-		return nil, gomel.NewDataError("wrong format of encryption key")
+		return nil, gomel.NewDataError(msg)
 	}
 	E, err := strconv.Atoi(data[1])
 	if err != nil {

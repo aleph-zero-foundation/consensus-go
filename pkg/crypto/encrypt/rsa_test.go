@@ -62,7 +62,7 @@ var _ = Describe("Encryption", func() {
 				Expect(eq(ek, ekd)).To(BeTrue())
 			})
 			It("Should throw an error for malformed data", func() {
-				text = "x" + text[1:]
+				text = "|" + text[1:]
 				_, err := NewEncryptionKey(text)
 				Expect(err).NotTo(BeNil())
 			})
