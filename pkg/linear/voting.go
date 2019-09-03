@@ -38,38 +38,38 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 	return undecided
 }
 
-// Creates a new instance of coinToss using a given RandomSource.
-// With low probability the toss may fail -- typically because of adversarial behavior of some process(es).
-// uc - the unit whose popularity decision is being considered by tossing a coin
-//      this param is used only in case when the simpleCoin is used, otherwise
-//      the result of coin toss is meant to be a function of uTossing.level() only
-// uTossing - the unit that is tossing a coin (necessarily at level >= ADD_SHARES + 1)
-// returns: false or true -- a (pseudo)random bit, impossible to predict before (uTossing.level - 1) was reached
-func newCoin(rs gomel.RandomSource) coinToss {
-	return func(uc gomel.Unit, uTossing gomel.Unit) bool {
-		level := uTossing.Level() - 1
-		randomBytes := rs.RandomBytes(uTossing.Creator(), level)
-		if randomBytes == nil {
-			return simpleCoin(uc, level)
-		}
-		return randomBytes[0]&1 == 0
-	}
-}
+// // Creates a new instance of coinToss using a given RandomSource.
+// // With low probability the toss may fail -- typically because of adversarial behavior of some process(es).
+// // uc - the unit whose popularity decision is being considered by tossing a coin
+// //      this param is used only in case when the simpleCoin is used, otherwise
+// //      the result of coin toss is meant to be a function of uTossing.level() only
+// // uTossing - the unit that is tossing a coin (necessarily at level >= ADD_SHARES + 1)
+// // returns: false or true -- a (pseudo)random bit, impossible to predict before (uTossing.level - 1) was reached
+// func newCoin(rs gomel.RandomSource) coinToss {
+// 	return func(uc gomel.Unit, level int, dag gomel.Dag) bool {
+// 		randomBytes := rs.RandomBytes(uc.Creator(), level)
+// 		if randomBytes == nil {
+// 			return simpleCoin(uc, level)
+// 		}
+// 		return randomBytes[0]&1 == 0
+// 	}
+// }
 
 // Decides if uc is popular (i.e. it can be used as a timing unit).
 // Returns vote, level on which the decision was made and current dag level.
-func (o *ordering) decideUnitIsPopular(uc gomel.Unit) (decision vote, decisionLevel int, dagLevel int) {
-	dagLevelReached := dagMaxLevel(o.dag)
+func (o *ordering) decideUnitIsPopular(uc gomel.Unit, dagLevelReached int) (decision vote, decisionLevel int, dagLevel int) {
 	if result, ok := o.decisionMemo[*uc.Hash()]; ok {
 		return result, -1, dagLevelReached
 	}
 
-	for level := uc.Level() + 1; level <= dagLevelReached; level++ {
+	decider, maxDecidingLevel := o.deciderGovernor.initializeDecider(uc, dagLevelReached)
+
+	for level := uc.Level() + decidingRound; level <= maxDecidingLevel; level++ {
 		decision := undecided
 
 		o.dag.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				if curDecision := o.decisionMaker.decide(uc, v); curDecision != undecided {
+				if curDecision := decider.decide(uc, v); curDecision != undecided {
 					decision = curDecision
 					return false
 				}

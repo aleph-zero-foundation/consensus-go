@@ -9,9 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-type coinToss func(uc, u gomel.Unit) bool
-
-type commonVote func(uc, u gomel.Unit) vote
+type commonVote func(uc gomel.Unit, round int, dag gomel.Dag) vote
 
 // Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
@@ -20,19 +18,17 @@ type ordering struct {
 	timingUnits         *safeUnitSlice
 	unitPositionInOrder map[gomel.Hash]int
 	orderedUnits        []gomel.Unit
-	decidingLevel       int
 	orderStartLevel     int
 	crpFixedPrefix      int
 	decisionMemo        map[gomel.Hash]vote
-	decisionMaker       *superMajorityDecider
+	deciderGovernor     deciderGovernor
 	log                 zerolog.Logger
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
 func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 
-	coinToss := newCoin(rs)
-	stdDecider := newSuperMajorityDecider(dag, coinToss)
+	stdDeciderGorvernor := newDeciderGovernor(dag)
 
 	return &ordering{
 		dag:                 dag,
@@ -43,7 +39,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpF
 		orderStartLevel:     orderStartLevel,
 		crpFixedPrefix:      crpFixedPrefix,
 		decisionMemo:        make(map[gomel.Hash]vote),
-		decisionMaker:       stdDecider,
+		deciderGovernor:     stdDeciderGorvernor,
 		log:                 log,
 	}
 }
@@ -66,7 +62,8 @@ func dagMaxLevel(dag gomel.Dag) int {
 func (o *ordering) DecideTiming() gomel.Unit {
 	level := o.timingUnits.length()
 
-	if dagMaxLevel(o.dag) < level+int(o.decidingLevel) {
+	dagMaxLevel := dagMaxLevel(o.dag)
+	if dagMaxLevel < level+decidingRound {
 		return nil
 	}
 
@@ -77,7 +74,7 @@ func (o *ordering) DecideTiming() gomel.Unit {
 
 	var result gomel.Unit
 	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
-		decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
+		decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc, dagMaxLevel)
 		if decision == popular {
 			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 			o.timingUnits.appendOrIgnore(level, uc)

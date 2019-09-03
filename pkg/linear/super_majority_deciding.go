@@ -10,16 +10,35 @@ const (
 	deterministicPrefix = 10
 )
 
+type deciderGovernor struct {
+	smd *superMajorityDecider
+}
+
+func newDeciderGovernor(dag gomel.Dag) deciderGovernor {
+	return deciderGovernor{smd: newSuperMajorityDecider(dag)}
+}
+
+func (dg deciderGovernor) initializeDecider(uc gomel.Unit, maxDagLevel int) (decider *superMajorityDecider, maxLevel int) {
+	decider = dg.smd
+	return decider, decider.getMaximalLevelForDecision(uc, maxDagLevel)
+}
+
 type superMajorityDecider struct {
 	vote *unanimousVoter
 }
 
-func newSuperMajorityDecider(dag gomel.Dag, coinToss coinToss) *superMajorityDecider {
-	commonVote := newCommonVote(coinToss)
-	vote := newUnanimousVoter(dag, commonVote)
+func newSuperMajorityDecider(dag gomel.Dag) *superMajorityDecider {
+	vote := newUnanimousVoter(dag)
 	return &superMajorityDecider{
 		vote: vote,
 	}
+}
+
+func (smd *superMajorityDecider) getMaxDecisionLevel(uc gomel.Unit, dagMaxLevelReached int) (maxAvailableLevel int) {
+	if (dagMaxLevelReached - uc.Level()) < deterministicPrefix {
+		return dagMaxLevelReached
+	}
+	return (dagMaxLevelReached - 2)
 }
 
 func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
@@ -29,21 +48,16 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	if u.Level()-uc.Level() < decidingRound {
 		return undecided
 	}
-	commonVote := smd.vote.lazyCommonVote(uc, u)
-	result := undecided
-	voteUsingPrimeAncestors(uc, u, smd.vote.dag, func(uc, uPrA gomel.Unit) (vote, bool) {
-		superMajorityVote := smd.decideUsingSuperMajorityOfVotes(uc, uPrA)
-		if superMajorityVote != undecided && superMajorityVote == commonVote() {
-			result = superMajorityVote
-			return result, true
-		}
-		return superMajorityVote, false
-	})
-	return result
+	commonVote := smd.vote.lazyCommonVote(uc, u.Level(), smd.vote.dag)
+	result := smd.decideUsingSuperMajorityOfVotes(uc, u)
+	if result != undecided && result == commonVote() {
+		return result
+	}
+	return undecided
 }
 
 func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Unit) vote {
-	commonVote := smd.vote.lazyCommonVote(uc, u)
+	commonVote := smd.vote.lazyCommonVote(uc, u.Level()-1, smd.vote.dag)
 	var votingResult votingResult
 	result := voteUsingPrimeAncestors(uc, u, smd.vote.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
 		result := smd.vote.vote(uc, uPrA)
@@ -79,16 +93,22 @@ func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Uni
 	return superMajority(smd.vote.dag, result)
 }
 
+func (smd *superMajorityDecider) getMaximalLevelForDecision(uc gomel.Unit, dagMaxLevel int) int {
+	if dagMaxLevel-uc.Level() <= deterministicPrefix {
+		return dagMaxLevel
+	}
+	return dagMaxLevel - 2
+}
+
 type unanimousVoter struct {
 	dag        gomel.Dag
-	commonVote commonVote
+	rs         gomel.RandomSource
 	votingMemo map[[2]gomel.Hash]vote
 }
 
-func newUnanimousVoter(dag gomel.Dag, commonVote commonVote) *unanimousVoter {
+func newUnanimousVoter(dag gomel.Dag) *unanimousVoter {
 	return &unanimousVoter{
 		dag:        dag,
-		commonVote: commonVote,
 		votingMemo: make(map[[2]gomel.Hash]vote),
 	}
 }
@@ -113,7 +133,7 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 		return uv.initialVote(uc, u)
 	}
 
-	commonVote := uv.lazyCommonVote(uc, u)
+	commonVote := uv.lazyCommonVote(uc, u.Level()-1, uv.dag)
 	var lastVote *vote
 	voteUsingPrimeAncestors(uc, u, uv.dag, func(uc, uPrA gomel.Unit) (vote, bool) {
 		result := uv.vote(uc, uPrA)
@@ -134,12 +154,12 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 	return *lastVote
 }
 
-func (uv *unanimousVoter) lazyCommonVote(uc, u gomel.Unit) func() vote {
+func (uv *unanimousVoter) lazyCommonVote(uc gomel.Unit, round int, dag gomel.Dag) func() vote {
 	initialized := false
 	var commonVoteValue vote
 	return func() vote {
 		if !initialized {
-			commonVoteValue = uv.commonVote(uc, u)
+			commonVoteValue = uv.commonVote(uc, round, dag)
 			initialized = true
 		}
 		return commonVoteValue
@@ -153,27 +173,34 @@ func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
 	return unpopular
 }
 
-func newCommonVote(coinToss coinToss) commonVote {
-	return func(uc, u gomel.Unit) vote {
-		if u.Level() <= uc.Level() {
-			return undecided
+func coinToss(rs gomel.RandomSource, uc gomel.Unit, round int, dag gomel.Dag) bool {
+	randomBytes := rs.RandomBytes(uc.Creator(), round+1)
+	if randomBytes == nil {
+		if simpleCoin(uc, round+1) {
+			return true
 		}
-		// round for which we are returning a common vote
-		r := u.Level() - uc.Level() - 1
-		if r <= votingRound {
-			// "Default vote is asked on too low unit level."
-			return undecided
-		}
-		r = r - votingRound
-		if r <= deterministicPrefix {
-			if r%2 == 1 {
-				return popular
-			}
+		return false
+	}
+	return randomBytes[0]&1 == 0
+}
+
+func (uv *unanimousVoter) commonVote(uc gomel.Unit, round int, dag gomel.Dag) vote {
+	if round <= uc.Level() {
+		return undecided
+	}
+	if round-uc.Level() <= votingRound {
+		// "Default vote is asked on too low unit level."
+		return undecided
+	}
+	if round <= deterministicPrefix {
+		if round == 3 {
 			return unpopular
 		}
-		if coinToss(uc, u) {
-			return popular
-		}
-		return unpopular
+		return popular
 	}
+	if coinToss(uv.rs, uc, round, dag) {
+		return popular
+	}
+
+	return unpopular
 }
