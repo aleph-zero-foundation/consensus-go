@@ -104,8 +104,8 @@ func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Uni
 }
 
 func (smd *superMajorityDecider) getMaximalLevelAtWhichWeCanDecide(uc gomel.Unit, dagMaxLevel int) int {
-	if dagMaxLevel-uc.Level() <= deterministicPrefix {
-		return dagMaxLevel
+	if dagMaxLevel-uc.Level()-2 < deterministicPrefix {
+		return deterministicPrefix
 	}
 	return dagMaxLevel - 2
 }
