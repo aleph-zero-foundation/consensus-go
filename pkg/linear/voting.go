@@ -31,13 +31,13 @@ func (o *ordering) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
 		nProcNotSeen--
 		for _, w := range myFloor {
 			var reachedBottom error
-			for w.Above(uc) && !((w.Level() <= level-2) || (w.Level() == level-1 && gomel.Prime(w))) {
+			for uc.Below(w) && !((w.Level() <= level-2) || (w.Level() == level-1 && gomel.Prime(w))) {
 				w, reachedBottom = gomel.Predecessor(w)
 				if reachedBottom != nil {
 					break
 				}
 			}
-			if reachedBottom == nil && w.Above(uc) {
+			if reachedBottom == nil && uc.Below(w) {
 				nProcValid++
 				if o.dag.IsQuorum(nProcValid) {
 					o.proofMemo[[2]gomel.Hash{*uc.Hash(), *v.Hash()}] = true
@@ -56,7 +56,7 @@ func (o *ordering) provesPopularity(uc gomel.Unit, v gomel.Unit) bool {
 	return result
 }
 
-// Vote of u on popularity of uc as described in fast consensus algorithm
+// Vote of u on popularity of uc as described in the fast consensus algorithm.
 func (o *ordering) defaultVote(u gomel.Unit, uc gomel.Unit) vote {
 	r := u.Level() - uc.Level() - o.votingLevel
 	if r <= 0 {
@@ -76,9 +76,9 @@ func (o *ordering) defaultVote(u gomel.Unit, uc gomel.Unit) vote {
 	return unpopular
 }
 
-// Deterministic function of a unit and level
-// It is implemented as level-th bit of unit hash
-// return 1 or 0
+// Deterministic function of a unit and level.
+// It is implemented as level-th bit of the unit hash.
+// Returns 1 or 0.
 func simpleCoin(u gomel.Unit, level int) int {
 	index := level % (8 * len(u.Hash()))
 	byteIndex, bitIndex := index/8, index%8

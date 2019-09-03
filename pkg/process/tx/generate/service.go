@@ -1,3 +1,8 @@
+// Package generate implements a service simulating incoming transactions.
+//
+// The service actually generates pseudorandom strings of bytes of length roughly corresponding to
+// the expected length of a number of transactions.
+// Since it exists mostly for testing purposes it will probably soon be deprecated.
 package generate
 
 import (
@@ -19,7 +24,7 @@ type service struct {
 	wg       sync.WaitGroup
 }
 
-// NewService creates a new service generating transactions
+// NewService creates a service generating transactions.
 func NewService(dag gomel.Dag, config *process.TxGenerate, txChan chan<- []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		txpu:     config.Txpu,

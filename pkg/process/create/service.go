@@ -1,3 +1,4 @@
+// Package create implements a service for creating new units.
 package create
 
 import (
@@ -46,9 +47,9 @@ type service struct {
 // Whenever two consecutive units are not prime, the adjustment factor is increased (by a constant ratio positiveJerk)
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
-// The service will close dagFinished channel when it stops.
+// The service will close the dagFinished channel when it stops.
 // After creating a unit and adding it to the dag, the callback function is called on that unit.
-// The purpose of the callback is to communicate the fact of creating new unit to sync service.
+// The purpose of the callback is usually to communicate the fact of creating a new unit to the sync service.
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, callback gomel.Callback, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
 	return &service{
 		dag:             dag,

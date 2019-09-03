@@ -13,10 +13,10 @@ import (
 
 // link wraps a persistent TCP connection and distributes incoming traffic to multiple virtual connections (conn).
 // It comes in two variants: outgoing link (allows creating new conns with call()) and incoming link (creates a new conn
-// upon receiving data with unknown id and puts that conn on the listener queue). Two variants are distinguished by the
-// existence of that queue: outgoing link has nil as queue, incoming a non-nil channel.
+// upon receiving data with unknown id and puts that conn on the listener queue). The two variants are distinguished by the
+// existence of that queue: outgoing link has nil as the queue, while incoming contains a non-nil channel.
 // When encountering an error during reading, the link shuts down the TCP connection and marks itself "dead". To restore
-// the communication new link needs to be created.
+// the communication a new link needs to be created.
 type link struct {
 	tcpLink net.Conn
 	conns   map[uint64]*conn

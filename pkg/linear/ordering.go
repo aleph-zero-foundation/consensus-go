@@ -1,3 +1,4 @@
+// Package linear implements the algorithm for deciding the linear order for units in a dag.
 package linear
 
 import (
@@ -8,7 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// Ordering is an implementation of LinearOrdering interface.
+// Ordering is an implementation of the LinearOrdering interface.
 type ordering struct {
 	dag                 gomel.Dag
 	randomSource        gomel.RandomSource
@@ -27,7 +28,7 @@ type ordering struct {
 	log                 zerolog.Logger
 }
 
-// NewOrdering creates an Ordering wrapper around a given dag.
+// NewOrdering creates an Ordering wrapper around the given dag.
 func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
 	return &ordering{
 		dag:                 dag,
@@ -48,7 +49,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaL
 	}
 }
 
-// dagMaxLevel returns the maximal level of a unit in a dag.
+// dagMaxLevel returns the maximal level of a unit in the dag.
 func dagMaxLevel(dag gomel.Dag) int {
 	maxLevel := -1
 	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
@@ -62,7 +63,7 @@ func dagMaxLevel(dag gomel.Dag) int {
 	return maxLevel
 }
 
-// DecideTiming tries to pick a next timing unit. Returns nil if it cannot be decided yet.
+// DecideTiming tries to pick the next timing unit. Returns nil if it cannot be decided yet.
 func (o *ordering) DecideTiming() gomel.Unit {
 	level := o.timingUnits.length()
 
@@ -94,8 +95,8 @@ func (o *ordering) DecideTiming() gomel.Unit {
 
 // getAntichainLayers for a given timing unit tu, returns all the units in its timing round
 // divided into layers.
-// 0-th layer is formed by minimal units in this timing round
-// 1-st layer is formed by minimal units when the 0th layer is removed
+// 0-th layer is formed by minimal units in this timing round.
+// 1-st layer is formed by minimal units when the 0th layer is removed.
 // etc.
 func (o *ordering) getAntichainLayers(tu gomel.Unit) [][]gomel.Unit {
 	unitToLayer := make(map[gomel.Hash]int)
@@ -158,7 +159,7 @@ func mergeLayers(layers [][]gomel.Unit) []gomel.Unit {
 	return sortedUnits
 }
 
-// TimingRound establishes the linear ordering on the units in timing round r and returns them.
+// TimingRound establishes the linear ordering on the units in the timing round r and returns them.
 // If the timing decision has not yet been taken it returns nil.
 func (o *ordering) TimingRound(r int) []gomel.Unit {
 	if o.timingUnits.length() <= r {

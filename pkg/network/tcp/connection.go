@@ -1,3 +1,4 @@
+// Package tcp implements network.Connections that wrap around TCP connections.
 package tcp
 
 import (

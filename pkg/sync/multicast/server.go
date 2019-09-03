@@ -1,3 +1,7 @@
+// Package multicast implements a multicasting service to disseminate units created by us.
+//
+// It also accepts units multicasted by other processes.
+// We might not be able to insert some of these units into our dag if we don't have their parents, so a fallback mechanism is needed.
 package multicast
 
 import (
@@ -12,7 +16,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-// NewServer returns a server that runs multicast protocol and callback for create service
+// NewServer returns a server that runs the multicast protocol, and a callback for the create service.
 func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, gomel.Callback) {
 	requests := make(chan request, requestsSize*dag.NProc())
 	proto := newProtocol(pid, dag, randomSource, requests, netserv, callback, timeout, fallback, log)

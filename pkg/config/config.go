@@ -1,12 +1,15 @@
+// Package config reads and writes the configuration of the program.
+//
+// This package handles both the parameters of the protocol, as well as all the needed keys and committee information.
 package config
 
-// SyncConfiguration represents parameters for a synchronization service
+// SyncConfiguration represents parameters for a synchronization service.
 type SyncConfiguration struct {
 	// Type describes the service type.
 	Type string
-	// Params holds additional parameters needed by a service of a given type
+	// Params holds additional parameters needed by a service of a given type.
 	Params map[string]string
-	// Fallback is a name of a service that is to be used as a fallback to this service
+	// Fallback is a name of a service that is to be used as a fallback to this service.
 	Fallback string
 }
 
@@ -19,7 +22,7 @@ type Configuration struct {
 	// Whether only prime units should be created.
 	PrimeOnly bool
 
-	// Wheather a level can be skipped
+	// Whether a process is allowed not to create a unit at a level.
 	CanSkipLevel bool
 
 	// Delay after attempting to create a new unit, before another attempt is made.
@@ -29,18 +32,18 @@ type Configuration struct {
 	// A large value means aggressive adjustment, while 0 - no adjustment at all.
 	StepSize float64
 
-	// Configurations for synchronization services
+	// Configurations for synchronization services during the setup phase.
 	SyncSetup []SyncConfiguration
 
-	// Name of setup procedure
+	// Name of the setup procedure.
 	Setup string
 
-	// Configurations for synchronization services
+	// Configurations for synchronization services during the main protocol operation.
 	Sync []SyncConfiguration
 
 	// The number of transactions included in a unit.
 	// Currently only simulated by including random bytes depending on this number.
-	// Will be removed completely in the future, whengomel becomes transaction-agnostic.
+	// Will be removed completely in the future, when gomel becomes transaction-agnostic.
 	Txpu uint
 
 	// When a unit of this level is added to the dag, the process shuts down.
@@ -68,10 +71,10 @@ type Configuration struct {
 	// Whether to write the log in the human readable form or in JSON.
 	LogHuman bool
 
-	// The level from which we start ordering
+	// The level from which we start ordering units.
 	OrderStartLevel int
 
-	// The number of default pids used before using the CRP
+	// The number of default, pseudo-random, pids used before using the truly random CRP.
 	CRPFixedPrefix int
 }
 
@@ -130,9 +133,4 @@ func NewDefaultConfiguration() Configuration {
 	}
 	result.AddShares = result.PiDeltaLevel - 1
 	return result
-}
-
-// Value returns a pointer to memory location containing provided value.
-func Value(value uint) *uint {
-	return &value
 }

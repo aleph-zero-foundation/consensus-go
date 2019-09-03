@@ -13,6 +13,6 @@ const (
 	// Signed means we signed the piece of data, but we have not yet received the proof that it has been multicast successfully.
 	Signed
 
-	// Finished means we received a proof that the data has been broadcast successfully.
+	// Finished means we received a proof that the data has been multicast successfully.
 	Finished
 )

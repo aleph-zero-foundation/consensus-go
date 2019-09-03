@@ -1,3 +1,7 @@
+// Package growing implements the dag as a growing structure.
+//
+// This is the implementation that should be used in the main run of the protocol.
+// The dag is optimized for parallely adding multiple units to it and, because of that, needs to be stopped when the protocol is done.
 package growing
 
 import (
@@ -6,7 +10,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// Dag that is intended to be used during dag creation.
+// Dag implementation that is intended to be used during dag creation.
 type Dag struct {
 	nProcesses int
 	units      *unitBag
@@ -17,7 +21,7 @@ type Dag struct {
 	pubKeys    []gomel.PublicKey
 }
 
-// NewDag constructs a dag using given public keys of processes.
+// NewDag constructs a dag using the given public keys of processes.
 func NewDag(config *gomel.DagConfig) *Dag {
 	pubKeys := config.Keys
 	n := len(pubKeys)
@@ -50,7 +54,7 @@ func (dag *Dag) IsQuorum(number int) bool {
 	return IsQuorum(dag.nProcesses, number)
 }
 
-// NProc returns number of processes which uses the dag
+// NProc returns the number of processes which use the dag.
 func (dag *Dag) NProc() int {
 	return dag.nProcesses
 }

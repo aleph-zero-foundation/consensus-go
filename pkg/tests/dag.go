@@ -1,3 +1,7 @@
+// Package tests implements a very simple and unoptimized version of the dag.
+//
+// It also contains mocks of various other structures that are useful for tests.
+//Additionally, there is a mechanism for saving and loading dags from files.
 package tests
 
 import (
@@ -7,7 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// Dag is a basic implementation of dag for testing
+// Dag is a basic implementation of dag for testing.
 type Dag struct {
 	sync.RWMutex
 	nProcesses int

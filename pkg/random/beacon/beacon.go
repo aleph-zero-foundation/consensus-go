@@ -1,3 +1,13 @@
+// Package beacon implements the beacon random source.
+//
+// This source is meant to be used in the setup stage only.
+// After the setup phase is done, it shall return a coin random source for use in the main part of the protocol.
+//
+// Beacon assumes the following about the dag:
+//  (1) there are no forks,
+//  (2) every unit is a prime unit,
+//  (3) level = height for each unit,
+//  (4) each unit has at least 2f + 1 parents.
 package beacon
 
 import (
@@ -10,12 +20,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
 
-// Beacon code assumes that:
-// (1) there are no forks
-// (2) every unit is a prime unit
-// (3) level = height for each unit
-// (4) each unit has at least 2f + 1 parents
-
 const (
 	dealingLevel   = 0
 	votingLevel    = 3
@@ -23,7 +27,7 @@ const (
 	sharesLevel    = 8
 )
 
-// Beacon is a struct representing beacon random source
+// Beacon is a struct representing the beacon random source.
 type Beacon struct {
 	pid        int
 	dag        gomel.Dag
@@ -55,13 +59,12 @@ func (v *vote) isCorrect() bool {
 	return v.proof == nil
 }
 
-// New returns a RandomSource based on a beacon
-// It is meant to be used in the setup stage only.
+// New returns a RandomSource using a beacon.
 func New(pid int) *Beacon {
 	return &Beacon{pid: pid}
 }
 
-// Init initialize the beacon with given dag
+// Init initializes the beacon with the given dag.
 func (b *Beacon) Init(dag gomel.Dag) {
 	n := dag.NProc()
 	b.dag = dag
@@ -82,14 +85,14 @@ func (b *Beacon) Init(dag gomel.Dag) {
 
 // RandomBytes returns a sequence of random bits for a given unit.
 // It returns nil when
-// (1) asked on too low level i.e. level < sharesLevel
+// (1) asked on a level that is too low i.e. level < sharesLevel
 // or
-// (2) there are no enough shares. i.e.
-// The number of units on a given level created by share providers
-// to the multicoin of pid is less than f+1
+// (2) there are no enough shares, i.e.
+// the number of units on a given level created by share providers
+// to the multicoin of pid is less than f+1.
 //
 // When there is at least one unit of level+1 in the dag
-// then the (2) condition doesn't hold.
+// then condition (2) cannot hold.
 func (b *Beacon) RandomBytes(pid int, level int) []byte {
 	if level < sharesLevel {
 		// RandomBytes asked on too low level
@@ -116,7 +119,7 @@ func (b *Beacon) RandomBytes(pid int, level int) []byte {
 }
 
 // CheckCompliance checks wheather the data included in the preunit
-// is compliant
+// is compliant.
 func (b *Beacon) CheckCompliance(u gomel.Unit) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
@@ -161,7 +164,7 @@ func (b *Beacon) CheckCompliance(u gomel.Unit) error {
 	return nil
 }
 
-// Update updates the RandomSource with data included in the preunit
+// Update the RandomSource with the data included in the preunit.
 func (b *Beacon) Update(u gomel.Unit) {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
@@ -244,8 +247,8 @@ func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
 	}
 }
 
-// DataToInclude returns data which should be included in the unit under
-// creation with given creator and set of parents
+// DataToInclude returns data which should be included in a unit
+// with the given creator and set of parents.
 func (b *Beacon) DataToInclude(creator int, parents []gomel.Unit, level int) ([]byte, error) {
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
@@ -290,7 +293,7 @@ func (b *Beacon) GetCoin(head int) gomel.RandomSource {
 	return coin.New(b.dag.NProc(), b.pid, b.multicoins[head], b.shareProviders[head])
 }
 
-// unitsOnLevel returns all the prime units in dag on a given level
+// unitsOnLevel returns all the prime units in the dag on a given level
 func unitsOnLevel(dag gomel.Dag, level int) []gomel.Unit {
 	result := []gomel.Unit{}
 	su := dag.PrimeUnits(level)

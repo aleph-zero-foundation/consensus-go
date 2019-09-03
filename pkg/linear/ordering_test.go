@@ -101,7 +101,7 @@ var _ = Describe("Ordering", func() {
 				}
 				for i := 0; i < len(orderedUnits); i++ {
 					for j := i + 1; j < len(orderedUnits); j++ {
-						Expect(orderedUnits[i].Above(orderedUnits[j])).To(BeFalse())
+						Expect(orderedUnits[j].Below(orderedUnits[i])).To(BeFalse())
 					}
 				}
 			})

@@ -1,3 +1,12 @@
+// Package multi implements multisignatures on the bn256 curve.
+//
+// The kind of signatures we implement here is, in general, known to be vulnerable to an attack.
+// The attack, however, requires choosing ones public keys based on the public keys of other participants.
+// Fortunately, in our situation, we can use a simple protection against it.
+// Committee candidates should submit a hash of the public key they are going to use,
+// and reveal the public key only as they are elected.
+//
+// FOR SECURITY REASONS IT IS CRUCIAL THAT EITHER THE ABOVE OR SOME OTHER SOLUTION IS USED.
 package multi
 
 import (
@@ -9,14 +18,6 @@ import (
 )
 
 // Signature represents a multisignature associated with a piece of data and keychain.
-//
-// The kind of signatures we implement here is, in general, known to be vulnerable to an attack.
-// The attack, however, requires choosing ones public keys based on the public keys of other participants.
-// Fortunately, in our situation, we can use a simple protection against it.
-// Committee candidates should submit a hash of the public key they are going to use,
-// and reveal the public key only as they are elected.
-//
-// FOR SECURITY REASONS IT IS CRUCIAL THAT EITHER THE ABOVE OR SOME OTHER SOLUTION IS USED.
 type Signature struct {
 	sync.Mutex
 	threshold int

@@ -56,8 +56,7 @@ func (ps *chanPeerSource) NextPeer() uint16 {
 
 // NewMixedPeerSource creates a peer source that mixes functionalities of default and chan peer sources.
 // It tries to read the next pid from the provided channel. If the channel is empty,
-// it behaves like the default peer source, randomly choosing a pid other than myPid
-//
+// it behaves like the default peer source, randomly choosing a pid other than myPid.
 func NewMixedPeerSource(nProc, myPid uint16, source <-chan uint16) PeerSource {
 	dps := NewDefaultPeerSource(nProc, myPid).(*defaultPeerSource)
 	return &mixedPeerSource{dps, source}

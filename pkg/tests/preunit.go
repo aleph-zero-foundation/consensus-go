@@ -17,7 +17,7 @@ type preunit struct {
 	rsData    []byte
 }
 
-// NewPreunit returns preunit
+// NewPreunit creates a preunit.
 func NewPreunit(creator int, parents []*gomel.Hash, data []byte, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
@@ -60,12 +60,12 @@ func (pu *preunit) Parents() []*gomel.Hash {
 	return pu.parents
 }
 
-// SetSignature sets signature of the preunit.
+// SetSignature sets the signature of the preunit.
 func (pu *preunit) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-// computeHash computes preunit's hash value and puts it in the corresponding field.
+// computeHash computes the preunit's hash value and puts it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	creatorBytes := make([]byte, 2)

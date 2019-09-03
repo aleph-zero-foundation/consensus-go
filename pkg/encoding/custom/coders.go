@@ -1,3 +1,10 @@
+// Package custom implements custom encoding of units.
+//
+// Note that the objects being encoded are units, while the objects resulting from decoding are preunits.
+// This makes perfect sense, as we only want to send information about units we already added to our dag,
+// and any decoded information will have to be manually included into the dag.
+//
+// Crucially, and in contrast to Gob, this encoding only reads the bytes it needs.
 package custom
 
 import (

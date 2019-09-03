@@ -15,7 +15,7 @@ type server struct {
 	log         zerolog.Logger
 }
 
-// NewServer initializes network setup for the given local address and the set of remote addresses.
+// NewServer initializes the network setup for the given local address and the set of remote addresses.
 func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Server, error) {
 	local, err := net.ResolveUDPAddr("udp", localAddress)
 	if err != nil {

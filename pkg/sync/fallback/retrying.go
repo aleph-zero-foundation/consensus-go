@@ -1,3 +1,4 @@
+// Package fallback implements several algorithms for acquiring unknown parents of units received in syncs.
 package fallback
 
 import (

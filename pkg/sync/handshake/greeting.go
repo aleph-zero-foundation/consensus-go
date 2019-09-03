@@ -1,3 +1,8 @@
+// Package handshake implements protocols for identifying the peer.
+//
+// These protocols are used before some proper sync protocols, to figure out who we are talking to.
+// This is currently not cryptographically secure, but as long as we don't punish peers,
+// which send some wrong information this shouldn't impact anything negatively.
 package handshake
 
 import (
