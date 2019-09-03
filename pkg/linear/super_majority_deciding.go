@@ -33,7 +33,7 @@ func newSuperMajorityDecider(dag gomel.Dag) *superMajorityDecider {
 }
 
 func (smd *superMajorityDecider) getMaxDecisionLevel(uc gomel.Unit, dagMaxLevelReached int) (maxAvailableLevel int) {
-	if (dagMaxLevelReached - uc.Level()) < deterministicPrefix {
+	if (dagMaxLevelReached - uc.Level()) <= deterministicPrefix {
 		return dagMaxLevelReached
 	}
 	return (dagMaxLevelReached - 2)
