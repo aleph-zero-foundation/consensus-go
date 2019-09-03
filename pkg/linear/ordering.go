@@ -61,7 +61,7 @@ func (o *ordering) DecideTiming() gomel.Unit {
 	level := o.timingUnits.length()
 
 	dagMaxLevel := dagMaxLevel(o.dag)
-	if dagMaxLevel < level+decidingRound {
+	if dagMaxLevel < level+firstDecidingRound {
 		return nil
 	}
 

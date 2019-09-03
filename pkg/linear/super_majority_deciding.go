@@ -5,9 +5,7 @@ import (
 )
 
 const (
-	decidingRound       = 3
-	votingRound         = 1
-	deterministicPrefix = 10
+	firstDecidingRound = 3
 )
 
 type superMajorityDecider struct {
@@ -31,7 +29,7 @@ func (smd *superMajorityDecider) getMaxDecisionLevel(uc gomel.Unit, dagMaxLevelR
 func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel int) (decision vote, decisionLevel int, dagLevel int) {
 	maxDecisionLevel := smd.getMaximalLevelAtWhichWeCanDecide(uc, dagMaxLevel)
 
-	for level := uc.Level() + decidingRound; level <= maxDecisionLevel; level++ {
+	for level := uc.Level() + firstDecidingRound; level <= maxDecisionLevel; level++ {
 		decision := undecided
 
 		smd.dag.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
@@ -58,7 +56,7 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	if uc.Level() >= u.Level() {
 		return undecided
 	}
-	if u.Level()-uc.Level() < decidingRound {
+	if u.Level()-uc.Level() < firstDecidingRound {
 		return undecided
 	}
 	commonVote := smd.lazyCommonVote(uc, u.Level(), smd.dag)
