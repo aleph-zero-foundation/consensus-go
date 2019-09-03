@@ -64,7 +64,7 @@ func valid(configs []*process.Sync) error {
 	return nil
 }
 
-// Builds fallback for process.Sync configuration.
+// getFallback builds a fallback for process.Sync configuration.
 func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.RandomSource, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
 	var fbk sync.Fallback
 	nProc := dag.NProc()

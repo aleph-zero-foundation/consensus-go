@@ -1,4 +1,4 @@
-// Package custom implements a custom encoding of units.
+// Package custom implements custom encoding of units.
 //
 // Note that the objects being encoded are units, while the objects resulting from decoding are preunits.
 // This makes perfect sense, as we only want to send information about units we already added to our dag,

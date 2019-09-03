@@ -327,9 +327,7 @@ func (tc *ThresholdCoin) PolyVerify(pv bn256.PolyVerifier) bool {
 }
 
 // VerifySecretKey checks if the verificationKey and secretKey form a valid pair.
-// It returns
-// the incorrect secret key when the pair of keys is invalid
-// or
+// It returns the incorrect secret key when the pair of keys is invalid or
 // nil when the keys are valid.
 func (tc *ThresholdCoin) VerifySecretKey() *bn256.SecretKey {
 	vk := tc.sk.VerificationKey()

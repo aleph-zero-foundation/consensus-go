@@ -22,7 +22,7 @@ type Configuration struct {
 	// Whether only prime units should be created.
 	PrimeOnly bool
 
-	// Whether a process is allowed to not create a unit at a level.
+	// Whether a process is allowed not to create a unit at a level.
 	CanSkipLevel bool
 
 	// Delay after attempting to create a new unit, before another attempt is made.

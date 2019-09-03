@@ -11,7 +11,7 @@ import (
 
 // ConfigurationLoader is an abstraction for parsing configurations from a given io.Reader instance.
 type ConfigurationLoader interface {
-	// LoadConfiguration parses an instance of the Configuration type using a given an instance of io.Reader.
+	// LoadConfiguration parses an instance of the Configuration type using a given instance of io.Reader.
 	LoadConfiguration(io.Reader, *Configuration) error
 }
 

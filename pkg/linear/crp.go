@@ -18,7 +18,7 @@ import (
 //
 // The function itself returns
 // - false when generating the sufix of the permutation failed (because the dag
-//   hasn't reached a high enough level to reveal the randomBytes needed)
+//   hasn't reached a level high enough to reveal the randomBytes needed)
 // - true otherwise
 func (o *ordering) crpIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
 	prefix, sufix := splitProcesses(o.dag.NProc(), o.crpFixedPrefix, level, previousTU)
