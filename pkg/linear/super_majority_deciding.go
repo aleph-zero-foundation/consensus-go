@@ -59,16 +59,15 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	if u.Level()-uc.Level() < firstDecidingRound {
 		return undecided
 	}
-	commonVote := smd.lazyCommonVote(uc, u.Level(), smd.dag)
 	result := smd.decideUsingSuperMajorityOfVotes(uc, u)
-	if result != undecided && result == commonVote() {
+	if result != undecided && result == smd.commonVote(uc, u.Level()) {
 		return result
 	}
 	return undecided
 }
 
 func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Unit) vote {
-	commonVote := smd.lazyCommonVote(uc, u.Level()-1, smd.dag)
+	commonVote := smd.lazyCommonVote(uc, u.Level()-1)
 	var votingResult votingResult
 	result := voteUsingPrimeAncestors(uc, u, smd.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
 		result := smd.vote(uc, uPrA)

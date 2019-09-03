@@ -56,7 +56,7 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 		return uv.initialVote(uc, u)
 	}
 
-	commonVote := uv.lazyCommonVote(uc, u.Level()-1, uv.dag)
+	commonVote := uv.lazyCommonVote(uc, u.Level()-1)
 	var lastVote *vote
 	voteUsingPrimeAncestors(uc, u, uv.dag, func(uc, uPrA gomel.Unit) (vote, bool) {
 		result := uv.vote(uc, uPrA)
@@ -77,12 +77,12 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 	return *lastVote
 }
 
-func (uv *unanimousVoter) lazyCommonVote(uc gomel.Unit, round int, dag gomel.Dag) func() vote {
+func (uv *unanimousVoter) lazyCommonVote(uc gomel.Unit, round int) func() vote {
 	initialized := false
 	var commonVoteValue vote
 	return func() vote {
 		if !initialized {
-			commonVoteValue = uv.commonVote(uc, round, dag)
+			commonVoteValue = uv.commonVote(uc, round)
 			initialized = true
 		}
 		return commonVoteValue
@@ -112,7 +112,7 @@ func simpleCoin(u gomel.Unit, level int) bool {
 //      the result of coin toss is meant to be a function of round only
 // round - round for which we are tossing the coin
 // returns: false or true -- a (pseudo)random bit, impossible to predict before level (round + 1) was reached
-func coinToss(rs gomel.RandomSource, uc gomel.Unit, round int, dag gomel.Dag) bool {
+func coinToss(uc gomel.Unit, round int, rs gomel.RandomSource) bool {
 	randomBytes := rs.RandomBytes(uc.Creator(), round)
 	if randomBytes == nil {
 		if simpleCoin(uc, round) {
@@ -123,7 +123,7 @@ func coinToss(rs gomel.RandomSource, uc gomel.Unit, round int, dag gomel.Dag) bo
 	return randomBytes[0]&1 == 0
 }
 
-func (uv *unanimousVoter) commonVote(uc gomel.Unit, round int, dag gomel.Dag) vote {
+func (uv *unanimousVoter) commonVote(uc gomel.Unit, round int) vote {
 	if round <= uc.Level() {
 		return undecided
 	}
@@ -137,7 +137,7 @@ func (uv *unanimousVoter) commonVote(uc gomel.Unit, round int, dag gomel.Dag) vo
 		}
 		return popular
 	}
-	if coinToss(uv.rs, uc, round+1, dag) {
+	if coinToss(uc, round+1, uv.rs) {
 		return popular
 	}
 
@@ -167,9 +167,10 @@ func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u g
 			}
 			vote := undecided
 			vote, finish = voter(uc, v)
-			if vote == popular {
+			switch vote {
+			case popular:
 				votesOne = true
-			} else if vote == unpopular {
+			case unpopular:
 				votesZero = true
 			}
 			if finish || (votesOne && votesZero) {

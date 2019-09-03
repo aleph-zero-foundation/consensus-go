@@ -9,8 +9,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-type commonVote func(uc gomel.Unit, round int, dag gomel.Dag) vote
-
 // Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
 	dag                 gomel.Dag
