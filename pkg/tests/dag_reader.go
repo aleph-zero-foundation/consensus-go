@@ -33,6 +33,10 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 
 	for scanner.Scan() {
 		text := scanner.Text()
+		// skip comments
+		if strings.HasPrefix(text, "//") {
+			continue
+		}
 		var puCreator, puHeight, puVersion int
 		parents := []*gomel.Hash{}
 		for i, t := range strings.Split(text, " ") {

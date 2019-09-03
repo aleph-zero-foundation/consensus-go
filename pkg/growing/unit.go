@@ -108,9 +108,10 @@ func (u *unit) computeFloor(nProcesses int) {
 	// appending to such slice may overwrite values at indexes that follow the one we modified.
 
 	// pre-allocate memory for storing values for each process
-	u.floor = make([][]gomel.Unit, nProcesses)
+	floor := make([][]gomel.Unit, nProcesses)
 	if len(u.parents) == 0 {
-		u.floor[u.creator] = []gomel.Unit{u}
+		floor[u.creator] = []gomel.Unit{u}
+		u.floor = floor
 		return
 	}
 	// pre-allocate memory for all values for all processes - 0 `len` allows us to use append for sake of simplicity
@@ -135,9 +136,10 @@ func (u *unit) computeFloor(nProcesses int) {
 		for ix < len(floors) && floors[ix].Creator() == pid {
 			ix++
 		}
-		u.floor[pid] = floors[lastIx:ix]
+		floor[pid] = floors[lastIx:ix]
 		lastIx = ix
 	}
+	u.floor = floor
 }
 
 func (u *unit) computeLevel() {
@@ -146,7 +148,7 @@ func (u *unit) computeLevel() {
 		return
 	}
 
-	nProcesses := len(u.floor)
+	nProcesses := len(u.Floor())
 	// compliant unit have parents in ascending order of level
 	maxLevelParents := u.parents[len(u.parents)-1].Level()
 
@@ -160,7 +162,7 @@ func (u *unit) computeLevel() {
 	}
 	creator := u.Creator()
 	hasQuorum := IsQuorum(nProcesses, nSeen)
-	for pid, vs := range u.floor {
+	for pid, vs := range u.Floor() {
 		if pid == creator {
 			continue
 		}

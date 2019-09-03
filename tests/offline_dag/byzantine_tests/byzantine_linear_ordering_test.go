@@ -73,14 +73,7 @@ func createForkUsingNewUnit(parentsCount int) forker {
 }
 
 func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
-	var storage [1]gomel.Unit
-	combinedFloor := storage[:0]
-	gomel.CombineParentsFloorsPerProc(parents, int(creator), &combinedFloor)
-	if len(combinedFloor) > 1 {
-		return true
-	}
-	pred := parents[0]
-	return pred.Below(combinedFloor[0]) && !pred.Above(combinedFloor[0])
+	return gomel.HasSelfForkingEvidence(parents)
 }
 
 func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error {
