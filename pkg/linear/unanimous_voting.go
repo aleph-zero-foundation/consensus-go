@@ -13,8 +13,8 @@ const (
 )
 
 const (
-	firstVotingRound    = 1
-	deterministicPrefix = 10
+	firstVotingRound              = 1
+	commonVoteDeterministicPrefix = 10
 )
 
 type votingResult struct {
@@ -131,7 +131,7 @@ func (uv *unanimousVoter) commonVote(uc gomel.Unit, round int) vote {
 		// "Default vote is asked on too low unit level."
 		return undecided
 	}
-	if round <= deterministicPrefix {
+	if round <= commonVoteDeterministicPrefix {
 		if round == 3 {
 			return unpopular
 		}
