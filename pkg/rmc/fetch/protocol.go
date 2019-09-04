@@ -123,7 +123,8 @@ func receiveHeights(conn network.Connection, nProc int) ([]int, error) {
 	}
 	result := make([]int, nProc)
 	for pid := range result {
-		result[pid] = int(binary.LittleEndian.Uint32(buf[(4 * pid):(4*pid + 4)]))
+		result[pid] = int(binary.LittleEndian.Uint32(buf))
+		buf = buf[4:]
 	}
 	return result, nil
 }
@@ -150,7 +151,10 @@ func getUnits(dag gomel.Dag, u gomel.Unit, heights []int) []gomel.Unit {
 func sendUnits(conn network.Connection, units []gomel.Unit) error {
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, uint32(len(units)))
-	conn.Write(buf)
+	_, err := conn.Write(buf)
+	if err != nil {
+		return err
+	}
 
 	encoder := custom.NewEncoder(conn)
 	for _, u := range units {
