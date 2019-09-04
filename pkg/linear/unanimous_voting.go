@@ -18,8 +18,8 @@ const (
 )
 
 type votingResult struct {
-	popular   uint64
-	unpopular uint64
+	popular   int
+	unpopular int
 }
 
 type unanimousVoter struct {
@@ -112,10 +112,10 @@ func simpleCoin(u gomel.Unit, level int) bool {
 //      the result of coin toss is meant to be a function of round only
 // round - round for which we are tossing the coin
 // returns: false or true -- a (pseudo)random bit, impossible to predict before level (round + 1) was reached
-func coinToss(uc gomel.Unit, round int, rs gomel.RandomSource) bool {
-	randomBytes := rs.RandomBytes(uc.Creator(), round)
+func coinToss(uc gomel.Unit, level int, rs gomel.RandomSource) bool {
+	randomBytes := rs.RandomBytes(uc.Creator(), level)
 	if randomBytes == nil {
-		if simpleCoin(uc, round) {
+		if simpleCoin(uc, level) {
 			return true
 		}
 		return false
@@ -123,21 +123,21 @@ func coinToss(uc gomel.Unit, round int, rs gomel.RandomSource) bool {
 	return randomBytes[0]&1 == 0
 }
 
-func (uv *unanimousVoter) commonVote(uc gomel.Unit, round int) vote {
-	if round <= uc.Level() {
+func (uv *unanimousVoter) commonVote(uc gomel.Unit, level int) vote {
+	if level <= uc.Level() {
 		return undecided
 	}
-	if round-uc.Level() <= firstVotingRound {
+	if level-uc.Level() <= firstVotingRound {
 		// "Default vote is asked on too low unit level."
 		return undecided
 	}
-	if round <= commonVoteDeterministicPrefix {
-		if round == 3 {
+	if level <= commonVoteDeterministicPrefix {
+		if level == 3 {
 			return unpopular
 		}
 		return popular
 	}
-	if coinToss(uc, round+1, uv.rs) {
+	if coinToss(uc, level+1, uv.rs) {
 		return popular
 	}
 

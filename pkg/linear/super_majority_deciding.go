@@ -28,7 +28,7 @@ func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel 
 		commonVote := smd.lazyCommonVote(uc, level)
 		smd.dag.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				vDecision := smd.decideUsingSuperMajorityOfVotes(uc, v)
+				vDecision := smd.decide(uc, v)
 				if vDecision != undecided && vDecision == commonVote() {
 					decision = vDecision
 					return false
@@ -46,7 +46,7 @@ func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel 
 	return undecided, -1, dagMaxLevel
 }
 
-func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Unit) vote {
+func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	commonVote := smd.lazyCommonVote(uc, u.Level()-1)
 	var votingResult votingResult
 	result := voteUsingPrimeAncestors(uc, u, smd.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
@@ -70,7 +70,7 @@ func (smd *superMajorityDecider) decideUsingSuperMajorityOfVotes(uc, u gomel.Uni
 		} else {
 			// fast fail
 			test := votingResult
-			remaining := uint64(smd.dag.NProc() - uPrA.Creator() - 1)
+			remaining := smd.dag.NProc() - uPrA.Creator() - 1
 			test.popular += remaining
 			test.unpopular += remaining
 			if superMajority(smd.dag, test) == undecided {
