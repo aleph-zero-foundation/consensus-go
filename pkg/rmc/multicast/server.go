@@ -3,28 +3,31 @@ package multicast
 import (
 	"time"
 
+	"sync"
+
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/rmc"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, nProc int, state *rmc.RMC, requests chan *Request, accepted chan []byte, netserv network.Server, timeout time.Duration, log zerolog.Logger) *Server {
+func NewServer(pid uint16, dag gomel.Dag, state *rmc.RMC, requests chan *Request, canMulticast *sync.Mutex, accepted chan []byte, netserv network.Server, timeout time.Duration, log zerolog.Logger) *Server {
 
-	proto := newProtocol(pid, nProc, requests, state, accepted, netserv, timeout, log)
+	proto := newProtocol(pid, dag, requests, state, canMulticast, accepted, netserv, timeout, log)
 	return &Server{
 		requests: requests,
-		outPool:  sync.NewPool(uint(nProc), proto.Out),
-		inPool:   sync.NewPool(uint(nProc), proto.In),
+		outPool:  gsync.NewPool(uint(dag.NProc()), proto.Out),
+		inPool:   gsync.NewPool(uint(dag.NProc()), proto.In),
 	}
 }
 
 // Server is a multicast server
 type Server struct {
 	requests chan *Request
-	outPool  *sync.Pool
-	inPool   *sync.Pool
+	outPool  *gsync.Pool
+	inPool   *gsync.Pool
 }
 
 // Start starts worker pools

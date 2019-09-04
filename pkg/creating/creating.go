@@ -215,7 +215,9 @@ func NewNonSkippingUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.Ran
 		if len(mu.Get(pid)) != 0 {
 			u := mu.Get(pid)[0]
 			if u.Level() < level {
-				parents = append(parents, u)
+				if !u.Below(predecessor) {
+					parents = append(parents, u)
+				}
 			} else {
 				v := dag.PrimeUnits(level).Get(pid)[0]
 				parents = append(parents, v)

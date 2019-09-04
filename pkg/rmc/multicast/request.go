@@ -2,7 +2,6 @@ package multicast
 
 import (
 	"bytes"
-	"errors"
 
 	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -11,13 +10,6 @@ import (
 const (
 	sendData byte = iota
 	sendFinished
-)
-
-type category byte
-
-const (
-	unit category = iota
-	alert
 )
 
 // Request represents a request to a multicast server
@@ -56,10 +48,12 @@ func unitID(u gomel.Unit, nProc int) uint64 {
 	return uint64(u.Creator()) + uint64(nProc)*uint64(u.Height())
 }
 
+func decodeUnitID(id uint64, nProc int) (int, int) {
+	return int(id % uint64(nProc)), int(id / uint64(nProc))
+}
+
 func encodeUnit(u gomel.Unit) ([]byte, error) {
 	var buf bytes.Buffer
-
-	buf.Write([]byte{byte(unit)})
 
 	encoder := custom.NewEncoder(&buf)
 	err := encoder.EncodeUnit(u)
@@ -72,9 +66,6 @@ func encodeUnit(u gomel.Unit) ([]byte, error) {
 // DecodePreunit checks wheather the given data is representing a unit
 // and decodes it using the method from custom package
 func DecodePreunit(data []byte) (gomel.Preunit, error) {
-	if data[0] != byte(unit) {
-		return nil, errors.New("given data doesn't represent a unit")
-	}
-	decoder := custom.NewDecoder(bytes.NewReader(data[1:]))
+	decoder := custom.NewDecoder(bytes.NewReader(data))
 	return decoder.DecodePreunit()
 }

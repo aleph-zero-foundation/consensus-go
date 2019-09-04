@@ -1,6 +1,7 @@
 package rmc
 
 import (
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -29,6 +30,7 @@ type service struct {
 	fetchRequests chan gomel.Preunit
 	mcRequests    chan *multicast.Request
 	mcServer      *multicast.Server
+	canMulticast  *sync.Mutex
 	fetchServer   *fetch.Server
 	log           zerolog.Logger
 }
@@ -49,7 +51,8 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 	mcRequests := make(chan *multicast.Request, mcRequestsSize*dag.NProc())
 	// accepted is a channel for succesfully multicasted data
 	accepted := make(chan []byte, mcAcceptedSize*dag.NProc())
-	mcServer := multicast.NewServer(uint16(config.Pid), dag.NProc(), state, mcRequests, accepted, netserv, config.Timeout, log)
+	canMulticast := new(sync.Mutex)
+	mcServer := multicast.NewServer(uint16(config.Pid), dag, state, mcRequests, canMulticast, accepted, netserv, config.Timeout, log)
 
 	netserv, err = tcp.NewServer(config.LocalAddress[1], config.RemoteAddresses[1], log)
 	if err != nil {
@@ -73,6 +76,7 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 			mcServer:      mcServer,
 			fetchServer:   fetchServer,
 			fetchRequests: fetchRequests,
+			canMulticast:  canMulticast,
 			log:           log,
 		},
 		units,
@@ -87,6 +91,7 @@ func (s *service) translator() {
 		if !isOpen {
 			return
 		}
+		s.canMulticast.Lock()
 		for pid := 0; pid < s.dag.NProc(); pid++ {
 			if pid == s.pid {
 				continue
