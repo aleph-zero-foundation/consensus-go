@@ -6,6 +6,7 @@ package fetch
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -121,7 +122,7 @@ func (p *protocol) Out() {
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
-	units, err := receivePreunits(conn, len(r.Hashes))
+	units, err := receivePreunits(conn, r.Hashes)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
 		return
@@ -180,14 +181,17 @@ func sendUnits(conn network.Connection, units []gomel.Unit) error {
 	return conn.Flush()
 }
 
-func receivePreunits(conn network.Connection, k int) ([]gomel.Preunit, error) {
+func receivePreunits(conn network.Connection, requested []*gomel.Hash) ([]gomel.Preunit, error) {
 	var err error
-	result := make([]gomel.Preunit, k)
+	result := make([]gomel.Preunit, len(requested))
 	decoder := custom.NewDecoder(conn)
 	for i := range result {
 		result[i], err = decoder.DecodePreunit()
 		if err != nil {
 			return nil, err
+		}
+		if *result[i].Hash() != *requested[i] {
+			return nil, errors.New("received unit has different hash than requested")
 		}
 	}
 	return result, nil
