@@ -19,8 +19,8 @@ func newSuperMajorityDecider(dag gomel.Dag, rs gomel.RandomSource) *superMajorit
 
 // Decides if uc is popular (i.e. it can be used as a timing unit).
 // Returns vote, level on which the decision was made and current dag level.
-func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel int) (decision vote, decisionLevel int, dagLevel int) {
-	maxDecisionLevel := smd.getMaximalLevelAtWhichWeCanDecide(uc, dagMaxLevel)
+func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel int) (decision vote, decisionLevel int) {
+	maxDecisionLevel := smd.getMaxDecideLevel(uc, dagMaxLevel)
 
 	for level := uc.Level() + firstVotingRound + 1; level <= maxDecisionLevel; level++ {
 		decision := undecided
@@ -38,11 +38,11 @@ func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel 
 		})
 
 		if decision != undecided {
-			return decision, level, dagMaxLevel
+			return decision, level
 		}
 	}
 
-	return undecided, -1, dagMaxLevel
+	return undecided, -1
 }
 
 func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
@@ -82,7 +82,9 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 	return superMajority(smd.dag, result)
 }
 
-func (smd *superMajorityDecider) getMaximalLevelAtWhichWeCanDecide(uc gomel.Unit, dagMaxLevel int) int {
+// getMaxDecideLevel returns a maximal level of a prime unit which can be used for deciding assuming that dag is on level
+// 'dagMaxLevel'.
+func (smd *superMajorityDecider) getMaxDecideLevel(uc gomel.Unit, dagMaxLevel int) int {
 	deterministicLevel := uc.Level() + commonVoteDeterministicPrefix
 	if dagMaxLevel-2 < deterministicLevel {
 		if deterministicLevel > dagMaxLevel {

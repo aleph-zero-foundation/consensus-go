@@ -70,9 +70,9 @@ func (o *ordering) DecideTiming() gomel.Unit {
 
 	var result gomel.Unit
 	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
-		decision, decidedOn, dagLevel := o.decider.decideUnitIsPopular(uc, dagMaxLevel)
+		decision, decidedOn := o.decider.decideUnitIsPopular(uc, dagMaxLevel)
 		if decision == popular {
-			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
+			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagMaxLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 			o.timingUnits.appendOrIgnore(level, uc)
 			result = uc
 			return false

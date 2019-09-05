@@ -37,9 +37,6 @@ func newUnanimousVoter(dag gomel.Dag, rs gomel.RandomSource) *unanimousVoter {
 }
 
 func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
-	if uc.Level() >= u.Level() {
-		return undecided
-	}
 	r := u.Level() - uc.Level()
 	if r < firstVotingRound {
 		return undecided
@@ -97,12 +94,9 @@ func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
 }
 
 // Toss a coin using a given RandomSource.
-// With low probability the toss may fail -- typically because of adversarial behavior of some process(es).
 // uc - the unit whose popularity decision is being considered by tossing a coin
-//      this param is used only in case when the simpleCoin is used, otherwise
-//      the result of coin toss is meant to be a function of round only
-// round - round for which we are tossing the coin
-// returns: false or true -- a (pseudo)random bit, impossible to predict before level (round + 1) was reached
+// level - level for which we are tossing the coin
+// returns: false or true -- a (pseudo)random bit, impossible to predict before level was reached
 func coinToss(uc gomel.Unit, level int, rs gomel.RandomSource) bool {
 	return rs.RandomBytes(uc.Creator(), level)[0]&1 == 0
 }
