@@ -22,7 +22,7 @@ func newSuperMajorityDecider(dag gomel.Dag, rs gomel.RandomSource) *superMajorit
 func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel int) (decision vote, decisionLevel int, dagLevel int) {
 	maxDecisionLevel := smd.getMaximalLevelAtWhichWeCanDecide(uc, dagMaxLevel)
 
-	for level := uc.Level() + firstDecidingRound; level <= maxDecisionLevel; level++ {
+	for level := uc.Level() + firstVotingRound + 1; level <= maxDecisionLevel; level++ {
 		decision := undecided
 
 		commonVote := smd.lazyCommonVote(uc, level)
@@ -33,7 +33,6 @@ func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel 
 					decision = vDecision
 					return false
 				}
-
 			}
 			return true
 		})
@@ -84,8 +83,12 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 }
 
 func (smd *superMajorityDecider) getMaximalLevelAtWhichWeCanDecide(uc gomel.Unit, dagMaxLevel int) int {
-	if dagMaxLevel-uc.Level()-2 < commonVoteDeterministicPrefix {
-		return uc.Level() + commonVoteDeterministicPrefix
+	deterministicLevel := uc.Level() + commonVoteDeterministicPrefix
+	if dagMaxLevel-2 < deterministicLevel {
+		if deterministicLevel > dagMaxLevel {
+			return dagMaxLevel
+		}
+		return deterministicLevel
 	}
 	return dagMaxLevel - 2
 }

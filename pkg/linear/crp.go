@@ -77,7 +77,7 @@ func randomPermutation(rs gomel.RandomSource, dag gomel.Dag, level int, pids []i
 	priority := make(map[gomel.Unit][]byte)
 
 	for _, pid := range pids {
-		randomBytes := rs.RandomBytes(pid, level)
+		randomBytes := rs.RandomBytes(pid, level+5)
 		if randomBytes == nil {
 			return nil, false
 		}

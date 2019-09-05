@@ -77,12 +77,12 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 	return *lastVote
 }
 
-func (uv *unanimousVoter) lazyCommonVote(uc gomel.Unit, round int) func() vote {
+func (uv *unanimousVoter) lazyCommonVote(uc gomel.Unit, level int) func() vote {
 	initialized := false
 	var commonVoteValue vote
 	return func() vote {
 		if !initialized {
-			commonVoteValue = uv.commonVote(uc, round)
+			commonVoteValue = uv.commonVote(uc, level)
 			initialized = true
 		}
 		return commonVoteValue
@@ -96,15 +96,6 @@ func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
 	return unpopular
 }
 
-// Deterministic function of a unit and level
-// It is implemented as level-th bit of unit hash
-// return 1 or 0
-func simpleCoin(u gomel.Unit, level int) bool {
-	index := level % (8 * len(u.Hash()))
-	byteIndex, bitIndex := index/8, index%8
-	return u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0
-}
-
 // Toss a coin using a given RandomSource.
 // With low probability the toss may fail -- typically because of adversarial behavior of some process(es).
 // uc - the unit whose popularity decision is being considered by tossing a coin
@@ -113,26 +104,20 @@ func simpleCoin(u gomel.Unit, level int) bool {
 // round - round for which we are tossing the coin
 // returns: false or true -- a (pseudo)random bit, impossible to predict before level (round + 1) was reached
 func coinToss(uc gomel.Unit, level int, rs gomel.RandomSource) bool {
-	randomBytes := rs.RandomBytes(uc.Creator(), level)
-	if randomBytes == nil {
-		if simpleCoin(uc, level) {
-			return true
-		}
-		return false
-	}
-	return randomBytes[0]&1 == 0
+	return rs.RandomBytes(uc.Creator(), level)[0]&1 == 0
 }
 
 func (uv *unanimousVoter) commonVote(uc gomel.Unit, level int) vote {
 	if level <= uc.Level() {
 		return undecided
 	}
-	if level-uc.Level() <= firstVotingRound {
+	round := level - uc.Level()
+	if round <= firstVotingRound {
 		// "Default vote is asked on too low unit level."
 		return undecided
 	}
-	if level <= commonVoteDeterministicPrefix {
-		if level == 3 {
+	if round <= commonVoteDeterministicPrefix {
+		if round == 3 {
 			return unpopular
 		}
 		return popular
