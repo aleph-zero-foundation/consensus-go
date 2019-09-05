@@ -562,6 +562,12 @@ func NewNoOpVerifier() DagVerifier {
 	}
 }
 
+// SimpleCoin returns a pseudo-random bit that is only dependent on the value of the level parameter.
+func SimpleCoin(pid, level int) bool {
+	rand := rand.New(rand.NewSource(int64(level)))
+	return rand.Int()%2 == 0
+}
+
 type testRandomSource struct{}
 
 func newTestRandomSource() gomel.RandomSource {
@@ -572,7 +578,10 @@ func (rs *testRandomSource) Init(dag gomel.Dag) {
 }
 
 func (rs *testRandomSource) RandomBytes(pid, level int) []byte {
-	return nil
+	if SimpleCoin(pid, level) {
+		return []byte{0}
+	}
+	return []byte{1}
 }
 
 func (*testRandomSource) Update(gomel.Unit) {
