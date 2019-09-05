@@ -19,7 +19,7 @@ var _ = Describe("Creating", func() {
 		)
 		JustBeforeEach(func() {
 			rs = tests.NewTestRandomSource()
-			rs.Init(dag)
+			dag = rs.Bind(dag)
 		})
 		Context("that is empty", func() {
 			BeforeEach(func() {

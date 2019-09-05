@@ -13,7 +13,14 @@ type Callback func(Preunit, Unit, error)
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
 	// AddUnits tries to transform a preunit to a corresponding unit and add it to the dag. After that, it calls the Callback.
-	AddUnit(Preunit, RandomSource, Callback)
+	AddUnit(Preunit, Callback)
+	// Decode attempts to decode the given Preunit and return a Unit or an error, when that is impossible.
+	// The resulting Unit is NOT inserted in the dag -- to do that one needs to Emplace it.
+	Decode(Preunit) (Unit, error)
+	// Check if the Unit satisfies the assumptions of the poset. Should be called before Emplace.
+	Check(Unit) error
+	// Emplace attempts to add the given Unit to the dag. It returns the unit that is included in the dag.
+	Emplace(Unit) Unit
 	// PrimeUnits returns all prime units on a given level of the dag.
 	PrimeUnits(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
@@ -25,6 +32,22 @@ type Dag interface {
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
+}
+
+// AddUnit to the specified dag, calling the callback when done or when an error is encountered.
+func AddUnit(dag Dag, pu Preunit, callback Callback) {
+	result, err := dag.Decode(pu)
+	if err != nil {
+		callback(pu, result, err)
+		return
+	}
+	err = dag.Check(result)
+	if err != nil {
+		callback(pu, result, err)
+		return
+	}
+	result = dag.Emplace(result)
+	callback(pu, result, nil)
 }
 
 // MergeCallbacks combines two callbacks into one.

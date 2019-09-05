@@ -1,4 +1,4 @@
-package growing_test
+package check_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGrowing(t *testing.T) {
+func TestCheck(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Growing Suite")
+	RunSpecs(t, "Check Suite")
 }

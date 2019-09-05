@@ -155,7 +155,7 @@ func (s *service) createUnit() bool {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	canCreateMore := true
-	s.dag.AddUnit(created, s.randomSource, func(pu gomel.Preunit, added gomel.Unit, err error) {
+	s.dag.AddUnit(created, func(pu gomel.Preunit, added gomel.Unit, err error) {
 		defer wg.Done()
 		if err != nil {
 			s.log.Error().Str("where", "dag.AddUnit callback").Msg(err.Error())

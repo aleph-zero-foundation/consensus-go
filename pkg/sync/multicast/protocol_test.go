@@ -20,16 +20,15 @@ type dag struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
+func (dag *dag) AddUnit(unit gomel.Preunit, callback gomel.Callback) {
 	dag.attemptedAdd = append(dag.attemptedAdd, unit)
-	dag.Dag.AddUnit(unit, rs, callback)
+	dag.Dag.AddUnit(unit, callback)
 }
 
 var _ = Describe("Protocol", func() {
 
 	var (
 		dags     []*dag
-		rs       []gomel.RandomSource
 		servs    []sync.Server
 		netservs []network.Server
 		request  gomel.Callback
@@ -42,11 +41,11 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		serv, request = NewServer(0, dags[0], rs[0], netservs[0], gomel.NopCallback, time.Millisecond*200, sync.NopFallback(), zerolog.Nop())
+		serv, request = NewServer(0, dags[0], netservs[0], time.Millisecond*200, sync.NopFallback(), zerolog.Nop())
 		servs = []sync.Server{serv}
 		serv.Start()
 		for i := 1; i < 4; i++ {
-			serv, _ = NewServer(uint16(i), dags[i], rs[i], netservs[i], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
+			serv, _ = NewServer(uint16(i), dags[i], netservs[i], time.Second, sync.NopFallback(), zerolog.Nop())
 			servs = append(servs, serv)
 			serv.Start()
 		}
@@ -57,19 +56,14 @@ var _ = Describe("Protocol", func() {
 		Context("when multicasting a single dealing unit to empty posets", func() {
 
 			BeforeEach(func() {
-				rs = []gomel.RandomSource{}
 				dags = []*dag{}
 
 				tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit4.txt", tests.NewTestDagFactory())
-				rs = append(rs, tests.NewTestRandomSource())
-				rs[0].Init(tdag)
 				dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
 				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
 
 				for i := 1; i < 4; i++ {
 					tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
-					rs = append(rs, tests.NewTestRandomSource())
-					rs[i].Init(tdag)
 					dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
 				}
 			})

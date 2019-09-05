@@ -20,9 +20,9 @@ type dag struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
+func (dag *dag) AddUnit(unit gomel.Preunit, callback gomel.Callback) {
 	dag.attemptedAdd = append(dag.attemptedAdd, unit)
-	dag.Dag.AddUnit(unit, rs, callback)
+	dag.Dag.AddUnit(unit, callback)
 }
 
 type fallback bool
@@ -52,12 +52,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		trs1 := tests.NewTestRandomSource()
-		trs1.Init(dag1)
-		proto1 = NewProtocol(0, dag1, trs1, reqs, servs[0], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
-		trs2 := tests.NewTestRandomSource()
-		trs2.Init(dag2)
-		proto2 = NewProtocol(1, dag2, trs2, reqs, servs[1], gomel.NopCallback, time.Second, &fallenBack, zerolog.Nop())
+		proto1 = NewProtocol(0, dag1, reqs, servs[0], time.Second, &fallenBack, zerolog.Nop())
+		proto2 = NewProtocol(1, dag2, reqs, servs[1], time.Second, &fallenBack, zerolog.Nop())
 	})
 
 	Describe("with only two participants", func() {

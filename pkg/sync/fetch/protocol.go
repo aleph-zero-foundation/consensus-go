@@ -22,34 +22,30 @@ import (
 )
 
 type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	reqs         <-chan Request
-	netserv      network.Server
-	syncIds      []uint32
-	callback     gomel.Callback
-	timeout      time.Duration
-	fallback     sync.Fallback
-	log          zerolog.Logger
+	pid      uint16
+	dag      gomel.Dag
+	reqs     <-chan Request
+	netserv  network.Server
+	syncIds  []uint32
+	timeout  time.Duration
+	fallback sync.Fallback
+	log      zerolog.Logger
 }
 
 // NewProtocol returns a new fetching protocol.
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, reqs <-chan Request, netserv network.Server, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
 	nProc := dag.NProc()
 	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		reqs:         reqs,
-		netserv:      netserv,
-		syncIds:      make([]uint32, nProc),
-		callback:     callback,
-		timeout:      timeout,
-		fallback:     fallback,
-		log:          log,
+		pid:      pid,
+		dag:      dag,
+		reqs:     reqs,
+		netserv:  netserv,
+		syncIds:  make([]uint32, nProc),
+		timeout:  timeout,
+		fallback: fallback,
+		log:      log,
 	}
 }
 
@@ -128,7 +124,7 @@ func (p *protocol) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	aggErr := add.Antichain(p.dag, p.randomSource, units, p.callback, p.fallback, log)
+	aggErr := add.Antichain(p.dag, units, gomel.NopCallback, p.fallback, log)
 	aggErr = aggErr.Pruned(true)
 	if aggErr != nil {
 		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())

@@ -57,9 +57,10 @@ func NewFixedCoin(nProc, pid uint16, seed int) gomel.RandomSource {
 	return New(nProc, pid, tcoin.New(nProc, pid, coeffs), shareProviders)
 }
 
-// Init initializes the coin with the given dag.
-func (c *coin) Init(dag gomel.Dag) {
+// Bind the coin with the dag.
+func (c *coin) Bind(dag gomel.Dag) gomel.Dag {
 	c.dag = dag
+	return checkAndUpdateWrapper(dag, c)
 }
 
 // RandomBytes returns a sequence of random bits for a given level.
@@ -69,8 +70,7 @@ func (c *coin) RandomBytes(_ uint16, level int) []byte {
 	return c.randomBytes.Get(level)
 }
 
-// Update the RandomSource with data included in the preunit.
-func (c *coin) Update(u gomel.Unit) {
+func (c *coin) update(u gomel.Unit) {
 	if gomel.Prime(u) && c.shareProvider[u.Creator()] {
 		cs := new(tcoin.CoinShare)
 		offset := bn256.SignatureLength
@@ -86,13 +86,13 @@ func (c *coin) Update(u gomel.Unit) {
 	}
 }
 
-// CheckCompliance checks if the random source data included in the unit
+// checkCompliance checks if the random source data included in the unit
 // is correct. The following rules should be satisfied:
 //  (1) A dealing unit created by a share provider should contain a marshalled share
 //  (2) A non-dealing prime unit should start with random bytes from the previous level,
 //  followed by a marshalled coin share, if the creator is a share provider.
 //  (3) Every other unit's random source data should be empty.
-func (c *coin) CheckCompliance(u gomel.Unit) error {
+func (c *coin) checkCompliance(u gomel.Unit) error {
 	if gomel.Dealing(u) && c.shareProvider[u.Creator()] {
 		return new(tcoin.CoinShare).Unmarshal(u.RandomSourceData())
 	}

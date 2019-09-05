@@ -17,7 +17,6 @@ import (
 // Retrying is a wrapper for a fallback that continuously tries adding the problematic preunits to the dag.
 type Retrying struct {
 	dag      gomel.Dag
-	rs       gomel.RandomSource
 	inner    gsync.Fallback
 	interval time.Duration
 	backlog  *backlog
@@ -28,10 +27,9 @@ type Retrying struct {
 }
 
 // NewRetrying wraps the given fallback with a retrying routine that keeps trying to add problematic units.
-func NewRetrying(inner gsync.Fallback, dag gomel.Dag, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) *Retrying {
+func NewRetrying(inner gsync.Fallback, dag gomel.Dag, interval time.Duration, log zerolog.Logger) *Retrying {
 	return &Retrying{
 		dag:     dag,
-		rs:      rs,
 		inner:   inner,
 		backlog: newBacklog(),
 		deps:    newDeps(),
@@ -107,7 +105,7 @@ func (f *Retrying) update() {
 }
 
 func (f *Retrying) addUnit(pu gomel.Preunit) {
-	err := add.Unit(f.dag, f.rs, pu, gomel.NopCallback, gsync.NopFallback(), f.log)
+	err := add.Unit(f.dag, pu, gomel.NopCallback, gsync.NopFallback(), f.log)
 	if err != nil {
 		log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}

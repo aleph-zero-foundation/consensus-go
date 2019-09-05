@@ -1,4 +1,4 @@
-package growing
+package dag
 
 import (
 	"sync"

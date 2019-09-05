@@ -27,26 +27,19 @@ type service struct {
 // NewService constructs an ordering service.
 // This service sorts units in linear order.
 // orderedUnits is an output channel where it writes these units in order.
-// Ordering is attempted when the returned callback is called on a prime unit.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, gomel.Callback, error) {
+// Ordering is attempted when a prime unit is added to the returned dag.
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, gomel.Dag) {
 	primeAlert := make(chan struct{}, 1)
 	return &service{
-			pid:                 config.Pid,
-			linearOrdering:      linear.NewOrdering(dag, randomSource, config.OrderStartLevel, config.CRPFixedPrefix, log),
-			orderedUnits:        orderedUnits,
-			extendOrderRequests: make(chan int, 10),
-			primeAlert:          primeAlert,
-			exitChan:            make(chan struct{}),
-			currentRound:        config.OrderStartLevel,
-			log:                 log,
-		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
-			if err == nil && gomel.Prime(unit) {
-				select {
-				case primeAlert <- struct{}{}:
-				default:
-				}
-			}
-		}, nil
+		pid:                 config.Pid,
+		linearOrdering:      linear.NewOrdering(dag, randomSource, config.OrderStartLevel, config.CRPFixedPrefix, log),
+		orderedUnits:        orderedUnits,
+		extendOrderRequests: make(chan int, 10),
+		primeAlert:          primeAlert,
+		exitChan:            make(chan struct{}),
+		currentRound:        config.OrderStartLevel,
+		log:                 log,
+	}, &orderDag{dag, primeAlert}
 }
 
 func (s *service) attemptOrdering() {

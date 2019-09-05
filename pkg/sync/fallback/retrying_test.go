@@ -37,15 +37,11 @@ var _ = Describe("Retrying", func() {
 
 	JustBeforeEach(func() {
 		baseFallback := NewFetch(dag, reqs)
-		rs1 := tests.NewTestRandomSource()
-		rs1.Init(dag)
-		fallback = NewRetrying(baseFallback, dag, rs1, interval, zerolog.Nop())
+		fallback = NewRetrying(baseFallback, dag, interval, zerolog.Nop())
 		fallback.Start()
-		proto = fetch.NewProtocol(0, dag, rs1, reqs, servs[0], gomel.NopCallback, time.Second, fallback, zerolog.Nop())
+		proto = fetch.NewProtocol(0, dag, reqs, servs[0], time.Second, fallback, zerolog.Nop())
 		for i, op := range dags {
-			trs := tests.NewTestRandomSource()
-			trs.Init(op)
-			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, trs, reqs, servs[i+1], gomel.NopCallback, time.Second, nil, zerolog.Nop()))
+			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, reqs, servs[i+1], time.Second, nil, zerolog.Nop()))
 		}
 	})
 

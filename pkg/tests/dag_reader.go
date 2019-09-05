@@ -25,8 +25,6 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	}
 
 	dag := df.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
-	rs := NewTestRandomSource()
-	rs.Init(dag)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID int
@@ -64,7 +62,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 		var addingError error
 		var wg sync.WaitGroup
 		wg.Add(1)
-		dag.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, err error) {
+		dag.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
 			if err != nil {
 				addingError = err
 			}
