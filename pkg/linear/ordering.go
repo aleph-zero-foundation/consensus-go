@@ -9,42 +9,33 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// Ordering is an implementation of the LinearOrdering interface.
+// Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
 	dag                 gomel.Dag
 	randomSource        gomel.RandomSource
 	timingUnits         *safeUnitSlice
 	unitPositionInOrder map[gomel.Hash]int
 	orderedUnits        []gomel.Unit
-	votingLevel         int
-	piDeltaLevel        int
 	orderStartLevel     int
 	crpFixedPrefix      int
-	proofMemo           map[[2]gomel.Hash]bool
-	voteMemo            map[[2]gomel.Hash]vote
-	piMemo              map[[2]gomel.Hash]vote
-	deltaMemo           map[[2]gomel.Hash]vote
-	decisionMemo        map[gomel.Hash]vote
+	decider             *superMajorityDecider
 	log                 zerolog.Logger
 }
 
-// NewOrdering creates an Ordering wrapper around the given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, votingLevel int, piDeltaLevel int, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
+// NewOrdering creates an Ordering wrapper around a given dag.
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
+
+	stdDecider := newSuperMajorityDecider(dag, rs)
+
 	return &ordering{
 		dag:                 dag,
 		randomSource:        rs,
 		timingUnits:         newSafeUnitSlice(orderStartLevel),
 		unitPositionInOrder: make(map[gomel.Hash]int),
 		orderedUnits:        []gomel.Unit{},
-		votingLevel:         votingLevel,
-		piDeltaLevel:        piDeltaLevel,
 		orderStartLevel:     orderStartLevel,
 		crpFixedPrefix:      crpFixedPrefix,
-		proofMemo:           make(map[[2]gomel.Hash]bool),
-		voteMemo:            make(map[[2]gomel.Hash]vote),
-		piMemo:              make(map[[2]gomel.Hash]vote),
-		deltaMemo:           make(map[[2]gomel.Hash]vote),
-		decisionMemo:        make(map[gomel.Hash]vote),
+		decider:             stdDecider,
 		log:                 log,
 	}
 }
@@ -67,7 +58,8 @@ func dagMaxLevel(dag gomel.Dag) int {
 func (o *ordering) DecideTiming() gomel.Unit {
 	level := o.timingUnits.length()
 
-	if dagMaxLevel(o.dag) < level+o.votingLevel {
+	dagMaxLevel := dagMaxLevel(o.dag)
+	if dagMaxLevel < level+firstDecidingRound {
 		return nil
 	}
 
@@ -78,9 +70,9 @@ func (o *ordering) DecideTiming() gomel.Unit {
 
 	var result gomel.Unit
 	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
-		decision, decidedOn, dagLevel := o.decideUnitIsPopular(uc)
+		decision, decidedOn := o.decider.decideUnitIsPopular(uc, dagMaxLevel)
 		if decision == popular {
-			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
+			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagMaxLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 			o.timingUnits.appendOrIgnore(level, uc)
 			result = uc
 			return false

@@ -527,29 +527,41 @@ func testForkingChangingParents(forker forker) error {
 }
 
 // NOTE this was copied from voting.go
-func simpleCoin(u gomel.Unit, level int) int {
+func simpleCoin(u gomel.Unit, level int) bool {
 	index := level % (8 * len(u.Hash()))
 	byteIndex, bitIndex := index/8, index%8
-	if u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0 {
-		return 1
-	}
-	return 0
+	return u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0
+}
+
+func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan bool {
+	fixedVotes := make(chan bool)
+	go func() {
+		for it := uint64(0); it < initialVotingRound; it++ {
+			fixedVotes <- true
+		}
+		for vote := range commonVotes {
+			fixedVotes <- vote
+		}
+		close(fixedVotes)
+	}()
+	return fixedVotes
 }
 
 func newDefaultCommonVote(uc gomel.Unit, initialVotingRound uint64, lastDeterministicRound uint64) <-chan bool {
 	commonVotes := make(chan bool)
+	const deterministicPrefix = 10
 	go func() {
-		commonVotes <- true
-		commonVotes <- false
-
-		// use the simplecoin to predict future common votes
-		lastLevel := uc.Level() + int(initialVotingRound) + int(lastDeterministicRound)
-		for level := uc.Level() + int(initialVotingRound) + 3; level < lastLevel; level++ {
-			if simpleCoin(uc, level) == 0 {
-				commonVotes <- true
-			} else {
+		for round := 0; round < deterministicPrefix; round++ {
+			if round%2 == 0 {
 				commonVotes <- false
 			}
+			commonVotes <- true
+		}
+
+		// use the simplecoin to predict future common votes
+		lastLevel := uc.Level() + int(lastDeterministicRound)
+		for round := int(initialVotingRound) + deterministicPrefix; uc.Level()+round < lastLevel; round++ {
+			commonVotes <- simpleCoin(uc, round)
 		}
 		close(commonVotes)
 	}()
@@ -1067,23 +1079,6 @@ func buildOneLevelUp(
 	return createdUnits, nil
 }
 
-func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan bool {
-	fixedVotes := make(chan bool)
-	go func() {
-		for ix := uint64(0); ix < initialVotingRound-1; ix++ {
-			fixedVotes <- true
-		}
-		// this vote forces the "decision" unit to become popular exactly on the voting level
-		// otherwise it would be decided 0
-		fixedVotes <- false
-		for vote := range commonVotes {
-			fixedVotes <- vote
-		}
-		close(fixedVotes)
-	}()
-	return fixedVotes
-}
-
 func longTimeUndecidedStrategy(startLevel *uint64, initialVotingRound uint64, numberOfDeterministicRounds uint64, crp func(level uint64) uint16) (func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler, func([]gomel.Dag) bool) {
 	alreadyTriggered := false
 	var lastCreated gomel.Unit
@@ -1165,10 +1160,16 @@ func testLongTimeUndecidedStrategy() error {
 		nUnits                      = 1000
 		maxParents                  = nProcesses
 		numberOfDeterministicRounds = uint64(50)
+		decidingLevel               = uint64(3)
 	)
 
 	conf := config.NewDefaultConfiguration()
-	conf.PiDeltaLevel = uint(numberOfDeterministicRounds + 1)
+
+	// NOTE following 4 lines are supposed to enforce a unit of creator 1 being first on crp for level 1
+	unitCreator := helpers.NewEachInSequenceUnitCreator(helpers.NewDefaultCreator(nProcesses))
+	conf.CRPFixedPrefix = 1
+	startLevel := uint64(1)
+	crp := func(uint64) uint16 { return 1 }
 
 	configurations := make([]config.Configuration, nProcesses)
 	for pid := range configurations {
@@ -1177,14 +1178,8 @@ func testLongTimeUndecidedStrategy() error {
 
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
-	// NOTE following 4 lines are supposed to enforce a unit of creator 1 being first on crp for level 1
-	unitCreator := helpers.NewEachInSequenceUnitCreator(helpers.NewDefaultCreator(nProcesses))
-	conf.CRPFixedPrefix = 1
-	startLevel := uint64(1)
-	crp := func(uint64) uint16 { return 1 }
-
 	unitAdder, stopCondition :=
-		longTimeUndecidedStrategy(&startLevel, uint64(conf.VotingLevel), numberOfDeterministicRounds, crp)
+		longTimeUndecidedStrategy(&startLevel, decidingLevel, numberOfDeterministicRounds, crp)
 
 	checkIfUndecidedVerifier :=
 		func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
@@ -1197,8 +1192,6 @@ func testLongTimeUndecidedStrategy() error {
 				ordering := linear.NewOrdering(
 					dag,
 					rss[pid],
-					int(conf.VotingLevel),
-					int(conf.PiDeltaLevel),
 					int(conf.OrderStartLevel),
 					int(conf.CRPFixedPrefix),
 					logger,
@@ -1208,7 +1201,7 @@ func testLongTimeUndecidedStrategy() error {
 					tu = ordering.DecideTiming()
 				}
 				if unit := ordering.DecideTiming(); unit != nil && unit.Level() >= int(startLevel) {
-					fmt.Println("some dag already decided - error", unit.Level(), unit.Creator())
+					fmt.Println("some dag already decided - error", "level:", unit.Level(), "creator:", unit.Creator())
 					errorsCount++
 				}
 			}
@@ -1227,7 +1220,7 @@ func testLongTimeUndecidedStrategy() error {
 		stopCondition,
 	)
 
-	return helpers.Test(pubKeys, privKeys, configurations, testingRoutine)
+	return helpers.TestUsingTestRandomSource(pubKeys, privKeys, configurations, testingRoutine)
 }
 
 var _ = Describe("Byzantine Dag Test", func() {

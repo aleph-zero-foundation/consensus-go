@@ -11,8 +11,6 @@ import (
 )
 
 const (
-	votingLevel    = 3
-	piDeltaLevel   = 12
 	crpFixedPrefix = 5
 )
 
@@ -30,7 +28,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, crpFixedPrefix, zerolog.Nop())
+				ordering = NewOrdering(p, rs, 0, crpFixedPrefix, zerolog.Nop())
 				Expect(ordering.DecideTiming()).To(BeNil())
 			})
 		})
@@ -40,7 +38,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, crpFixedPrefix, zerolog.Nop())
+				ordering = NewOrdering(p, rs, 0, crpFixedPrefix, zerolog.Nop())
 				Expect(ordering.DecideTiming()).To(BeNil())
 			})
 		})
@@ -50,7 +48,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, crpFixedPrefix, zerolog.Nop())
+				ordering = NewOrdering(p, rs, 0, crpFixedPrefix, zerolog.Nop())
 			})
 			It("should decide up to 5th level", func() {
 				for level := 0; level < 5; level++ {
@@ -68,7 +66,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, crpFixedPrefix, zerolog.Nop())
+				ordering = NewOrdering(p, rs, 0, crpFixedPrefix, zerolog.Nop())
 				ordering.DecideTiming()
 				Expect(ordering.TimingRound(0)).To(BeNil())
 			})
@@ -79,7 +77,7 @@ var _ = Describe("Ordering", func() {
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				rs.Init(p)
-				ordering = NewOrdering(p, rs, votingLevel, piDeltaLevel, 0, crpFixedPrefix, zerolog.Nop())
+				ordering = NewOrdering(p, rs, 0, crpFixedPrefix, zerolog.Nop())
 				for level := 0; level < 5; level++ {
 					ordering.DecideTiming()
 					thisRound := ordering.TimingRound(level)

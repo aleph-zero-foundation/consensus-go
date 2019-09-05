@@ -32,7 +32,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 	primeAlert := make(chan struct{}, 1)
 	return &service{
 			pid:                 config.Pid,
-			linearOrdering:      linear.NewOrdering(dag, randomSource, config.VotingLevel, config.PiDeltaLevel, config.OrderStartLevel, config.CRPFixedPrefix, log),
+			linearOrdering:      linear.NewOrdering(dag, randomSource, config.OrderStartLevel, config.CRPFixedPrefix, log),
 			orderedUnits:        orderedUnits,
 			extendOrderRequests: make(chan int, 10),
 			primeAlert:          primeAlert,
