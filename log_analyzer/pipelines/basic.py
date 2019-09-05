@@ -1,4 +1,4 @@
-SKIP = 5
+SKIP = 0
 
 driver.add_pipeline('Create service', [
     Filter(Event, [UnitCreated, PrimeUnitCreated]),

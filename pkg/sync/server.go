@@ -1,4 +1,4 @@
-// Package sync defines the primitives needed for various synchronisation algorithms.
+// Package sync defines the primitives needed for various synchronization algorithms.
 package sync
 
 // Server is responsible for handling a sync protocol.
