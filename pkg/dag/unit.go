@@ -24,12 +24,13 @@ type freeUnit struct {
 
 func newUnit(pu gomel.Preunit, parents []gomel.Unit, nProc uint16) *freeUnit {
 	return &freeUnit{
-		nProc:   nProc,
-		creator: pu.Creator(),
-		hash:    *pu.Hash(),
-		data:    pu.Data(),
-		rsData:  pu.RandomSourceData(),
-		parents: parents,
+		nProc:     nProc,
+		creator:   pu.Creator(),
+		signature: pu.Signature(),
+		hash:      *pu.Hash(),
+		parents:   parents,
+		data:      pu.Data(),
+		rsData:    pu.RandomSourceData(),
 	}
 }
 
@@ -187,13 +188,13 @@ type unit struct {
 	creator       uint16
 	height        int
 	level         int
-	forkingHeight int
 	signature     gomel.Signature
 	hash          gomel.Hash
 	parents       []gomel.Unit
 	floor         [][]gomel.Unit
 	data          []byte
 	rsData        []byte
+	forkingHeight int
 }
 
 func emplaced(u gomel.Unit, dag *dag) *unit {
@@ -208,6 +209,7 @@ func emplaced(u gomel.Unit, dag *dag) *unit {
 		data:      u.Data(),
 		rsData:    u.RandomSourceData(),
 	}
+	result.fixSelfFloor()
 	result.computeForkingHeight(dag)
 	return result
 }
@@ -246,6 +248,11 @@ func (u *unit) Floor() [][]gomel.Unit {
 
 func (u *unit) Level() int {
 	return u.level
+}
+
+// fixSelfFloor replaces the self-reference in the floor with the correct one
+func (u *unit) fixSelfFloor() {
+	u.floor[u.Creator()] = []gomel.Unit{u}
 }
 
 func (u *unit) computeForkingHeight(dag *dag) {

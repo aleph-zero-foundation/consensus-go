@@ -157,6 +157,7 @@ var _ = Describe("Dag", func() {
 							Expect(err).NotTo(HaveOccurred())
 							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
 							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
+							Expect(result.Signature()).To(Equal(addedUnit.Signature()))
 							Expect(gomel.Prime(result)).To(BeTrue())
 							close(done)
 						})
