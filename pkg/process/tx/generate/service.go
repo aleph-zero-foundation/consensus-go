@@ -17,7 +17,7 @@ import (
 )
 
 type service struct {
-	txpu     uint32
+	txpu     int
 	txChan   chan<- []byte
 	exitChan chan struct{}
 	log      zerolog.Logger
@@ -35,7 +35,7 @@ func NewService(dag gomel.Dag, config *process.TxGenerate, txChan chan<- []byte,
 }
 
 func (s *service) generateRandom() []byte {
-	txpu := int(s.txpu)
+	txpu := s.txpu
 	size := 15*txpu + rand.Intn(txpu)
 	result := make([]byte, size)
 	rand.Read(result)

@@ -35,9 +35,9 @@ func marshallVotes(votes []*vote) []byte {
 	return buf.Bytes()
 }
 
-func unmarshallVotes(data []byte, nProc int) ([]*vote, error) {
+func unmarshallVotes(data []byte, nProc uint16) ([]*vote, error) {
 	votes := make([]*vote, nProc)
-	for pid := 0; pid < nProc; pid++ {
+	for pid := uint16(0); pid < nProc; pid++ {
 		if len(data) < 1 {
 			return nil, errors.New("votes wrongly encoded")
 		}
@@ -92,9 +92,9 @@ func marshallShares(cses []*tcoin.CoinShare) []byte {
 	return buf.Bytes()
 }
 
-func unmarshallShares(data []byte, nProc int) ([]*tcoin.CoinShare, error) {
+func unmarshallShares(data []byte, nProc uint16) ([]*tcoin.CoinShare, error) {
 	shares := make([]*tcoin.CoinShare, nProc)
-	for pid := 0; pid < nProc; pid++ {
+	for pid := uint16(0); pid < nProc; pid++ {
 		if len(data) < 1 {
 			return nil, errors.New("cses wrongly encoded")
 		}

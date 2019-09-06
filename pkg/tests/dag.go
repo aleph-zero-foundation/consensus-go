@@ -14,7 +14,7 @@ import (
 // Dag is a basic implementation of dag for testing.
 type Dag struct {
 	sync.RWMutex
-	nProcesses int
+	nProcesses uint16
 	primeUnits []gomel.SlottedUnits
 	// maximalHeight is the maximalHeight of a unit created per process
 	maximalHeight []int
@@ -25,7 +25,7 @@ type Dag struct {
 func newDag(dagConfiguration gomel.DagConfig) *Dag {
 	n := dagConfiguration.NProc()
 	maxHeight := make([]int, n)
-	for pid := 0; pid < n; pid++ {
+	for pid := uint16(0); pid < n; pid++ {
 		maxHeight[pid] = -1
 	}
 	newDag := &Dag{
@@ -71,7 +71,7 @@ func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	dag.RLock()
 	defer dag.RUnlock()
 	su := newSlottedUnits(dag.nProcesses)
-	for pid := 0; pid < dag.nProcesses; pid++ {
+	for pid := uint16(0); pid < dag.nProcesses; pid++ {
 		if dag.maximalHeight[pid] >= 0 {
 			su.Set(pid, dag.unitsByHeight[dag.maximalHeight[pid]].Get(pid))
 		}
@@ -91,13 +91,13 @@ func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
 }
 
 // NProc returns the number of processes in this dag.
-func (dag *Dag) NProc() int {
+func (dag *Dag) NProc() uint16 {
 	// nProcesses doesn't change so no lock needed
 	return dag.nProcesses
 }
 
 // IsQuorum checks whether the provided number of processes constitutes a quorum.
-func (dag *Dag) IsQuorum(number int) bool {
+func (dag *Dag) IsQuorum(number uint16) bool {
 	// nProcesses doesn't change so no lock needed
 	return 3*number >= 2*dag.nProcesses
 }
@@ -182,7 +182,7 @@ func setFloor(u *unit, dag *Dag) {
 		}
 	}
 	result := make([][]gomel.Unit, dag.NProc())
-	for pid := 0; pid < dag.NProc(); pid++ {
+	for pid := uint16(0); pid < dag.NProc(); pid++ {
 		sort.Slice(parentsFloorUnion[pid], func(i, j int) bool {
 			return parentsFloorUnion[pid][i].Height() > parentsFloorUnion[pid][j].Height()
 		})
@@ -216,7 +216,7 @@ func setLevel(u *unit, dag *Dag) {
 		}
 	}
 	u.level = maxLevelBelow
-	seenProcesses := make(map[int]bool)
+	seenProcesses := make(map[uint16]bool)
 	seenUnits := make(map[gomel.Hash]bool)
 	seenUnits[*u.Hash()] = true
 	queue := []gomel.Unit{}
@@ -235,14 +235,14 @@ func setLevel(u *unit, dag *Dag) {
 			}
 		}
 	}
-	if dag.IsQuorum(len(seenProcesses)) {
+	if dag.IsQuorum(uint16(len(seenProcesses))) {
 		u.level = maxLevelBelow + 1
 	}
 }
 
 func (dag *Dag) getPrimeUnitsOnLevel(level int) []gomel.Unit {
 	result := []gomel.Unit{}
-	for pid := 0; pid < dag.NProc(); pid++ {
+	for pid := uint16(0); pid < dag.NProc(); pid++ {
 		result = append(result, dag.primeUnits[level].Get(pid)...)
 	}
 	return result

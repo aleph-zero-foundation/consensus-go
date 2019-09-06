@@ -17,17 +17,17 @@ import (
 )
 
 type coin struct {
-	pid           int
+	pid           uint16
 	dag           gomel.Dag
 	tc            *tcoin.ThresholdCoin
 	coinShares    *random.SyncCSMap
-	shareProvider map[int]bool
+	shareProvider map[uint16]bool
 	randomBytes   *random.SyncBytesSlice
 }
 
 // New returns a Coin RandomSource based on fixed thresholdCoin with the given
 // set of share providers.
-func New(nProc, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool) gomel.RandomSource {
+func New(nProc, pid uint16, tcoin *tcoin.ThresholdCoin, shareProvider map[uint16]bool) gomel.RandomSource {
 	return &coin{
 		pid:           pid,
 		tc:            tcoin,
@@ -40,17 +40,17 @@ func New(nProc, pid int, tcoin *tcoin.ThresholdCoin, shareProvider map[int]bool)
 // NewFixedCoin returns a Coin random source generated using the given seed.
 // This function should be used only for testing, as it is not safe,
 // because all the secrets could be revealed knowing the seed.
-func NewFixedCoin(nProc, pid, seed int) gomel.RandomSource {
+func NewFixedCoin(nProc, pid uint16, seed int) gomel.RandomSource {
 	rnd := rand.New(rand.NewSource(int64(seed)))
 	threshold := nProc/3 + 1
 
-	shareProviders := make(map[int]bool)
-	for i := 0; i < nProc; i++ {
+	shareProviders := make(map[uint16]bool)
+	for i := uint16(0); i < nProc; i++ {
 		shareProviders[i] = true
 	}
 
 	coeffs := make([]*big.Int, threshold)
-	for i := 0; i < threshold; i++ {
+	for i := uint16(0); i < threshold; i++ {
 		coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Order)
 	}
 
@@ -65,7 +65,7 @@ func (c *coin) Init(dag gomel.Dag) {
 // RandomBytes returns a sequence of random bits for a given level.
 // The first argument is irrelevant for this random source.
 // It returns nil when the dag hasn't reached level+1 yet.
-func (c *coin) RandomBytes(_ int, level int) []byte {
+func (c *coin) RandomBytes(_ uint16, level int) []byte {
 	return c.randomBytes.Get(level)
 }
 
@@ -140,7 +140,7 @@ func (c *coin) CheckCompliance(u gomel.Unit) error {
 // If the shares don't combine to the correct random bytes for previous level
 // it returns an error. This means that someone had included a wrong coin share
 // and we should start an alert.
-func (c *coin) DataToInclude(creator int, parents []gomel.Unit, level int) ([]byte, error) {
+func (c *coin) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
 	if len(parents) == 0 {
 		if c.shareProvider[creator] {
 			return c.tc.CreateCoinShare(level).Marshal(), nil
@@ -170,7 +170,7 @@ func (c *coin) DataToInclude(creator int, parents []gomel.Unit, level int) ([]by
 
 func (c *coin) combineShares(level int) ([]byte, error) {
 	shares := []*tcoin.CoinShare{}
-	shareCollected := make(map[int]bool)
+	shareCollected := make(map[uint16]bool)
 
 	su := c.dag.PrimeUnits(level)
 	if su == nil {
@@ -185,7 +185,7 @@ func (c *coin) combineShares(level int) ([]byte, error) {
 			if cs != nil {
 				shares = append(shares, cs)
 				shareCollected[v.Creator()] = true
-				if len(shares) == c.tc.Threshold {
+				if len(shares) == int(c.tc.Threshold) {
 					return false
 				}
 				return true

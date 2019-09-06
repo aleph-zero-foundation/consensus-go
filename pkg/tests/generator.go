@@ -19,7 +19,7 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 	rs.Init(dag)
 	created := 0
 	for created < nUnits {
-		pid := r.Intn(nProcesses)
+		pid := uint16(r.Intn(nProcesses))
 		if dag.maximalHeight[pid] == -1 {
 			pu := NewPreunit(pid, []*gomel.Hash{}, []byte{}, nil)
 			dag.AddUnit(pu, rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {})
@@ -32,11 +32,11 @@ func CreateRandomNonForking(nProcesses, minParents, maxParents, nUnits int) gome
 				if len(parents) == nParents {
 					break
 				}
-				if parentID == pid {
+				if parentID == int(pid) {
 					continue
 				}
 				if dag.maximalHeight[parentID] != -1 {
-					parents = append(parents, dag.MaximalUnitsPerProcess().Get(parentID)[0].Hash())
+					parents = append(parents, dag.MaximalUnitsPerProcess().Get(uint16(parentID))[0].Hash())
 				}
 				pu := NewPreunit(pid, parents, []byte{}, nil)
 				if !checkExpandPrimes(dag, pu) {

@@ -18,8 +18,8 @@ const (
 )
 
 type votingResult struct {
-	popular   int
-	unpopular int
+	popular   uint16
+	unpopular uint16
 }
 
 type unanimousVoter struct {
@@ -129,10 +129,10 @@ func (uv *unanimousVoter) commonVote(uc gomel.Unit, level int) vote {
 // Checks if votes for popular or unpopular make a quorum.
 // Returns the vote making a quorum or undecided if there is no quorum.
 func superMajority(dag gomel.Dag, votes votingResult) vote {
-	if dag.IsQuorum(int(votes.popular)) {
+	if dag.IsQuorum(votes.popular) {
 		return popular
 	}
-	if dag.IsQuorum(int(votes.unpopular)) {
+	if dag.IsQuorum(votes.unpopular) {
 		return unpopular
 	}
 	return undecided

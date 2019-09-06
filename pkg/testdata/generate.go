@@ -29,7 +29,7 @@ func writeToFile(filename string, dag gomel.Dag) error {
 // nProcesses - number of processes
 // maxParents - maximal number of unit parents (valid for non-dealing units)
 // nUnits     - number of units to include in the dag
-func CreateRandomNonForkingUsingCreating(nProcesses, maxParents, nUnits int) gomel.Dag {
+func CreateRandomNonForkingUsingCreating(nProcesses, maxParents uint16, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	dag := growing.NewDag(&gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
 	rs := tests.NewTestRandomSource()

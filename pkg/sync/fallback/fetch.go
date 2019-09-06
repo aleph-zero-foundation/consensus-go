@@ -22,7 +22,7 @@ func (f *fetchFallback) Run(pu gomel.Preunit) {
 	}
 	if len(toRequest) > 0 {
 		f.requests <- fetch.Request{
-			Pid:    uint16(pu.Creator()),
+			Pid:    pu.Creator(),
 			Hashes: toRequest,
 		}
 	}

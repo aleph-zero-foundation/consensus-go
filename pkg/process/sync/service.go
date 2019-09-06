@@ -124,8 +124,8 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
-	pid := uint16(configs[0].Pid)
-	nProc := uint16(dag.NProc())
+	pid := configs[0].Pid
+	nProc := dag.NProc()
 	s := &service{log: log.With().Int(logging.Service, logging.SyncService).Logger()}
 	fallbacks := make(map[string]sync.Fallback)
 	callback := gomel.NopCallback
@@ -191,7 +191,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server = gossip.NewServer(pid, dag, randomSource, netserv, peerSource, primeAlert, t, log, uint(nOut), uint(nIn))
+			server = gossip.NewServer(pid, dag, randomSource, netserv, peerSource, primeAlert, t, log, nOut, nIn)
 		case "fetch":
 			log = log.With().Int(logging.Service, logging.FetchService).Logger()
 			netserv, err := tcp.NewServer(c.LocalAddress, c.RemoteAddresses, log)
@@ -223,7 +223,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server = fetch.NewServer(pid, dag, randomSource, reqChan, netserv, primeAlert, t, fbk, log, uint(nOut), uint(nIn))
+			server = fetch.NewServer(pid, dag, randomSource, reqChan, netserv, primeAlert, t, fbk, log, nOut, nIn)
 		}
 		s.servers = append(s.servers, server)
 	}

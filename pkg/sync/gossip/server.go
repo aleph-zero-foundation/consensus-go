@@ -10,7 +10,7 @@ import (
 )
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger, nOut, nIn uint) sync.Server {
+func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.Server {
 	proto := NewProtocol(pid, dag, randomSource, netserv, peerSource, callback, timeout, log)
 	return &server{
 		outPool: sync.NewPool(nOut, proto.Out),

@@ -1,11 +1,12 @@
 package tests_test
 
 import (
+	"math"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/tests"
-	"math"
 )
 
 func countUnits(dag gomel.Dag) int {
@@ -73,7 +74,7 @@ var _ = Describe("Generator", func() {
 		Context("Called with nProcesses = 10, minParents = 2, maxParents = 5, nUnits = 50", func() {
 			dag = CreateRandomNonForking(10, 2, 5, 50)
 			It("Should return dag with 10 processes", func() {
-				Expect(dag.NProc()).To(Equal(10))
+				Expect(dag.NProc()).To(Equal(uint16(10)))
 			})
 			It("Should have 50 units", func() {
 				Expect(countUnits(dag)).To(Equal(50))

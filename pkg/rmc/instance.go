@@ -84,7 +84,7 @@ func (in *incoming) acceptData(r io.Reader) ([]byte, error) {
 	if !in.keys.Verify(in.pid, signedData) {
 		return nil, errors.New("wrong data signature")
 	}
-	proof := multi.NewSignature(in.keys.Length()-in.keys.Length()/3, signedData)
+	proof := multi.NewSignature(uint16(in.keys.Length()-in.keys.Length()/3), signedData)
 	in.Lock()
 	defer in.Unlock()
 	in.signedData = signedData

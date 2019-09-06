@@ -10,7 +10,7 @@ type gossipFallback struct {
 }
 
 func (f *gossipFallback) Run(pu gomel.Preunit) {
-	f.requests <- uint16(pu.Creator())
+	f.requests <- pu.Creator()
 }
 
 func (f *gossipFallback) Stop() {

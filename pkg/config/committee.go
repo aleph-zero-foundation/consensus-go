@@ -14,7 +14,7 @@ import (
 // Member represents the private data about a committee member.
 type Member struct {
 	// The process id of this member.
-	Pid int
+	Pid uint16
 
 	// The private key of this committee member.
 	PrivateKey gomel.PrivateKey
@@ -57,7 +57,7 @@ func LoadMember(r io.Reader) (*Member, error) {
 	}
 
 	return &Member{
-		Pid:        pid,
+		Pid:        uint16(pid),
 		PrivateKey: privateKey,
 	}, nil
 }
@@ -131,7 +131,7 @@ func StoreMember(w io.Writer, m *Member) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.WriteString(w, strconv.Itoa(m.Pid))
+	_, err = io.WriteString(w, strconv.Itoa(int(m.Pid)))
 	if err != nil {
 		return err
 	}

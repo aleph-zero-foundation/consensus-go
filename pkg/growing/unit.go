@@ -7,7 +7,7 @@ import (
 )
 
 type unit struct {
-	creator       int
+	creator       uint16
 	height        int
 	level         int
 	forkingHeight int
@@ -41,7 +41,7 @@ func (u *unit) Data() []byte {
 }
 
 // Returns the creator id of the unit.
-func (u *unit) Creator() int {
+func (u *unit) Creator() uint16 {
 	return u.creator
 }
 
@@ -90,7 +90,7 @@ func (u *unit) computeHeight() {
 	}
 }
 
-func (u *unit) computeFloor(nProcesses int) {
+func (u *unit) computeFloor(nProcesses uint16) {
 	// This version of the algorithm tries to minimize the number of heap allocations. It achieves this goal by means of
 	// pre-allocating a continuous region of memory which is then used for storing all values of the computed floor (instead of
 	// storing values of floor in separate slices for each process). At each index of the computed slice-of-slices we store a
@@ -117,7 +117,7 @@ func (u *unit) computeFloor(nProcesses int) {
 	// pre-allocate memory for all values for all processes - 0 `len` allows us to use append for sake of simplicity
 	floors := make([]gomel.Unit, 0, nProcesses)
 
-	for pid := 0; pid < nProcesses; pid++ {
+	for pid := uint16(0); pid < nProcesses; pid++ {
 		if pid == u.creator {
 			floors = append(floors, u)
 			continue
@@ -131,9 +131,9 @@ func (u *unit) computeFloor(nProcesses int) {
 		floors = newFloors
 	}
 
-	for lastIx, pid := 0, 0; pid < nProcesses; pid++ {
+	for lastIx, pid := uint16(0), uint16(0); pid < nProcesses; pid++ {
 		ix := lastIx
-		for ix < len(floors) && floors[ix].Creator() == pid {
+		for int(ix) < len(floors) && floors[ix].Creator() == pid {
 			ix++
 		}
 		floor[pid] = floors[lastIx:ix]
@@ -148,12 +148,12 @@ func (u *unit) computeLevel() {
 		return
 	}
 
-	nProcesses := len(u.Floor())
+	nProcesses := uint16(len(u.Floor()))
 	// compliant unit have parents in ascending order of level
 	maxLevelParents := u.parents[len(u.parents)-1].Level()
 
 	level := maxLevelParents
-	nSeen := 0
+	nSeen := uint16(0)
 
 	// we should consider our self predecessor
 	// it assumes that this unit is not an evidence of self-forking
@@ -163,7 +163,7 @@ func (u *unit) computeLevel() {
 	creator := u.Creator()
 	hasQuorum := IsQuorum(nProcesses, nSeen)
 	for pid, vs := range u.Floor() {
-		if pid == creator {
+		if uint16(pid) == creator {
 			continue
 		}
 
@@ -178,7 +178,7 @@ func (u *unit) computeLevel() {
 			}
 		}
 
-		if hasQuorum || !IsQuorum(nProcesses, nSeen+(nProcesses-(pid+1))) {
+		if hasQuorum || !IsQuorum(nProcesses, nSeen+(nProcesses-(uint16(pid)+1))) {
 			break
 		}
 	}

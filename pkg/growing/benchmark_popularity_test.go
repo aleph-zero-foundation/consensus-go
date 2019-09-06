@@ -13,7 +13,7 @@ func provesPopularityBFS(uc gomel.Unit, v gomel.Unit, dag gomel.Dag) bool {
 	}
 	// simple BFS from v
 	seenProcesses := make([]bool, dag.NProc())
-	nSeenProcesses := 0
+	nSeenProcesses := uint16(0)
 	seenUnits := make(map[gomel.Hash]bool)
 	seenUnits[*v.Hash()] = true
 	queue := []gomel.Unit{v}
@@ -45,7 +45,7 @@ func provesPopularityWithFloors(uc gomel.Unit, v gomel.Unit, dag gomel.Dag) bool
 		return false
 	}
 	level := v.Level()
-	nSeen := 0
+	nSeen := uint16(0)
 	nNotSeen := dag.NProc()
 	for _, myFloor := range v.(*unit).floor {
 		nNotSeen--
@@ -79,7 +79,7 @@ func BenchmarkPopularity(b *testing.B) {
 		dag        gomel.Dag
 		readingErr error
 		df         dagFactory
-		units      map[int]map[int][]gomel.Unit
+		units      map[uint16]map[int][]gomel.Unit
 	)
 	testfiles := []string{
 		"random_10p_100u_2par.txt",

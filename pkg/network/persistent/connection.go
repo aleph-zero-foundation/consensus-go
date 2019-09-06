@@ -56,8 +56,8 @@ type conn struct {
 	frame  []byte
 	buffer []byte
 	bufLen int
-	sent   uint32
-	recv   uint32
+	sent   int
+	recv   int
 	closed int64
 	log    zerolog.Logger
 }
@@ -114,7 +114,7 @@ func (c *conn) Flush() error {
 	if err != nil {
 		return err
 	}
-	c.sent += uint32(c.bufLen)
+	c.sent += c.bufLen
 	c.bufLen = 0
 	return nil
 }
@@ -152,7 +152,7 @@ func (c *conn) SetLogger(log zerolog.Logger) {
 func (c *conn) enqueue(b []byte) {
 	if atomic.LoadInt64(&c.closed) == 0 {
 		c.queue.ch <- b
-		c.recv += uint32(len(b))
+		c.recv += len(b)
 	}
 }
 
@@ -164,5 +164,5 @@ func (c *conn) localClose() {
 
 func (c *conn) finalize() {
 	close(c.queue.ch)
-	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
+	c.log.Info().Int(logging.Sent, c.sent).Int(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
 }

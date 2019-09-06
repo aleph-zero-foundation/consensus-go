@@ -6,9 +6,9 @@ type SlottedUnits interface {
 	// Note that in the main implementation, for efficiency reasons,
 	// MODIFYING THE RETURNED VALUE DIRECTLY RESULTS IN UNDEFINED BEHAVIOUR!
 	// Please avoid doing that.
-	Get(int) []Unit
+	Get(uint16) []Unit
 	// Set replaces all units in this container created by the process with the given id with given units.
-	Set(int, []Unit)
+	Set(uint16, []Unit)
 	// Iterate through all units in this container, in chunks corresponding to different creator ids, until the given function returns false.
 	Iterate(func([]Unit) bool)
 }

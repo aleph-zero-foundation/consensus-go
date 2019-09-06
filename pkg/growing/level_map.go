@@ -9,7 +9,7 @@ import (
 
 type levelMap struct {
 	content map[int]gomel.SlottedUnits
-	width   int
+	width   uint16
 	length  int
 	mx      sync.RWMutex
 }
@@ -26,7 +26,7 @@ func (e *noSuchLevelError) Error() string {
 	return fmt.Sprintf("Level %v does not exist.", e.level)
 }
 
-func newLevelMap(width, initialLen int) *levelMap {
+func newLevelMap(width uint16, initialLen int) *levelMap {
 	newMap := &levelMap{
 		content: make(map[int]gomel.SlottedUnits),
 		width:   width,

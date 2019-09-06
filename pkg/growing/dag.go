@@ -12,7 +12,7 @@ import (
 
 // Dag implementation that is intended to be used during dag creation.
 type Dag struct {
-	nProcesses int
+	nProcesses uint16
 	units      *unitBag
 	primeUnits *levelMap
 	maxUnits   gomel.SlottedUnits
@@ -30,10 +30,10 @@ func NewDag(config *gomel.DagConfig) *Dag {
 		adders[k] = make(chan *unitBuilt, 10)
 	}
 	newDag := &Dag{
-		nProcesses: n,
+		nProcesses: uint16(n),
 		units:      newUnitBag(),
-		primeUnits: newLevelMap(n, 10),
-		maxUnits:   newSlottedUnits(n),
+		primeUnits: newLevelMap(uint16(n), 10),
+		maxUnits:   newSlottedUnits(uint16(n)),
 		adders:     adders,
 		pubKeys:    pubKeys,
 	}
@@ -45,17 +45,17 @@ func NewDag(config *gomel.DagConfig) *Dag {
 }
 
 // IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
-func IsQuorum(nProcesses int, subsetSize int) bool {
+func IsQuorum(nProcesses, subsetSize uint16) bool {
 	return 3*subsetSize >= 2*nProcesses
 }
 
 // IsQuorum checks if the given number of processes forms a quorum amongst all processes.
-func (dag *Dag) IsQuorum(number int) bool {
+func (dag *Dag) IsQuorum(number uint16) bool {
 	return IsQuorum(dag.nProcesses, number)
 }
 
 // NProc returns the number of processes which use the dag.
-func (dag *Dag) NProc() int {
+func (dag *Dag) NProc() uint16 {
 	return dag.nProcesses
 }
 

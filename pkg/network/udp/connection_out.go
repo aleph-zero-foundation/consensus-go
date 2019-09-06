@@ -21,7 +21,7 @@ const udpMaxPacketSize = (1 << 16) - 512
 type connOut struct {
 	link        net.Conn
 	writeBuffer []byte
-	sent        uint32
+	sent        int
 	log         zerolog.Logger
 }
 
@@ -48,14 +48,14 @@ func (c *connOut) Write(b []byte) (int, error) {
 
 func (c *connOut) Flush() error {
 	_, err := c.link.Write(c.writeBuffer)
-	c.sent += uint32(len(c.writeBuffer))
+	c.sent += len(c.writeBuffer)
 	c.writeBuffer = make([]byte, 0)
 	return err
 }
 
 func (c *connOut) Close() error {
 	err := c.link.Close()
-	c.log.Info().Uint32(logging.Sent, c.sent).Msg(logging.ConnectionClosed)
+	c.log.Info().Int(logging.Sent, c.sent).Msg(logging.ConnectionClosed)
 	return err
 }
 

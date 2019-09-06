@@ -3,7 +3,7 @@ package gomel
 // BaseUnit defines the most general interface for units.
 type BaseUnit interface {
 	// Creator is the id of the process that created this unit.
-	Creator() int
+	Creator() uint16
 	// Signature of this unit.
 	Signature() Signature
 	// Hash value of this unit.

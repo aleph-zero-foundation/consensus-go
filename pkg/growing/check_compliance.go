@@ -61,7 +61,7 @@ func checkBasicParentsCorrectness(u gomel.Unit) error {
 
 // Check if all parents are created by pairwise different processes.
 func checkParentsDiversity(u gomel.Unit) error {
-	processFilter := map[int]bool{}
+	processFilter := map[uint16]bool{}
 	for _, parent := range u.Parents() {
 		if processFilter[parent.Creator()] {
 			return gomel.NewComplianceError("Some of a unit's parents are created by the same process")
@@ -107,9 +107,9 @@ func CheckExpandPrimes(dag gomel.Dag, parents []gomel.Unit) error {
 		return nil
 	}
 
-	wholeSet := make([]int, dag.NProc())
-	for pid := 0; pid < len(wholeSet); pid++ {
-		wholeSet[pid] = pid
+	wholeSet := make([]uint16, dag.NProc())
+	for pid := range wholeSet {
+		wholeSet[pid] = uint16(pid)
 	}
 	notSeenPrimes := wholeSet
 	left := notSeenPrimes[:0]

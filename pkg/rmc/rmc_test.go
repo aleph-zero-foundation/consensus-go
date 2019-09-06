@@ -17,7 +17,7 @@ var _ = Describe("Rmc", func() {
 		data    []byte
 		readers [][]io.Reader
 		writers [][]io.Writer
-		n       int
+		n       uint16
 	)
 	BeforeEach(func() {
 		data = []byte("19890604")
@@ -81,10 +81,10 @@ var _ = Describe("Rmc", func() {
 				continue
 			}
 			wg.Add(1)
-			go func(i uint16) {
+			go func(i int) {
 				defer wg.Done()
-				CorrectReceive(i, 0, id)
-			}(uint16(i))
+				CorrectReceive(uint16(i), 0, id)
+			}(i)
 		}
 		wg.Wait()
 	})

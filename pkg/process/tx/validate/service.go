@@ -40,7 +40,7 @@ func (s *service) main() {
 				return
 			}
 			for _, u := range units {
-				s.log.Info().Int(logging.Size, len(u.Data())).Int(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
+				s.log.Info().Int(logging.Size, len(u.Data())).Uint16(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
 			}
 		case <-s.exitChan:
 			return

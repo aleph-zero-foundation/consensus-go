@@ -42,13 +42,13 @@ func (o *ordering) crpIterate(level int, previousTU gomel.Unit, work func(gomel.
 	return true
 }
 
-func splitProcesses(nProc int, prefixLen int, level int, tu gomel.Unit) ([]int, []int) {
+func splitProcesses(nProc, prefixLen uint16, level int, tu gomel.Unit) ([]uint16, []uint16) {
 	if prefixLen > nProc {
 		prefixLen = nProc
 	}
-	pids := make([]int, nProc)
+	pids := make([]uint16, nProc)
 	for pid := range pids {
-		pids[pid] = (pid + level) % nProc
+		pids[pid] = uint16((pid + level) % int(nProc))
 	}
 	if tu == nil {
 		return pids[:prefixLen], pids[prefixLen:]
@@ -59,7 +59,7 @@ func splitProcesses(nProc int, prefixLen int, level int, tu gomel.Unit) ([]int, 
 	return pids[:prefixLen], pids[prefixLen:]
 }
 
-func defaultPermutation(dag gomel.Dag, level int, pids []int) []gomel.Unit {
+func defaultPermutation(dag gomel.Dag, level int, pids []uint16) []gomel.Unit {
 	permutation := []gomel.Unit{}
 
 	for _, pid := range pids {
@@ -72,7 +72,7 @@ func defaultPermutation(dag gomel.Dag, level int, pids []int) []gomel.Unit {
 	return permutation
 }
 
-func randomPermutation(rs gomel.RandomSource, dag gomel.Dag, level int, pids []int) ([]gomel.Unit, bool) {
+func randomPermutation(rs gomel.RandomSource, dag gomel.Dag, level int, pids []uint16) ([]gomel.Unit, bool) {
 	permutation := []gomel.Unit{}
 	priority := make(map[gomel.Unit][]byte)
 

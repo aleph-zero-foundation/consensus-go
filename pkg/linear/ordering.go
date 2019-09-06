@@ -17,13 +17,13 @@ type ordering struct {
 	unitPositionInOrder map[gomel.Hash]int
 	orderedUnits        []gomel.Unit
 	orderStartLevel     int
-	crpFixedPrefix      int
+	crpFixedPrefix      uint16
 	decider             *superMajorityDecider
 	log                 zerolog.Logger
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix int, log zerolog.Logger) gomel.LinearOrdering {
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix uint16, log zerolog.Logger) gomel.LinearOrdering {
 
 	stdDecider := newSuperMajorityDecider(dag, rs)
 

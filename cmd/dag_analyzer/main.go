@@ -196,7 +196,7 @@ func getPrimeUnitsStats(dag gomel.Dag, maxLevel int) []levelPrimeUnitStat {
 type levelUnitStat struct {
 	primes  int
 	regular int
-	skipped int
+	skipped uint16
 }
 
 // getUnitStats for a given dag calculates for each level the levelUnitStat i.e.
@@ -205,9 +205,9 @@ type levelUnitStat struct {
 // (3) the number of processes which skipped the level
 func getUnitStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) []levelUnitStat {
 	result := make([]levelUnitStat, dag.NProc())
-	pSeen := make([]map[int]bool, maxLevel+1)
+	pSeen := make([]map[uint16]bool, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
-		pSeen[level] = make(map[int]bool)
+		pSeen[level] = make(map[uint16]bool)
 	}
 	for _, u := range units {
 		if gomel.Prime(u) {
@@ -218,7 +218,7 @@ func getUnitStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) []levelUnitSt
 		pSeen[u.Level()][u.Creator()] = true
 	}
 	for level := 0; level <= maxLevel; level++ {
-		result[level].skipped = dag.NProc() - len(pSeen[level])
+		result[level].skipped = dag.NProc() - uint16(len(pSeen[level]))
 	}
 	return result
 }
