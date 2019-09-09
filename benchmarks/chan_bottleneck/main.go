@@ -83,7 +83,7 @@ func main() {
 
 	nProc = uint16(*n)
 	if *w == -1 {
-		workers = int(4 * nProc)
+		workers = 4 * int(nProc)
 	} else {
 		workers = *w
 	}
