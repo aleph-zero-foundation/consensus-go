@@ -72,7 +72,11 @@ func (p *protocol) In() {
 		}
 		if !knownPredecessor {
 			conn.Write([]byte{1})
-			conn.Flush()
+			err := conn.Flush()
+			if err != nil {
+				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				return
+			}
 			data, err := p.state.AcceptFinished(predecessorID(id, p.dag.NProc()), pid, conn)
 			if err != nil {
 				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
@@ -90,7 +94,11 @@ func (p *protocol) In() {
 			}
 		} else {
 			conn.Write([]byte{0})
-			conn.Flush()
+			err := conn.Flush()
+			if err != nil {
+				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				return
+			}
 		}
 
 		err = p.state.SendSignature(id, conn)
@@ -98,7 +106,11 @@ func (p *protocol) In() {
 			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
 			return
 		}
-		conn.Flush()
+		err = conn.Flush()
+		if err != nil {
+			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			return
+		}
 	case sendFinished:
 		_, err := p.state.AcceptFinished(id, pid, conn)
 		if err != nil {
@@ -134,7 +146,11 @@ func (p *protocol) Out() {
 			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
 			return
 		}
-		conn.Flush()
+		err = conn.Flush()
+		if err != nil {
+			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			return
+		}
 
 		requestPredecessor, err := readSingleByte(conn)
 		if err != nil {
@@ -147,7 +163,11 @@ func (p *protocol) Out() {
 				p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
 				return
 			}
-			conn.Flush()
+			err = conn.Flush()
+			if err != nil {
+				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				return
+			}
 		}
 		finished, err := p.state.AcceptSignature(r.id, r.pid, conn)
 		if err != nil {
@@ -169,7 +189,11 @@ func (p *protocol) Out() {
 			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
 			return
 		}
-		conn.Flush()
+		err = conn.Flush()
+		if err != nil {
+			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			return
+		}
 	}
 }
 
