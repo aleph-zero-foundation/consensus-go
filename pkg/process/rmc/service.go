@@ -10,8 +10,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/rmc"
-	"gitlab.com/alephledger/consensus-go/pkg/rmc/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/rmc/multicast"
+	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/fallback"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 )
 
 // Some magic numbers for rmc. All below are ratios, they get multiplied with nProc.
@@ -22,17 +24,17 @@ const (
 )
 
 type service struct {
-	pid           int
-	dag           gomel.Dag
-	rs            gomel.RandomSource
-	units         <-chan gomel.Unit
-	accepted      chan []byte
-	fetchRequests chan gomel.Preunit
-	mcRequests    chan *multicast.Request
-	mcServer      *multicast.Server
-	canMulticast  *sync.Mutex
-	fetchServer   *fetch.Server
-	log           zerolog.Logger
+	pid          int
+	dag          gomel.Dag
+	rs           gomel.RandomSource
+	units        <-chan gomel.Unit
+	accepted     chan []byte
+	mcRequests   chan *multicast.Request
+	mcServer     *multicast.Server
+	canMulticast *sync.Mutex
+	fetchServer  gsync.Server
+	fallback     gsync.Fallback
+	log          zerolog.Logger
 }
 
 // NewService creates a new service for rmc.
@@ -58,26 +60,26 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 	if err != nil {
 		return nil, nil, err
 	}
-	// fetchRequests is a channel for preunits which has been succesfully multicasted
-	// but we cannot add them to the poset due to uknownParents error.
-	fetchRequests := make(chan gomel.Preunit, fetchRequestsSize*dag.NProc())
-	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, state, fetchRequests, netserv, config.Timeout, log)
+
+	fetchRequests := make(chan fetch.Request, dag.NProc())
+	fbk := fallback.NewFetch(dag, fetchRequests)
+	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, fetchRequests, netserv, gomel.NopCallback, config.Timeout, fbk, log, uint(1), uint(1))
 
 	// units is a channel on which create service should send newly created units for rmc
 	units := make(chan gomel.Unit)
 
 	return &service{
-			dag:           dag,
-			rs:            rs,
-			pid:           config.Pid,
-			units:         units,
-			accepted:      accepted,
-			mcRequests:    mcRequests,
-			mcServer:      mcServer,
-			fetchServer:   fetchServer,
-			fetchRequests: fetchRequests,
-			canMulticast:  canMulticast,
-			log:           log,
+			dag:          dag,
+			rs:           rs,
+			pid:          config.Pid,
+			units:        units,
+			accepted:     accepted,
+			mcRequests:   mcRequests,
+			mcServer:     mcServer,
+			fetchServer:  fetchServer,
+			canMulticast: canMulticast,
+			fallback:     fbk,
+			log:          log,
 		},
 		units,
 		nil
@@ -111,7 +113,6 @@ func (s *service) validator() {
 	for {
 		data, isOpen := <-s.accepted
 		if !isOpen {
-			close(s.fetchRequests)
 			return
 		}
 		if pu, err := multicast.DecodePreunit(data); pu != nil || err != nil {
@@ -123,7 +124,7 @@ func (s *service) validator() {
 				if err != nil {
 					switch err.(type) {
 					case *gomel.UnknownParents:
-						s.fetchRequests <- pu
+						s.fallback.Run(pu)
 					}
 				}
 			})
@@ -134,8 +135,8 @@ func (s *service) validator() {
 func (s *service) Start() error {
 	go s.translator()
 	go s.validator()
-	s.mcServer.Start()
 	s.fetchServer.Start()
+	s.mcServer.Start()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
