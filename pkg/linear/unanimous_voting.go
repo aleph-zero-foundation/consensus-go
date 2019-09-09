@@ -65,12 +65,15 @@ func (uv *unanimousVoter) vote(uc, u gomel.Unit) (result vote) {
 				*lastVote = undecided
 				return result, true
 			}
-		} else if result != undecided {
+		} else {
 			lastVote = &result
 		}
 		return result, false
 
 	})
+	if lastVote == nil {
+		return undecided
+	}
 	return *lastVote
 }
 
@@ -136,14 +139,25 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 }
 
 func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u gomel.Unit) (vote vote, finish bool)) (votesLevelBelow votingResult) {
-	dag.PrimeUnits(u.Level() - 1).Iterate(func(primes []gomel.Unit) bool {
+	for _, floor := range u.Floor() {
 		votesOne := false
 		votesZero := false
 		finish := false
-		for _, v := range primes {
-			if !v.Below(u) {
+		for _, v := range floor {
+			// find prime ancestor
+			for predecessor := v; predecessor.Level() >= u.Level()-1; {
+				v = predecessor
+				var err error
+				predecessor, err = gomel.Predecessor(v)
+				if err != nil {
+					break
+				}
+			}
+			if v.Level() != u.Level()-1 || !gomel.Prime(v) {
 				continue
 			}
+
+			// compute vote using prime ancestor
 			vote := undecided
 			vote, finish = voter(uc, v)
 			switch vote {
@@ -163,9 +177,8 @@ func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u g
 			votesLevelBelow.unpopular++
 		}
 		if finish {
-			return false
+			return
 		}
-		return true
-	})
+	}
 	return votesLevelBelow
 }
