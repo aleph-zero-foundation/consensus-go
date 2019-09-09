@@ -173,24 +173,25 @@ func (p *protocol) Out() {
 	}
 }
 
+// checkCompliance checks whether the rmc id corresponds to the creator and height of the preunit.
+// It returns boolean value whether we have enough information to check the preunit
+// (i.e. we are able to compute it's height using the current local view).
+// The second returned value is the result of the check.
 func checkCompliance(pu gomel.Preunit, id uint64, pid uint16, dag gomel.Dag) (bool, error) {
-	if pu.Creator() != int(pid) {
-		return false, errors.New("wrong unit creator")
-	}
 	creator, height := decodeUnitID(id, dag.NProc())
 	if pu.Creator() != int(pid) || pu.Creator() != creator {
-		return false, errors.New("wrong unit creator")
+		return true, errors.New("wrong unit creator")
 	}
 	if len(pu.Parents()) == 0 {
 		if height != 0 {
-			return false, errors.New("wrong unit height")
+			return true, errors.New("wrong unit height")
 		}
 		return true, nil
 	}
 	predecessor := dag.Get([]*gomel.Hash{pu.Parents()[0]})[0]
 	if predecessor != nil {
 		if height != predecessor.Height()+1 {
-			return false, errors.New("wrong unit height")
+			return true, errors.New("wrong unit height")
 		}
 		return true, nil
 	}
