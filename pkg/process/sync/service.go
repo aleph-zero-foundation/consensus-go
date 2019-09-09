@@ -94,7 +94,9 @@ func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.
 		case "fetch":
 			reqChan := make(chan fetch.Request, nProc)
 			baseFbk = fallback.NewFetch(dag, reqChan)
-			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
+			retrying := fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
+			s.subservices = append(s.subservices, retrying)
+			fbk = retrying
 			return fbk, nil, reqChan, nil
 		default:
 			return nil, nil, nil, gomel.NewConfigError("fallback param for retrying cannot be empty")

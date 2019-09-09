@@ -53,9 +53,10 @@ func (f *Retrying) Run(pu gomel.Preunit) {
 }
 
 // Start runs a goroutine that attempts to add units from the backlog in set intervals.
-func (f *Retrying) Start() {
+func (f *Retrying) Start() error {
 	f.wg.Add(1)
 	go f.work()
+	return nil
 }
 
 // Stop signals the adding goroutine to halt and blocks until it does.
