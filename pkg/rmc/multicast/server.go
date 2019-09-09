@@ -1,3 +1,6 @@
+// Package multicast implements reliable multicast protocol for disseminating units.
+//
+// In addition it exchanges signatures, and accepts multisigned units disseminated by other processes.
 package multicast
 
 import (
@@ -18,8 +21,8 @@ func NewServer(pid uint16, dag gomel.Dag, state *rmc.RMC, requests chan *Request
 	proto := newProtocol(pid, dag, requests, state, canMulticast, accepted, netserv, timeout, log)
 	return &Server{
 		requests: requests,
-		outPool:  gsync.NewPool(uint(dag.NProc()), proto.Out),
-		inPool:   gsync.NewPool(uint(dag.NProc()), proto.In),
+		outPool:  gsync.NewPool(int(dag.NProc()), proto.Out),
+		inPool:   gsync.NewPool(int(dag.NProc()), proto.In),
 	}
 }
 

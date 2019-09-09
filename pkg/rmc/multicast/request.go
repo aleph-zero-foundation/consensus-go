@@ -31,7 +31,7 @@ func NewRequest(id uint64, pid uint16, data []byte, msgType byte) *Request {
 }
 
 // NewUnitSendRequest creates multicast request to send given unit to the process with given id
-func NewUnitSendRequest(u gomel.Unit, pid uint16, nProc int) (*Request, error) {
+func NewUnitSendRequest(u gomel.Unit, pid uint16, nProc uint16) (*Request, error) {
 	data, err := encodeUnit(u)
 	if err != nil {
 		return nil, err
@@ -44,12 +44,12 @@ func NewUnitSendRequest(u gomel.Unit, pid uint16, nProc int) (*Request, error) {
 	}, nil
 }
 
-func unitID(u gomel.Unit, nProc int) uint64 {
+func unitID(u gomel.Unit, nProc uint16) uint64 {
 	return uint64(u.Creator()) + uint64(nProc)*uint64(u.Height())
 }
 
-func decodeUnitID(id uint64, nProc int) (int, int) {
-	return int(id % uint64(nProc)), int(id / uint64(nProc))
+func decodeUnitID(id uint64, nProc uint16) (uint16, int) {
+	return uint16(id % uint64(nProc)), int(id / uint64(nProc))
 }
 
 func encodeUnit(u gomel.Unit) ([]byte, error) {

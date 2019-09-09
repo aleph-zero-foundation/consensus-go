@@ -24,7 +24,7 @@ const (
 )
 
 type service struct {
-	pid          int
+	pid          uint16
 	dag          gomel.Dag
 	rs           gomel.RandomSource
 	units        <-chan gomel.Unit
@@ -63,7 +63,7 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 
 	fetchRequests := make(chan fetch.Request, dag.NProc())
 	fbk := fallback.NewFetch(dag, fetchRequests)
-	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, fetchRequests, netserv, gomel.NopCallback, config.Timeout, fbk, log, uint(1), uint(1))
+	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, fetchRequests, netserv, gomel.NopCallback, config.Timeout, fbk, log, 1, 1)
 
 	// units is a channel on which create service should send newly created units for rmc
 	units := make(chan gomel.Unit)
@@ -94,11 +94,11 @@ func (s *service) translator() {
 			return
 		}
 		s.canMulticast.Lock()
-		for pid := 0; pid < s.dag.NProc(); pid++ {
+		for pid := uint16(0); pid < s.dag.NProc(); pid++ {
 			if pid == s.pid {
 				continue
 			}
-			req, err := multicast.NewUnitSendRequest(unit, uint16(pid), s.dag.NProc())
+			req, err := multicast.NewUnitSendRequest(unit, pid, s.dag.NProc())
 			if err != nil {
 				s.log.Error().Str("where", "multicast.NewUnitSendRequest").Msg(err.Error())
 				continue

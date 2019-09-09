@@ -175,8 +175,8 @@ func (p *protocol) Out() {
 			return
 		}
 		if finished {
-			for i := 0; i < p.dag.NProc(); i++ {
-				if uint16(i) == p.pid {
+			for i := uint16(0); i < p.dag.NProc(); i++ {
+				if i == p.pid {
 					continue
 				}
 				p.requests <- NewRequest(r.id, uint16(i), r.data, sendFinished)
@@ -203,7 +203,7 @@ func (p *protocol) Out() {
 // The second returned value is the result of the check.
 func checkCompliance(pu gomel.Preunit, id uint64, pid uint16, dag gomel.Dag) (bool, error) {
 	creator, height := decodeUnitID(id, dag.NProc())
-	if pu.Creator() != int(pid) || pu.Creator() != creator {
+	if pu.Creator() != pid || pu.Creator() != creator {
 		return true, errors.New("wrong unit creator")
 	}
 	if len(pu.Parents()) == 0 {
@@ -228,6 +228,6 @@ func readSingleByte(r io.Reader) (byte, error) {
 	return buf[0], err
 }
 
-func predecessorID(id uint64, nProc int) uint64 {
+func predecessorID(id uint64, nProc uint16) uint64 {
 	return id - uint64(nProc)
 }

@@ -17,10 +17,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/run"
 )
 
-func generateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
+func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
 	pubKeys = make([]gomel.PublicKey, 0, nProcesses)
 	privKeys = make([]gomel.PrivateKey, 0, nProcesses)
-	for i := 0; i < nProcesses; i++ {
+	for i := uint16(0); i < nProcesses; i++ {
 		pubKey, privKey, _ := signing.GenerateKeys()
 		pubKeys = append(pubKeys, pubKey)
 		privKeys = append(privKeys, privKey)
@@ -28,10 +28,10 @@ func generateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.P
 	return pubKeys, privKeys
 }
 
-func generateRMCKeys(nProcesses uint64) (sekKeys []*bn256.SecretKey, verKeys []*bn256.VerificationKey) {
+func generateRMCKeys(nProcesses uint16) (sekKeys []*bn256.SecretKey, verKeys []*bn256.VerificationKey) {
 	sekKeys = make([]*bn256.SecretKey, 0, nProcesses)
 	verKeys = make([]*bn256.VerificationKey, 0, nProcesses)
-	for i := uint64(0); i < nProcesses; i++ {
+	for i := uint16(0); i < nProcesses; i++ {
 		verKey, sekKey, _ := bn256.GenerateKeys()
 		sekKeys = append(sekKeys, sekKey)
 		verKeys = append(verKeys, verKey)
@@ -214,14 +214,14 @@ func main() {
 	flag.Parse()
 
 	addresses, setupAddresses, mcAddresses, setupMCAddresses := generateLocalhostAddresses("localhost", *testSize)
-	pubKeys, privKeys := generateKeys(*testSize)
-	sekKeys, verKeys := generateRMCKeys(*testSize)
+	pubKeys, privKeys := generateKeys(uint16(*testSize))
+	sekKeys, verKeys := generateRMCKeys(uint16(*testSize))
 	dags := make([]gomel.Dag, int(*testSize))
 
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], *userDB, *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}
