@@ -68,6 +68,10 @@ func (p *protocol) In() {
 		return
 	}
 	err = add.Unit(p.dag, p.randomSource, preunit, p.callback, p.fallback, p.log)
+	if err != nil {
+		p.log.Error().Str("where", "multicast.In.AddUnit").Msg(err.Error())
+		return
+	}
 }
 
 func (p *protocol) Out() {
