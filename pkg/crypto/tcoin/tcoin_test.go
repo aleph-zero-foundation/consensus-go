@@ -104,6 +104,36 @@ var _ = Describe("Tcoin", func() {
 			})
 		})
 	})
+	Context("Coin unmarshal", func() {
+		Context("On an empty slice", func() {
+			It("Should return an error", func() {
+				c := new(Coin)
+				err := c.Unmarshal([]byte{})
+				Expect(err).To(HaveOccurred())
+			})
+		})
+		Context("On a incorrect slice having correct length", func() {
+			It("Should return an error", func() {
+				c := new(Coin)
+				data := make([]byte, bn256.SignatureLength)
+				data[0] = 1
+				err := c.Unmarshal(data)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+		Context("On a correctly marshalled coin", func() {
+			It("Should work without errors", func() {
+				c := new(Coin)
+
+				_, priv, err := bn256.GenerateKeys()
+				Expect(err).NotTo(HaveOccurred())
+				data := []byte{1, 2, 3}
+
+				err = c.Unmarshal(priv.Sign(data).Marshal())
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
 
 	Context("Multicoin", func() {
 		BeforeEach(func() {
