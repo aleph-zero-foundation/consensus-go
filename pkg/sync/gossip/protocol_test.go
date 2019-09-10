@@ -166,6 +166,41 @@ var _ = Describe("Protocol", func() {
 			})
 
 		})
+		Context("when one copy is empty and the other has 60 units", func() {
+
+			BeforeEach(func() {
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
+				rs1 = tests.NewTestRandomSource()
+				rs1.Init(tdag1)
+				dag1 = &dag{
+					Dag:          tdag1.(*tests.Dag),
+					attemptedAdd: nil,
+				}
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/regular1.txt", tests.NewTestDagFactory())
+				rs2 = tests.NewTestRandomSource()
+				rs2.Init(tdag2)
+				dag2 = &dag{
+					Dag:          tdag2.(*tests.Dag),
+					attemptedAdd: nil,
+				}
+			})
+
+			It("should not add anything", func() {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() {
+					proto1.In()
+					wg.Done()
+				}()
+				go func() {
+					proto2.Out()
+					wg.Done()
+				}()
+				wg.Wait()
+				Expect(dag1.attemptedAdd).To(HaveLen(60))
+				Expect(dag2.attemptedAdd).To(BeEmpty())
+			})
+		})
 
 	})
 
