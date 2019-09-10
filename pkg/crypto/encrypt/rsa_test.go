@@ -25,6 +25,25 @@ var _ = Describe("Encryption", func() {
 		BeforeEach(func() {
 			ek, dk, _ = GenerateKeys()
 		})
+		Describe("Checking CTEq", func() {
+			var msg1, msg2 []byte
+			var ct2 CipherText
+			BeforeEach(func() {
+				msg1 = make([]byte, 8)
+				binary.LittleEndian.PutUint64(msg1, rand.Uint64())
+				ct, err = ek.Encrypt(msg1)
+				Expect(err).NotTo(HaveOccurred())
+
+				msg2 = make([]byte, 8)
+				binary.LittleEndian.PutUint64(msg2, rand.Uint64())
+				ct2, err = ek.Encrypt(msg2)
+				Expect(err).NotTo(HaveOccurred())
+			})
+			It("Should check equalty correctly", func() {
+				Expect(CTEq(ct, ct)).To(BeTrue())
+				Expect(CTEq(ct, ct2)).To(BeFalse())
+			})
+		})
 
 		Describe("Checking enc/dec", func() {
 
