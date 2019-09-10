@@ -42,6 +42,38 @@ var _ = Describe("Signatures", func() {
 				Expect(pub.Verify(pu)).To(BeFalse())
 			})
 		})
+		Describe("Decoding encoded public key", func() {
+			It("Should return the key", func() {
+				encoded := pub.Encode()
+				decoded, err := DecodePublicKey(encoded)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(decoded).To(Equal(pub))
+			})
+		})
+		Describe("Decoding encoded private key", func() {
+			It("Should return the key", func() {
+				encoded := priv.Encode()
+				decoded, err := DecodePrivateKey(encoded)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(decoded).To(Equal(priv))
+			})
+		})
+		Describe("Decoding non-base64", func() {
+			It("Should return an error", func() {
+				_, err := DecodePublicKey("abc*")
+				Expect(err).To(HaveOccurred())
+				_, err = DecodePrivateKey("abc*")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+		Describe("Decoding public key as private key and vice versa", func() {
+			It("Should return an error", func() {
+				_, err := DecodePublicKey(priv.Encode())
+				Expect(err).To(HaveOccurred())
+				_, err = DecodePrivateKey(pub.Encode())
+				Expect(err).To(HaveOccurred())
+			})
+		})
 	})
 
 })

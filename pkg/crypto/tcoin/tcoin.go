@@ -278,20 +278,6 @@ type Coin struct {
 	sgn *bn256.Signature
 }
 
-// Unmarshal creates a coin from its byte representation.
-func (c *Coin) Unmarshal(data []byte) error {
-	if len(data) != bn256.SignatureLength {
-		return errors.New("unmarshalling of coin failed. Wrong data length")
-	}
-	sgn := new(bn256.Signature)
-	sgn, err := sgn.Unmarshal(data)
-	if err != nil {
-		return err
-	}
-	c.sgn = sgn
-	return nil
-}
-
 // RandomBytes returns randomBytes from the coin.
 func (c *Coin) RandomBytes() []byte {
 	return c.sgn.Marshal()
