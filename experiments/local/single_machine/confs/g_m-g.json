@@ -3,9 +3,9 @@
 
 		"PrimeOnly": true,
 
-        "CanSkipLevel": true, 
+    "CanSkipLevel": true,
 
-		"CreateDelay": 0.1,
+    "CreateDelay": 0.1,
 
 		"StepSize": 0.0,
 
@@ -16,7 +16,13 @@
                 "nOut": "2",
                 "timeout": "2"},
             "Fallback": ""
-        }],
+        }, {
+            "Type": "multicast",
+            "Params": {
+                "mcType": "tcp",
+                "timeout": "2"},
+            "Fallback": "gossip"
+        } ],
 
         "Setup": "coin",
 
@@ -34,7 +40,7 @@
 
 		"LogHuman": false,
 
-	    "OrderStartLevel": 0,
+    "OrderStartLevel": 0,
 
-		"CRPFixedPrefix": 5
+    "CRPFixedPrefix": 5
 }

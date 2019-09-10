@@ -3,9 +3,9 @@
 
 		"PrimeOnly": true,
 
-        "CanSkipLevel": true,
+    "CanSkipLevel": true,
 
-		"CreateDelay": 1.1,
+    "CreateDelay": 0.1,
 
 		"StepSize": 0.0,
 
@@ -14,23 +14,15 @@
             "Params": {
                 "nIn": "3",
                 "nOut": "2",
-                "timeout": "2s"
-            },
-            "Fallback": "retrying"
-        }, {
-            "Type": "retrying",
-            "Params": {
-                "interval": "0.1s"
-            },
+                "timeout": "2s"},
             "Fallback": "fetch"
         }, {
             "Type": "multicast",
             "Params": {
                 "network": "tcp",
-                "timeout": "2s"
-            },
-            "Fallback": "retrying"
-        }],
+                "timeout": "2s"},
+            "Fallback": "fetch"
+        } ],
 
         "Setup": "coin",
 
@@ -38,17 +30,17 @@
 
 		"Txpu": 1,
 
-		"LevelLimit": 20,
+		"LevelLimit": 2,
 
 		"LogLevel": 1,
 
-		"LogBuffer": 10000,
+		"LogBuffer": 100000,
 
 		"LogMemInterval": 10,
 
 		"LogHuman": false,
 
-	    "OrderStartLevel": 0,
+    "OrderStartLevel": 0,
 
-		"CRPFixedPrefix": 5
+    "CRPFixedPrefix": 5
 }
