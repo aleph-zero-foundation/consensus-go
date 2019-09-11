@@ -16,31 +16,26 @@ import (
 
 // Retrying is a wrapper for a fallback that continuously tries adding the problematic preunits to the dag.
 type Retrying struct {
-	dag       gomel.Dag
-	rs        gomel.RandomSource
-	inner     gsync.Fallback
-	interval  time.Duration
-	mx        sync.Mutex
-	backlog   map[gomel.Hash]gomel.Preunit
-	required  map[gomel.Hash]int
-	neededFor map[gomel.Hash][]*gomel.Hash
-	missing   []*gomel.Hash
-	quit      int32
-	wg        sync.WaitGroup
-	log       zerolog.Logger
+	dag      gomel.Dag
+	rs       gomel.RandomSource
+	inner    gsync.Fallback
+	interval time.Duration
+	backlog  *backlog
+	deps     *dependencies
+	quit     int32
+	wg       sync.WaitGroup
+	log      zerolog.Logger
 }
 
 // NewRetrying wraps the given fallback with a retrying routine that keeps trying to add problematic units.
 func NewRetrying(inner gsync.Fallback, dag gomel.Dag, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) *Retrying {
 	return &Retrying{
-		dag:       dag,
-		rs:        rs,
-		inner:     inner,
-		mx:        sync.Mutex{},
-		backlog:   make(map[gomel.Hash]gomel.Preunit),
-		required:  make(map[gomel.Hash]int),
-		neededFor: make(map[gomel.Hash][]*gomel.Hash),
-		log:       log,
+		dag:     dag,
+		rs:      rs,
+		inner:   inner,
+		backlog: newBacklog(),
+		deps:    newDeps(),
+		log:     log,
 	}
 }
 
@@ -79,23 +74,10 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 		f.addUnit(pu)
 		return false
 	}
-	ourHash := *pu.Hash()
-	f.mx.Lock()
-	defer f.mx.Unlock()
-	if _, ok := f.backlog[ourHash]; ok {
-		// unit already in backlog
+	if !f.backlog.add(pu) {
 		return false
 	}
-	f.backlog[ourHash] = pu
-	f.required[ourHash] = len(missing)
-	for _, h := range missing {
-		neededFor := f.neededFor[*h]
-		if len(neededFor) == 0 {
-			// this is the first time we need this hash
-			f.missing = append(f.missing, h)
-		}
-		f.neededFor[*h] = append(neededFor, pu.Hash())
-	}
+	f.deps.add(pu.Hash(), missing)
 	return true
 }
 
@@ -108,36 +90,16 @@ func (f *Retrying) work() {
 }
 
 func (f *Retrying) update() {
-	f.mx.Lock()
-	defer f.mx.Unlock()
-	units := f.dag.Get(f.missing)
-	newMissing := make([]*gomel.Hash, 0, len(f.missing))
-	for i, h := range f.missing {
-		if units[i] != nil {
-			f.gotHash(h)
-		} else {
-			newMissing = append(newMissing, h)
+	presentHashes := f.deps.scan(f.dag)
+	for len(presentHashes) != 0 {
+		addableHashes := f.deps.satisfy(presentHashes)
+		for _, h := range addableHashes {
+			pu := f.backlog.get(h)
+			f.addUnit(pu)
+			f.backlog.del(h)
+			f.log.Info().Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.RemovedFromBacklog)
 		}
-	}
-	f.missing = newMissing
-}
-
-func (f *Retrying) gotHash(h *gomel.Hash) {
-	toUpdate := f.neededFor[*h]
-	hashesAdded := []*gomel.Hash{}
-	for _, hh := range toUpdate {
-		f.required[*hh]--
-		if f.required[*hh] == 0 {
-			f.addUnit(f.backlog[*hh])
-			delete(f.required, *hh)
-			f.log.Info().Str(logging.Hash, gomel.Nickname(f.backlog[*hh])).Msg(logging.RemovedFromBacklog)
-			delete(f.backlog, *hh)
-			hashesAdded = append(hashesAdded, hh)
-		}
-	}
-	delete(f.neededFor, *h)
-	for _, hh := range hashesAdded {
-		f.gotHash(hh)
+		presentHashes = addableHashes
 	}
 }
 
