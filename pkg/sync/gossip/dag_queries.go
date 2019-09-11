@@ -168,8 +168,9 @@ func requestedToSend(dag gomel.Dag, info processInfo, req processRequests) ([]go
 	operationHeight := maximalHeight(units)
 	knownRemotes := knownUnits(dag, info)
 	knownRemotes = dropToHeight(knownRemotes, operationHeight)
+	var consideredUnits []gomel.Unit
 	for len(units) > 0 {
-		consideredUnits, units := splitOffHeight(units, operationHeight)
+		consideredUnits, units = splitOffHeight(units, operationHeight)
 		for _, u := range consideredUnits {
 			if !knownRemotes[u] {
 				result = append(result, u)
