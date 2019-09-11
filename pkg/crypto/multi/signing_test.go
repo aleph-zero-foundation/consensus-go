@@ -95,7 +95,7 @@ var _ = Describe("Signing", func() {
 					Expect(done).To(BeFalse())
 				}
 				sgn := keys[threshold].Sign(data)
-				sgn[0] = sgn[1]
+				sgn[0] ^= 255
 				done, err := multisig.Aggregate(threshold, sgn)
 				Expect(err).To(HaveOccurred())
 				Expect(done).To(BeFalse())
