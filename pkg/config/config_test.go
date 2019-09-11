@@ -71,7 +71,7 @@ var _ = Describe("Configuration", func() {
 	Describe("committee", func() {
 		Describe("When loaded from a test file ", func() {
 			It("Should work without errors", func() {
-				file, err := os.Open("../testdata/test_committee.ka")
+				file, err := os.Open("../testdata/test_committee.txt")
 				defer file.Close()
 				Expect(err).NotTo(HaveOccurred())
 				reader := bufio.NewReader(file)
@@ -83,7 +83,7 @@ var _ = Describe("Configuration", func() {
 			var committee *Committee
 			var fileContent []byte
 			BeforeEach(func() {
-				file, err := os.Open("../testdata/test_committee.ka")
+				file, err := os.Open("../testdata/test_committee.txt")
 				defer file.Close()
 				Expect(err).NotTo(HaveOccurred())
 
@@ -91,7 +91,7 @@ var _ = Describe("Configuration", func() {
 				committee, err = LoadCommittee(reader)
 				Expect(err).NotTo(HaveOccurred())
 
-				fileContent, err = ioutil.ReadFile("../testdata/test_committee.ka")
+				fileContent, err = ioutil.ReadFile("../testdata/test_committee.txt")
 				Expect(err).NotTo(HaveOccurred())
 			})
 			It("Should have the same content", func() {
