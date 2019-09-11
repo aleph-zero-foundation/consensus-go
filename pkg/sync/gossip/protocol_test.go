@@ -201,6 +201,44 @@ var _ = Describe("Protocol", func() {
 				Expect(dag2.attemptedAdd).To(BeEmpty())
 			})
 		})
+		Context("when trolled by a forker", func() {
+
+			BeforeEach(func() {
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/exchange_with_fork_local_view1.txt", tests.NewTestDagFactory())
+				rs1 = tests.NewTestRandomSource()
+				rs1.Init(tdag1)
+				dag1 = &dag{
+					Dag:          tdag1.(*tests.Dag),
+					attemptedAdd: nil,
+				}
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
+				rs2 = tests.NewTestRandomSource()
+				rs2.Init(tdag2)
+				dag2 = &dag{
+					Dag:          tdag2.(*tests.Dag),
+					attemptedAdd: nil,
+				}
+			})
+
+			// This behaviour is expected by the current design of the protocol.
+			// However this gives an opportunity to a malicious node to enforce
+			// huge exchanges between honest nodes.
+			It("should add all units", func() {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() {
+					proto1.In()
+					wg.Done()
+				}()
+				go func() {
+					proto2.Out()
+					wg.Done()
+				}()
+				wg.Wait()
+				Expect(dag1.attemptedAdd).To(HaveLen(3))
+				Expect(dag2.attemptedAdd).To(HaveLen(3))
+			})
+		})
 
 	})
 
