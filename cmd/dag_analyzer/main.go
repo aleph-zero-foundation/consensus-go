@@ -225,6 +225,10 @@ func getUnitStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) []levelUnitSt
 
 func main() {
 	options := getOptions()
+	if options.dagFilename == "" {
+		fmt.Fprintf(os.Stderr, "Usage: dag_analyzer -dag=<dag_file>\n")
+		return
+	}
 	var df dagFactory
 	dag, err := tests.CreateDagFromTestFile(options.dagFilename, df)
 	if err != nil {
