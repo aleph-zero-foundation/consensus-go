@@ -28,13 +28,13 @@ var _ = Describe("Creating", func() {
 			It("should return a dealing unit", func() {
 				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pu.Creator()).To(Equal(0))
+				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
 			It("should return a dealing unit", func() {
 				pu, err := NewUnit(dag, 3, dag.NProc(), []byte{}, rs, true)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pu.Creator()).To(Equal(3))
+				Expect(pu.Creator()).To(Equal(uint16(3)))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
 		})
@@ -46,7 +46,7 @@ var _ = Describe("Creating", func() {
 			It("should return a dealing unit for a different creator", func() {
 				pu, err := NewUnit(dag, 3, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pu.Creator()).To(Equal(3))
+				Expect(pu.Creator()).To(Equal(uint16(3)))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
 
@@ -65,7 +65,7 @@ var _ = Describe("Creating", func() {
 			It("should return a unit with these parents", func() {
 				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pu.Creator()).To(Equal(0))
+				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).NotTo(BeEmpty())
 				Expect(len(pu.Parents())).To(BeEquivalentTo(2))
 				Expect(*pu.Parents()[0]).To(BeEquivalentTo(h1))
@@ -86,7 +86,7 @@ var _ = Describe("Creating", func() {
 			It("should return a unit with some parents", func() {
 				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pu.Creator()).To(Equal(0))
+				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).NotTo(BeEmpty())
 				Expect(len(pu.Parents()) > 1).To(BeTrue())
 				Expect(*pu.Parents()[0]).To(BeEquivalentTo(h1))
@@ -95,9 +95,9 @@ var _ = Describe("Creating", func() {
 			It("should return a prime unit if we request it", func() {
 				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, true)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pu.Creator()).To(Equal(0))
+				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).NotTo(BeEmpty())
-				Expect(dag.IsQuorum(len(pu.Parents()))).To(BeTrue())
+				Expect(dag.IsQuorum(uint16(len(pu.Parents())))).To(BeTrue())
 				Expect(*pu.Parents()[0]).To(BeEquivalentTo(h1))
 			})
 		})

@@ -3,10 +3,11 @@ package tests_test
 import (
 	. "gitlab.com/alephledger/consensus-go/pkg/tests"
 
+	"strings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"strings"
 )
 
 var _ = Describe("DagReader", func() {
@@ -19,7 +20,7 @@ var _ = Describe("DagReader", func() {
 			})
 			It("Should return dag with 10 parents and 100 units", func() {
 				Expect(err).NotTo(HaveOccurred())
-				Expect(dag.NProc()).To(Equal(10))
+				Expect(dag.NProc()).To(Equal(uint16(10)))
 				Expect(countUnits(dag)).To(Equal(100))
 			})
 		})

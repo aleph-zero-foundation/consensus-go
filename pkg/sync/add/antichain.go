@@ -15,9 +15,9 @@ func handleFailure(errorAddr *error, fallback gsync.Fallback, log zerolog.Logger
 		if err != nil {
 			switch e := err.(type) {
 			case *gomel.DuplicateUnit:
-				log.Info().Int(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
+				log.Info().Uint16(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
 			case *gomel.UnknownParents:
-				log.Info().Int(logging.Creator, pu.Creator()).Int(logging.Size, e.Amount).Msg(logging.UnknownParents)
+				log.Info().Uint16(logging.Creator, pu.Creator()).Int(logging.Size, e.Amount).Msg(logging.UnknownParents)
 				fallback.Run(pu)
 				*errorAddr = err
 			default:

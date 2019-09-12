@@ -21,8 +21,8 @@ const (
 type service struct {
 	dag              gomel.Dag
 	randomSource     gomel.RandomSource
-	pid              int
-	maxParents       int
+	pid              uint16
+	maxParents       uint16
 	primeOnly        bool
 	canSkipLevel     bool
 	maxLevel         int

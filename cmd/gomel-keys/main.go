@@ -101,10 +101,7 @@ func main() {
 	}
 
 	for pid, p := range processes {
-		member := &config.Member{
-			Pid:        pid,
-			PrivateKey: p.privateKey,
-		}
+		member := &config.Member{uint16(pid), p.privateKey}
 		f, err := os.Create(strconv.Itoa(pid) + ".pk")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())

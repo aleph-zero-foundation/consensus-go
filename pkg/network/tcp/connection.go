@@ -19,8 +19,8 @@ type conn struct {
 	link   net.Conn
 	reader *bufio.Reader
 	writer *bufio.Writer
-	sent   uint32
-	recv   uint32
+	sent   int
+	recv   int
 	log    zerolog.Logger
 }
 
@@ -36,7 +36,7 @@ func newConn(link net.Conn, log zerolog.Logger) network.Connection {
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.reader.Read(b)
-	c.recv += uint32(n)
+	c.recv += n
 	return n, err
 }
 
@@ -53,7 +53,7 @@ func (c *conn) Write(b []byte) (int, error) {
 			break
 		}
 	}
-	c.sent += uint32(written)
+	c.sent += written
 	return written, err
 }
 
@@ -63,7 +63,7 @@ func (c *conn) Flush() error {
 
 func (c *conn) Close() error {
 	err := c.link.Close()
-	c.log.Info().Uint32(logging.Sent, c.sent).Uint32(logging.Recv, c.recv).Msg(logging.ConnectionClosed)
+	c.log.Info().Int(logging.Sent, c.sent).Int(logging.Recv, c.recv).Msg(logging.ConnectionClosed)
 	return err
 }
 

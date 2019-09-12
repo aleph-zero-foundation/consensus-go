@@ -11,7 +11,7 @@ import (
 var _ = Describe("Signing", func() {
 	var (
 		keys []*Keychain
-		n    int
+		n    uint16
 	)
 	BeforeEach(func() {
 		n = 10
@@ -45,8 +45,8 @@ var _ = Describe("Signing", func() {
 				threshold uint16
 			)
 			BeforeEach(func() {
-				threshold = uint16(n - n/3)
-				multisig = NewSignature(int(threshold), data)
+				threshold = n - n/3
+				multisig = NewSignature(threshold, data)
 			})
 			It("should not verify without any signatures aggregated", func() {
 				Expect(keys[0].MultiVerify(multisig)).To(BeFalse())
@@ -69,21 +69,21 @@ var _ = Describe("Signing", func() {
 				Expect(keys[0].MultiVerify(multisig)).To(BeTrue())
 			})
 			It("should verify after all signatures aggregated", func() {
-				for i := uint16(0); i < uint16(n); i++ {
+				for i := uint16(0); i < n; i++ {
 					multisig.Aggregate(i, keys[i].Sign(data))
 				}
 				Expect(keys[0].MultiVerify(multisig)).To(BeTrue())
 			})
 			It("should verify after all signatures aggregated with marshaling/unmarshaling", func() {
-				for i := uint16(0); i < uint16(n); i++ {
+				for i := uint16(0); i < n; i++ {
 					multisig.Aggregate(i, keys[i].Sign(data))
 				}
-				mlsgn, err := NewSignature(int(threshold), data).Unmarshal(multisig.Marshal())
+				mlsgn, err := NewSignature(threshold, data).Unmarshal(multisig.Marshal())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(keys[0].MultiVerify(mlsgn)).To(BeTrue())
 			})
 			It("should not verify with one signature aggregated multiple times", func() {
-				for i := uint16(0); i < uint16(n); i++ {
+				for i := uint16(0); i < n; i++ {
 					multisig.Aggregate(0, keys[0].Sign(data))
 				}
 				Expect(keys[0].MultiVerify(multisig)).To(BeFalse())

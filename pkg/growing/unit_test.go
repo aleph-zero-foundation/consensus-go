@@ -17,10 +17,10 @@ func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
 // creator => (height => slice of units by this creator on this height)
-func collectUnits(dag gomel.Dag) map[int]map[int][]gomel.Unit {
+func collectUnits(dag gomel.Dag) map[uint16]map[int][]gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
-	result := make(map[int]map[int][]gomel.Unit)
-	for pid := 0; pid < dag.NProc(); pid++ {
+	result := make(map[uint16]map[int][]gomel.Unit)
+	for pid := uint16(0); pid < dag.NProc(); pid++ {
 		result[pid] = make(map[int][]gomel.Unit)
 	}
 
@@ -53,7 +53,7 @@ var _ = Describe("Units", func() {
 		dag        gomel.Dag
 		readingErr error
 		df         dagFactory
-		units      map[int]map[int][]gomel.Unit
+		units      map[uint16]map[int][]gomel.Unit
 	)
 
 	Describe("small", func() {
@@ -154,10 +154,10 @@ var _ = Describe("Units", func() {
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should return floors containing one unit each", func() {
-					for pid := 0; pid < dag.NProc(); pid++ {
+					for pid := uint16(0); pid < dag.NProc(); pid++ {
 						floor := units[pid][0][0].Floor()
 						for pid2, myFloor := range floor {
-							if pid2 == pid {
+							if uint16(pid2) == pid {
 								Expect(len(myFloor)).To(Equal(1))
 								Expect(myFloor[0].Hash()).To(Equal(units[pid][0][0].Hash()))
 							} else {
@@ -208,7 +208,7 @@ var _ = Describe("Units", func() {
 					floor := units[0][9][0].Floor()
 					Expect(len(floor[0])).To(Equal(1))
 					Expect(floor[0][0].Hash()).To(Equal(units[0][9][0].Hash()))
-					for pid := 1; pid < 10; pid++ {
+					for pid := uint16(1); pid < 10; pid++ {
 						Expect(len(floor[pid])).To(Equal(1))
 						Expect(floor[pid][0].Hash()).To(Equal(units[pid][0][0].Hash()))
 					}

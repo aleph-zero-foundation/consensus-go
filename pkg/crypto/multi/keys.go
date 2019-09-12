@@ -69,6 +69,6 @@ func (k *Keychain) Pid() uint16 {
 }
 
 // Length of the keychain, i.e. how many public keys there are.
-func (k *Keychain) Length() int {
-	return len(k.pubs)
+func (k *Keychain) Length() uint16 {
+	return uint16(len(k.pubs))
 }

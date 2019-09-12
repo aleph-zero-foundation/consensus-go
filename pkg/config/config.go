@@ -17,7 +17,7 @@ type SyncConfiguration struct {
 type Configuration struct {
 	// How many parents we try to give every unit.
 	// Depending on other settings and circumstances, this might be ignored in either direction.
-	NParents uint
+	NParents uint16
 
 	// Whether only prime units should be created.
 	PrimeOnly bool
@@ -44,10 +44,10 @@ type Configuration struct {
 	// The number of transactions included in a unit.
 	// Currently only simulated by including random bytes depending on this number.
 	// Will be removed completely in the future, when gomel becomes transaction-agnostic.
-	Txpu uint
+	Txpu int
 
 	// When a unit of this level is added to the dag, the process shuts down.
-	LevelLimit uint
+	LevelLimit int
 
 	// Log level: 0-debug 1-info 2-warn 3-error 4-fatal 5-panic.
 	LogLevel int
@@ -65,7 +65,7 @@ type Configuration struct {
 	OrderStartLevel int
 
 	// The number of default, pseudo-random, pids used before using the truly random CRP.
-	CRPFixedPrefix int
+	CRPFixedPrefix uint16
 }
 
 // NewDefaultConfiguration returns default set of parameters.
@@ -83,7 +83,7 @@ func NewDefaultConfiguration() Configuration {
 
 	result := Configuration{
 
-		NParents: 10,
+		NParents: uint16(10),
 
 		PrimeOnly: true,
 
@@ -113,7 +113,7 @@ func NewDefaultConfiguration() Configuration {
 
 		OrderStartLevel: 0,
 
-		CRPFixedPrefix: 5,
+		CRPFixedPrefix: uint16(5),
 	}
 	return result
 }

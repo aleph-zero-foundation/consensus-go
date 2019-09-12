@@ -17,7 +17,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	text := scanner.Text()
-	var n int
+	var n uint16
 
 	_, err := fmt.Sscanf(text, "%d", &n)
 	if err != nil {
@@ -29,7 +29,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 	rs.Init(dag)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
-	var txID uint32
+	var txID int
 
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -57,8 +57,8 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 			}
 		}
 		unitData := make([]byte, 4)
-		binary.LittleEndian.PutUint32(unitData, txID)
-		pu := NewPreunit(puCreator, parents, unitData, nil)
+		binary.LittleEndian.PutUint32(unitData, uint32(txID))
+		pu := NewPreunit(uint16(puCreator), parents, unitData, nil)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
 		var addingError error

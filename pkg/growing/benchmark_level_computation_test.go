@@ -19,7 +19,7 @@ func levelByIteratingPrimes(u gomel.Unit, dag gomel.Dag) int {
 	}
 	level := u.Parents()[0].Level()
 	primes := dag.PrimeUnits(level)
-	nSeen := 0
+	nSeen := uint16(0)
 	nNotSeen := dag.NProc()
 	primes.Iterate(func(units []gomel.Unit) bool {
 		nNotSeen--
@@ -50,7 +50,7 @@ func levelByDFS(u gomel.Unit, dag gomel.Dag) int {
 
 	parents := u.Parents()
 	level := parents[len(parents)-1].Level()
-	procSeen := make(map[int]bool)
+	procSeen := make(map[uint16]bool)
 	unitsSeen := make(map[gomel.Hash]bool)
 	stack := []gomel.Unit{u}
 	for len(stack) > 0 {
@@ -62,7 +62,7 @@ func levelByDFS(u gomel.Unit, dag gomel.Dag) int {
 				stack = append(stack, v)
 				unitsSeen[*v.Hash()] = true
 				procSeen[v.Creator()] = true
-				if dag.IsQuorum(len(procSeen)) {
+				if dag.IsQuorum(uint16(len(procSeen))) {
 					return level + 1
 				}
 			}
@@ -78,7 +78,7 @@ func levelByBFS(u gomel.Unit, dag gomel.Dag) int {
 
 	parents := u.Parents()
 	level := parents[len(parents)-1].Level()
-	procSeen := make(map[int]bool)
+	procSeen := make(map[uint16]bool)
 	unitsSeen := make(map[gomel.Hash]bool)
 	queue := []gomel.Unit{u}
 	for len(queue) > 0 {
@@ -90,7 +90,7 @@ func levelByBFS(u gomel.Unit, dag gomel.Dag) int {
 				queue = append(queue, v)
 				unitsSeen[*v.Hash()] = true
 				procSeen[v.Creator()] = true
-				if dag.IsQuorum(len(procSeen)) {
+				if dag.IsQuorum(uint16(len(procSeen))) {
 					return level + 1
 				}
 			}
@@ -101,10 +101,10 @@ func levelByBFS(u gomel.Unit, dag gomel.Dag) int {
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
 // creator => (height => slice of units by this creator on this height)
-func collectUnits(dag gomel.Dag) map[int]map[int][]gomel.Unit {
+func collectUnits(dag gomel.Dag) map[uint16]map[int][]gomel.Unit {
 	seenUnits := make(map[gomel.Hash]bool)
-	result := make(map[int]map[int][]gomel.Unit)
-	for pid := 0; pid < dag.NProc(); pid++ {
+	result := make(map[uint16]map[int][]gomel.Unit)
+	for pid := uint16(0); pid < dag.NProc(); pid++ {
 		result[pid] = make(map[int][]gomel.Unit)
 	}
 
@@ -137,7 +137,7 @@ func BenchmarkLevelComputing(b *testing.B) {
 		dag        gomel.Dag
 		readingErr error
 		df         dagFactory
-		units      map[int]map[int][]gomel.Unit
+		units      map[uint16]map[int][]gomel.Unit
 	)
 	testfiles := []string{
 		"random_10p_100u_2par.txt",

@@ -13,7 +13,7 @@ import (
 )
 
 type preunitMock struct {
-	creator   int
+	creator   uint16
 	signature gomel.Signature
 	hash      gomel.Hash
 	parents   []*gomel.Hash
@@ -29,7 +29,7 @@ func (pu *preunitMock) Data() []byte {
 	return pu.data
 }
 
-func (pu *preunitMock) Creator() int {
+func (pu *preunitMock) Creator() uint16 {
 	return pu.creator
 }
 
@@ -52,7 +52,7 @@ func (pu *preunitMock) Parents() []*gomel.Hash {
 var _ = Describe("Dag", func() {
 
 	var (
-		nProcesses int
+		nProcesses uint16
 		dag        *Dag
 		rs         gomel.RandomSource
 		addFirst   [][]*preunitMock
@@ -93,7 +93,7 @@ var _ = Describe("Dag", func() {
 			nProcesses = 4
 			pubKeys = make([]gomel.PublicKey, nProcesses, nProcesses)
 			privKeys = make([]gomel.PrivateKey, nProcesses, nProcesses)
-			for i := 0; i < nProcesses; i++ {
+			for i := uint16(0); i < nProcesses; i++ {
 				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			}
 			dag = NewDag(&gomel.DagConfig{Keys: pubKeys})
@@ -109,7 +109,7 @@ var _ = Describe("Dag", func() {
 
 			var (
 				addedUnit    *preunitMock
-				addedCreator int
+				addedCreator uint16
 				addedHash    gomel.Hash
 				parentHashes []*gomel.Hash
 			)
@@ -335,7 +335,7 @@ var _ = Describe("Dag", func() {
 				It("Should not return any maximal units", func() {
 					maxUnits := dag.MaximalUnitsPerProcess()
 					Expect(maxUnits).NotTo(BeNil())
-					for i := 0; i < nProcesses; i++ {
+					for i := uint16(0); i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -344,7 +344,7 @@ var _ = Describe("Dag", func() {
 					for l := 0; l < 10; l++ {
 						primeUnits := dag.PrimeUnits(l)
 						Expect(primeUnits).NotTo(BeNil())
-						for i := 0; i < nProcesses; i++ {
+						for i := uint16(0); i < nProcesses; i++ {
 							Expect(len(primeUnits.Get(i))).To(BeZero())
 						}
 					}
@@ -366,7 +366,7 @@ var _ = Describe("Dag", func() {
 					Expect(maxUnits).NotTo(BeNil())
 					Expect(len(maxUnits.Get(0))).To(Equal(1))
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
-					for i := 1; i < nProcesses; i++ {
+					for i := uint16(1); i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -376,7 +376,7 @@ var _ = Describe("Dag", func() {
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
-					for i := 1; i < nProcesses; i++ {
+					for i := uint16(1); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -402,7 +402,7 @@ var _ = Describe("Dag", func() {
 					Expect(len(maxUnits.Get(1))).To(Equal(1))
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(maxUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := 2; i < nProcesses; i++ {
+					for i := uint16(2); i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -414,7 +414,7 @@ var _ = Describe("Dag", func() {
 					Expect(len(primeUnits.Get(1))).To(Equal(1))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(primeUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := 2; i < nProcesses; i++ {
+					for i := uint16(2); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -439,7 +439,7 @@ var _ = Describe("Dag", func() {
 					Expect(len(maxUnits.Get(0))).To(Equal(2))
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(maxUnits.Get(0)[1].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := 1; i < nProcesses; i++ {
+					for i := uint16(1); i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -450,7 +450,7 @@ var _ = Describe("Dag", func() {
 					Expect(len(primeUnits.Get(0))).To(Equal(2))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(primeUnits.Get(0)[1].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := 1; i < nProcesses; i++ {
+					for i := uint16(1); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -480,7 +480,7 @@ var _ = Describe("Dag", func() {
 					Expect(len(maxUnits.Get(1))).To(Equal(1))
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[1][0].Hash()))
 					Expect(maxUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := 2; i < nProcesses; i++ {
+					for i := uint16(2); i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -492,12 +492,12 @@ var _ = Describe("Dag", func() {
 					Expect(len(primeUnits.Get(1))).To(Equal(1))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(primeUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := 2; i < nProcesses; i++ {
+					for i := uint16(2); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
 					primeUnits = dag.PrimeUnits(1)
 					Expect(primeUnits).NotTo(BeNil())
-					for i := 0; i < nProcesses; i++ {
+					for i := uint16(0); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
 				})

@@ -19,7 +19,7 @@ func sendDagInfo(info dagInfo, conn network.Connection) error {
 	return nil
 }
 
-func getDagInfo(nProc int, conn network.Connection) (dagInfo, error) {
+func getDagInfo(nProc uint16, conn network.Connection) (dagInfo, error) {
 	info := make(dagInfo, nProc)
 	for i := range info {
 		pi, err := decodeProcessInfo(conn)

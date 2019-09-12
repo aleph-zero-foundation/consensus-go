@@ -23,8 +23,8 @@ func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netse
 	return &server{
 			requests: requests,
 			fallback: fallback,
-			outPool:  sync.NewPool(uint(mcOutWPSize*dag.NProc()), proto.Out),
-			inPool:   sync.NewPool(uint(mcInWPSize*dag.NProc()), proto.In),
+			outPool:  sync.NewPool(mcOutWPSize*int(dag.NProc()), proto.Out),
+			inPool:   sync.NewPool(mcInWPSize*int(dag.NProc()), proto.In),
 		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
 			if err == nil {
 				buffer := &bytes.Buffer{}
@@ -34,7 +34,7 @@ func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netse
 					return
 				}
 				encUnit := buffer.Bytes()[:]
-				for _, i := range rand.Perm(dag.NProc()) {
+				for _, i := range rand.Perm(int(dag.NProc())) {
 					if i == int(pid) {
 						continue
 					}

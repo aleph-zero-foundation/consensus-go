@@ -6,8 +6,8 @@ type DagConfig struct {
 }
 
 // NProc returns the number of processes in a given dag configuration.
-func (dc DagConfig) NProc() int {
-	return len(dc.Keys)
+func (dc DagConfig) NProc() uint16 {
+	return uint16(len(dc.Keys))
 }
 
 // DagFactory is an interface to create dags.

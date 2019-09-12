@@ -1,8 +1,9 @@
 package tests
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"sync"
+
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type slottedUnits struct {
@@ -10,13 +11,13 @@ type slottedUnits struct {
 	contents [][]gomel.Unit
 }
 
-func (su *slottedUnits) Get(id int) []gomel.Unit {
+func (su *slottedUnits) Get(id uint16) []gomel.Unit {
 	su.RLock()
 	defer su.RUnlock()
 	return su.contents[id]
 }
 
-func (su *slottedUnits) Set(id int, units []gomel.Unit) {
+func (su *slottedUnits) Set(id uint16, units []gomel.Unit) {
 	su.Lock()
 	defer su.Unlock()
 	su.contents[id] = units
@@ -32,7 +33,7 @@ func (su *slottedUnits) Iterate(work func([]gomel.Unit) bool) {
 	}
 }
 
-func newSlottedUnits(n int) gomel.SlottedUnits {
+func newSlottedUnits(n uint16) gomel.SlottedUnits {
 	return &slottedUnits{
 		contents: make([][]gomel.Unit, n),
 	}

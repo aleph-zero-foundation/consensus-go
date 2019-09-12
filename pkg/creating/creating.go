@@ -3,7 +3,7 @@
 // It also contains a publicly available implementation of a preunit.
 //
 // All units created using functions in this package will have parents created by distinct processes
-// and satisfyint the expand primes rule. The first parent will also be the predecessor.
+// and satisfying the expand primes rule. The first parent will also be the predecessor.
 // Units created by processes known to be forking at the moment of creation will never be chosen as parents.
 package creating
 
@@ -46,11 +46,11 @@ func (vs *visionSplit) newSeer(u gomel.Unit) bool {
 }
 
 func (vs *visionSplit) hasQuorumIn(dag gomel.Dag) bool {
-	return dag.IsQuorum(len(vs.visible))
+	return dag.IsQuorum(uint16(len(vs.visible)))
 }
 
 // getPredecessor picks one of the units in mu produced by the given creator.
-func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
+func getPredecessor(mu gomel.SlottedUnits, creator uint16) gomel.Unit {
 	maxUnits := mu.Get(creator)
 	if len(maxUnits) == 0 {
 		return nil
@@ -59,7 +59,7 @@ func getPredecessor(mu gomel.SlottedUnits, creator int) gomel.Unit {
 }
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
-func newDealingUnit(creator, NProc int, data []byte, rs gomel.RandomSource) gomel.Preunit {
+func newDealingUnit(creator, NProc uint16, data []byte, rs gomel.RandomSource) gomel.Preunit {
 	rsData, _ := rs.DataToInclude(creator, nil, 0)
 	return NewPreunit(creator, []*gomel.Hash{}, data, rsData)
 }
@@ -199,16 +199,16 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 //
 // The procedure assumes no forks
 // and should be used only in the setup phase.
-func NewNonSkippingUnit(dag gomel.Dag, creator int, data []byte, rs gomel.RandomSource) (gomel.Preunit, error) {
+func NewNonSkippingUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource) (gomel.Preunit, error) {
 	mu := dag.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	if predecessor == nil {
 		return newDealingUnit(creator, dag.NProc(), data, rs), nil
 	}
 	level := predecessor.Level()
-	parentsOnLevel := 1
+	parentsOnLevel := uint16(1)
 	parents := []gomel.Unit{predecessor}
-	for pid := 0; pid < dag.NProc(); pid++ {
+	for pid := uint16(0); pid < dag.NProc(); pid++ {
 		if pid == creator {
 			continue
 		}
@@ -241,7 +241,7 @@ func NewNonSkippingUnit(dag gomel.Dag, creator int, data []byte, rs gomel.Random
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
 // It also returns an error if requirePrime is true and no prime can be produced.
-func NewUnit(dag gomel.Dag, creator int, desiredParents int, data []byte, rs gomel.RandomSource, requirePrime bool) (gomel.Preunit, error) {
+func NewUnit(dag gomel.Dag, creator, desiredParents uint16, data []byte, rs gomel.RandomSource, requirePrime bool) (gomel.Preunit, error) {
 	mu := dag.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
@@ -255,7 +255,7 @@ func NewUnit(dag gomel.Dag, creator int, desiredParents int, data []byte, rs gom
 	isPrime := false
 	// We try picking units of the highest possible level as parents, going down if we haven't filled all the parent slots.
 	// Usually this loop spans over at most two levels.
-	for level := dagLevel; level >= predecessorLevel && (len(parents) < desiredParents || (requirePrime && !isPrime)); level-- {
+	for level := dagLevel; level >= predecessorLevel && (uint16(len(parents)) < desiredParents || (requirePrime && !isPrime)); level-- {
 		candidates := getCandidatesAtLevel(mu, parents, level)
 		vs := splitByBelow(dag.PrimeUnits(level), parents)
 		newParents := pickMoreParents(candidates, vs, func(np []gomel.Unit) bool {
@@ -263,7 +263,7 @@ func NewUnit(dag gomel.Dag, creator int, desiredParents int, data []byte, rs gom
 				isPrime = true
 			}
 			totalLen := len(parents) + len(np)
-			return (!requirePrime || isPrime) && totalLen >= desiredParents
+			return (!requirePrime || isPrime) && uint16(totalLen) >= desiredParents
 		})
 		parents = combineParents(parents, newParents)
 		if resultLevel == predecessorLevel && len(parents) > 1 {

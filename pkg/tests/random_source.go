@@ -7,7 +7,7 @@ import (
 )
 
 type testRandomSource struct {
-	nProc int
+	nProc uint16
 }
 
 // NewTestRandomSource returns a simple RandomSource for testing.
@@ -22,9 +22,9 @@ func (rs *testRandomSource) Init(dag gomel.Dag) {
 
 // RandomBytes returns a sequence of "random" bits for a given unit.
 // It bases the sequence only on the pid and level, ignoring the unit itself.
-func (rs *testRandomSource) RandomBytes(pid, level int) []byte {
+func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 	answer := make([]byte, 32)
-	answer = append(answer, []byte(strconv.Itoa(pid+level))...)
+	answer = append(answer, []byte(strconv.Itoa(int(pid)+level))...)
 	return answer
 }
 
@@ -38,6 +38,6 @@ func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
 }
 
 // ToInclude always returns nil.
-func (*testRandomSource) DataToInclude(int, []gomel.Unit, int) ([]byte, error) {
+func (*testRandomSource) DataToInclude(uint16, []gomel.Unit, int) ([]byte, error) {
 	return nil, nil
 }

@@ -29,7 +29,7 @@ type protocol struct {
 
 // NewProtocol returns a new gossiping protocol.
 func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger) sync.Protocol {
-	nProc := uint16(dag.NProc())
+	nProc := dag.NProc()
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
 		inUse[i] = newMutex()
@@ -60,7 +60,7 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "gossip.In.greeting").Msg(err.Error())
 		return
 	}
-	if pid >= uint16(len(p.inUse)) {
+	if int(pid) >= len(p.inUse) {
 		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
 		return
 	}
@@ -94,6 +94,6 @@ func (p *protocol) Out() {
 		p.log.Error().Str("where", "gossip.Out.greeting").Msg(err.Error())
 		return
 	}
-	conn.SetLogger(p.log.With().Int(logging.PID, int(remotePid)).Uint32(logging.OSID, sid).Logger())
+	conn.SetLogger(p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger())
 	p.outExchange(conn)
 }

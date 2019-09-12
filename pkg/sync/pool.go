@@ -7,14 +7,14 @@ import (
 
 // Pool represents a pool of parallel workers.
 type Pool struct {
-	size uint
+	size int
 	work func()
 	wg   sync.WaitGroup
 	quit int32
 }
 
 //NewPool creates a pool of workers with the given size, all doing the same work.
-func NewPool(size uint, work func()) *Pool {
+func NewPool(size int, work func()) *Pool {
 	return &Pool{
 		size: size,
 		work: work,
@@ -23,8 +23,8 @@ func NewPool(size uint, work func()) *Pool {
 
 // Start the pool.
 func (p *Pool) Start() {
-	p.wg.Add(int(p.size))
-	for i := uint(0); i < p.size; i++ {
+	p.wg.Add(p.size)
+	for i := 0; i < p.size; i++ {
 		go func() {
 			defer p.wg.Done()
 			for {

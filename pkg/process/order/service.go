@@ -13,7 +13,7 @@ import (
 )
 
 type service struct {
-	pid                 int
+	pid                 uint16
 	linearOrdering      gomel.LinearOrdering
 	extendOrderRequests chan int
 	orderedUnits        chan<- []gomel.Unit

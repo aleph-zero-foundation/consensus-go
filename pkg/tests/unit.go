@@ -5,7 +5,7 @@ import (
 )
 
 type unit struct {
-	creator   int
+	creator   uint16
 	height    int
 	level     int
 	version   int
@@ -29,7 +29,7 @@ func (u *unit) Data() []byte {
 	return u.data
 }
 
-func (u *unit) Creator() int {
+func (u *unit) Creator() uint16 {
 	return u.creator
 }
 
@@ -75,6 +75,6 @@ func (u *unit) Below(v gomel.Unit) bool {
 	return false
 }
 
-func (u *unit) HasForkingEvidence(creator int) bool {
+func (u *unit) HasForkingEvidence(creator uint16) bool {
 	return false
 }

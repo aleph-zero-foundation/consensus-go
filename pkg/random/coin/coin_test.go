@@ -14,11 +14,11 @@ import (
 
 var _ = Describe("Coin", func() {
 	var (
-		n              int
+		n              uint16
 		maxLevel       int
 		dag            []gomel.Dag
 		rs             []gomel.RandomSource
-		shareProviders map[int]bool
+		shareProviders map[uint16]bool
 		delt           []byte
 		err            error
 	)
@@ -27,13 +27,13 @@ var _ = Describe("Coin", func() {
 		maxLevel = 7
 		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
-		shareProviders = make(map[int]bool)
-		for pid := 0; pid < n-n/3; pid++ {
+		shareProviders = make(map[uint16]bool)
+		for pid := uint16(0); pid < n-n/3; pid++ {
 			shareProviders[pid] = true
 		}
 		delt = tcoin.Deal(n, n/3+1)
 
-		for pid := 0; pid < n; pid++ {
+		for pid := uint16(0); pid < n; pid++ {
 			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			tc, tcErr := tcoin.Decode(delt, pid)
@@ -43,10 +43,10 @@ var _ = Describe("Coin", func() {
 		}
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
-			for creator := 0; creator < n; creator++ {
+			for creator := uint16(0); creator < n; creator++ {
 				pu, err := creating.NewUnit(dag[creator], creator, 2*(n/3)+1, []byte{}, rs[creator], false)
 				Expect(err).NotTo(HaveOccurred())
-				for pid := 0; pid < n; pid++ {
+				for pid := uint16(0); pid < n; pid++ {
 					var wg sync.WaitGroup
 					wg.Add(1)
 					var added gomel.Unit
@@ -108,7 +108,7 @@ func newUnitMock(u gomel.Unit, rsData []byte) *unitMock {
 	}
 }
 
-func (um *unitMock) Creator() int {
+func (um *unitMock) Creator() uint16 {
 	return um.u.Creator()
 }
 

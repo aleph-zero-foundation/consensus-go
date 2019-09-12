@@ -121,7 +121,7 @@ func NewNoOpAdder() AddingHandler {
 // NewDefaultCreator creates an instance of Creator that when called attempts to create a unit using default data.
 func NewDefaultCreator(maxParents uint16) Creator {
 	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		pu, err := creating.NewUnit(dag, int(creator), int(maxParents), NewDefaultDataContent(), rs, false)
+		pu, err := creating.NewUnit(dag, creator, maxParents, NewDefaultDataContent(), rs, false)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
 			return nil, err
@@ -154,7 +154,7 @@ func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (
 		if err != nil {
 			return nil, err
 		}
-		if ix == unit.Creator() || resultUnit == nil {
+		if ix == int(unit.Creator()) || resultUnit == nil {
 			resultUnit = result
 		}
 	}
@@ -228,26 +228,26 @@ func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag, rss []
 }
 
 // ComputeLevel computes value of the level attribute for a given preunit.
-func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) uint64 {
+func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 	if len(parents) == 0 {
 		return 0
 	}
-	level := uint64(0)
+	level := 0
 	nProcesses := dag.NProc()
 	for _, parent := range parents {
-		if pl := parent.Level(); uint64(pl) > level {
-			level = uint64(pl)
+		if pl := parent.Level(); pl > level {
+			level = pl
 		}
 	}
-	nSeen := uint64(0)
+	nSeen := uint16(0)
 	for pid := range parents[0].Floor() {
 		pidFound := false
 		for _, parent := range parents {
 			for _, unit := range parent.Floor()[pid] {
-				if uint64(unit.Level()) == level {
+				if unit.Level() == level {
 					nSeen++
 					pidFound = true
-					if dag.IsQuorum(int(nSeen)) {
+					if dag.IsQuorum(nSeen) {
 						return level + 1
 					}
 					break
@@ -257,7 +257,7 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) uint64 {
 				break
 			}
 		}
-		if !pidFound && !dag.IsQuorum(int(nSeen)+(nProcesses-(pid+1))) {
+		if !pidFound && !dag.IsQuorum(nSeen+(nProcesses-(uint16(pid)+1))) {
 			break
 		}
 	}
@@ -415,11 +415,11 @@ func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Confi
 	return units
 }
 
-func dagLevel(dag gomel.Dag) uint64 {
-	result := uint64(0)
+func dagLevel(dag gomel.Dag) int {
+	result := 0
 	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
 		for _, unit := range units {
-			if level := uint64(unit.Level()); level > result {
+			if level := unit.Level(); level > result {
 				result = level
 			}
 		}
@@ -626,12 +626,12 @@ func TestUsingRandomSourceProvider(
 	testingRoutine *TestingRoutine,
 ) error {
 
-	nProcesses := len(pubKeys)
+	nProcesses := uint16(len(pubKeys))
 	dags := make([]gomel.Dag, 0, nProcesses)
 	pids := make([]uint16, 0, nProcesses)
 	rss := make([]gomel.RandomSource, 0, nProcesses)
 
-	for pid := uint16(0); len(dags) < nProcesses; pid++ {
+	for pid := uint16(0); len(dags) < int(nProcesses); pid++ {
 		dag := growing.NewDag(&gomel.DagConfig{Keys: pubKeys})
 		defer dag.Stop()
 		dags = append(dags, dag)

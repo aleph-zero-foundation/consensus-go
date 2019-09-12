@@ -20,7 +20,7 @@ import (
 // Signature represents a multisignature associated with a piece of data and keychain.
 type Signature struct {
 	sync.Mutex
-	threshold int
+	threshold uint16
 	data      []byte
 	sgn       *bn256.Signature
 	collected map[uint16]bool
@@ -28,7 +28,7 @@ type Signature struct {
 
 // NewSignature creates a signature for the given data with the given threshold.
 // At first it contains no partial signatures, they have to be aggregated.
-func NewSignature(threshold int, data []byte) *Signature {
+func NewSignature(threshold uint16, data []byte) *Signature {
 	return &Signature{
 		threshold: threshold,
 		data:      data,
@@ -66,7 +66,7 @@ func (s *Signature) Marshal() []byte {
 	result := make([]byte, len(s.collected)*2)
 	i := 0
 	for c := range s.collected {
-		binary.LittleEndian.PutUint16(result[i:i+2], c)
+		binary.LittleEndian.PutUint16(result[i:i+2], uint16(c))
 		i += 2
 	}
 	return append(result, s.sgn.Marshal()...)
@@ -74,7 +74,7 @@ func (s *Signature) Marshal() []byte {
 
 // MarshaledLength returns how long would a marshaling of this proof be, in bytes.
 func (s *Signature) MarshaledLength() int {
-	return s.threshold*2 + SignatureLength
+	return int(s.threshold)*2 + SignatureLength
 }
 
 // Unmarshal the multisignature from bytes.
@@ -83,7 +83,7 @@ func (s *Signature) MarshaledLength() int {
 func (s *Signature) Unmarshal(data []byte) (*Signature, error) {
 	s.Lock()
 	defer s.Unlock()
-	for i := 0; i < 2*s.threshold; i += 2 {
+	for i := 0; i < 2*int(s.threshold); i += 2 {
 		c := binary.LittleEndian.Uint16(data[i : i+2])
 		s.collected[c] = true
 	}
@@ -93,5 +93,5 @@ func (s *Signature) Unmarshal(data []byte) (*Signature, error) {
 }
 
 func (s *Signature) complete() bool {
-	return len(s.collected) >= s.threshold
+	return len(s.collected) >= int(s.threshold)
 }

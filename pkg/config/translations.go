@@ -48,26 +48,26 @@ func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process
 func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
 	return &process.Create{
 		Pid:          m.Pid,
-		MaxParents:   int(conf.NParents),
+		MaxParents:   conf.NParents,
 		PrimeOnly:    conf.PrimeOnly,
 		CanSkipLevel: false,
 		PrivateKey:   m.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
-		MaxLevel:     int(conf.LevelLimit),
+		MaxLevel:     conf.LevelLimit,
 	}
 }
 
 func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
 	return &process.Create{
 		Pid:          m.Pid,
-		MaxParents:   int(conf.NParents),
+		MaxParents:   conf.NParents,
 		PrimeOnly:    conf.PrimeOnly,
 		CanSkipLevel: conf.CanSkipLevel,
 		PrivateKey:   m.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
 		AdjustFactor: conf.StepSize,
-		MaxLevel:     int(conf.LevelLimit),
+		MaxLevel:     conf.LevelLimit,
 	}
 }
 
@@ -75,15 +75,15 @@ func generateOrderSetupConfig(conf *Configuration, m *Member, c *Committee) *pro
 	return &process.Order{
 		Pid:             m.Pid,
 		OrderStartLevel: 6,
-		CRPFixedPrefix:  int(conf.CRPFixedPrefix),
+		CRPFixedPrefix:  conf.CRPFixedPrefix,
 	}
 }
 
 func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *process.Order {
 	return &process.Order{
 		Pid:             m.Pid,
-		OrderStartLevel: int(conf.OrderStartLevel),
-		CRPFixedPrefix:  int(conf.CRPFixedPrefix),
+		OrderStartLevel: conf.OrderStartLevel,
+		CRPFixedPrefix:  conf.CRPFixedPrefix,
 	}
 }
 
@@ -94,7 +94,7 @@ func generateTxValidateConfig() *process.TxValidate {
 func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 	return &process.TxGenerate{
 		CompressionLevel: 5,
-		Txpu:             uint32(conf.Txpu),
+		Txpu:             conf.Txpu,
 	}
 }
 

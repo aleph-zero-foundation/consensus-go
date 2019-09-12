@@ -29,8 +29,8 @@ func WriteDag(writer io.Writer, dag gomel.Dag) error {
 		if _, exists := seenUnits[*u.Hash()]; !exists {
 			seenUnits[*u.Hash()] = true
 			if _, exists := unitToVersion[*u.Hash()]; !exists {
-				unitToVersion[*u.Hash()] = unitCreatorHeightToNForks[[2]int{u.Creator(), u.Height()}]
-				unitCreatorHeightToNForks[[2]int{u.Creator(), u.Height()}]++
+				unitToVersion[*u.Hash()] = unitCreatorHeightToNForks[[2]int{int(u.Creator()), u.Height()}]
+				unitCreatorHeightToNForks[[2]int{int(u.Creator()), u.Height()}]++
 			}
 			for _, v := range u.Parents() {
 				dfs(v)

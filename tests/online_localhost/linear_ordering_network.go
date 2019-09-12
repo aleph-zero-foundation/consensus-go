@@ -16,10 +16,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/run"
 )
 
-func generateKeys(nProcesses uint64) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
+func generateKeys(nProcesses int) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
 	pubKeys = make([]gomel.PublicKey, 0, nProcesses)
 	privKeys = make([]gomel.PrivateKey, 0, nProcesses)
-	for i := uint64(0); i < nProcesses; i++ {
+	for i := 0; i < nProcesses; i++ {
 		pubKey, privKey, _ := signing.GenerateKeys()
 		pubKeys = append(pubKeys, pubKey)
 		privKeys = append(privKeys, privKey)
@@ -27,7 +27,7 @@ func generateKeys(nProcesses uint64) (pubKeys []gomel.PublicKey, privKeys []gome
 	return pubKeys, privKeys
 }
 
-func generateLocalhostAddresses(localhostAddress string, nProcesses uint64) ([]string, []string, []string, []string) {
+func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]string, []string, []string, []string) {
 	const (
 		magicPort = 21037
 	)
@@ -35,7 +35,7 @@ func generateLocalhostAddresses(localhostAddress string, nProcesses uint64) ([]s
 	resultMC := make([]string, 0, nProcesses)
 	setupResult := make([]string, 0, nProcesses)
 	setupMCResult := make([]string, 0, nProcesses)
-	for id := uint64(0); id < nProcesses; id++ {
+	for id := 0; id < nProcesses; id++ {
 		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id))
 		resultMC = append(resultMC, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+1))
 		setupResult = append(setupResult, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+2))
@@ -45,7 +45,7 @@ func generateLocalhostAddresses(localhostAddress string, nProcesses uint64) ([]s
 }
 
 func createAndStartProcess(
-	id int,
+	id uint16,
 	addresses []string,
 	setupAddresses []string,
 	mcAddresses []string,
@@ -53,7 +53,7 @@ func createAndStartProcess(
 	pubKeys []gomel.PublicKey,
 	privKey gomel.PrivateKey,
 	userDB string,
-	maxLevel uint64,
+	maxLevel int,
 	finished *sync.WaitGroup,
 	dags []gomel.Dag,
 ) error {
@@ -72,12 +72,12 @@ func createAndStartProcess(
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
 
-	setupLog, err := logging.NewLogger("setup_log"+strconv.Itoa(id)+".log", 0, 100000, false)
+	setupLog, err := logging.NewLogger("setup_log"+strconv.Itoa(int(id))+".log", 0, 100000, false)
 	if err != nil {
 		return err
 	}
 
-	log, err := logging.NewLogger("log"+strconv.Itoa(id)+".log", 0, 100000, false)
+	log, err := logging.NewLogger("log"+strconv.Itoa(int(id))+".log", 0, 100000, false)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func commonLevel(dags []gomel.Dag, maxLevel int) int {
 	commonLevel := maxLevel
 	for _, dag := range dags {
 		for u := range collectUnits(dag) {
-			if nDagsContainingUnit[*u.Hash()] != dag.NProc() {
+			if nDagsContainingUnit[*u.Hash()] != int(dag.NProc()) {
 				if u.Level() <= commonLevel {
 					commonLevel = u.Level() - 1
 				}
@@ -176,10 +176,10 @@ func readOrderFromLogs(logfile string) [][2]int {
 	return result
 }
 
-func checkOrderingFromLogs(nProc int, filenamePrefix string) bool {
+func checkOrderingFromLogs(nProc uint16, filenamePrefix string) bool {
 	var lastOrder [][2]int
-	for pid := 0; pid < nProc; pid++ {
-		myOrder := readOrderFromLogs(filenamePrefix + strconv.Itoa(pid) + ".log")
+	for pid := uint16(0); pid < nProc; pid++ {
+		myOrder := readOrderFromLogs(filenamePrefix + strconv.Itoa(int(pid)) + ".log")
 		if pid != 0 && !isPrefix(lastOrder, myOrder) && !isPrefix(myOrder, lastOrder) {
 			return false
 		}
@@ -191,10 +191,10 @@ func checkOrderingFromLogs(nProc int, filenamePrefix string) bool {
 }
 
 func main() {
-	testSize := flag.Uint64("test_size", 10, "number of created processes; default is 10")
+	testSize := flag.Int("test_size", 10, "number of created processes; default is 10")
 	userDB := flag.String("user_db", "../../pkg/testdata/users.txt",
 		"file containing testdata for user accounts; default is a file containing names of superheros")
-	maxLevel := flag.Uint64("max_level", 12, "number of levels after which a process should finish; default is 12")
+	maxLevel := flag.Int("max_level", 12, "number of levels after which a process should finish; default is 12")
 	flag.Parse()
 
 	addresses, setupAddresses, mcAddresses, setupMCAddresses := generateLocalhostAddresses("localhost", *testSize)
@@ -204,7 +204,7 @@ func main() {
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(id, addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], *userDB, *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}

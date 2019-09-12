@@ -17,7 +17,7 @@ import (
 
 var _ = Describe("Beacon", func() {
 	var (
-		n        int
+		n        uint16
 		maxLevel int
 		dag      []gomel.Dag
 		rs       []gomel.RandomSource
@@ -28,7 +28,7 @@ var _ = Describe("Beacon", func() {
 		maxLevel = 13
 		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
-		for pid := 0; pid < n; pid++ {
+		for pid := uint16(0); pid < n; pid++ {
 			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			rs[pid] = New(pid)
@@ -36,10 +36,10 @@ var _ = Describe("Beacon", func() {
 		}
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
-			for creator := 0; creator < n; creator++ {
+			for creator := uint16(0); creator < n; creator++ {
 				pu, err := creating.NewNonSkippingUnit(dag[creator], creator, []byte{}, rs[creator])
 				Expect(err).NotTo(HaveOccurred())
-				for pid := 0; pid < n; pid++ {
+				for pid := uint16(0); pid < n; pid++ {
 					var wg sync.WaitGroup
 					wg.Add(1)
 					var added gomel.Unit
@@ -154,7 +154,7 @@ func newUnitMock(u gomel.Unit, rsData []byte) *unitMock {
 	}
 }
 
-func (um *unitMock) Creator() int {
+func (um *unitMock) Creator() uint16 {
 	return um.u.Creator()
 }
 

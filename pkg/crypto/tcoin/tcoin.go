@@ -18,7 +18,7 @@ import (
 // It contains secret keys of all processes.
 // In the full version of the protocol these secretKeys should be sealed.
 type globalThresholdCoin struct {
-	threshold int
+	threshold uint16
 	globalVK  *bn256.VerificationKey
 	vks       []*bn256.VerificationKey
 	sks       []*bn256.SecretKey
@@ -26,8 +26,8 @@ type globalThresholdCoin struct {
 
 // ThresholdCoin is a threshold coin owned by one of the parties.
 type ThresholdCoin struct {
-	Threshold int
-	pid       int
+	Threshold uint16
+	pid       uint16
 	globalVK  *bn256.VerificationKey
 	vks       []*bn256.VerificationKey
 	sk        *bn256.SecretKey
@@ -35,8 +35,8 @@ type ThresholdCoin struct {
 }
 
 // New returns a ThresholdCoin based on given slice of coefficients.
-func New(nProc, pid int, coeffs []*big.Int) *ThresholdCoin {
-	threshold := len(coeffs)
+func New(nProc, pid uint16, coeffs []*big.Int) *ThresholdCoin {
+	threshold := uint16(len(coeffs))
 	secret := coeffs[threshold-1]
 
 	globalVK := bn256.NewVerificationKey(secret)
@@ -45,9 +45,9 @@ func New(nProc, pid int, coeffs []*big.Int) *ThresholdCoin {
 	var sks = make([]*bn256.SecretKey, nProc)
 	var vks = make([]*bn256.VerificationKey, nProc)
 
-	for i := 0; i < nProc; i++ {
+	for i := uint16(0); i < nProc; i++ {
 		wg.Add(1)
-		go func(ind int) {
+		go func(ind uint16) {
 			defer wg.Done()
 			secret := poly(coeffs, big.NewInt(int64(ind+1)))
 			sks[ind] = bn256.NewSecretKey(secret)
@@ -68,12 +68,12 @@ func New(nProc, pid int, coeffs []*big.Int) *ThresholdCoin {
 
 // Deal returns byte representation of a threshold coin
 // with the given threshold and number of processes.
-func Deal(nProcesses, threshold int) []byte {
+func Deal(nProcesses, threshold uint16) []byte {
 	return generateThresholdCoin(nProcesses, threshold).encode()
 }
 
 // encode returns byte representation of the given gtc in the following form
-// (1) threshold, 4 bytes as uint32
+// (1) threshold, 2 bytes as uint16
 // (2) length of marshalled globalVK, 4 bytes as uint32
 // (3) marshalled globalVK
 // (4) len(vks), 4 bytes as uint32
@@ -84,11 +84,11 @@ func Deal(nProcesses, threshold int) []byte {
 //     a) length of marshalled sk
 //     b) marshalled sk
 func (gtc *globalThresholdCoin) encode() []byte {
-	data := make([]byte, 8)
-	binary.LittleEndian.PutUint32(data[:4], uint32(gtc.threshold))
+	data := make([]byte, 6)
+	binary.LittleEndian.PutUint16(data[:2], gtc.threshold)
 
 	globalVKMarshalled := gtc.globalVK.Marshal()
-	binary.LittleEndian.PutUint32(data[4:8], uint32(len(globalVKMarshalled)))
+	binary.LittleEndian.PutUint32(data[2:6], uint32(len(globalVKMarshalled)))
 	data = append(data, globalVKMarshalled...)
 
 	dataLen := make([]byte, 4)
@@ -112,14 +112,14 @@ func (gtc *globalThresholdCoin) encode() []byte {
 }
 
 // Decode creates tc for given pid from byte representation of gtc.
-func Decode(data []byte, pid int) (*ThresholdCoin, error) {
+func Decode(data []byte, pid uint16) (*ThresholdCoin, error) {
 	ind := 0
 	dataTooShort := errors.New("Decoding tcoin failed. Given bytes slice is too short")
-	if len(data) < ind+4 {
+	if len(data) < ind+2 {
 		return nil, dataTooShort
 	}
-	threshold := int(binary.LittleEndian.Uint32(data[:(ind + 4)]))
-	ind += 4
+	threshold := binary.LittleEndian.Uint16(data[:(ind + 2)])
+	ind += 2
 
 	if len(data) < ind+4 {
 		return nil, dataTooShort
@@ -208,9 +208,9 @@ func CreateMulticoin(tcs []*ThresholdCoin) *ThresholdCoin {
 }
 
 // generateThresholdCoin generates keys and secrets for a ThresholdCoin.
-func generateThresholdCoin(nProcesses, threshold int) *globalThresholdCoin {
+func generateThresholdCoin(nProcesses, threshold uint16) *globalThresholdCoin {
 	var coeffs = make([]*big.Int, threshold)
-	for i := 0; i < threshold; i++ {
+	for i := uint16(0); i < threshold; i++ {
 		c, _ := rand.Int(rand.Reader, bn256.Order)
 		coeffs[i] = c
 	}
@@ -222,9 +222,9 @@ func generateThresholdCoin(nProcesses, threshold int) *globalThresholdCoin {
 	var sks = make([]*bn256.SecretKey, nProcesses)
 	var vks = make([]*bn256.VerificationKey, nProcesses)
 
-	for i := 0; i < nProcesses; i++ {
+	for i := uint16(0); i < nProcesses; i++ {
 		wg.Add(1)
-		go func(ind int) {
+		go func(ind uint16) {
 			defer wg.Done()
 			secret := poly(coeffs, big.NewInt(int64(ind+1)))
 			sks[ind] = bn256.NewSecretKey(secret)
@@ -243,27 +243,27 @@ func generateThresholdCoin(nProcesses, threshold int) *globalThresholdCoin {
 
 // CoinShare is a share of the coin owned by a process.
 type CoinShare struct {
-	pid int
+	pid uint16
 	sgn *bn256.Signature
 }
 
 // Marshal returns byte representation of the given coin share in the following form
-// (1) pid, 4 bytes as uint32
+// (1) pid, 2 bytes as uint16
 // (2) sgn
 func (cs *CoinShare) Marshal() []byte {
-	data := make([]byte, 4)
-	binary.LittleEndian.PutUint32(data[:4], uint32(cs.pid))
+	data := make([]byte, 2)
+	binary.LittleEndian.PutUint16(data[:2], cs.pid)
 	data = append(data, cs.sgn.Marshal()...)
 	return data
 }
 
 // Unmarshal reads a coin share from its byte representation.
 func (cs *CoinShare) Unmarshal(data []byte) error {
-	if len(data) < 4 {
+	if len(data) < 2 {
 		return errors.New("given data is too short")
 	}
-	pid := int(binary.LittleEndian.Uint32(data[0:4]))
-	sgn := data[4:]
+	pid := binary.LittleEndian.Uint16(data[:2])
+	sgn := data[2:]
 	cs.pid = pid
 	decSgn, err := new(bn256.Signature).Unmarshal(sgn)
 	if err != nil {
@@ -339,7 +339,7 @@ func (tc *ThresholdCoin) VerifySecretKey() *bn256.SecretKey {
 
 // VerifyWrongSecretKeyProof verifies the proof given by a process that
 // his secretKey is incorrect.
-func (tc *ThresholdCoin) VerifyWrongSecretKeyProof(pid int, proof *bn256.SecretKey) bool {
+func (tc *ThresholdCoin) VerifyWrongSecretKeyProof(pid uint16, proof *bn256.SecretKey) bool {
 	// Checking if the proof is equal to the stored secret key.
 	// This is trival for now.
 	// In the final version we will store encrypted secret keys.
@@ -375,15 +375,15 @@ func SumShares(cses []*CoinShare) *CoinShare {
 // CombineCoinShares combines the given shares into a Coin.
 // It returns a Coin and a bool value indicating whether combining was successful or not.
 func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
-	if len(shares) > tc.Threshold {
+	if uint16(len(shares)) > tc.Threshold {
 		shares = shares[:tc.Threshold]
 	}
-	if tc.Threshold != len(shares) {
+	if tc.Threshold != uint16(len(shares)) {
 		return nil, false
 	}
-	var points []int
+	var points []int64
 	for _, sh := range shares {
-		points = append(points, sh.pid)
+		points = append(points, int64(sh.pid))
 	}
 
 	var sum *bn256.Signature
@@ -394,7 +394,7 @@ func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
 		wg.Add(1)
 		go func(ch *CoinShare) {
 			defer wg.Done()
-			summands <- bn256.MulSignature(ch.sgn, lagrange(points, ch.pid))
+			summands <- bn256.MulSignature(ch.sgn, lagrange(points, int64(ch.pid)))
 		}(sh)
 	}
 	go func() {
@@ -409,15 +409,15 @@ func (tc *ThresholdCoin) CombineCoinShares(shares []*CoinShare) (*Coin, bool) {
 	return &Coin{sgn: sum}, true
 }
 
-func lagrange(points []int, x int) *big.Int {
+func lagrange(points []int64, x int64) *big.Int {
 	num := big.NewInt(int64(1))
 	den := big.NewInt(int64(1))
 	for _, p := range points {
 		if p == x {
 			continue
 		}
-		num.Mul(num, big.NewInt(int64(0-p-1)))
-		den.Mul(den, big.NewInt(int64(x-p)))
+		num.Mul(num, big.NewInt(0-p-1))
+		den.Mul(den, big.NewInt(x-p))
 	}
 	den.ModInverse(den, bn256.Order)
 	num.Mul(num, den)

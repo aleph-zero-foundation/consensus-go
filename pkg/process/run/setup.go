@@ -20,7 +20,7 @@ import (
 // is equivalent to the version without a setup phase.
 func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	pid := config.Create.Pid
-	nProc := len(config.Dag.Keys)
+	nProc := uint16(len(config.Dag.Keys))
 	rsCh <- coin.NewFixedCoin(nProc, pid, 1234)
 	close(rsCh)
 }
@@ -68,7 +68,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	rsCh <- rs.GetCoin(head.Creator())
 	// logging the order
 	for _, u := range units {
-		log.Info().Int(logging.Service, logging.ValidateService).Int(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
+		log.Info().Int(logging.Service, logging.ValidateService).Uint16(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
 	}
 	// Read and ignore the rest of orderedUnits
 	go func() {

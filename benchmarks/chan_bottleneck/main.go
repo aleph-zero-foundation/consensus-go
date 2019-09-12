@@ -16,7 +16,7 @@ const (
 var (
 	syncTimeMin int
 	syncTimeMax int
-	nProc       int
+	nProc       uint16
 	workers     int
 	maxUnits    int
 )
@@ -24,7 +24,7 @@ var (
 type sendRequest struct {
 	unit      []byte
 	height    int
-	pid       int
+	pid       uint16
 	timestamp time.Time
 }
 
@@ -48,7 +48,7 @@ func createService(requests chan<- sendRequest, wg *sync.WaitGroup) {
 	for counter := 0; counter < maxUnits; counter++ {
 		unit := createUnit()
 		timestamp := time.Now()
-		for i := 0; i < nProc; i++ {
+		for i := uint16(0); i < nProc; i++ {
 			requests <- sendRequest{unit, counter, i, timestamp}
 		}
 		fmt.Print(counter, " ")
@@ -81,9 +81,9 @@ func main() {
 	var s = flag.Int("s", 150, "sync time")
 	flag.Parse()
 
-	nProc = *n
+	nProc = uint16(*n)
 	if *w == -1 {
-		workers = 4 * nProc
+		workers = 4 * int(nProc)
 	} else {
 		workers = *w
 	}
@@ -107,7 +107,7 @@ func main() {
 	for i := 0; i < maxUnits; i++ {
 		sum := time.Duration(0)
 		max := time.Duration(0)
-		for j := 0; j < nProc; j++ {
+		for j := uint16(0); j < nProc; j++ {
 			if timings[i][j] > max {
 				max = timings[i][j]
 			}
@@ -118,5 +118,5 @@ func main() {
 			total += sum
 		}
 	}
-	fmt.Printf("Global avg w/o level 0:  %10v\n", total/time.Duration(nProc*(maxUnits-1)))
+	fmt.Printf("Global avg w/o level 0:  %10v\n", total/time.Duration(int(nProc)*(maxUnits-1)))
 }

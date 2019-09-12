@@ -9,7 +9,7 @@ import (
 )
 
 type preunit struct {
-	creator   int
+	creator   uint16
 	parents   []*gomel.Hash
 	signature gomel.Signature
 	hash      gomel.Hash
@@ -18,7 +18,7 @@ type preunit struct {
 }
 
 // NewPreunit constructs a a new preunit with given parents and creator id.
-func NewPreunit(creator int, parents []*gomel.Hash, data []byte, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, parents []*gomel.Hash, data []byte, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
 		parents: parents,
@@ -41,7 +41,7 @@ func (pu *preunit) Data() []byte {
 }
 
 // Creator of the preunit.
-func (pu *preunit) Creator() int {
+func (pu *preunit) Creator() uint16 {
 	return pu.creator
 }
 
@@ -69,7 +69,7 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
 	creatorBytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(creatorBytes, uint16(pu.creator))
+	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
 	data.Write(creatorBytes)
 	for _, p := range pu.parents {
 		data.Write(p[:])

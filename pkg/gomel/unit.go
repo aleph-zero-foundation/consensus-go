@@ -19,7 +19,7 @@ type Unit interface {
 
 // CombineParentsFloorsPerProc combines floors of the provided parents just for a given creator.
 // The result will be appended to the 'out' parameter.
-func CombineParentsFloorsPerProc(parents []Unit, pid int, out *[]Unit) {
+func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {
 
 	startIx := len(*out)
 
@@ -74,7 +74,7 @@ func HasSelfForkingEvidence(parents []Unit) bool {
 
 // HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
 // i.e. it is above two units created by creator that share a predecessor.
-func HasForkingEvidence(u Unit, creator int) bool {
+func HasForkingEvidence(u Unit, creator uint16) bool {
 	if Dealing(u) {
 		return false
 	}

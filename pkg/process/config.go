@@ -24,7 +24,7 @@ type Config struct {
 // Sync represents a complete configuration needed for a syncing service to start.
 type Sync struct {
 	Type            string
-	Pid             int
+	Pid             uint16
 	LocalAddress    string
 	RemoteAddresses []string
 	Params          map[string]string
@@ -33,8 +33,8 @@ type Sync struct {
 
 // Create represents a complete configuration needed for a creating service to start.
 type Create struct {
-	Pid          int
-	MaxParents   int
+	Pid          uint16
+	MaxParents   uint16
 	PrimeOnly    bool
 	CanSkipLevel bool
 	PrivateKey   gomel.PrivateKey
@@ -45,9 +45,9 @@ type Create struct {
 
 // Order represents a complete configuration needed for an ordering service to start.
 type Order struct {
-	Pid             int
+	Pid             uint16
 	OrderStartLevel int
-	CRPFixedPrefix  int
+	CRPFixedPrefix  uint16
 }
 
 // TxValidate represents a complete configuration needed for a transaction validation service to start.
@@ -57,5 +57,5 @@ type TxValidate struct {
 // TxGenerate represents a complete configuration needed for a tx generation service to start.
 type TxGenerate struct {
 	CompressionLevel int
-	Txpu             uint32
+	Txpu             int
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type preunit struct {
-	creator   int
+	creator   uint16
 	parents   []*gomel.Hash
 	signature gomel.Signature
 	hash      gomel.Hash
@@ -18,7 +18,7 @@ type preunit struct {
 }
 
 // NewPreunit creates a preunit.
-func NewPreunit(creator int, parents []*gomel.Hash, data []byte, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, parents []*gomel.Hash, data []byte, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		parents:   parents,
@@ -41,7 +41,7 @@ func (pu *preunit) Data() []byte {
 }
 
 // Creator of the preunit.
-func (pu *preunit) Creator() int {
+func (pu *preunit) Creator() uint16 {
 	return pu.creator
 }
 

@@ -224,9 +224,9 @@ func unitsToSend(dag gomel.Dag, maxSnapshot [][]gomel.Unit, info dagInfo, req re
 	toSendPid := make([][]gomel.Unit, nProc)
 	var err error
 	var wg sync.WaitGroup
-	wg.Add(nProc)
-	for i := 0; i < nProc; i++ {
-		go func(id int) {
+	wg.Add(int(nProc))
+	for i := uint16(0); i < nProc; i++ {
+		go func(id uint16) {
 			toSendPid[id] = unitsToSendByProcess(info[id], maxSnapshot[id])
 			if req != nil {
 				unfulfilledRequests := newStaticHashSet(hashesFromUnits(toSendPid[id])).fiterOutKnown(req[id])

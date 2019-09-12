@@ -8,7 +8,7 @@ import (
 )
 
 var _ = Describe("Tcoin", func() {
-	var n, t int
+	var n, t uint16
 	var nonce int
 	var tcs []*ThresholdCoin
 	var coinShares []*CoinShare
@@ -18,14 +18,14 @@ var _ = Describe("Tcoin", func() {
 				n, t = 10, 3
 				dealt := Deal(n, t)
 				tcs = make([]*ThresholdCoin, n)
-				for i := 0; i < n; i++ {
+				for i := uint16(0); i < n; i++ {
 					tc, err := Decode(dealt, i)
 					Expect(err).NotTo(HaveOccurred())
 					tcs[i] = tc
 				}
 				nonce = 123
 				coinShares = make([]*CoinShare, n)
-				for i := 0; i < n; i++ {
+				for i := uint16(0); i < n; i++ {
 					coinShares[i] = tcs[i].CreateCoinShare(nonce)
 				}
 			})
@@ -44,7 +44,7 @@ var _ = Describe("Tcoin", func() {
 				Expect(ok).To(BeFalse())
 			})
 			It("Should be marshalled and unmarshalled correctly", func() {
-				for i := 0; i < n; i++ {
+				for i := uint16(0); i < n; i++ {
 					csMarshalled := coinShares[i].Marshal()
 					var cs = new(CoinShare)
 					err := cs.Unmarshal(csMarshalled)

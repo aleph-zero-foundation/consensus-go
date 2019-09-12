@@ -35,7 +35,7 @@ func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, req
 
 	logSuccess := func(_ gomel.Preunit, added gomel.Unit, err error) {
 		if err == nil {
-			log.Info().Int(logging.Creator, added.Creator()).Int(logging.Height, added.Height()).Msg(logging.AddedBCUnit)
+			log.Info().Uint16(logging.Creator, added.Creator()).Int(logging.Height, added.Height()).Msg(logging.AddedBCUnit)
 		}
 	}
 

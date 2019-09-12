@@ -22,9 +22,9 @@ type Dag interface {
 	// If no unit with a hash exists in the dag, the result will contain a nil at the position of the hash.
 	Get([]*Hash) []Unit
 	// IsQuorum checks if the given number of processes is enough to form a quroum.
-	IsQuorum(number int) bool
+	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
-	NProc() int
+	NProc() uint16
 }
 
 // MergeCallbacks combines two callbacks into one.

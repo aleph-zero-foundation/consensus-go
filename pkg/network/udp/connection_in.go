@@ -12,7 +12,7 @@ import (
 
 type connIn struct {
 	reader io.Reader
-	recv   uint32
+	recv   int
 	log    zerolog.Logger
 }
 
@@ -26,7 +26,7 @@ func newConnIn(packet []byte, log zerolog.Logger) network.Connection {
 
 func (c *connIn) Read(b []byte) (int, error) {
 	n, err := c.reader.Read(b)
-	c.recv += uint32(n)
+	c.recv += n
 	return n, err
 }
 
