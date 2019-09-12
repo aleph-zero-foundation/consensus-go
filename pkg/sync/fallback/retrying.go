@@ -74,6 +74,7 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 		f.addUnit(pu)
 		return false
 	}
+	// The code below has the invariant that if a unit is in dependencies, then it is also in the backlog.
 	if !f.backlog.add(pu) {
 		return false
 	}
@@ -94,6 +95,7 @@ func (f *Retrying) update() {
 	for len(presentHashes) != 0 {
 		addableHashes := f.deps.satisfy(presentHashes)
 		for _, h := range addableHashes {
+			// There is no need for nil checks, because of the invariant mentioned above.
 			pu := f.backlog.get(h)
 			f.addUnit(pu)
 			f.backlog.del(h)

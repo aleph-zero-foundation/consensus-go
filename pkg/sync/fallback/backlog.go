@@ -13,7 +13,6 @@ type backlog struct {
 
 func newBacklog() *backlog {
 	return &backlog{
-		Mutex:   sync.Mutex{},
 		backlog: make(map[gomel.Hash]gomel.Preunit),
 	}
 }
@@ -49,12 +48,12 @@ type dependencies struct {
 
 func newDeps() *dependencies {
 	return &dependencies{
-		Mutex:     sync.Mutex{},
 		required:  make(map[gomel.Hash]int),
 		neededFor: make(map[gomel.Hash][]*gomel.Hash),
 	}
 }
 
+// add the given hashes as dependencies for h
 func (d *dependencies) add(h *gomel.Hash, deps []*gomel.Hash) {
 	d.Lock()
 	defer d.Unlock()
@@ -69,6 +68,8 @@ func (d *dependencies) add(h *gomel.Hash, deps []*gomel.Hash) {
 	}
 }
 
+// scan which required units have been added to the dag.
+// Returns the hashes of the satisfied dependencies.
 func (d *dependencies) scan(dag gomel.Dag) []*gomel.Hash {
 	d.Lock()
 	defer d.Unlock()
@@ -86,9 +87,9 @@ func (d *dependencies) scan(dag gomel.Dag) []*gomel.Hash {
 	return result
 }
 
+// satisfy the provided dependencies.
+// Returns hashes of units that now have all their dependencies satisfied.
 func (d *dependencies) satisfy(satisfiedHashes []*gomel.Hash) []*gomel.Hash {
-	d.Lock()
-	defer d.Unlock()
 	result := []*gomel.Hash{}
 	for _, h := range satisfiedHashes {
 		result = append(result, d.satisfyHash(h)...)
@@ -97,6 +98,8 @@ func (d *dependencies) satisfy(satisfiedHashes []*gomel.Hash) []*gomel.Hash {
 }
 
 func (d *dependencies) satisfyHash(h *gomel.Hash) []*gomel.Hash {
+	d.Lock()
+	defer d.Unlock()
 	result := []*gomel.Hash{}
 	for _, hh := range d.neededFor[*h] {
 		d.required[*hh]--
