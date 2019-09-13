@@ -21,9 +21,12 @@ func (f *fetchFallback) Run(pu gomel.Preunit) {
 		}
 	}
 	if len(toRequest) > 0 {
-		f.requests <- fetch.Request{
+		select {
+		case f.requests <- fetch.Request{
 			Pid:    pu.Creator(),
 			Hashes: toRequest,
+		}:
+		default:
 		}
 	}
 }

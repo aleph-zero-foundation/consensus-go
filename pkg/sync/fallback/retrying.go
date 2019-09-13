@@ -87,6 +87,7 @@ func (f *Retrying) work() {
 	for atomic.LoadInt32(&f.quit) != 1 {
 		time.Sleep(f.interval)
 		f.update()
+		f.backlog.refallback(f.inner)
 	}
 }
 
