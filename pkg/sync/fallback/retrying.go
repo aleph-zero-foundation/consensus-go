@@ -71,7 +71,7 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 	}
 	if len(missing) == 0 {
 		// we got the parents in the meantime, all is fine
-		f.addUnit(pu)
+		go f.addUnit(pu)
 		return false
 	}
 	// The code below has the invariant that if a unit is in dependencies, then it is also in the backlog.
