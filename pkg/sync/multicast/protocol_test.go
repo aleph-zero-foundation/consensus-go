@@ -38,14 +38,14 @@ var _ = Describe("Protocol", func() {
 	)
 
 	BeforeEach(func() {
-		netservs = tests.NewNetwork(10)
+		netservs = tests.NewNetwork(4)
 	})
 
 	JustBeforeEach(func() {
 		serv, request = NewServer(0, dags[0], rs[0], netservs[0], gomel.NopCallback, time.Millisecond*200, sync.NopFallback(), zerolog.Nop())
 		servs = []sync.Server{serv}
 		serv.Start()
-		for i := 1; i < 10; i++ {
+		for i := 1; i < 4; i++ {
 			serv, _ = NewServer(uint16(i), dags[i], rs[i], netservs[i], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
 			servs = append(servs, serv)
 			serv.Start()
@@ -60,14 +60,14 @@ var _ = Describe("Protocol", func() {
 				rs = []gomel.RandomSource{}
 				dags = []*dag{}
 
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit4.txt", tests.NewTestDagFactory())
 				rs = append(rs, tests.NewTestRandomSource())
 				rs[0].Init(tdag)
 				dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
 				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
 
-				for i := 1; i < 10; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				for i := 1; i < 4; i++ {
+					tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
 					rs = append(rs, tests.NewTestRandomSource())
 					rs[i].Init(tdag)
 					dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
@@ -77,15 +77,15 @@ var _ = Describe("Protocol", func() {
 			It("should add the unit to empty copies", func() {
 				request(nil, theUnit, nil)
 				time.Sleep(time.Millisecond * 500)
-				for i := 0; i < 10; i++ {
+				for i := 0; i < 4; i++ {
 					servs[i].StopOut()
 				}
 				tests.CloseNetwork(netservs)
-				for i := 0; i < 10; i++ {
+				for i := 0; i < 4; i++ {
 					servs[i].StopIn()
 				}
 				Expect(dags[0].attemptedAdd).To(BeEmpty())
-				for i := 1; i < 10; i++ {
+				for i := 1; i < 4; i++ {
 					Expect(dags[i].attemptedAdd).To(HaveLen(1))
 					Expect(dags[i].attemptedAdd[0].Parents()).To(HaveLen(0))
 					Expect(dags[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
