@@ -42,7 +42,7 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		serv, request = NewServer(0, dags[0], rs[0], netservs[0], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
+		serv, request = NewServer(0, dags[0], rs[0], netservs[0], gomel.NopCallback, time.Millisecond*200, sync.NopFallback(), zerolog.Nop())
 		servs = []sync.Server{serv}
 		serv.Start()
 		for i := 1; i < 10; i++ {

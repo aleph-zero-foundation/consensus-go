@@ -131,7 +131,7 @@ var _ = Describe("Retrying", func() {
 				wg.Wait()
 				tests.CloseNetwork(servs)
 				close(done)
-			}, 30)
+			}, 60)
 
 		})
 
