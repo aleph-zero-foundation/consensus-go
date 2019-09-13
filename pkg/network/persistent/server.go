@@ -19,6 +19,7 @@ type server struct {
 	queue       chan network.Connection
 	tcpListener *net.TCPListener
 	mx          []sync.Mutex
+	recvMx      sync.Mutex
 	wg          sync.WaitGroup
 	quit        int32
 	log         zerolog.Logger
@@ -68,19 +69,23 @@ func (s *server) Start() error {
 		return err
 	}
 
-	go func() {
-		s.wg.Add(1)
-		defer s.wg.Done()
-		for atomic.LoadInt32(&s.quit) == 0 {
-			ln, err := s.tcpListener.Accept()
-			if err != nil {
-				continue
+	for i := 0; i < 10; i++ {
+		go func() {
+			s.wg.Add(1)
+			defer s.wg.Done()
+			for atomic.LoadInt32(&s.quit) == 0 {
+				ln, err := s.tcpListener.Accept()
+				if err != nil {
+					continue
+				}
+				newLink := newLink(ln, s.queue, &s.wg, &s.quit, s.log)
+				newLink.start()
+				s.recvMx.Lock()
+				s.receivers = append(s.receivers, newLink)
+				s.recvMx.Unlock()
 			}
-			newLink := newLink(ln, s.queue, &s.wg, &s.quit, s.log)
-			s.receivers = append(s.receivers, newLink)
-			newLink.start()
-		}
-	}()
+		}()
+	}
 	return nil
 }
 
@@ -102,7 +107,12 @@ func (s *server) getCaller(pid uint16, timeout time.Duration) (*link, error) {
 	s.mx[pid].Lock()
 	defer s.mx[pid].Unlock()
 	if s.callers[pid] == nil || s.callers[pid].isDead() {
+		try := 5
 		ln, err := net.DialTimeout("tcp", s.remoteAddrs[pid], timeout)
+		for ; err != nil && try > 0; try-- {
+			time.Sleep(time.Millisecond * 50)
+			ln, err = net.DialTimeout("tcp", s.remoteAddrs[pid], timeout)
+		}
 		if err != nil {
 			return nil, err
 		}
