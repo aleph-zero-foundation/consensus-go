@@ -56,19 +56,27 @@ type Server struct {
 }
 
 // Dial creates a new connection, pushes one end to the associated dial channel and return the other.
-func (s *Server) Dial(k uint16, _ time.Duration) (network.Connection, error) {
+func (s *Server) Dial(k uint16, timeout time.Duration) (network.Connection, error) {
 	out, in := NewConnection()
-	s.dialChans[k] <- in
+	select {
+	case s.dialChans[k] <- in:
+	case <-time.After(timeout):
+		return nil, errors.New("Dial timeout")
+	}
 	return out, nil
 }
 
 // Listen picks up a connection from the listen channel
-func (s *Server) Listen(_ time.Duration) (network.Connection, error) {
-	conn, ok := <-s.listenChan
-	if !ok {
-		return nil, errors.New("done")
+func (s *Server) Listen(timeout time.Duration) (network.Connection, error) {
+	select {
+	case conn, ok := <-s.listenChan:
+		if !ok {
+			return nil, errors.New("done")
+		}
+		return conn, nil
+	case <-time.After(timeout):
 	}
-	return conn, nil
+	return nil, errors.New("Listen timeout")
 }
 
 // CloseNetwork closes all the dial channels.

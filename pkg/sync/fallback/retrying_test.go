@@ -128,8 +128,8 @@ var _ = Describe("Retrying", func() {
 				}
 				atomic.StoreInt32(&quit, 1)
 				close(reqs)
-				tests.CloseNetwork(servs)
 				wg.Wait()
+				tests.CloseNetwork(servs)
 				close(done)
 			}, 30)
 
