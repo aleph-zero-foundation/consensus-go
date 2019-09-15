@@ -9,51 +9,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
-	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
-type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	reqs         <-chan Request
-	netserv      network.Server
-	syncIds      []uint32
-	callback     gomel.Callback
-	timeout      time.Duration
-	fallback     sync.Fallback
-	log          zerolog.Logger
-}
-
-// NewProtocol returns a new fetching protocol.
-// It will wait on reqs to initiate syncing.
-// When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
-	nProc := dag.NProc()
-	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		reqs:         reqs,
-		netserv:      netserv,
-		syncIds:      make([]uint32, nProc),
-		callback:     callback,
-		timeout:      timeout,
-		fallback:     fallback,
-		log:          log,
-	}
-}
-
-func (p *protocol) In() {
+func (p *server) In() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
@@ -92,12 +57,12 @@ func (p *protocol) In() {
 	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
-func (p *protocol) Out() {
-	r, ok := <-p.reqs
+func (p *server) Out() {
+	r, ok := <-p.requests
 	if !ok {
 		return
 	}
-	remotePid := r.Pid
+	remotePid := r.pid
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "fetchProtocol.out.dial").Msg(err.Error())
@@ -116,7 +81,7 @@ func (p *protocol) Out() {
 	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(conn, r.Hashes)
+	err = sendRequests(conn, r.hashes)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.out.sendRequests").Msg(err.Error())
 		return
@@ -128,7 +93,7 @@ func (p *protocol) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	aggErr := add.Antichain(p.dag, p.randomSource, units, p.callback, p.fallback, log)
+	aggErr := add.Antichain(p.dag, p.randomSource, units, log)
 	aggErr = aggErr.Pruned(true)
 	if aggErr != nil {
 		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())
