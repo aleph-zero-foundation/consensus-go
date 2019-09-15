@@ -5,7 +5,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
@@ -32,10 +31,11 @@ func getDagInfo(nProc uint16, conn network.Connection) (dagInfo, error) {
 }
 
 // addUnits adds the provided units to the dag, assuming they are divided into antichains as described in toLayers
-func (p *protocol) addUnits(preunits [][]gomel.Preunit, log zerolog.Logger) error {
+func (p *server) addUnits(preunits [][]gomel.Preunit, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		err := add.Antichain(p.dag, p.randomSource, pus, p.callback, sync.NopFallback(), log)
+		err := add.Antichain(p.dag, p.randomSource, pus, log)
 		if err != nil {
+			//TODO FALLBACK
 			return err
 		}
 	}
@@ -66,7 +66,7 @@ func nonempty(req requests) bool {
 		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
 		9. Add the received units to the dag.
 */
-func (p *protocol) inExchange(conn network.Connection) {
+func (p *server) inExchange(conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
 	nProc := p.dag.NProc()
@@ -188,7 +188,7 @@ func (p *protocol) inExchange(conn network.Connection) {
 			9. If the sent requests were nonempty, wait for more units. All the units are resend.
 		10. Add the received units to the dag.
 */
-func (p *protocol) outExchange(conn network.Connection) {
+func (p *server) outExchange(conn network.Connection) {
 	log := conn.Log()
 	log.Info().Msg(logging.SyncStarted)
 	nProc := p.dag.NProc()

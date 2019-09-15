@@ -4,51 +4,11 @@
 package gossip
 
 import (
-	"time"
-
-	"github.com/rs/zerolog"
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
-type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	netserv      network.Server
-	peerSource   PeerSource
-	callback     gomel.Callback
-	timeout      time.Duration
-	log          zerolog.Logger
-	inUse        []*mutex
-	syncIds      []uint32
-}
-
-// NewProtocol returns a new gossiping protocol.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger) sync.Protocol {
-	nProc := dag.NProc()
-	inUse := make([]*mutex, nProc)
-	for i := range inUse {
-		inUse[i] = newMutex()
-	}
-	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		netserv:      netserv,
-		peerSource:   peerSource,
-		callback:     callback,
-		timeout:      timeout,
-		log:          log,
-		inUse:        inUse,
-		syncIds:      make([]uint32, nProc),
-	}
-}
-
-func (p *protocol) In() {
+func (p *server) In() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
@@ -73,7 +33,7 @@ func (p *protocol) In() {
 	p.inExchange(conn)
 }
 
-func (p *protocol) Out() {
+func (p *server) Out() {
 	remotePid := p.peerSource.NextPeer()
 	m := p.inUse[remotePid]
 	if !m.tryAcquire() {

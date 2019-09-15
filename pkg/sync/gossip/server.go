@@ -9,18 +9,43 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-// NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.Server {
-	proto := NewProtocol(pid, dag, randomSource, netserv, peerSource, callback, timeout, log)
-	return &server{
-		outPool: sync.NewPool(nOut, proto.Out),
-		inPool:  sync.NewPool(nIn, proto.In),
-	}
+type server struct {
+	pid          uint16
+	dag          gomel.Dag
+	randomSource gomel.RandomSource
+	netserv      network.Server
+	requests     chan uint16
+	peerSource   PeerSource
+	inUse        []*mutex
+	syncIds      []uint32
+	outPool      sync.WorkerPool
+	inPool       sync.WorkerPool
+	timeout      time.Duration
+	log          zerolog.Logger
 }
 
-type server struct {
-	outPool *sync.Pool
-	inPool  *sync.Pool
+// NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
+func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.QueryServer {
+	nProc := int(dag.NProc())
+	inUse := make([]*mutex, nProc)
+	for i := range inUse {
+		inUse[i] = newMutex()
+	}
+	requests := make(chan uint16, nProc)
+	s := &server{
+		pid:          pid,
+		dag:          dag,
+		randomSource: randomSource,
+		netserv:      netserv,
+		peerSource:   NewMixedPeerSource(dag.NProc(), pid, requests),
+		inUse:        inUse,
+		syncIds:      make([]uint32, nProc),
+		timeout:      timeout,
+		log:          log,
+	}
+	s.outPool = sync.NewPool(nOut, s.Out)
+	s.inPool = sync.NewPool(nIn, s.In)
+	return s
 }
 
 func (s *server) Start() {
@@ -33,5 +58,13 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
+	close(s.requests)
 	s.outPool.Stop()
+}
+
+func (s *server) FindOut(preunit gomel.Preunit) {
+	select {
+	case s.requests <- preunit.Creator():
+	default:
+	}
 }
