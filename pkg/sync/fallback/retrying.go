@@ -14,12 +14,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-// Retrying is a wrapper for a fallback that continuously tries adding the problematic preunits to the dag.
-type Retrying struct {
+type server struct {
 	dag      gomel.Dag
 	rs       gomel.RandomSource
-	inner    gsync.Fallback
 	interval time.Duration
+	inner    gsync.QueryServer
 	backlog  *backlog
 	deps     *dependencies
 	quit     int32
@@ -28,39 +27,38 @@ type Retrying struct {
 }
 
 // NewRetrying wraps the given fallback with a retrying routine that keeps trying to add problematic units.
-func NewRetrying(inner gsync.Fallback, dag gomel.Dag, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) *Retrying {
-	return &Retrying{
+func NewRetrying(dag gomel.Dag, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) gsync.QueryServer {
+	return &server{
 		dag:     dag,
 		rs:      rs,
-		inner:   inner,
 		backlog: newBacklog(),
 		deps:    newDeps(),
 		log:     log,
 	}
 }
 
-// Run executes the fallback and memorizes the preunit for later retries.
-func (f *Retrying) Run(pu gomel.Preunit) {
-	if f.addToBacklog(pu) {
-		f.log.Info().Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.AddedToBacklog)
-		f.inner.Run(pu)
+func (f *server) FindOut(preunit gomel.Preunit) {
+	if f.addToBacklog(preunit) {
+		f.log.Info().Str(logging.Hash, gomel.Nickname(preunit)).Msg(logging.AddedToBacklog)
+		f.inner.FindOut(preunit)
 	}
 }
 
 // Start runs a goroutine that attempts to add units from the backlog in set intervals.
-func (f *Retrying) Start() error {
+func (f *server) Start() {
 	f.wg.Add(1)
 	go f.work()
-	return nil
 }
 
 // Stop signals the adding goroutine to halt and blocks until it does.
-func (f *Retrying) Stop() {
+func (f *server) StopIn() {
 	atomic.StoreInt32(&f.quit, 1)
 	f.wg.Wait()
 }
 
-func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
+func (f *server) StopOut() {}
+
+func (f *server) addToBacklog(pu gomel.Preunit) bool {
 	hashes := pu.Parents()
 	parents := f.dag.Get(hashes)
 	missing := []*gomel.Hash{}
@@ -82,16 +80,16 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 	return true
 }
 
-func (f *Retrying) work() {
+func (f *server) work() {
 	defer f.wg.Done()
 	for atomic.LoadInt32(&f.quit) != 1 {
 		time.Sleep(f.interval)
 		f.update()
-		f.backlog.refallback(f.inner)
+		f.backlog.refallback(f.inner.FindOut)
 	}
 }
 
-func (f *Retrying) update() {
+func (f *server) update() {
 	presentHashes := f.deps.scan(f.dag)
 	for len(presentHashes) != 0 {
 		addableHashes := f.deps.satisfy(presentHashes)
@@ -106,8 +104,8 @@ func (f *Retrying) update() {
 	}
 }
 
-func (f *Retrying) addUnit(pu gomel.Preunit) {
-	err := add.Unit(f.dag, f.rs, pu, gomel.NopCallback, gsync.NopFallback(), f.log)
+func (f *server) addUnit(pu gomel.Preunit) {
+	err := add.Unit(f.dag, f.rs, pu, f.log)
 	if err != nil {
 		log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}

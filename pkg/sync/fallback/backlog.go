@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 type backlog struct {
@@ -40,11 +39,11 @@ func (b *backlog) get(h *gomel.Hash) gomel.Preunit {
 	return b.backlog[*h]
 }
 
-func (b *backlog) refallback(fb gsync.Fallback) {
+func (b *backlog) refallback(findOut func(pu gomel.Preunit)) {
 	b.Lock()
 	defer b.Unlock()
 	for _, pu := range b.backlog {
-		fb.Run(pu)
+		findOut(pu)
 	}
 }
 
