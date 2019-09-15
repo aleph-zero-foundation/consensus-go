@@ -21,9 +21,8 @@ func (p *server) In() {
 		p.log.Error().Str("where", "multicast.In.Decode").Msg(err.Error())
 		return
 	}
-	err = add.Unit(p.dag, p.randomSource, preunit, p.log)
+	err = add.Unit(p.dag, p.randomSource, preunit, p.fallback, p.log)
 	if err != nil {
-		//TODO FALLBACK
 		p.log.Error().Str("where", "multicast.In.AddUnit").Msg(err.Error())
 		return
 	}

@@ -58,6 +58,10 @@ func (f *server) StopIn() {
 
 func (f *server) StopOut() {}
 
+func (f *server) SetFallback(qs gsync.QueryServer) {
+	f.inner = qs
+}
+
 func (f *server) addToBacklog(pu gomel.Preunit) bool {
 	hashes := pu.Parents()
 	parents := f.dag.Get(hashes)

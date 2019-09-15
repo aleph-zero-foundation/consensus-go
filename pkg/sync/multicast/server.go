@@ -33,6 +33,7 @@ type server struct {
 	dag          gomel.Dag
 	randomSource gomel.RandomSource
 	netserv      network.Server
+	fallback     sync.QueryServer
 	requests     []chan request
 	outPool      sync.WorkerPool
 	inPool       sync.WorkerPool
@@ -78,6 +79,10 @@ func (s *server) StopOut() {
 		close(s.requests[i])
 	}
 	s.outPool.Stop()
+}
+
+func (s *server) SetFallback(qs sync.QueryServer) {
+	s.fallback = qs
 }
 
 func (s *server) Send(unit gomel.Unit) {

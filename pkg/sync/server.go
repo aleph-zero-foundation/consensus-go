@@ -11,6 +11,8 @@ type Server interface {
 	StopIn()
 	// StopOut stops handling outgoing synchronizations.
 	StopOut()
+	// SetFallback registers a QueryServer that will be used to query information about problematic preunits.
+	SetFallback(QueryServer)
 }
 
 // QueryServer is a Server that can find out information about an unknown preunit.

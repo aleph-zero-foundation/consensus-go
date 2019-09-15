@@ -93,7 +93,7 @@ func (p *server) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	aggErr := add.Antichain(p.dag, p.randomSource, units, log)
+	aggErr := add.Antichain(p.dag, p.randomSource, units, p.fallback, log)
 	aggErr = aggErr.Pruned(true)
 	if aggErr != nil {
 		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())

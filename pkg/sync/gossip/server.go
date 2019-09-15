@@ -14,6 +14,7 @@ type server struct {
 	dag          gomel.Dag
 	randomSource gomel.RandomSource
 	netserv      network.Server
+	fallback     sync.QueryServer
 	requests     chan uint16
 	peerSource   PeerSource
 	inUse        []*mutex
@@ -60,6 +61,10 @@ func (s *server) StopIn() {
 func (s *server) StopOut() {
 	close(s.requests)
 	s.outPool.Stop()
+}
+
+func (s *server) SetFallback(qs sync.QueryServer) {
+	s.fallback = qs
 }
 
 func (s *server) FindOut(preunit gomel.Preunit) {
