@@ -1,4 +1,4 @@
-package fallback_test
+package retrying_test
 
 import (
 	"sync"

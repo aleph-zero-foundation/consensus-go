@@ -1,4 +1,4 @@
-package fallback
+package retrying
 
 import (
 	"sync"

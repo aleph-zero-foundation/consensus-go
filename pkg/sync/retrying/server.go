@@ -1,5 +1,5 @@
-// Package fallback implements several algorithms for acquiring unknown parents of units received in syncs.
-package fallback
+// Package retrying implements several algorithms for acquiring unknown parents of units received in syncs.
+package retrying
 
 import (
 	"sync"
