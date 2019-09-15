@@ -16,46 +16,51 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-// NewServer returns a server that runs the multicast protocol, and a callback for the create service.
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, gomel.Callback) {
-	requests := make(chan request, requestsSize*dag.NProc())
-	proto := newProtocol(pid, dag, randomSource, requests, netserv, callback, timeout, fallback, log)
-	return &server{
-			requests: requests,
-			fallback: fallback,
-			outPool:  sync.NewPool(mcOutWPSize*int(dag.NProc()), proto.Out),
-			inPool:   sync.NewPool(mcInWPSize*int(dag.NProc()), proto.In),
-		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
-			if err == nil {
-				buffer := &bytes.Buffer{}
-				encoder := custom.NewEncoder(buffer)
-				err := encoder.EncodeUnit(unit)
-				if err != nil {
-					return
-				}
-				encUnit := buffer.Bytes()[:]
-				for _, i := range rand.Perm(int(dag.NProc())) {
-					if i == int(pid) {
-						continue
-					}
-					requests <- request{encUnit, unit.Height(), uint16(i)}
-				}
-			}
-		}
-}
+const (
+	requestSize = 10
+	outPoolSize = 4
+	inPoolSize  = 2
+)
 
 //request represents a request to send the encoded unit to the committee member indicated by pid.
 type request struct {
 	encUnit []byte
 	height  int
-	pid     uint16
 }
 
 type server struct {
-	requests chan<- request
-	fallback sync.Fallback
-	outPool  *sync.Pool
-	inPool   *sync.Pool
+	pid          uint16
+	dag          gomel.Dag
+	randomSource gomel.RandomSource
+	netserv      network.Server
+	requests     []chan request
+	outPool      sync.WorkerPool
+	inPool       sync.WorkerPool
+	timeout      time.Duration
+	log          zerolog.Logger
+}
+
+// NewServer returns a server that runs the multicast protocol, and a callback for the create service.
+func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
+	nProc := int(dag.NProc())
+	requests := make([]chan request, nProc)
+	for i := 0; i < nProc; i++ {
+		requests[i] = make(chan request, requestSize)
+	}
+	s := &server{
+		pid:          pid,
+		dag:          dag,
+		randomSource: randomSource,
+		netserv:      netserv,
+		requests:     requests,
+		timeout:      timeout,
+		log:          log,
+	}
+
+	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.Out)
+	s.inPool = sync.NewPool(inPoolSize*nProc, s.In)
+	return s
+
 }
 
 func (s *server) Start() {
@@ -68,6 +73,26 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-	close(s.requests)
+	nProc := int(s.dag.NProc())
+	for i := 0; i < nProc; i++ {
+		close(s.requests[i])
+	}
 	s.outPool.Stop()
+}
+
+func (s *server) Send(unit gomel.Unit) {
+	buffer := &bytes.Buffer{}
+	encoder := custom.NewEncoder(buffer)
+	err := encoder.EncodeUnit(unit)
+	if err != nil {
+		s.log.Error().Str("where", "multicastServer.Send.Encode").Msg(err.Error())
+		return
+	}
+	encUnit := buffer.Bytes()[:]
+	for _, i := range rand.Perm(int(s.dag.NProc())) {
+		if i == int(s.pid) {
+			continue
+		}
+		s.requests[i] <- request{encUnit, unit.Height()}
+	}
 }

@@ -1,58 +1,12 @@
 package multicast
 
 import (
-	"time"
-
-	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-const (
-	// Some magic numbers for multicast. All below are ratios, they get multiplied with nProc.
-	requestsSize = 10
-	mcOutWPSize  = 4
-	mcInWPSize   = 2
-)
-
-type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	requests     <-chan request
-	netserv      network.Server
-	callback     gomel.Callback
-	timeout      time.Duration
-	fallback     sync.Fallback
-	log          zerolog.Logger
-}
-
-func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, requests <-chan request, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
-
-	logSuccess := func(_ gomel.Preunit, added gomel.Unit, err error) {
-		if err == nil {
-			log.Info().Uint16(logging.Creator, added.Creator()).Int(logging.Height, added.Height()).Msg(logging.AddedBCUnit)
-		}
-	}
-
-	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		requests:     requests,
-		netserv:      netserv,
-		callback:     gomel.MergeCallbacks(callback, logSuccess),
-		timeout:      timeout,
-		fallback:     fallback,
-		log:          log,
-	}
-}
-
-func (p *protocol) In() {
+func (p *server) In() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.In.Listen").Msg(err.Error())
@@ -67,19 +21,20 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "multicast.In.Decode").Msg(err.Error())
 		return
 	}
-	err = add.Unit(p.dag, p.randomSource, preunit, p.callback, p.fallback, p.log)
+	err = add.Unit(p.dag, p.randomSource, preunit, p.log)
 	if err != nil {
+		//TODO FALLBACK
 		p.log.Error().Str("where", "multicast.In.AddUnit").Msg(err.Error())
 		return
 	}
 }
 
-func (p *protocol) Out() {
-	r, ok := <-p.requests
+func (p *server) Out(pid uint16) {
+	r, ok := <-p.requests[pid]
 	if !ok {
 		return
 	}
-	conn, err := p.netserv.Dial(r.pid, p.timeout)
+	conn, err := p.netserv.Dial(pid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.Out.Dial").Msg(err.Error())
 		return
@@ -96,5 +51,5 @@ func (p *protocol) Out() {
 		p.log.Error().Str("where", "multicast.Out.Flush").Msg(err.Error())
 		return
 	}
-	p.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, r.pid).Msg(logging.UnitBroadcasted)
+	p.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, pid).Msg(logging.UnitBroadcasted)
 }
