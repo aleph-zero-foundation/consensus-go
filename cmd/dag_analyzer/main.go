@@ -1,9 +1,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -14,17 +14,6 @@ type dagFactory struct{}
 
 func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
 	return dag.New(uint16(len(dc.Keys)))
-}
-
-type cliOptions struct {
-	dagFilename string
-}
-
-func getOptions() cliOptions {
-	var result cliOptions
-	flag.StringVar(&result.dagFilename, "dag", "", "a file containing the dag to analyze")
-	flag.Parse()
-	return result
 }
 
 // collectUnits for a given dag returns a slice containing all the units from the dag.
@@ -51,6 +40,14 @@ func collectUnits(dag gomel.Dag) []gomel.Unit {
 		return true
 	})
 	return units
+}
+
+func nParentsPerLevel(dag gomel.Dag, units []gomel.Unit, maxLevel int) [][]int {
+	result := make([][]int, maxLevel+1)
+	for _, u := range units {
+		result[u.Level()] = append(result[u.Level()], len(u.Parents()))
+	}
+	return result
 }
 
 // popularityStats for a given dag calculates for each prime unit
@@ -223,18 +220,44 @@ func getUnitStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) []levelUnitSt
 	return result
 }
 
+func printDistribution(slice []int) {
+	fmt.Println("\tDistribution : ")
+	dist := make(map[int]int)
+
+	maxVal := 0
+	for _, val := range slice {
+		dist[val]++
+		if val > maxVal {
+			maxVal = val
+		}
+	}
+
+	fmt.Println("\tValue", "\t\t", "num entries")
+	for i := 0; i <= maxVal; i++ {
+		if dist[i] == 0 {
+			continue
+		}
+		fmt.Println("\t", i, "\t\t", dist[i])
+	}
+}
+
+func printTittle(tittle string) {
+	fmt.Println(strings.Repeat("=", 20), tittle, strings.Repeat("=", 20), "\n")
+}
+
 func main() {
-	options := getOptions()
-	if options.dagFilename == "" {
-		fmt.Fprintf(os.Stderr, "Usage: dag_analyzer -dag=<dag_file>\n")
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: dag_analyzer <dag_file>\n")
 		return
 	}
+	filename := os.Args[1]
 	var df dagFactory
-	dag, err := tests.CreateDagFromTestFile(options.dagFilename, df)
+	dag, err := tests.CreateDagFromTestFile(filename, df)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error while reading dag %s: %s\n", options.dagFilename, err.Error())
+		fmt.Fprintf(os.Stderr, "Error while reading dag %s: %s\n", filename, err.Error())
 		return
 	}
+
 	units := collectUnits(dag)
 	maxLevel := 0
 	for _, u := range units {
@@ -242,26 +265,42 @@ func main() {
 			maxLevel = u.Level()
 		}
 	}
-	fmt.Printf("=========================General stats========================\n\n")
+	printTittle("General stats")
 	fmt.Printf("%-12s%-10d\n%-12s%-10d\n%-12s%-10d\n\n", "Processes", dag.NProc(), "Units", len(units), "Max level", maxLevel)
-	fmt.Printf("=========================Units stats========================\n\n")
+
+	printTittle("Unit stats")
 	us := getUnitStats(dag, units, maxLevel)
 	for level := 0; level <= maxLevel; level++ {
 		fmt.Printf("%-12s%-10d\n\n\t%-12s%-10d\n\t%-12s%-10d\n\t%-12s%-10d\n\n", "level", level, "primes", us[level].primes, "regular", us[level].regular, "skipped", us[level].skipped)
 	}
 
-	fmt.Printf("=========================Primes stats========================\n\n")
+	printTittle("Prime stats")
 	pus := getPrimeUnitsStats(dag, maxLevel)
 	for level := 0; level <= maxLevel; level++ {
 		fmt.Printf("%-12s%-10d\n\n\t%-12s%-10d\n\t%-12s%-10d\n\n", "level", level, "primes", pus[level].primes, "minprimes", pus[level].minPrimes)
 		bs := computeBasicStats(pus[level].visibleBelow)
 		fmt.Printf("\t%-12s\n\t  %-12s%-10d\n\t  %-12s%-10d\n\t  %-12s%-6.4f\n\n", "visible below", "min", bs.min, "max", bs.max, "avg", bs.avg)
+		printDistribution(pus[level].visibleBelow)
+		fmt.Printf("\n===\n")
 	}
-	fmt.Printf("=========================Popularity stats========================\n\n")
+
+	printTittle("Popularity stats")
 	ps := popularityStats(dag, maxLevel)
 	for level := 0; level <= maxLevel; level++ {
 		fmt.Printf("%-12s%-10d\n\n\t%-12s%-10d\n\t%-12s%-10d\n\n", "level", level, "popular", len(ps[level]), "unpopular", pus[level].primes-len(ps[level]))
 		bs := computeBasicStats(ps[level])
 		fmt.Printf("\t%-12s\n\t  %-12s%-10d\n\t  %-12s%-10d\n\t  %-12s%-6.4f\n\n", "popular after", "min", bs.min, "max", bs.max, "avg", bs.avg)
+		printDistribution(ps[level])
+		fmt.Printf("\n===\n")
 	}
+
+	printTittle("Parents stats")
+	for level, nParents := range nParentsPerLevel(dag, units, maxLevel) {
+		fmt.Printf("%-12s%-10d\n\n\t%-12s%-10d\n\n", "level", level, "nUnits", len(nParents))
+		bs := computeBasicStats(nParents)
+		fmt.Printf("\t%-12s\n\t  %-12s%-10d\n\t  %-12s%-10d\n\t  %-12s%-6.4f\n\n", "n Parents", "min", bs.min, "max", bs.max, "avg", bs.avg)
+		printDistribution(nParents)
+		fmt.Printf("\n===\n")
+	}
+
 }
