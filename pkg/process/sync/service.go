@@ -22,7 +22,8 @@ import (
 
 type service struct {
 	queryServers map[string]sync.QueryServer
-	servers      map[string]sync.Server
+	multicasters map[string]sync.MulticastServer
+	servers      []sync.Server
 	subservices  []process.Service
 	log          zerolog.Logger
 }
@@ -36,10 +37,19 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		return nil, err
 	}
 	pid := configs[0].Pid
-	s := &service{log: log.With().Int(logging.Service, logging.SyncService).Logger()}
-	for _, c := range configs {
-		var netserv network.Server
+	s := &service{
+		queryServers: make(map[string]sync.QueryServer),
+		multicasters: make(map[string]sync.MulticastServer),
+		log:          log.With().Int(logging.Service, logging.SyncService).Logger(),
+	}
 
+	servmap := make(map[string]sync.Server)
+
+	for _, c := range configs {
+		var (
+			netserv network.Server
+			server  sync.Server
+		)
 		tf, err := strconv.ParseFloat(c.Params["timeout"], 64)
 		if err != nil {
 			return nil, err
@@ -50,7 +60,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		case "multicast":
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
-			s.servers["multicast"] = multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
+			ms := multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
+			s.multicasters[c.Type] = ms
+			server = ms
 
 		case "gossip":
 			log = log.With().Int(logging.Service, logging.GossipService).Logger()
@@ -64,8 +76,8 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 				return nil, err
 			}
 			qs := gossip.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
-			s.queryServers["gossip"] = qs
-			s.servers["gossip"] = qs
+			s.queryServers[c.Type] = qs
+			server = qs
 
 		case "fetch":
 			log = log.With().Int(logging.Service, logging.FetchService).Logger()
@@ -79,8 +91,8 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 				return nil, err
 			}
 			qs := fetch.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
-			s.queryServers["fetch"] = qs
-			s.servers["fetch"] = qs
+			s.queryServers[c.Type] = qs
+			server = qs
 
 		case "retrying":
 			log := log.With().Int(logging.Service, logging.RetryingService).Logger()
@@ -90,14 +102,16 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			}
 			interval := time.Millisecond * time.Duration(1000*rif)
 			qs := retrying.NewServer(dag, randomSource, interval, log)
-			s.queryServers["retrying"] = qs
-			s.servers["retrying"] = qs
+			s.queryServers[c.Type] = qs
+			server = qs
 		}
+		s.servers = append(s.servers, server)
+		servmap[c.Type] = server
 	}
 
 	for _, c := range configs {
 		if c.Fallback != "" {
-			s.servers[c.Type].SetFallback(s.queryServers[c.Fallback])
+			servmap[c.Type].SetFallback(s.queryServers[c.Fallback])
 		}
 	}
 
@@ -116,6 +130,10 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
+	for _, server := range s.servers {
+		server.SetFallback(nil)
+	}
+
 	for _, server := range s.servers {
 		server.StopOut()
 	}
@@ -155,12 +173,6 @@ func valid(configs []*process.Sync) error {
 
 func getNetServ(net string, localAddress string, remoteAddresses []string, services []process.Service, log zerolog.Logger) (network.Server, []process.Service, error) {
 	switch net {
-	case "tcp":
-		netserv, err := tcp.NewServer(localAddress, remoteAddresses, log)
-		if err != nil {
-			return nil, services, err
-		}
-		return netserv, services, nil
 	case "udp":
 		netserv, err := udp.NewServer(localAddress, remoteAddresses, log)
 		if err != nil {
@@ -174,6 +186,10 @@ func getNetServ(net string, localAddress string, remoteAddresses []string, servi
 		}
 		return netserv, append(services, netserv.(process.Service)), nil
 	default:
-		return nil, services, gomel.NewConfigError("wrong multicast type")
+		netserv, err := tcp.NewServer(localAddress, remoteAddresses, log)
+		if err != nil {
+			return nil, services, err
+		}
+		return netserv, services, nil
 	}
 }
