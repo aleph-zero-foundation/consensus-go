@@ -35,6 +35,8 @@ type service struct {
 	fetchServer  gsync.Server
 	fallback     gsync.Fallback
 	log          zerolog.Logger
+	exitChan     chan struct{}
+	wg           sync.WaitGroup
 }
 
 // NewService creates a new service for rmc.
@@ -80,6 +82,7 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 			canMulticast: canMulticast,
 			fallback:     fbk,
 			log:          log,
+			exitChan:     make(chan struct{}),
 		},
 		units,
 		nil
@@ -88,51 +91,62 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 // translator reads units created by the create service
 // and creates multicast requests to all other pids.
 func (s *service) translator() {
+	defer s.wg.Done()
 	for {
-		unit, isOpen := <-s.units
-		if !isOpen {
+		select {
+		case unit, isOpen := <-s.units:
+			if !isOpen {
+				return
+			}
+			s.canMulticast.Lock()
+			for pid := uint16(0); pid < s.dag.NProc(); pid++ {
+				if pid == s.pid {
+					continue
+				}
+				req, err := multicast.NewUnitSendRequest(unit, pid, s.dag.NProc())
+				if err != nil {
+					s.log.Error().Str("where", "multicast.NewUnitSendRequest").Msg(err.Error())
+					continue
+				}
+				s.mcRequests <- req
+			}
+		case <-s.exitChan:
 			return
-		}
-		s.canMulticast.Lock()
-		for pid := uint16(0); pid < s.dag.NProc(); pid++ {
-			if pid == s.pid {
-				continue
-			}
-			req, err := multicast.NewUnitSendRequest(unit, pid, s.dag.NProc())
-			if err != nil {
-				s.log.Error().Str("where", "multicast.NewUnitSendRequest").Msg(err.Error())
-				continue
-			}
-			s.mcRequests <- req
 		}
 	}
 }
 
 // validator validates succesfully multicasted data
 func (s *service) validator() {
+	defer s.wg.Done()
 	for {
-		data, isOpen := <-s.accepted
-		if !isOpen {
-			return
-		}
-		if pu, err := multicast.DecodePreunit(data); pu != nil || err != nil {
-			if err != nil {
-				s.log.Error().Str("where", "multicast.DecodePreunit").Msg(err.Error())
-				continue
+		select {
+		case data, isOpen := <-s.accepted:
+			if !isOpen {
+				return
 			}
-			s.dag.AddUnit(pu, s.rs, func(preunit gomel.Preunit, u gomel.Unit, err error) {
+			if pu, err := multicast.DecodePreunit(data); pu != nil || err != nil {
 				if err != nil {
-					switch err.(type) {
-					case *gomel.UnknownParents:
-						s.fallback.Run(pu)
-					}
+					s.log.Error().Str("where", "multicast.DecodePreunit").Msg(err.Error())
+					continue
 				}
-			})
+				s.dag.AddUnit(pu, s.rs, func(preunit gomel.Preunit, u gomel.Unit, err error) {
+					if err != nil {
+						switch err.(type) {
+						case *gomel.UnknownParents:
+							s.fallback.Run(pu)
+						}
+					}
+				})
+			}
+		case <-s.exitChan:
+			return
 		}
 	}
 }
 
 func (s *service) Start() error {
+	s.wg.Add(2)
 	go s.translator()
 	go s.validator()
 	s.fetchServer.Start()
@@ -148,5 +162,7 @@ func (s *service) Stop() {
 	s.mcServer.StopIn()
 	s.fetchServer.StopIn()
 	close(s.accepted)
+	close(s.exitChan)
+	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }
