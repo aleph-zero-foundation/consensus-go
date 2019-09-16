@@ -22,7 +22,7 @@ import (
 
 type service struct {
 	queryServers map[string]sync.QueryServer
-	multicasters map[string]sync.MulticastServer
+	mcServer     sync.MulticastServer
 	servers      []sync.Server
 	subservices  []process.Service
 	log          zerolog.Logger
@@ -32,14 +32,13 @@ type service struct {
 // When units received from a sync are added to the poset primeAlert is called on them.
 // The returned callback should be called on units created by this process after they are added to the poset.
 // It is used to multicast newly created units, when multicast is in use.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
 	if err := valid(configs); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pid := configs[0].Pid
 	s := &service{
 		queryServers: make(map[string]sync.QueryServer),
-		multicasters: make(map[string]sync.MulticastServer),
 		log:          log.With().Int(logging.Service, logging.SyncService).Logger(),
 	}
 
@@ -50,9 +49,10 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			netserv network.Server
 			server  sync.Server
 		)
+
 		tf, err := strconv.ParseFloat(c.Params["timeout"], 64)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		timeout := time.Duration(tf) * time.Second
 
@@ -60,20 +60,19 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		case "multicast":
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
-			ms := multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
-			s.multicasters[c.Type] = ms
-			server = ms
+			s.mcServer = multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
+			server = s.mcServer
 
 		case "gossip":
 			log = log.With().Int(logging.Service, logging.GossipService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			nIn, err := strconv.Atoi(c.Params["nIn"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			qs := gossip.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
 			s.queryServers[c.Type] = qs
@@ -84,11 +83,11 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			nIn, err := strconv.Atoi(c.Params["nIn"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			qs := fetch.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
 			s.queryServers[c.Type] = qs
@@ -98,7 +97,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			log := log.With().Int(logging.Service, logging.RetryingService).Logger()
 			rif, err := strconv.ParseFloat(c.Params["interval"], 64)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			interval := time.Millisecond * time.Duration(1000*rif)
 			qs := retrying.NewServer(dag, randomSource, interval, log)
@@ -115,7 +114,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		}
 	}
 
-	return s, nil
+	return s, func(unit gomel.Unit) { s.mcServer.Send(unit) }, nil
 }
 
 func (s *service) Start() error {
@@ -155,9 +154,16 @@ func valid(configs []*process.Sync) error {
 		return gomel.NewConfigError("empty sync configuration")
 	}
 	availFbks := map[string]bool{}
+	mc := false
 	for _, c := range configs {
 		if c.Type == "fetch" || c.Type == "gossip" || c.Type == "retrying" {
 			availFbks[c.Type] = true
+		}
+		if c.Type == "multicast" || c.Type == "rmc" {
+			if mc {
+				return gomel.NewConfigError("multiple multicast servers defined")
+			}
+			mc = true
 		}
 	}
 	for _, c := range configs {
