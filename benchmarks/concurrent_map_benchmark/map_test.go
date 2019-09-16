@@ -1,13 +1,14 @@
 package map_test
 
 import (
+	"bytes"
 	"math/rand"
 	"sync"
 	"testing"
 )
 
 const (
-	initialElemsCount      = 100000
+	initialElemsCount      = 1000
 	numberOfRoutines       = 512
 	numberOfMapOperations  = 3 * 10 * 100
 	missReadsBias          = 10
@@ -17,9 +18,11 @@ const (
 	missGeneratorSeed      = 2
 )
 
-type keyValuePair struct {
-	key   uint64
-	value uint64
+type keyType [32]byte
+
+type byteKeyValuePair struct {
+	key   keyType
+	value []byte
 }
 
 type testScenario struct {
@@ -38,7 +41,13 @@ func (ts *testScenario) testMapAcess(testMap mapUnderTest, readBias uint64, coun
 	for i := uint64(0); i < count; i++ {
 		operation := uint64(ts.operationGenerator.Intn(100))
 		if operation < readBias {
-			testMap.load(tdg.getIndex())
+			ix, expectedValue := tdg.getIndex()
+			value, present := testMap.load(ix)
+			if expectedValue != nil {
+				if !present || bytes.Compare(expectedValue, value) != 0 {
+					panic("invalid content of the tested map")
+				}
+			}
 		} else {
 			index, value := tdg.getIndexAndValue()
 			testMap.store(index, value)
@@ -47,46 +56,66 @@ func (ts *testScenario) testMapAcess(testMap mapUnderTest, readBias uint64, coun
 }
 
 type testDataGenerator interface {
-	getIndex() uint64
-	getIndexAndValue() (uint64, uint64)
+	getIndex() (keyType, []byte)
+	getIndexAndValue() (keyType, []byte)
 }
 
 type tdgImpl struct {
+	minDataSize   int
+	maxDataSize   int
 	dataGenerator *rand.Rand
 	missGenerator *rand.Rand
-	storage       []keyValuePair
+	storage       []byteKeyValuePair
 	missReadBias  uint64
 	newWritesBias uint64
 }
 
-func (tdg *tdgImpl) getIndex() uint64 {
-	var index uint64
+func generateSlice(result []byte, rand *rand.Rand) {
+	rand.Read(result)
+}
+
+func generateData(minSize, maxSize int, rand *rand.Rand) []byte {
+	size := minSize + rand.Intn(maxSize-minSize)
+	result := make([]byte, size)
+	rand.Read(result)
+	return result
+}
+
+func (tdg *tdgImpl) getIndex() (keyType, []byte) {
+	var index keyType
+	var data []byte
 	if uint64(tdg.missGenerator.Intn(100)) < tdg.missReadBias {
-		index = tdg.dataGenerator.Uint64()
+		generateSlice(index[:], tdg.dataGenerator)
+		data = nil
 	} else if len(tdg.storage) > 0 {
 		ix := tdg.dataGenerator.Intn(len(tdg.storage))
 		index = tdg.storage[ix].key
+		data = tdg.storage[ix].value
+
 	}
-	return index
+	return index, data
 }
 
-func (tdg *tdgImpl) getIndexAndValue() (uint64, uint64) {
-	var index, value uint64
+func (tdg *tdgImpl) getIndexAndValue() (keyType, []byte) {
+	var index keyType
+	var value []byte
 	if uint64(tdg.missGenerator.Intn(100)) < tdg.newWritesBias {
-		index = tdg.dataGenerator.Uint64()
-		value = tdg.dataGenerator.Uint64()
+		generateSlice(index[:], tdg.dataGenerator)
+		value = generateData(tdg.minDataSize, tdg.maxDataSize, tdg.dataGenerator)
+		tdg.storage = append(tdg.storage, byteKeyValuePair{index, value})
 	} else if len(tdg.storage) > 0 {
 		ix := tdg.dataGenerator.Intn(len(tdg.storage))
 		stored := tdg.storage[ix]
 		index = stored.key
 		value = stored.value
 	}
-	tdg.storage = append(tdg.storage, keyValuePair{index, value})
 	return index, value
 }
 
-func newTestDataGenerator(dataGenerator, missGenerator *rand.Rand, missReadBias, newWritesBias uint64, stored []keyValuePair) *tdgImpl {
+func newTestDataGenerator(dataGenerator, missGenerator *rand.Rand, missReadBias, newWritesBias uint64, stored []byteKeyValuePair, minDataSize, maxDataSize int) *tdgImpl {
 	return &tdgImpl{
+		minDataSize:   minDataSize,
+		maxDataSize:   maxDataSize,
 		dataGenerator: dataGenerator,
 		missGenerator: missGenerator,
 		missReadBias:  missReadBias,
@@ -106,11 +135,11 @@ func testSyncMap(
 
 	dataGenerator := rand.New(rand.NewSource(dataSeedGenerator.Int63()))
 	missGenerator := rand.New(rand.NewSource(missSeedGenerator.Int63()))
-	tdg := newTestDataGenerator(dataGenerator, missGenerator, 100, 100, []keyValuePair{})
+	tdg := newTestDataGenerator(dataGenerator, missGenerator, 100, 100, []byteKeyValuePair{}, 2*32, 3*32)
 
 	propagateMap(testMap, numberOfInitialElements, tdg)
 
-	var startChannel chan struct{} = make(chan struct{})
+	startChannel := make(chan struct{})
 	wait := sync.WaitGroup{}
 	wait.Add(goRoutinesCount)
 
@@ -121,9 +150,9 @@ func testSyncMap(
 		missGenerator := rand.New(rand.NewSource(missSeed))
 
 		ts := newTestScenario()
-		storage := make([]keyValuePair, len(tdg.storage)+int(testsCount))
+		storage := make([]byteKeyValuePair, len(tdg.storage)+int(testsCount))
 		copy(storage, tdg.storage)
-		testerTdg := newTestDataGenerator(dataGenerator, missGenerator, missReads, newWrites, storage)
+		testerTdg := newTestDataGenerator(dataGenerator, missGenerator, missReads, newWrites, storage, 2*32, 3*32)
 
 		<-startEvent
 
@@ -141,82 +170,82 @@ func testSyncMap(
 }
 
 type mapUnderTest interface {
-	load(uint64) (uint64, bool)
-	store(uint64, uint64)
+	load(keyType) ([]byte, bool)
+	store(keyType, []byte)
 }
 
 type syncedMap struct {
 	sMap sync.Map
 }
 
-func (sMap *syncedMap) load(key uint64) (uint64, bool) {
+func (sMap *syncedMap) load(key keyType) ([]byte, bool) {
 	value, ok := sMap.sMap.Load(key)
 	if !ok {
-		return 0, false
+		return nil, false
 	}
-	return value.(uint64), true
+	return value.([]byte), true
 }
 
-func (sMap *syncedMap) store(key uint64, value uint64) {
+func (sMap *syncedMap) store(key keyType, value []byte) {
 	sMap.sMap.Store(key, value)
 }
 
 type mapWithMutex struct {
 	mu      sync.Mutex
-	storage map[uint64]uint64
+	storage map[keyType][]byte
 }
 
-func (mMap *mapWithMutex) load(key uint64) (uint64, bool) {
+func (mMap *mapWithMutex) load(key keyType) ([]byte, bool) {
 	mMap.mu.Lock()
 	defer mMap.mu.Unlock()
 	value, ok := mMap.storage[key]
 	if !ok {
-		return 0, false
+		return nil, false
 	}
 	return value, ok
 }
 
-func (mMap *mapWithMutex) store(key uint64, value uint64) {
+func (mMap *mapWithMutex) store(key keyType, value []byte) {
 	mMap.mu.Lock()
 	mMap.storage[key] = value
 	mMap.mu.Unlock()
 }
 
 func newMapWithMutex() *mapWithMutex {
-	return &mapWithMutex{storage: make(map[uint64]uint64)}
+	return &mapWithMutex{storage: make(map[keyType][]byte)}
 }
 
 type mapWithRWMutex struct {
 	mu      sync.RWMutex
-	storage map[uint64]uint64
+	storage map[keyType][]byte
 }
 
-func (mMap *mapWithRWMutex) load(key uint64) (uint64, bool) {
+func (mMap *mapWithRWMutex) load(key keyType) ([]byte, bool) {
 	mMap.mu.RLock()
 	defer mMap.mu.RUnlock()
 	value, ok := mMap.storage[key]
 	if !ok {
-		return 0, false
+		return nil, false
 	}
 	return value, ok
 }
 
-func (mMap *mapWithRWMutex) store(key uint64, value uint64) {
+func (mMap *mapWithRWMutex) store(key keyType, value []byte) {
 	mMap.mu.Lock()
 	mMap.storage[key] = value
 	mMap.mu.Unlock()
 }
 
 func newMapWithRWMutex() *mapWithRWMutex {
-	return &mapWithRWMutex{storage: make(map[uint64]uint64)}
+	return &mapWithRWMutex{storage: make(map[keyType][]byte)}
 }
 
 func propagateMap(storage mapUnderTest, size int, tdg testDataGenerator) {
-	values := make(map[uint64]uint64)
+	values := make(map[keyType]bool)
 	for len(values) < size {
 		index, value := tdg.getIndexAndValue()
 		storage.store(index, value)
-		values[index] = value
+		values[index] = false
 	}
 }
 
