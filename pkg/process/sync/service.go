@@ -23,7 +23,6 @@ import (
 type service struct {
 	queryServers map[string]sync.QueryServer
 	mcServer     sync.MulticastServer
-	servers      []sync.Server
 	subservices  []process.Service
 	log          zerolog.Logger
 }
@@ -45,10 +44,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 	servmap := make(map[string]sync.Server)
 
 	for _, c := range configs {
-		var (
-			netserv network.Server
-			server  sync.Server
-		)
+		var netserv network.Server
 
 		tf, err := strconv.ParseFloat(c.Params["timeout"], 64)
 		if err != nil {
@@ -60,8 +56,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		case "multicast":
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
-			s.mcServer = multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
-			server = s.mcServer
+			server := multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
+			s.mcServer = server
+			servmap[c.Type] = server
 
 		case "gossip":
 			log = log.With().Int(logging.Service, logging.GossipService).Logger()
@@ -74,9 +71,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			qs := gossip.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
-			s.queryServers[c.Type] = qs
-			server = qs
+			server := gossip.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
+			s.queryServers[c.Type] = server
+			servmap[c.Type] = server
 
 		case "fetch":
 			log = log.With().Int(logging.Service, logging.FetchService).Logger()
@@ -89,9 +86,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			qs := fetch.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
-			s.queryServers[c.Type] = qs
-			server = qs
+			server := fetch.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
+			s.queryServers[c.Type] = server
+			servmap[c.Type] = server
 
 		case "retrying":
 			log := log.With().Int(logging.Service, logging.RetryingService).Logger()
@@ -100,12 +97,10 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 				return nil, nil, err
 			}
 			interval := time.Millisecond * time.Duration(1000*rif)
-			qs := retrying.NewServer(dag, randomSource, interval, log)
-			s.queryServers[c.Type] = qs
-			server = qs
+			server := retrying.NewServer(dag, randomSource, interval, log)
+			s.queryServers[c.Type] = server
+			servmap[c.Type] = server
 		}
-		s.servers = append(s.servers, server)
-		servmap[c.Type] = server
 	}
 
 	for _, c := range configs {
@@ -121,25 +116,23 @@ func (s *service) Start() error {
 	for _, service := range s.subservices {
 		service.Start()
 	}
-	for _, server := range s.servers {
+	for _, server := range s.queryServers {
 		server.Start()
 	}
+	s.mcServer.Start()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 func (s *service) Stop() {
-	for _, server := range s.servers {
-		server.SetFallback(nil)
-	}
-
-	for _, server := range s.servers {
+	s.mcServer.StopOut()
+	for _, server := range s.queryServers {
 		server.StopOut()
 	}
-
 	// let other processes sync with us some more
 	time.Sleep(5 * time.Second)
-	for _, server := range s.servers {
+	s.mcServer.StopIn()
+	for _, server := range s.queryServers {
 		server.StopIn()
 	}
 	for _, service := range s.subservices {
@@ -148,7 +141,9 @@ func (s *service) Stop() {
 	s.log.Info().Msg(logging.ServiceStopped)
 }
 
-// Checks if all fallbacks have their corresponding configurations.
+// Checks if the list of configs is valid that is:
+// a) every server defined as fallback is present
+// b) there is only one multicasting server
 func valid(configs []*process.Sync) error {
 	if len(configs) == 0 {
 		return gomel.NewConfigError("empty sync configuration")
@@ -177,6 +172,7 @@ func valid(configs []*process.Sync) error {
 	return nil
 }
 
+// Return network.Server of the type indicated by "net". If needed, append a corresponding service to the given slice. Defaults to "tcp".
 func getNetServ(net string, localAddress string, remoteAddresses []string, services []process.Service, log zerolog.Logger) (network.Server, []process.Service, error) {
 	switch net {
 	case "udp":
