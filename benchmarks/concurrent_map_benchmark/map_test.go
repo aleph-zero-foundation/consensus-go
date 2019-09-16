@@ -2,13 +2,19 @@ package map_test
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"sync"
 	"testing"
+
+	"github.com/akrylysov/pogreb"
+	"github.com/dgraph-io/badger"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const (
-	initialElemsCount      = 1000
+	initialElemsCount      = 100000
 	numberOfRoutines       = 512
 	numberOfMapOperations  = 3 * 10 * 100
 	missReadsBias          = 10
@@ -240,6 +246,114 @@ func newMapWithRWMutex() *mapWithRWMutex {
 	return &mapWithRWMutex{storage: make(map[keyType][]byte)}
 }
 
+type pogrebDB struct {
+	pg *pogreb.DB
+}
+
+func (pdb *pogrebDB) load(key keyType) ([]byte, bool) {
+	value, err := pdb.pg.Get(key[:])
+	if err != nil || value == nil {
+		return nil, false
+	}
+	return value, true
+}
+
+func (pdb *pogrebDB) store(key keyType, value []byte) {
+	if pdb.pg.Put(key[:], value) != nil {
+		panic("unable to store key/value using pogreb")
+	}
+}
+
+func (pdb *pogrebDB) closeDB() {
+	pdb.pg.Close()
+}
+
+func newPogrebDB(file string) *pogrebDB {
+	pg, err := pogreb.Open(file, nil)
+	if err != nil {
+		return nil
+	}
+	return &pogrebDB{pg: pg}
+}
+
+type levelDB struct {
+	levelDB *leveldb.DB
+}
+
+func (lvl *levelDB) load(key keyType) ([]byte, bool) {
+	value, err := lvl.levelDB.Get(key[:], nil)
+	if err != nil || value == nil {
+		return nil, false
+	}
+	return value, true
+}
+
+func (lvl *levelDB) store(key keyType, value []byte) {
+	if lvl.levelDB.Put(key[:], value, nil) != nil {
+		panic("unable to store key/value using levelDB")
+	}
+}
+
+func (lvl *levelDB) closeDB() {
+	lvl.levelDB.Close()
+}
+
+func newLevelDB(file string) (*levelDB, error) {
+	levelDBVal, err := leveldb.OpenFile(file, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &levelDB{levelDB: levelDBVal}, nil
+}
+
+type badgerDB struct {
+	badger *badger.DB
+}
+
+func (bdg *badgerDB) load(key keyType) ([]byte, bool) {
+	var result []byte
+	var notFound bool
+	err := bdg.badger.View(func(txn *badger.Txn) error {
+		value, err := txn.Get(key[:])
+		if err != nil {
+			if err != badger.ErrKeyNotFound {
+				return err
+			}
+			notFound = true
+			return nil
+		}
+		return value.Value(func(val []byte) error {
+			result = val
+			return nil
+		})
+	})
+	if err != nil {
+		panic("error while loading a value in badgerDB")
+	}
+	return result, !notFound
+}
+
+func (bdg *badgerDB) store(key keyType, value []byte) {
+	err := bdg.badger.Update(func(txn *badger.Txn) error {
+		return txn.Set(key[:], value)
+	})
+	if err != nil {
+		panic("unable to store a value using badgerDB")
+	}
+}
+
+func (bdg *badgerDB) closeDB() {
+	bdg.badger.Close()
+}
+
+func newBadgerDB(folder string) (*badgerDB, error) {
+	db, err := badger.Open(badger.DefaultOptions(folder))
+	if err != nil {
+		return nil, err
+	}
+	return &badgerDB{badger: db}, nil
+}
+
 func propagateMap(storage mapUnderTest, size int, tdg testDataGenerator) {
 	values := make(map[keyType]bool)
 	for len(values) < size {
@@ -298,4 +412,72 @@ func BenchmarkMutexMapMoreWrites(b *testing.B) {
 	var testMap mapUnderTest = newMapWithMutex()
 	b.ResetTimer()
 	testMapPerformance(b, testMap, 10, missReadsBias, newWrites)
+}
+
+func benchmarkPogrebDB(b *testing.B, readBias uint64) {
+	file, err := ioutil.TempFile("", "pogrebDB")
+	defer file.Close()
+	if err != nil {
+		panic("unable to create temporary file for the pogreb database")
+	}
+	testMap := newPogrebDB(file.Name())
+	defer testMap.closeDB()
+	b.ResetTimer()
+	testMapPerformance(b, testMap, readBias, missReadsBias, newWrites)
+	testMap.closeDB()
+}
+
+func BenchmarkPogrebDB(b *testing.B) {
+	b.Run("more reads", func(b *testing.B) {
+		benchmarkPogrebDB(b, 90)
+	})
+	b.Run("more writes", func(b *testing.B) {
+		benchmarkPogrebDB(b, 10)
+	})
+}
+
+func benchmarkLevelDB(b *testing.B, readBias uint64) {
+	dbFolder, err := ioutil.TempDir("", "levelDB")
+	if err != nil {
+		panic("unable to create temporary file for the levelDB database")
+	}
+	testMap, err := newLevelDB(dbFolder)
+	if err != nil {
+		panic(fmt.Sprintf("unable to initilize levelDB: %s", err.Error()))
+	}
+	b.ResetTimer()
+	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
+	testMap.closeDB()
+}
+
+func BenchmarkLevelDB(b *testing.B) {
+	b.Run("more reads", func(b *testing.B) {
+		benchmarkLevelDB(b, 90)
+	})
+	b.Run("more writes", func(b *testing.B) {
+		benchmarkLevelDB(b, 10)
+	})
+}
+
+func benchmarkBadgerDB(b *testing.B, readBias uint64) {
+	dbFolder, err := ioutil.TempDir("", "badgerDB")
+	if err != nil {
+		panic("unable to create temporary file for the badgerDB database")
+	}
+	testMap, err := newBadgerDB(dbFolder)
+	if err != nil {
+		panic(fmt.Sprintf("unable to initilize badgerDB: %s", err.Error()))
+	}
+	b.ResetTimer()
+	testMapPerformance(b, testMap, readBias, missReadsBias, newWrites)
+	testMap.closeDB()
+}
+
+func BenchmarkBadgerDB(b *testing.B) {
+	b.Run("more reads", func(b *testing.B) {
+		benchmarkBadgerDB(b, 90)
+	})
+	b.Run("more writes", func(b *testing.B) {
+		benchmarkBadgerDB(b, 10)
+	})
 }
