@@ -1,7 +1,6 @@
 package gossip_test
 
 import (
-	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -11,7 +10,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
@@ -29,24 +28,26 @@ func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gome
 var _ = Describe("Protocol", func() {
 
 	var (
-		dag1   *dag
-		dag2   *dag
-		rs1    gomel.RandomSource
-		rs2    gomel.RandomSource
-		proto1 gsync.Protocol
-		proto2 gsync.Protocol
-		servs  []network.Server
+		dag1     *dag
+		dag2     *dag
+		rs1      gomel.RandomSource
+		rs2      gomel.RandomSource
+		serv1    sync.Server
+		serv2    sync.Server
+		netservs []network.Server
 	)
 
 	BeforeEach(func() {
 		// Length 2 because the tests below only check communication between the first two processes.
 		// The protocol chooses who to synchronise with at random, so this is the only way to be sure.
-		servs = tests.NewNetwork(2)
+		netservs = tests.NewNetwork(2)
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, dag1, rs1, servs[0], NewDefaultPeerSource(2, 0), gomel.NopCallback, time.Second, zerolog.Nop())
-		proto2 = NewProtocol(1, dag2, rs2, servs[1], NewDefaultPeerSource(2, 1), gomel.NopCallback, time.Second, zerolog.Nop())
+		serv1 = NewServer(0, dag1, rs1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
+		serv2 = NewServer(1, dag2, rs2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
+		serv1.Start()
+		serv2.Start()
 	})
 
 	Describe("in a small dag", func() {
@@ -54,34 +55,21 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies are empty", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource()
 				rs1.Init(tdag1)
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
 				rs2 = tests.NewTestRandomSource()
 				rs2.Init(tdag2)
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
 			})
 
 			It("should not add anything", func() {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				go func() {
-					proto1.In()
-					wg.Done()
-				}()
-				go func() {
-					proto2.Out()
-					wg.Done()
-				}()
-				wg.Wait()
+				time.Sleep(time.Millisecond * 200)
+				serv1.StopOut()
+				tests.CloseNetwork(netservs)
+				serv2.StopIn()
 				Expect(dag1.attemptedAdd).To(BeEmpty())
 				Expect(dag2.attemptedAdd).To(BeEmpty())
 			})
@@ -94,35 +82,22 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit2.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource()
 				rs1.Init(tdag1)
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
 				theUnit = tdag1.MaximalUnitsPerProcess().Get(0)[0]
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
 				rs2 = tests.NewTestRandomSource()
 				rs2.Init(tdag2)
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
 			})
 
 			It("should add the unit to the second copy", func() {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				go func() {
-					proto1.In()
-					wg.Done()
-				}()
-				go func() {
-					proto2.Out()
-					wg.Done()
-				}()
-				wg.Wait()
+				time.Sleep(time.Millisecond * 200)
+				serv1.StopOut()
+				tests.CloseNetwork(netservs)
+				serv2.StopIn()
 				Expect(dag1.attemptedAdd).To(BeEmpty())
 				Expect(dag2.attemptedAdd).To(HaveLen(1))
 				Expect(dag2.attemptedAdd[0].Parents()).To(HaveLen(0))
@@ -135,34 +110,21 @@ var _ = Describe("Protocol", func() {
 		Context("when the second copy contains a single dealing unit", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource()
 				rs1.Init(tdag1)
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
+				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit2.txt", tests.NewTestDagFactory())
 				rs2 = tests.NewTestRandomSource()
 				rs2.Init(tdag2)
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
 			})
 
 			It("should add the unit to the first copy", func() {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				go func() {
-					proto1.In()
-					wg.Done()
-				}()
-				go func() {
-					proto2.Out()
-					wg.Done()
-				}()
-				wg.Wait()
+				time.Sleep(time.Millisecond * 200)
+				serv1.StopOut()
+				tests.CloseNetwork(netservs)
+				serv2.StopIn()
 				Expect(dag2.attemptedAdd).To(BeEmpty())
 				Expect(dag1.attemptedAdd).To(HaveLen(1))
 				Expect(dag1.attemptedAdd[0].Parents()).To(HaveLen(0))
@@ -174,34 +136,21 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies contain all the dealing units", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing2.txt", tests.NewTestDagFactory())
 				rs1 = tests.NewTestRandomSource()
 				rs1.Init(tdag1)
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
 				tdag2 := tdag1
 				rs2 = tests.NewTestRandomSource()
 				rs2.Init(tdag2)
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
 			})
 
 			It("should not add anything", func() {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				go func() {
-					proto1.In()
-					wg.Done()
-				}()
-				go func() {
-					proto2.Out()
-					wg.Done()
-				}()
-				wg.Wait()
+				time.Sleep(time.Millisecond * 200)
+				serv1.StopOut()
+				tests.CloseNetwork(netservs)
+				serv2.StopIn()
 				Expect(dag1.attemptedAdd).To(BeEmpty())
 				Expect(dag2.attemptedAdd).To(BeEmpty())
 			})

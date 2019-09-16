@@ -41,6 +41,7 @@ func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netse
 		dag:          dag,
 		randomSource: randomSource,
 		netserv:      netserv,
+		requests:     requests,
 		peerSource:   NewMixedPeerSource(dag.NProc(), pid, requests),
 		inUse:        inUse,
 		syncIds:      make([]uint32, nProc),

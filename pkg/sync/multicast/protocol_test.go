@@ -30,10 +30,9 @@ var _ = Describe("Protocol", func() {
 	var (
 		dags     []*dag
 		rs       []gomel.RandomSource
-		servs    []sync.Server
+		servs    []sync.MulticastServer
 		netservs []network.Server
-		request  gomel.Callback
-		serv     sync.Server
+		serv     sync.MulticastServer
 		theUnit  gomel.Unit
 	)
 
@@ -42,11 +41,8 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		serv, request = NewServer(0, dags[0], rs[0], netservs[0], gomel.NopCallback, time.Millisecond*200, sync.NopFallback(), zerolog.Nop())
-		servs = []sync.Server{serv}
-		serv.Start()
-		for i := 1; i < 4; i++ {
-			serv, _ = NewServer(uint16(i), dags[i], rs[i], netservs[i], gomel.NopCallback, time.Second, sync.NopFallback(), zerolog.Nop())
+		for i := 0; i < 4; i++ {
+			serv = NewServer(uint16(i), dags[i], rs[i], netservs[i], time.Millisecond*200, zerolog.Nop())
 			servs = append(servs, serv)
 			serv.Start()
 		}
@@ -75,7 +71,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to empty copies", func() {
-				request(nil, theUnit, nil)
+				servs[0].Send(theUnit)
 				time.Sleep(time.Millisecond * 500)
 				for i := 0; i < 4; i++ {
 					servs[i].StopOut()

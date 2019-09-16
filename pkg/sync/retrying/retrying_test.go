@@ -1,137 +1,104 @@
 package retrying_test
 
 import (
-	"sync"
-	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
-	. "gitlab.com/alephledger/consensus-go/pkg/sync/fallback"
+	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
+	. "gitlab.com/alephledger/consensus-go/pkg/sync/retrying"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-var _ = Describe("Retrying", func() {
+type dag struct {
+	*tests.Dag
+	attemptedAdd []gomel.Preunit
+}
+
+func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
+	dag.attemptedAdd = append(dag.attemptedAdd, unit)
+	dag.Dag.AddUnit(unit, rs, callback)
+}
+
+func pre(u gomel.Unit) gomel.Preunit {
+	parents := u.Parents()
+	hashes := make([]*gomel.Hash, len(parents))
+	for i := 0; i < len(parents); i++ {
+		hashes[i] = parents[i].Hash()
+	}
+	pu := creating.NewPreunit(u.Creator(), hashes, u.Data(), u.RandomSourceData())
+	pu.SetSignature(u.Signature())
+	return pu
+}
+
+var _ = Describe("Protocol", func() {
 
 	var (
-		dag      gomel.Dag
-		dags     []gomel.Dag
-		reqs     chan fetch.Request
-		fallback *Retrying
-		proto    gsync.Protocol
-		protos   []gsync.Protocol
-		servs    []network.Server
-		interval time.Duration
+		dag1     *dag
+		dag2     *dag
+		rs1      gomel.RandomSource
+		rs2      gomel.RandomSource
+		serv1    sync.QueryServer
+		serv2    sync.QueryServer
+		retr     sync.QueryServer
+		netservs []network.Server
 	)
 
 	BeforeEach(func() {
-		servs = tests.NewNetwork(10)
-		reqs = make(chan fetch.Request, 100)
+		netservs = tests.NewNetwork(10)
 	})
 
 	JustBeforeEach(func() {
-		baseFallback := NewFetch(dag, reqs)
-		rs1 := tests.NewTestRandomSource()
-		rs1.Init(dag)
-		fallback = NewRetrying(baseFallback, dag, rs1, interval, zerolog.Nop())
-		fallback.Start()
-		proto = fetch.NewProtocol(0, dag, rs1, reqs, servs[0], gomel.NopCallback, time.Second, fallback, zerolog.Nop())
-		for i, op := range dags {
-			trs := tests.NewTestRandomSource()
-			trs.Init(op)
-			protos = append(protos, fetch.NewProtocol(uint16(i+1), op, trs, reqs, servs[i+1], gomel.NopCallback, time.Second, nil, zerolog.Nop()))
-		}
+		serv1 = fetch.NewServer(0, dag1, rs1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
+		serv2 = fetch.NewServer(1, dag2, rs2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
+		retr = NewServer(dag1, rs1, time.Millisecond*100, zerolog.Nop())
+		retr.SetFallback(serv1)
+		serv1.Start()
+		serv2.Start()
+		retr.Start()
 	})
 
-	JustAfterEach(func() {
-		fallback.Stop()
-	})
+	Describe("with only two participants", func() {
 
-	Describe("when we did not make any units", func() {
-
-		var (
-			callee uint16
-		)
-
-		BeforeEach(func() {
-			callee = 1
-		})
-
-		Context("when requesting a unit with unknown parents", func() {
+		Context("when requesting a dealing unit", func() {
 
 			var (
-				theUnit gomel.Unit
+				unit gomel.Unit
+				pu   gomel.Preunit
 			)
 
 			BeforeEach(func() {
-				interval = 10 * time.Millisecond
-				dag, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				op, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
-				for range servs {
-					dags = append(dags, op)
-				}
-				dags = dags[1:]
-				maxes := op.MaximalUnitsPerProcess()
-				// Pick the hash of any maximal unit.
-				maxes.Iterate(func(units []gomel.Unit) bool {
-					for _, u := range units {
-						theUnit = u
-						return false
-					}
-					return true
-				})
+				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
+				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
+				maxes := dag2.MaximalUnitsPerProcess()
+				unit = maxes.Get(0)[0]
+				pu = pre(unit)
 			})
 
-			It("should eventually add the unit", func(done Done) {
-				var wg sync.WaitGroup
-				var quit int32
-				for _, prot := range protos {
-					wg.Add(1)
-					go func(p gsync.Protocol) {
-						defer wg.Done()
-						for atomic.LoadInt32(&quit) != 1 {
-							p.In()
-						}
-					}(prot)
-				}
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					for atomic.LoadInt32(&quit) != 1 {
-						proto.Out()
-					}
-				}()
-				req := fetch.Request{
-					Pid:    callee,
-					Hashes: []*gomel.Hash{theUnit.Hash()},
-				}
-				reqs <- req
-				added := false
-				uh := []*gomel.Hash{theUnit.Hash()}
-				for !added {
-					time.Sleep(4 * interval)
-					theUnitTransferred := dag.Get(uh)[0]
-					if theUnitTransferred != nil {
-						added = true
-						Expect(theUnitTransferred.Creator()).To(Equal(theUnit.Creator()))
-						Expect(theUnitTransferred.Signature()).To(Equal(theUnit.Signature()))
-						Expect(theUnitTransferred.Data()).To(Equal(theUnit.Data()))
-						Expect(theUnitTransferred.RandomSourceData()).To(Equal(theUnit.RandomSourceData()))
-						Expect(theUnitTransferred.Hash()).To(Equal(theUnit.Hash()))
-					}
-				}
-				atomic.StoreInt32(&quit, 1)
-				close(reqs)
-				wg.Wait()
-				tests.CloseNetwork(servs)
-				close(done)
-			}, 60)
+			It("should add it directly", func() {
+				retr.FindOut(pu)
+
+				time.Sleep(time.Millisecond * 500)
+				retr.StopIn()
+				serv1.StopOut()
+				tests.CloseNetwork(netservs)
+				serv2.StopIn()
+
+				Expect(dag1.attemptedAdd).To(HaveLen(1))
+				Expect(dag1.attemptedAdd[0].Creator()).To(Equal(unit.Creator()))
+				Expect(dag1.attemptedAdd[0].Signature()).To(Equal(unit.Signature()))
+				Expect(dag1.attemptedAdd[0].Data()).To(Equal(unit.Data()))
+				Expect(dag1.attemptedAdd[0].RandomSourceData()).To(Equal(unit.RandomSourceData()))
+				Expect(dag1.attemptedAdd[0].Hash()).To(Equal(unit.Hash()))
+			})
 
 		})
 
