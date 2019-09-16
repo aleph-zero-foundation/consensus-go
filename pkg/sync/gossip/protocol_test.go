@@ -16,21 +16,28 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type dag struct {
-	*tests.Dag
+type adder struct {
+	gomel.Adder
 	attemptedAdd []gomel.Preunit
 }
 
-func (dag *dag) AddUnit(unit gomel.Preunit, callback gomel.Callback) {
-	dag.attemptedAdd = append(dag.attemptedAdd, unit)
-	dag.Dag.AddUnit(unit, callback)
+func (a *adder) AddUnit(unit gomel.Preunit) error {
+	a.attemptedAdd = append(a.attemptedAdd, unit)
+	return a.Adder.AddUnit(unit)
+}
+
+func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+	a.attemptedAdd = append(a.attemptedAdd, units...)
+	return a.Adder.AddAntichain(units)
 }
 
 var _ = Describe("Protocol", func() {
 
 	var (
-		dag1   *dag
-		dag2   *dag
+		dag1   gomel.Dag
+		adder1 *adder
+		dag2   gomel.Dag
+		adder2 *adder
 		proto1 gsync.Protocol
 		proto2 gsync.Protocol
 		servs  []network.Server
@@ -43,8 +50,10 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		proto1 = NewProtocol(0, dag1, servs[0], NewDefaultPeerSource(2, 0), time.Second, zerolog.Nop())
-		proto2 = NewProtocol(1, dag2, servs[1], NewDefaultPeerSource(2, 1), time.Second, zerolog.Nop())
+		adder1 = &adder{tests.NewAdder(dag1), nil}
+		adder2 = &adder{tests.NewAdder(dag2), nil}
+		proto1 = NewProtocol(0, dag1, adder1, servs[0], NewDefaultPeerSource(2, 0), time.Second, zerolog.Nop())
+		proto2 = NewProtocol(1, dag2, adder2, servs[1], NewDefaultPeerSource(2, 1), time.Second, zerolog.Nop())
 	})
 
 	Describe("in a small dag", func() {
@@ -52,16 +61,8 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies are empty", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 			})
 
 			It("should not add anything", func() {
@@ -76,8 +77,8 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(dag1.attemptedAdd).To(BeEmpty())
-				Expect(dag2.attemptedAdd).To(BeEmpty())
+				Expect(adder1.attemptedAdd).To(BeEmpty())
+				Expect(adder2.attemptedAdd).To(BeEmpty())
 			})
 		})
 
@@ -88,17 +89,9 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
-				theUnit = tdag1.MaximalUnitsPerProcess().Get(0)[0]
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				theUnit = dag1.MaximalUnitsPerProcess().Get(0)[0]
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
 			})
 
 			It("should add the unit to the second copy", func() {
@@ -113,11 +106,11 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(dag1.attemptedAdd).To(BeEmpty())
-				Expect(dag2.attemptedAdd).To(HaveLen(1))
-				Expect(dag2.attemptedAdd[0].Parents()).To(HaveLen(0))
-				Expect(dag2.attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-				Expect(dag2.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+				Expect(adder1.attemptedAdd).To(BeEmpty())
+				Expect(adder2.attemptedAdd).To(HaveLen(1))
+				Expect(adder2.attemptedAdd[0].Parents()).To(HaveLen(0))
+				Expect(adder2.attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
+				Expect(adder2.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 			})
 
 		})
@@ -125,16 +118,8 @@ var _ = Describe("Protocol", func() {
 		Context("when the second copy contains a single dealing unit", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
 			})
 
 			It("should add the unit to the first copy", func() {
@@ -149,10 +134,10 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(dag2.attemptedAdd).To(BeEmpty())
-				Expect(dag1.attemptedAdd).To(HaveLen(1))
-				Expect(dag1.attemptedAdd[0].Parents()).To(HaveLen(0))
-				Expect(dag1.attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
+				Expect(adder2.attemptedAdd).To(BeEmpty())
+				Expect(adder1.attemptedAdd).To(HaveLen(1))
+				Expect(adder1.attemptedAdd[0].Parents()).To(HaveLen(0))
+				Expect(adder1.attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
 			})
 
 		})
@@ -160,16 +145,8 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies contain all the dealing units", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
-				dag1 = &dag{
-					Dag:          tdag1.(*tests.Dag),
-					attemptedAdd: nil,
-				}
-				tdag2 := tdag1
-				dag2 = &dag{
-					Dag:          tdag2.(*tests.Dag),
-					attemptedAdd: nil,
-				}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
+				dag2 = dag1
 			})
 
 			It("should not add anything", func() {
@@ -184,8 +161,8 @@ var _ = Describe("Protocol", func() {
 					wg.Done()
 				}()
 				wg.Wait()
-				Expect(dag1.attemptedAdd).To(BeEmpty())
-				Expect(dag2.attemptedAdd).To(BeEmpty())
+				Expect(adder1.attemptedAdd).To(BeEmpty())
+				Expect(adder2.attemptedAdd).To(BeEmpty())
 			})
 
 		})

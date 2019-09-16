@@ -9,10 +9,6 @@ type parentalCompliance struct {
 	check func(parents []gomel.Unit) error
 }
 
-func (dag *parentalCompliance) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 func (dag *parentalCompliance) Check(u gomel.Unit) error {
 	if err := dag.Dag.Check(u); err != nil {
 		return err

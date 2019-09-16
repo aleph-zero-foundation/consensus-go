@@ -17,6 +17,7 @@ import (
 type protocol struct {
 	pid        uint16
 	dag        gomel.Dag
+	adder      gomel.Adder
 	netserv    network.Server
 	peerSource PeerSource
 	timeout    time.Duration
@@ -26,7 +27,7 @@ type protocol struct {
 }
 
 // NewProtocol returns a new gossiping protocol.
-func NewProtocol(pid uint16, dag gomel.Dag, netserv network.Server, peerSource PeerSource, timeout time.Duration, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, peerSource PeerSource, timeout time.Duration, log zerolog.Logger) sync.Protocol {
 	nProc := dag.NProc()
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
@@ -35,6 +36,7 @@ func NewProtocol(pid uint16, dag gomel.Dag, netserv network.Server, peerSource P
 	return &protocol{
 		pid:        pid,
 		dag:        dag,
+		adder:      adder,
 		netserv:    netserv,
 		peerSource: peerSource,
 		timeout:    timeout,

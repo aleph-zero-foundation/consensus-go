@@ -21,10 +21,6 @@ func Signatures(dag gomel.Dag, keys []gomel.PublicKey) (gomel.Dag, error) {
 	}, nil
 }
 
-func (dag *signatureChecking) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 func (dag *signatureChecking) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	if int(pu.Creator()) >= len(dag.keys) {
 		return nil, errors.New("invalid creator")

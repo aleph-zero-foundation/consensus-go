@@ -1,8 +1,6 @@
 package check_test
 
 import (
-	"sync"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -69,34 +67,23 @@ var _ = Describe("Dag", func() {
 		nProcesses uint16
 		dag        gomel.Dag
 		addFirst   [][]*preunitMock
-		wg         sync.WaitGroup
 		pubKeys    []gomel.PublicKey
 		privKeys   []gomel.PrivateKey
 	)
-
-	AwaitAddUnit := func(pu gomel.Preunit, wg *sync.WaitGroup) {
-		wg.Add(1)
-		dag.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
-			defer GinkgoRecover()
-			defer wg.Done()
-			Expect(err).NotTo(HaveOccurred())
-		})
-	}
 
 	BeforeEach(func() {
 		nProcesses = 0
 		dag = nil
 		addFirst = nil
-		wg = sync.WaitGroup{}
 	})
 
 	JustBeforeEach(func() {
 		for _, pus := range addFirst {
 			for _, pu := range pus {
 				pu.SetSignature(privKeys[pu.creator].Sign(pu))
-				AwaitAddUnit(pu, &wg)
+				_, err := gomel.AddUnit(dag, pu)
+				Expect(err).NotTo(HaveOccurred())
 			}
-			wg.Wait()
 		}
 	})
 
@@ -151,16 +138,12 @@ var _ = Describe("Dag", func() {
 
 				Context("When the dag is empty", func() {
 
-					It("Should be added as a dealing unit", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(err).NotTo(HaveOccurred())
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result.Signature()).To(Equal(addedUnit.Signature()))
-							Expect(gomel.Prime(result)).To(BeTrue())
-							close(done)
-						})
+					It("Should be added as a dealing unit", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
+						Expect(result.Signature()).To(Equal(addedUnit.Signature()))
+						Expect(gomel.Prime(result)).To(BeTrue())
 					})
 
 				})
@@ -168,18 +151,14 @@ var _ = Describe("Dag", func() {
 				Context("When the dag already contains the unit", func() {
 
 					JustBeforeEach(func() {
-						AwaitAddUnit(addedUnit, &wg)
-						wg.Wait()
+						_, err := gomel.AddUnit(dag, addedUnit)
+						Expect(err).NotTo(HaveOccurred())
 					})
 
-					It("Should report that fact", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{pu.Hash()})[0])))
-							close(done)
-						})
+					It("Should report that fact", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(result).To(BeNil())
+						Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{addedUnit.Hash()})[0])))
 					})
 
 				})
@@ -192,16 +171,12 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
-					It("Should be added as a second dealing unit", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(err).NotTo(HaveOccurred())
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(gomel.Prime(result)).To(BeTrue())
-							Expect(len(result.Parents())).To(BeZero())
-							close(done)
-						})
+					It("Should be added as a second dealing unit", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
+						Expect(gomel.Prime(result)).To(BeTrue())
+						Expect(len(result.Parents())).To(BeZero())
 					})
 
 				})
@@ -218,14 +193,10 @@ var _ = Describe("Dag", func() {
 
 				Context("When the dag is empty", func() {
 
-					It("Should fail because of lack of parents", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewUnknownParents(1)))
-							close(done)
-						})
+					It("Should fail because of lack of parents", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(result).To(BeNil())
+						Expect(err).To(MatchError(gomel.NewUnknownParents(1)))
 					})
 
 				})
@@ -238,13 +209,10 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
-					It("Should fail because of too few parents", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(err).To(MatchError(gomel.NewComplianceError("Not enough parents")))
-							close(done)
-						})
+					It("Should fail because of too few parents", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(result).To(BeNil())
+						Expect(err).To(MatchError(gomel.NewComplianceError("Not enough parents")))
 					})
 
 				})
@@ -262,14 +230,10 @@ var _ = Describe("Dag", func() {
 
 				Context("When the dag is empty", func() {
 
-					It("Should fail because of lack of parents", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewUnknownParents(2)))
-							close(done)
-						})
+					It("Should fail because of lack of parents", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(result).To(BeNil())
+						Expect(err).To(MatchError(gomel.NewUnknownParents(2)))
 					})
 
 				})
@@ -282,14 +246,10 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
-					It("Should fail because of lack of parents", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewUnknownParents(1)))
-							close(done)
-						})
+					It("Should fail because of lack of parents", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(result).To(BeNil())
+						Expect(err).To(MatchError(gomel.NewUnknownParents(1)))
 					})
 
 				})
@@ -305,34 +265,26 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
 					})
 
-					It("Should add the unit successfully", func(done Done) {
-						dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(err).NotTo(HaveOccurred())
-							Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-							Expect(gomel.Prime(result)).To(BeFalse())
-							Expect(*result.Parents()[0].Hash()).To(Equal(*addedUnit.Parents()[0]))
-							Expect(*result.Parents()[1].Hash()).To(Equal(*addedUnit.Parents()[1]))
-							close(done)
-						})
+					It("Should add the unit successfully", func() {
+						result, err := gomel.AddUnit(dag, addedUnit)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
+						Expect(gomel.Prime(result)).To(BeFalse())
+						Expect(*result.Parents()[0].Hash()).To(Equal(*addedUnit.Parents()[0]))
+						Expect(*result.Parents()[1].Hash()).To(Equal(*addedUnit.Parents()[1]))
 					})
 
 					Context("When the dag already contains the unit", func() {
 
 						JustBeforeEach(func() {
-							AwaitAddUnit(addedUnit, &wg)
-							wg.Wait()
+							_, err := gomel.AddUnit(dag, addedUnit)
+							Expect(err).NotTo(HaveOccurred())
 						})
 
-						It("Should report that fact", func(done Done) {
-							dag.AddUnit(addedUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-								defer GinkgoRecover()
-								Expect(pu.Hash()).To(Equal(addedUnit.Hash()))
-								Expect(result).To(BeNil())
-								Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{pu.Hash()})[0])))
-								close(done)
-							})
+						It("Should report that fact", func() {
+							result, err := gomel.AddUnit(dag, addedUnit)
+							Expect(result).To(BeNil())
+							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{addedUnit.Hash()})[0])))
 						})
 
 					})
@@ -600,17 +552,14 @@ var _ = Describe("Dag", func() {
 
 			Describe("check valid unit", func() {
 
-				It("should confirm that a unit is valid", func(done Done) {
+				It("should confirm that a unit is valid", func() {
 					validUnit := pu1
 					validUnit.hash[0] = 4
 					validUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash}
-					(&validUnit).SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
+					validUnit.SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
 
-					dag.AddUnit(&validUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-						defer GinkgoRecover()
-						Expect(err).NotTo(HaveOccurred())
-						close(done)
-					})
+					_, err := gomel.AddUnit(dag, &validUnit)
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 
@@ -643,12 +592,9 @@ var _ = Describe("Dag", func() {
 						invalidUnit.parents = []*gomel.Hash{&pu4.hash, &pu5.hash}
 					})
 
-					It("should reject a unit", func(done Done) {
-						dag.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-							close(done)
-						})
+					It("should reject a unit", func() {
+						_, err := gomel.AddUnit(dag, &invalidUnit)
+						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 					})
 				})
 
@@ -677,12 +623,9 @@ var _ = Describe("Dag", func() {
 						invalidUnit.parents = []*gomel.Hash{&pu4.hash, &pu5.hash}
 					})
 
-					It("should reject a unit", func(done Done) {
-						dag.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-							close(done)
-						})
+					It("should reject a unit", func() {
+						_, err := gomel.AddUnit(dag, &invalidUnit)
+						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 					})
 				})
 
@@ -734,12 +677,9 @@ var _ = Describe("Dag", func() {
 						muted.SetSignature(privKeys[muted.creator].Sign(muted))
 					})
 
-					It("should reject a unit", func(done Done) {
-						dag.AddUnit(muted, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-							close(done)
-						})
+					It("should reject a unit", func() {
+						_, err := gomel.AddUnit(dag, muted)
+						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 					})
 				})
 
@@ -754,12 +694,9 @@ var _ = Describe("Dag", func() {
 							invalidUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash}
 						})
 
-						It("should reject a unit", func(done Done) {
-							dag.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-								defer GinkgoRecover()
-								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-								close(done)
-							})
+						It("should reject a unit", func() {
+							_, err := gomel.AddUnit(dag, &invalidUnit)
+							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 						})
 					})
 
@@ -772,13 +709,10 @@ var _ = Describe("Dag", func() {
 							invalidUnit.parents = []*gomel.Hash{&pu1.hash}
 						})
 
-						It("should reject a unit", func(done Done) {
+						It("should reject a unit", func() {
 
-							dag.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-								defer GinkgoRecover()
-								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-								close(done)
-							})
+							_, err := gomel.AddUnit(dag, &invalidUnit)
+							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 						})
 					})
 
@@ -791,13 +725,10 @@ var _ = Describe("Dag", func() {
 							invalidUnit.parents = []*gomel.Hash{&pu2.hash, &pu1.hash}
 						})
 
-						It("should reject a unit", func(done Done) {
+						It("should reject a unit", func() {
 
-							dag.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-								defer GinkgoRecover()
-								Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-								close(done)
-							})
+							_, err := gomel.AddUnit(dag, &invalidUnit)
+							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 						})
 					})
 				})
@@ -819,12 +750,9 @@ var _ = Describe("Dag", func() {
 						invalidUnit.parents = []*gomel.Hash{&pu3.hash, &pu2.hash, &pu4.hash}
 					})
 
-					It("should reject a unit", func(done Done) {
-						dag.AddUnit(&invalidUnit, func(pu gomel.Preunit, result gomel.Unit, err error) {
-							defer GinkgoRecover()
-							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-							close(done)
-						})
+					It("should reject a unit", func() {
+						_, err := gomel.AddUnit(dag, &invalidUnit)
+						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
 					})
 				})
 			})

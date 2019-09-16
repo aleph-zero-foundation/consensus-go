@@ -1,6 +1,4 @@
 // Package dag implements a basic dag that accepts any sequence of units.
-//
-// It also implements a wrapper that makes it possible to parallelize adding units made by different processes.
 package dag
 
 import (

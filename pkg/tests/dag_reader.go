@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -59,18 +58,9 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 		pu := NewPreunit(uint16(puCreator), parents, unitData, nil)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
-		var addingError error
-		var wg sync.WaitGroup
-		wg.Add(1)
-		dag.AddUnit(pu, func(_ gomel.Preunit, _ gomel.Unit, err error) {
-			if err != nil {
-				addingError = err
-			}
-			wg.Done()
-		})
-		wg.Wait()
-		if addingError != nil {
-			return nil, addingError
+		_, err := gomel.AddUnit(dag, pu)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return dag, nil

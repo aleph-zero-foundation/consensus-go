@@ -7,16 +7,15 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
 // Retrying is a wrapper for a fallback that continuously tries adding the problematic preunits to the dag.
 type Retrying struct {
 	dag      gomel.Dag
+	adder    gomel.Adder
 	inner    gsync.Fallback
 	interval time.Duration
 	backlog  *backlog
@@ -27,9 +26,10 @@ type Retrying struct {
 }
 
 // NewRetrying wraps the given fallback with a retrying routine that keeps trying to add problematic units.
-func NewRetrying(inner gsync.Fallback, dag gomel.Dag, interval time.Duration, log zerolog.Logger) *Retrying {
+func NewRetrying(inner gsync.Fallback, dag gomel.Dag, adder gomel.Adder, interval time.Duration, log zerolog.Logger) *Retrying {
 	return &Retrying{
 		dag:     dag,
+		adder:   adder,
 		inner:   inner,
 		backlog: newBacklog(),
 		deps:    newDeps(),
@@ -69,7 +69,7 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 	}
 	if len(missing) == 0 {
 		// we got the parents in the meantime, all is fine
-		go f.addUnit(pu)
+		f.addUnit(pu)
 		return false
 	}
 	// The code below has the invariant that if a unit is in dependencies, then it is also in the backlog.
@@ -105,8 +105,5 @@ func (f *Retrying) update() {
 }
 
 func (f *Retrying) addUnit(pu gomel.Preunit) {
-	err := add.Unit(f.dag, pu, gomel.NopCallback, gsync.NopFallback(), f.log)
-	if err != nil {
-		log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
-	}
+	gsync.LogAddUnitError(pu, f.adder.AddUnit(pu), gsync.NopFallback(), "retryingFallback.addUnit", f.log)
 }

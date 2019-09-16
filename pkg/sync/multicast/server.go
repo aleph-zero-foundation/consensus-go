@@ -17,29 +17,27 @@ import (
 )
 
 // NewServer returns a server that runs the multicast protocol, and a callback for the create service.
-func NewServer(pid uint16, dag gomel.Dag, netserv network.Server, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, gomel.Callback) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) (sync.Server, func(gomel.Unit)) {
 	requests := make(chan request, requestsSize*dag.NProc())
-	proto := newProtocol(pid, dag, requests, netserv, timeout, fallback, log)
+	proto := newProtocol(pid, dag, adder, requests, netserv, timeout, fallback, log)
 	return &server{
 			requests: requests,
 			fallback: fallback,
 			outPool:  sync.NewPool(mcOutWPSize*int(dag.NProc()), proto.Out),
 			inPool:   sync.NewPool(mcInWPSize*int(dag.NProc()), proto.In),
-		}, func(_ gomel.Preunit, unit gomel.Unit, err error) {
-			if err == nil {
-				buffer := &bytes.Buffer{}
-				encoder := custom.NewEncoder(buffer)
-				err := encoder.EncodeUnit(unit)
-				if err != nil {
-					return
+		}, func(unit gomel.Unit) {
+			buffer := &bytes.Buffer{}
+			encoder := custom.NewEncoder(buffer)
+			err := encoder.EncodeUnit(unit)
+			if err != nil {
+				return
+			}
+			encUnit := buffer.Bytes()[:]
+			for _, i := range rand.Perm(int(dag.NProc())) {
+				if i == int(pid) {
+					continue
 				}
-				encUnit := buffer.Bytes()[:]
-				for _, i := range rand.Perm(int(dag.NProc())) {
-					if i == int(pid) {
-						continue
-					}
-					requests <- request{encUnit, unit.Height(), uint16(i)}
-				}
+				requests <- request{encUnit, unit.Height(), uint16(i)}
 			}
 		}
 }

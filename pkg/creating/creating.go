@@ -199,11 +199,12 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 //
 // The procedure assumes no forks
 // and should be used only in the setup phase.
-func NewNonSkippingUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource) (gomel.Preunit, error) {
+// It also returns the level of the created unit.
+func NewNonSkippingUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource) (gomel.Preunit, int, error) {
 	mu := dag.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	if predecessor == nil {
-		return newDealingUnit(creator, dag.NProc(), data, rs), nil
+		return newDealingUnit(creator, dag.NProc(), data, rs), 0, nil
 	}
 	level := predecessor.Level()
 	parentsOnLevel := uint16(1)
@@ -232,23 +233,24 @@ func NewNonSkippingUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.Ran
 		})
 		rsData, err := rs.DataToInclude(creator, parents, level+1)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		return NewPreunit(creator, hashes(parents), data, rsData), nil
+		return NewPreunit(creator, hashes(parents), data, rsData), level + 1, nil
 	}
-	return nil, &noAvailableParents{}
+	return nil, 0, &noAvailableParents{}
 }
 
 // NewUnit creates a preunit for a given process aiming at desiredParents parents.
 // The parents are chosen to satisfy the expand primes rule.
 // If there don't exist at least two legal parents (one of which is the predecessor) it returns an error.
 // It also returns an error if requirePrime is true and no prime can be produced.
-func NewUnit(dag gomel.Dag, creator, desiredParents uint16, data []byte, rs gomel.RandomSource, requirePrime bool) (gomel.Preunit, error) {
+// It returns the level of the created unit and whether it is prime.
+func NewUnit(dag gomel.Dag, creator, desiredParents uint16, data []byte, rs gomel.RandomSource, requirePrime bool) (gomel.Preunit, int, bool, error) {
 	mu := dag.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
 	if predecessor == nil {
-		return newDealingUnit(creator, dag.NProc(), data, rs), nil
+		return newDealingUnit(creator, dag.NProc(), data, rs), 0, true, nil
 	}
 	predecessorLevel := predecessor.Level()
 	parents := []gomel.Unit{predecessor}
@@ -280,11 +282,11 @@ func NewUnit(dag gomel.Dag, creator, desiredParents uint16, data []byte, rs gome
 		}
 	}
 	if len(parents) < 2 || (requirePrime && !isPrime) {
-		return nil, &noAvailableParents{}
+		return nil, 0, false, &noAvailableParents{}
 	}
 	rsData, err := rs.DataToInclude(creator, parents, resultLevel)
 	if err != nil {
-		return nil, err
+		return nil, 0, false, err
 	}
-	return NewPreunit(creator, hashes(parents), data, rsData), nil
+	return NewPreunit(creator, hashes(parents), data, rsData), resultLevel, isPrime, nil
 }

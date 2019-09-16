@@ -9,10 +9,6 @@ type generalCompliance struct {
 	check func(dag gomel.Dag, u gomel.Unit) error
 }
 
-func (dag *generalCompliance) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 func (dag *generalCompliance) Check(u gomel.Unit) error {
 	if err := dag.Dag.Check(u); err != nil {
 		return err

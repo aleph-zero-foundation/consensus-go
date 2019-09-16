@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -31,15 +32,22 @@ type service struct {
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, gomel.Dag) {
 	primeAlert := make(chan struct{}, 1)
 	return &service{
-		pid:                 config.Pid,
-		linearOrdering:      linear.NewOrdering(dag, randomSource, config.OrderStartLevel, config.CRPFixedPrefix, log),
-		orderedUnits:        orderedUnits,
-		extendOrderRequests: make(chan int, 10),
-		primeAlert:          primeAlert,
-		exitChan:            make(chan struct{}),
-		currentRound:        config.OrderStartLevel,
-		log:                 log,
-	}, &orderDag{dag, primeAlert}
+			pid:                 config.Pid,
+			linearOrdering:      linear.NewOrdering(dag, randomSource, config.OrderStartLevel, config.CRPFixedPrefix, log),
+			orderedUnits:        orderedUnits,
+			extendOrderRequests: make(chan int, 10),
+			primeAlert:          primeAlert,
+			exitChan:            make(chan struct{}),
+			currentRound:        config.OrderStartLevel,
+			log:                 log,
+		}, chdag.AfterEmplace(dag, func(u gomel.Unit) {
+			if gomel.Prime(u) {
+				select {
+				case primeAlert <- struct{}{}:
+				default:
+				}
+			}
+		})
 }
 
 func (s *service) attemptOrdering() {

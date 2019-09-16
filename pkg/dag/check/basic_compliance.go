@@ -19,10 +19,6 @@ func BasicCompliance(dag gomel.Dag) gomel.Dag {
 	return &basicCompliance{dag}
 }
 
-func (dag *basicCompliance) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 func (dag *basicCompliance) Check(u gomel.Unit) error {
 	if err := dag.Dag.Check(u); err != nil {
 		return err

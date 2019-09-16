@@ -16,10 +16,6 @@ func PrimeOnlyNoSkipping(dag gomel.Dag) gomel.Dag {
 	return &primeOnlyNoSkipping{dag}
 }
 
-func (dag *primeOnlyNoSkipping) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 func (dag *primeOnlyNoSkipping) Check(u gomel.Unit) error {
 	if err := dag.Dag.Check(u); err != nil {
 		return err
@@ -41,10 +37,6 @@ type noForks struct {
 // NoForks returns a dag that will error on adding a fork.
 func NoForks(dag gomel.Dag) gomel.Dag {
 	return &noForks{dag}
-}
-
-func (dag *noForks) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
 }
 
 func (dag *noForks) Check(u gomel.Unit) error {

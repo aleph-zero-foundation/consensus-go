@@ -9,10 +9,6 @@ type checkAndUpdate struct {
 	b *Beacon
 }
 
-func (dag *checkAndUpdate) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 func (dag *checkAndUpdate) Check(u gomel.Unit) error {
 	if err := dag.Dag.Check(u); err != nil {
 		return err

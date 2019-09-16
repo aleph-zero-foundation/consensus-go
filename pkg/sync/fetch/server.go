@@ -10,8 +10,8 @@ import (
 )
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(pid uint16, dag gomel.Dag, reqs chan Request, netserv network.Server, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger, nOut, nIn int) sync.Server {
-	proto := NewProtocol(pid, dag, reqs, netserv, timeout, fallback, log)
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, reqs chan Request, netserv network.Server, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger, nOut, nIn int) sync.Server {
+	proto := NewProtocol(pid, dag, adder, reqs, netserv, timeout, fallback, log)
 	return &server{
 		reqs:    reqs,
 		outPool: sync.NewPool(nOut, proto.Out),

@@ -38,11 +38,6 @@ func newDag(dagConfiguration gomel.DagConfig) *Dag {
 	return newDag
 }
 
-// AddUnit adds a unit in a thread safe manner without trying to be clever.
-func (dag *Dag) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 // Decode the given preunit to a unit.
 func (dag *Dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	var u unit

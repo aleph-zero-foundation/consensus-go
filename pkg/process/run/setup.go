@@ -9,6 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/parallel"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
@@ -49,21 +50,23 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	rs := beacon.New(config.Create.Pid)
 	dag = rs.Bind(dag)
 
-	orderService, dag := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	orderService, orderingDag := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 
-	dag, addService := chdag.Parallelize(dag)
+	addService := &parallel.Parallel{}
+	orderingAdder := addService.Register(orderingDag)
 	addService.Start()
 	defer addService.Stop()
 
-	syncService, requestMulticast, err := sync.NewService(dag, config.SyncSetup, log)
+	syncService, _, err := sync.NewService(orderingDag, orderingAdder, config.SyncSetup, log)
 	if err != nil {
 		return
 	}
-	rmcService, unitsToRMC, err := rmc.NewService(dag, rs, config.RMC, log)
+	rmcService, rmcDag, err := rmc.NewService(orderingDag, config.RMC, log)
 	if err != nil {
 		return
 	}
-	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.ChannelCallback(unitsToRMC), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
+	rmcAdder := addService.Register(rmcDag)
+	createService, err := create.NewService(rmcDag, rmcAdder, rs, config.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return
 	}
@@ -102,5 +105,4 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	time.Sleep(60 * time.Second)
 	rmcService.Stop()
 	<-dagFinished
-	close(unitsToRMC)
 }

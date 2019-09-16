@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/big"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,16 +36,11 @@ var _ = Describe("Beacon", func() {
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
 			for creator := uint16(0); creator < n; creator++ {
-				pu, err := creating.NewNonSkippingUnit(dag[creator], creator, []byte{}, rs[creator])
+				pu, _, err := creating.NewNonSkippingUnit(dag[creator], creator, []byte{}, rs[creator])
 				Expect(err).NotTo(HaveOccurred())
 				for pid := uint16(0); pid < n; pid++ {
-					var wg sync.WaitGroup
-					wg.Add(1)
-					dag[pid].AddUnit(pu, func(_ gomel.Preunit, u gomel.Unit, err error) {
-						defer wg.Done()
-						Expect(err).NotTo(HaveOccurred())
-					})
-					wg.Wait()
+					_, err = gomel.AddUnit(dag[pid], pu)
+					Expect(err).NotTo(HaveOccurred())
 				}
 			}
 		}

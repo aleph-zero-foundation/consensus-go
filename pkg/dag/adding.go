@@ -4,10 +4,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-func (dag *dag) AddUnit(pu gomel.Preunit, callback gomel.Callback) {
-	gomel.AddUnit(dag, pu, callback)
-}
-
 func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	if pu.Creator() < 0 || pu.Creator() >= dag.nProcesses {
 		return nil, gomel.NewDataError("invalid creator")
