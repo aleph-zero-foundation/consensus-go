@@ -18,11 +18,13 @@ type Server interface {
 // QueryServer is a Server that can find out information about an unknown preunit.
 type QueryServer interface {
 	Server
+	// FindOut requests information about a problematic preunit.
 	FindOut(gomel.Preunit)
 }
 
 // MulticastServer is a Server that can multicast units to other committee members.
 type MulticastServer interface {
 	Server
+	// Send multicasts a unit to all other committee members.
 	Send(gomel.Unit)
 }

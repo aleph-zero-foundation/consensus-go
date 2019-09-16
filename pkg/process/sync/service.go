@@ -27,10 +27,9 @@ type service struct {
 	log          zerolog.Logger
 }
 
-// NewService creates a new syncing service for the given dag, with the given config.
-// When units received from a sync are added to the poset primeAlert is called on them.
-// The returned callback should be called on units created by this process after they are added to the poset.
-// It is used to multicast newly created units, when multicast is in use.
+// NewService creates a new syncing service and the function for multicasting units.
+// Each config entry corresponds to a separate sync.Server.
+// The returned function should be called on units created by this process after they are added to the poset.
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err

@@ -26,7 +26,7 @@ type server struct {
 	log      zerolog.Logger
 }
 
-// NewServer wraps the given fallback with a retrying routine that keeps trying to add problematic units.
+// NewServer creates a server that runs a retrying routine that keeps trying to add problematic units.
 func NewServer(dag gomel.Dag, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) gsync.QueryServer {
 	return &server{
 		dag:     dag,
@@ -44,13 +44,11 @@ func (f *server) FindOut(preunit gomel.Preunit) {
 	}
 }
 
-// Start runs a goroutine that attempts to add units from the backlog in set intervals.
 func (f *server) Start() {
 	f.wg.Add(1)
 	go f.work()
 }
 
-// Stop signals the adding goroutine to halt and blocks until it does.
 func (f *server) StopIn() {
 	atomic.StoreInt32(&f.quit, 1)
 	f.wg.Wait()

@@ -1,3 +1,6 @@
+// Package gossip implements a protocol for synchronising dags through gossiping.
+//
+// This protocol should always succeed with adding units received from honest peers, so it needs no fallback.
 package gossip
 
 import (
@@ -67,6 +70,7 @@ func (s *server) SetFallback(qs sync.QueryServer) {
 	s.fallback = qs
 }
 
+// FindOut requests next gossip to happen with the creator of a problematic preunit.
 func (s *server) FindOut(preunit gomel.Preunit) {
 	select {
 	case s.requests <- preunit.Creator():

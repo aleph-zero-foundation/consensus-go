@@ -1,3 +1,7 @@
+// Package fetch implements a mechanism of fetching specific units with known hashes.
+//
+// This protocol cannot be used for general syncing, because usually we don't know the hashes of units we would like to receive in advance.
+// It is only useful as a fallback mechanism.
 package fetch
 
 import (
@@ -65,6 +69,7 @@ func (s *server) SetFallback(qs sync.QueryServer) {
 	s.fallback = qs
 }
 
+// FindOut builds a fetch request containing all the unknown parents of a problematic preunit.
 func (s *server) FindOut(preunit gomel.Preunit) {
 	hashes := preunit.Parents()
 	parents := s.dag.Get(hashes)

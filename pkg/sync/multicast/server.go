@@ -41,7 +41,7 @@ type server struct {
 	log          zerolog.Logger
 }
 
-// NewServer returns a server that runs the multicast protocol, and a callback for the create service.
+// NewServer returns a server that runs the multicast protocol.
 func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
 	nProc := int(dag.NProc())
 	requests := make([]chan request, nProc)
