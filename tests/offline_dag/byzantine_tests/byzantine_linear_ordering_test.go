@@ -531,17 +531,10 @@ func testForkingChangingParents(forker forker) error {
 	return helpers.Test(pubKeys, privKeys, helpers.NewDefaultConfigurations(nProcesses), testingRoutine)
 }
 
-// NOTE this was copied from voting.go
-func simpleCoin(u gomel.Unit, level int) bool {
-	index := level % (8 * len(u.Hash()))
-	byteIndex, bitIndex := index/8, index%8
-	return u.Hash()[byteIndex]&(1<<uint(bitIndex)) > 0
-}
-
-func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan bool {
+func fixCommonVotes(commonVotes <-chan bool, initialVotingRound int) <-chan bool {
 	fixedVotes := make(chan bool)
 	go func() {
-		for it := uint64(0); it < initialVotingRound; it++ {
+		for it := 0; it < initialVotingRound; it++ {
 			fixedVotes <- true
 		}
 		for vote := range commonVotes {
@@ -556,17 +549,16 @@ func newDefaultCommonVote(uc gomel.Unit, initialVotingRound int, lastDeterminist
 	commonVotes := make(chan bool)
 	const deterministicPrefix = 10
 	go func() {
-		for round := 0; round < deterministicPrefix; round++ {
-			if round%2 == 0 {
-				commonVotes <- false
-			}
+		commonVotes <- true
+		commonVotes <- false
+		for round := 4; round <= deterministicPrefix; round++ {
 			commonVotes <- true
 		}
 
 		// use the simplecoin to predict future common votes
 		lastLevel := uc.Level() + int(lastDeterministicRound)
-		for round := int(initialVotingRound) + deterministicPrefix; uc.Level()+round < lastLevel; round++ {
-			commonVotes <- simpleCoin(uc, round)
+		for level := uc.Level() + int(deterministicPrefix) + 1; level <= lastLevel; level++ {
+			commonVotes <- helpers.SimpleCoin(uc.Creator(), level+1)
 		}
 		close(commonVotes)
 	}()
@@ -1165,7 +1157,7 @@ func testLongTimeUndecidedStrategy() error {
 		nUnits                      = 1000
 		maxParents                  = nProcesses
 		numberOfDeterministicRounds = 50
-		decidingLevel               = 3
+		initialVotingRound          = 1
 	)
 
 	conf := config.NewDefaultConfiguration()
@@ -1184,7 +1176,7 @@ func testLongTimeUndecidedStrategy() error {
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 
 	unitAdder, stopCondition :=
-		longTimeUndecidedStrategy(&startLevel, decidingLevel, numberOfDeterministicRounds, crp)
+		longTimeUndecidedStrategy(&startLevel, initialVotingRound, numberOfDeterministicRounds, crp)
 
 	checkIfUndecidedVerifier :=
 		func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
@@ -1202,7 +1194,7 @@ func testLongTimeUndecidedStrategy() error {
 					logger,
 				)
 
-				for tu := ordering.DecideTiming(); tu != nil && tu.Level() < startLevel; {
+				for tu := ordering.DecideTiming(); tu != nil && tu.Level() < int(startLevel)-1; {
 					tu = ordering.DecideTiming()
 				}
 				if unit := ordering.DecideTiming(); unit != nil && unit.Level() >= startLevel {

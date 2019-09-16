@@ -105,9 +105,6 @@ func coinToss(uc gomel.Unit, level int, rs gomel.RandomSource) bool {
 }
 
 func (uv *unanimousVoter) commonVote(uc gomel.Unit, level int) vote {
-	if level <= uc.Level() {
-		return undecided
-	}
 	round := level - uc.Level()
 	if round <= firstVotingRound {
 		// "Default vote is asked on too low unit level."
