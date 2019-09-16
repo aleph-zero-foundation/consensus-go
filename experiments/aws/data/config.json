@@ -3,7 +3,7 @@
 
 	"PrimeOnly": true,
 
-	"CanSkipLevel": true, 
+	"CanSkipLevel": true,
 
 	"CreateDelay": 0.1,
 
@@ -14,16 +14,20 @@
         "Params": {
             "nIn": "20",
             "nOut": "40",
-            "timeout": "2",
-            "retryingFallback": "fetch",
-            "retryingInterval": "0.3"
+            "timeout": "2s",
             },
         "Fallback": "retrying"
-        }, {
+    }, {
+        "Type": "retrying",
+        "Params": {
+            "interval": "0.3s"
+        },
+        "Fallback": "fetch"
+    }, {
         "Type": "multicast",
         "Params": {
-            "mcType": "tcp",
-            "timeout": "2"
+            "network": "tcp",
+            "timeout": "2s"
         },
         "Fallback": "retrying"
     }],

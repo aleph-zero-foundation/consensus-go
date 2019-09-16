@@ -46,11 +46,10 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 	for _, c := range configs {
 		var netserv network.Server
 
-		tf, err := strconv.ParseFloat(c.Params["timeout"], 64)
+		timeout, err := time.ParseDuration(c.Params["timeout"])
 		if err != nil {
 			return nil, nil, err
 		}
-		timeout := time.Duration(tf) * time.Second
 
 		switch c.Type {
 		case "multicast":
@@ -92,11 +91,10 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 
 		case "retrying":
 			log := log.With().Int(logging.Service, logging.RetryingService).Logger()
-			rif, err := strconv.ParseFloat(c.Params["interval"], 64)
+			interval, err := time.ParseDuration(c.Params["interval"])
 			if err != nil {
 				return nil, nil, err
 			}
-			interval := time.Millisecond * time.Duration(1000*rif)
 			server := retrying.NewServer(dag, randomSource, interval, log)
 			s.queryServers[c.Type] = server
 			servmap[c.Type] = server

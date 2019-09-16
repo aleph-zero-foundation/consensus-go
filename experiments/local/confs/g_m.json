@@ -3,7 +3,7 @@
 
 		"PrimeOnly": true,
 
-        "CanSkipLevel": true, 
+        "CanSkipLevel": true,
 
 		"CreateDelay": 0.1,
 
@@ -14,13 +14,13 @@
             "Params": {
                 "nIn": "3",
                 "nOut": "2",
-                "timeout": "2"},
+                "timeout": "2s"},
             "Fallback": ""
         }, {
             "Type": "multicast",
             "Params": {
-                "mcType": "tcp",
-                "timeout": "2"},
+                "network": "tcp",
+                "timeout": "2s"},
             "Fallback": ""
         } ],
 
