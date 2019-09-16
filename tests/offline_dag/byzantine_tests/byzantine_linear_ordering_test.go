@@ -531,10 +531,10 @@ func testForkingChangingParents(forker forker) error {
 	return helpers.Test(pubKeys, privKeys, helpers.NewDefaultConfigurations(nProcesses), testingRoutine)
 }
 
-func fixCommonVotes(commonVotes <-chan bool, initialVotingRound uint64) <-chan bool {
+func fixCommonVotes(commonVotes <-chan bool, initialVotingRound int) <-chan bool {
 	fixedVotes := make(chan bool)
 	go func() {
-		for it := uint64(0); it < initialVotingRound; it++ {
+		for it := 0; it < initialVotingRound; it++ {
 			fixedVotes <- true
 		}
 		for vote := range commonVotes {
@@ -1156,8 +1156,8 @@ func testLongTimeUndecidedStrategy() error {
 		nProcesses                  = 21
 		nUnits                      = 1000
 		maxParents                  = nProcesses
-		numberOfDeterministicRounds = uint64(50)
-		initialVotingRound          = uint64(1)
+		numberOfDeterministicRounds = 50
+		initialVotingRound          = 1
 	)
 
 	conf := config.NewDefaultConfiguration()

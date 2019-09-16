@@ -563,7 +563,7 @@ func NewNoOpVerifier() DagVerifier {
 }
 
 // SimpleCoin returns a pseudo-random bit that is only dependent on the value of the level parameter.
-func SimpleCoin(pid, level int) bool {
+func SimpleCoin(pid uint16, level int) bool {
 	rand := rand.New(rand.NewSource(int64(level)))
 	return rand.Int()%2 == 0
 }
@@ -577,7 +577,7 @@ func newTestRandomSource() gomel.RandomSource {
 func (rs *testRandomSource) Init(dag gomel.Dag) {
 }
 
-func (rs *testRandomSource) RandomBytes(pid, level int) []byte {
+func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 	if SimpleCoin(pid, level) {
 		return []byte{0}
 	}
@@ -591,7 +591,7 @@ func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
 	return nil
 }
 
-func (*testRandomSource) DataToInclude(int, []gomel.Unit, int) ([]byte, error) {
+func (*testRandomSource) DataToInclude(uint16, []gomel.Unit, int) ([]byte, error) {
 	return nil, nil
 }
 
@@ -603,7 +603,7 @@ func Test(
 	testingRoutine *TestingRoutine,
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) gomel.RandomSource {
-		rs := coin.NewFixedCoin(dag.NProc(), int(pid), 0)
+		rs := coin.NewFixedCoin(dag.NProc(), pid, 0)
 		rs.Init(dag)
 		return rs
 	}
