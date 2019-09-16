@@ -70,12 +70,10 @@ func (p *perPidPool) Start() {
 	p.wg.Add(p.multiple * int(p.nProc))
 	for i := uint16(0); i < p.nProc; i++ {
 		for j := 0; j < p.multiple; j++ {
+			i := i
 			go func() {
 				defer p.wg.Done()
-				for {
-					if atomic.LoadInt32(&p.quit) > 0 {
-						return
-					}
+				for atomic.LoadInt32(&p.quit) == 0 {
 					p.work(i)
 				}
 			}()
