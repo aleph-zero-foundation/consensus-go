@@ -54,7 +54,7 @@ func newForkerUsingDifferentDataStrategy() forker {
 func createForkUsingNewUnit(parentsCount uint16) forker {
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		pu, err := creating.NewUnit(dag, preunit.Creator(), parentsCount, helpers.NewDefaultDataContent(), rs, false)
+		pu, _, _, err := creating.NewUnit(dag, preunit.Creator(), parentsCount, helpers.NewDefaultDataContent(), rs, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
@@ -622,7 +622,7 @@ func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 	adder := func(units []gomel.Unit, dag gomel.Dag, rs gomel.RandomSource) error {
 		for _, unit := range units {
 			preunit := unitToPreunit(unit)
-			_, err := helpers.AddToDag(dag, preunit)
+			_, err := gomel.AddUnit(dag, preunit)
 			if err != nil {
 				return err
 			}
@@ -1057,12 +1057,12 @@ func buildOneLevelUp(
 			if createdOnLevel {
 				break
 			}
-			preunit, err := creating.NewUnit(dag, ids[ix], ones, helpers.NewDefaultDataContent(), rss[ix], true)
+			preunit, _, _, err := creating.NewUnit(dag, ids[ix], ones, helpers.NewDefaultDataContent(), rss[ix], true)
 			if err != nil {
 				return nil, fmt.Errorf("error while creating a unit for dag no %d: %s", ids[ix], err.Error())
 			}
 			// add only to its creator's dag
-			addedUnit, err := helpers.AddToDag(dag, preunit)
+			addedUnit, err := gomel.AddUnit(dag, preunit)
 			if err != nil {
 				return nil, fmt.Errorf("error while adding to dag no %d: %s", ids[ix], err.Error())
 			}
@@ -1111,7 +1111,7 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 
 			triggeringDag := crp(*startLevel)
 			fmt.Println("triggering dag no", triggeringDag)
-			triggeringPreunit, err := creating.NewUnit(
+			triggeringPreunit, _, _, err := creating.NewUnit(
 				dags[triggeringDag],
 				triggeringDag,
 				uint16(len(dags)),
@@ -1121,7 +1121,7 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 			if err != nil {
 				return err
 			}
-			triggeringUnit, err := helpers.AddToDag(dags[triggeringDag], triggeringPreunit)
+			triggeringUnit, err := gomel.AddUnit(dags[triggeringDag], triggeringPreunit)
 			if err != nil {
 				return err
 			}

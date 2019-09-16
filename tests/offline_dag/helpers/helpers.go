@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"os"
 	"sort"
-	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
@@ -122,7 +121,7 @@ func NewNoOpAdder() AddingHandler {
 // NewDefaultCreator creates an instance of Creator that when called attempts to create a unit using default data.
 func NewDefaultCreator(maxParents uint16) Creator {
 	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		pu, err := creating.NewUnit(dag, creator, maxParents, NewDefaultDataContent(), rs, false)
+		pu, _, _, err := creating.NewUnit(dag, creator, maxParents, NewDefaultDataContent(), rs, false)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
 			return nil, err
@@ -132,26 +131,11 @@ func NewDefaultCreator(maxParents uint16) Creator {
 	}
 }
 
-// AddToDag is a helper method for synchronous addition of a unit to a given dag.
-func AddToDag(dag gomel.Dag, pu gomel.Preunit) (gomel.Unit, error) {
-	var result gomel.Unit
-	var caughtError error
-	var wg sync.WaitGroup
-	wg.Add(1)
-	dag.AddUnit(pu, func(pu gomel.Preunit, u gomel.Unit, err error) {
-		result = u
-		caughtError = err
-		wg.Done()
-	})
-	wg.Wait()
-	return result, caughtError
-}
-
 // AddToDags is a helper function that adds a given unit to all provided dags.
 func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (gomel.Unit, error) {
 	var resultUnit gomel.Unit
 	for ix, dag := range dags {
-		result, err := AddToDag(dag, unit)
+		result, err := gomel.AddUnit(dag, unit)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +150,7 @@ func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (
 func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 	var resultUnit gomel.Unit
 	for _, dag := range dags {
-		result, err := AddToDag(dag, unit)
+		result, err := gomel.AddUnit(dag, unit)
 		if resultUnit == nil {
 			if result != nil {
 				resultUnit = result
@@ -220,7 +204,7 @@ func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag) error 
 		})
 
 		for _, pu := range units {
-			if _, err := AddToDag(dag, pu); err != nil {
+			if _, err := gomel.AddUnit(dag, pu); err != nil {
 				return err
 			}
 		}
@@ -623,7 +607,7 @@ func TestUsingTestRandomSource(
 
 // MakeStandardDag returns a daag with standard checks.
 func MakeStandardDag(dc gomel.DagConfig) gomel.Dag {
-	dag, _ := check.Signatures(dag.New(len(dc.Keys)), dc.Keys)
+	dag, _ := check.Signatures(dag.New(uint16(len(dc.Keys))), dc.Keys)
 	return check.ExpandPrimes(check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentDiversity(check.BasicCompliance(dag)))))
 }
 
