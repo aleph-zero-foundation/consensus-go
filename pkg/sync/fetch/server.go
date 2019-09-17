@@ -46,8 +46,8 @@ func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netse
 		timeout:      timeout,
 		log:          log,
 	}
-	s.outPool = sync.NewPool(nOut, s.Out)
-	s.inPool = sync.NewPool(nIn, s.In)
+	s.outPool = sync.NewPool(nOut, s.out)
+	s.inPool = sync.NewPool(nIn, s.in)
 	return s
 }
 

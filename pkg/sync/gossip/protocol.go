@@ -5,7 +5,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
-func (p *server) In() {
+func (p *server) in() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
@@ -14,7 +14,7 @@ func (p *server) In() {
 	conn.TimeoutAfter(p.timeout)
 	pid, sid, err := handshake.AcceptGreeting(conn)
 	if err != nil {
-		p.log.Error().Str("where", "gossip.In.greeting").Msg(err.Error())
+		p.log.Error().Str("where", "gossip.in.greeting").Msg(err.Error())
 		return
 	}
 	if int(pid) >= len(p.inUse) {
@@ -30,7 +30,7 @@ func (p *server) In() {
 	p.inExchange(conn)
 }
 
-func (p *server) Out() {
+func (p *server) out() {
 	remotePid := p.peerSource.NextPeer()
 	m := p.inUse[remotePid]
 	if !m.tryAcquire() {
@@ -39,7 +39,7 @@ func (p *server) Out() {
 	defer m.release()
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "gossip.Out.dial").Msg(err.Error())
+		p.log.Error().Str("where", "gossip.out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
@@ -48,7 +48,7 @@ func (p *server) Out() {
 	p.syncIds[remotePid]++
 	err = handshake.Greet(conn, p.pid, sid)
 	if err != nil {
-		p.log.Error().Str("where", "gossip.Out.greeting").Msg(err.Error())
+		p.log.Error().Str("where", "gossip.out.greeting").Msg(err.Error())
 		return
 	}
 	conn.SetLogger(p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger())

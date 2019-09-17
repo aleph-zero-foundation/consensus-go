@@ -14,7 +14,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
-func (p *server) In() {
+func (p *server) in() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
@@ -53,7 +53,7 @@ func (p *server) In() {
 	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
-func (p *server) Out() {
+func (p *server) out() {
 	r, ok := <-p.requests
 	if !ok {
 		return
@@ -83,7 +83,7 @@ func (p *server) Out() {
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
-	units, err := receivePreunits(conn, r.Hashes)
+	units, err := receivePreunits(conn, r.hashes)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
 		return

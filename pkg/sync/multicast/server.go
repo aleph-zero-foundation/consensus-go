@@ -58,8 +58,8 @@ func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netse
 		log:          log,
 	}
 
-	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.Out)
-	s.inPool = sync.NewPool(inPoolSize*nProc, s.In)
+	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.out)
+	s.inPool = sync.NewPool(inPoolSize*nProc, s.in)
 	return s
 
 }
