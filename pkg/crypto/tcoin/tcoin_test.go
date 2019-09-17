@@ -25,21 +25,21 @@ var _ = Describe("Tcoin", func() {
 			coeffs = make([]*big.Int, t)
 			tcs = make([]*ThresholdCoin, n)
 			rnd := rand.New(rand.NewSource(123))
-			for i := 0; i < t; i++ {
+			for i := uint16(0); i < t; i++ {
 				coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Order)
 			}
-			for i := 0; i < n; i++ {
+			for i := uint16(0); i < n; i++ {
 				tcs[i] = New(n, i, coeffs)
 			}
 			nonce = 123
 			coinShares = make([]*CoinShare, n)
-			for i := 0; i < n; i++ {
+			for i := uint16(0); i < n; i++ {
 				coinShares[i] = tcs[i].CreateCoinShare(nonce)
 			}
 		})
 		It("Should be verified by a poly verifier", func() {
-			pv := bn256.NewPolyVerifier(n, t)
-			for i := 0; i < n; i++ {
+			pv := bn256.NewPolyVerifier(int(n), int(t))
+			for i := uint16(0); i < n; i++ {
 				Expect(tcs[i].PolyVerify(pv)).To(BeTrue())
 			}
 		})
@@ -144,7 +144,7 @@ var _ = Describe("Tcoin", func() {
 			tcs1 = make([]*ThresholdCoin, n)
 			tcs2 = make([]*ThresholdCoin, n)
 
-			for i := 0; i < n; i++ {
+			for i := uint16(0); i < n; i++ {
 				tc, err := Decode(dealt1, i)
 				Expect(err).NotTo(HaveOccurred())
 				tcs1[i] = tc
@@ -155,7 +155,7 @@ var _ = Describe("Tcoin", func() {
 			}
 			nonce = 123
 			coinShares = make([]*CoinShare, n)
-			for i := 0; i < n; i++ {
+			for i := uint16(0); i < n; i++ {
 				coinShares[i] = tcs[i].CreateCoinShare(nonce)
 			}
 		})

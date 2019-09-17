@@ -48,7 +48,6 @@ var _ = Describe("Creating", func() {
 					pu, level, err := NewNonSkippingUnit(dag, 0, []byte{}, rs)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
-
 					Expect(pu.Creator()).To(Equal(uint16(0)))
 					Expect(pu.Parents()).To(BeEmpty())
 				})
