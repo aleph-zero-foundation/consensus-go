@@ -1,141 +1,126 @@
-package multicast
+package rmc
 
 import (
 	"errors"
 	"io"
-	"time"
+	"math/rand"
 
-	"sync"
-
-	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/rmc"
+	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	requests     chan *Request
-	state        *rmc.RMC
-	accepted     chan []byte
-	canMulticast *sync.Mutex
-	netserv      network.Server
-	timeout      time.Duration
-	log          zerolog.Logger
-}
-
-func newProtocol(pid uint16, dag gomel.Dag, requests chan *Request, state *rmc.RMC, canMulticast *sync.Mutex, accepted chan []byte, netserv network.Server, timeout time.Duration, log zerolog.Logger) *protocol {
-	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		requests:     requests,
-		state:        state,
-		canMulticast: canMulticast,
-		accepted:     accepted,
-		netserv:      netserv,
-		timeout:      timeout,
-		log:          log,
-	}
-}
-
-func (p *protocol) In() {
+func (p *server) in() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+		p.log.Error().Str("where", "rmc.in.Listen").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
 
-	pid, id, msgType, err := rmc.AcceptGreeting(conn)
+	pid, id, msgType, err := rmcbox.AcceptGreeting(conn)
 	if err != nil {
-		p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+		p.log.Error().Str("where", "rmc.in.AcceptGreeting").Msg(err.Error())
 		return
 	}
 	switch msgType {
 	case sendData:
 		data, err := p.state.AcceptData(id, pid, conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.in.AcceptData").Msg(err.Error())
 			return
 		}
-		pu, err := DecodePreunit(data)
+		pu, err := custom.DecodePreunit(data)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.in.DecodePreunit").Msg(err.Error())
 			return
 		}
 		knownPredecessor, err := checkCompliance(pu, id, pid, p.dag)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.in.checkCompliance").Msg(err.Error())
 			return
 		}
 		if !knownPredecessor {
 			conn.Write([]byte{1})
 			err := conn.Flush()
 			if err != nil {
-				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				p.log.Error().Str("where", "rmc.in.Flush").Msg(err.Error())
 				return
 			}
 			data, err := p.state.AcceptFinished(predecessorID(id, p.dag.NProc()), pid, conn)
 			if err != nil {
-				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				p.log.Error().Str("where", "rmc.in.AcceptFinished").Msg(err.Error())
 				return
 			}
-			p.accepted <- data
-			predecessor, err := DecodePreunit(data)
+			predecessor, err := custom.DecodePreunit(data)
 			if err != nil {
-				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				p.log.Error().Str("where", "rmc.in.DecodePreunit2").Msg(err.Error())
 				return
 			}
 			if *pu.Parents()[0] != *predecessor.Hash() {
-				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg("wrong unit height")
+				p.log.Error().Str("where", "rmc.in.").Msg("wrong unit height")
+				return
+			}
+			err = add.Unit(p.dag, p.randomSource, predecessor, p.fallback, p.log)
+			if err != nil {
+				p.log.Error().Str("where", "rmc.in.AddPredecessor").Msg(err.Error())
 				return
 			}
 		} else {
 			conn.Write([]byte{0})
 			err := conn.Flush()
 			if err != nil {
-				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				p.log.Error().Str("where", "rmc.in.Flush2").Msg(err.Error())
 				return
 			}
 		}
-
 		err = p.state.SendSignature(id, conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.in.SendSignature").Msg(err.Error())
 			return
 		}
 		err = conn.Flush()
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.in.Flush3").Msg(err.Error())
 			return
 		}
+
 	case sendFinished:
 		_, err := p.state.AcceptFinished(id, pid, conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.in.AcceptFinished2").Msg(err.Error())
 			return
 		}
-		p.accepted <- p.state.Data(id)
+		pu, err := custom.DecodePreunit(p.state.Data(id))
+		if err != nil {
+			p.log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
+			return
+		}
+		err = add.Unit(p.dag, p.randomSource, pu, p.fallback, p.log)
+		if err != nil {
+			p.log.Error().Str("where", "rmc.in.AddUnit").Msg(err.Error())
+			return
+		}
 	}
 }
 
-func (p *protocol) Out() {
-	r, ok := <-p.requests
+func (p *server) out(pid uint16) {
+	r, ok := <-p.requests[pid]
 	if !ok {
 		return
 	}
-	conn, err := p.netserv.Dial(r.pid, p.timeout)
+	conn, err := p.netserv.Dial(pid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
+		p.log.Error().Str("where", "rmc.out.Dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
-	err = rmc.Greet(conn, p.pid, r.id, r.msgType)
+	err = rmcbox.Greet(conn, p.pid, r.id, r.msgType)
 	if err != nil {
-		p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
+		p.log.Error().Str("where", "rmc.out.Greet").Msg(err.Error())
 		return
 	}
 
@@ -143,55 +128,56 @@ func (p *protocol) Out() {
 	case sendData:
 		err := p.state.SendData(r.id, r.data, conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.out.SendData").Msg(err.Error())
 			return
 		}
 		err = conn.Flush()
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.out.Flush").Msg(err.Error())
 			return
 		}
 
 		requestPredecessor, err := readSingleByte(conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.out.readSingleByte").Msg(err.Error())
 			return
 		}
 		if requestPredecessor == byte(1) {
 			err := p.state.SendFinished(predecessorID(r.id, p.dag.NProc()), conn)
 			if err != nil {
-				p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
+				p.log.Error().Str("where", "rmc.out.SendFinished").Msg(err.Error())
 				return
 			}
 			err = conn.Flush()
 			if err != nil {
-				p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+				p.log.Error().Str("where", "rmc.out.Flush2").Msg(err.Error())
 				return
 			}
 		}
-		finished, err := p.state.AcceptSignature(r.id, r.pid, conn)
+		finished, err := p.state.AcceptSignature(r.id, pid, conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.out.AcceptSignature").Msg(err.Error())
 			return
 		}
 		if finished {
-			for i := uint16(0); i < p.dag.NProc(); i++ {
-				if i == p.pid {
+			for _, i := range rand.Perm(int(p.dag.NProc())) {
+				if i == int(p.pid) {
 					continue
 				}
-				p.requests <- NewRequest(r.id, uint16(i), r.data, sendFinished)
+				p.requests[i] <- newRequest(r.id, r.data, sendFinished)
 			}
-			p.canMulticast.Unlock()
+			//p.canMulticast.Unlock()
 		}
+
 	case sendFinished:
 		err := p.state.SendFinished(r.id, conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.Out.Dial").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.out.SendFinished").Msg(err.Error())
 			return
 		}
 		err = conn.Flush()
 		if err != nil {
-			p.log.Error().Str("where", "rmc.multicast.In.Listen").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.out.Flush3").Msg(err.Error())
 			return
 		}
 	}
@@ -226,8 +212,4 @@ func readSingleByte(r io.Reader) (byte, error) {
 	var buf [1]byte
 	_, err := r.Read(buf[:])
 	return buf[0], err
-}
-
-func predecessorID(id uint64, nProc uint16) uint64 {
-	return id - uint64(nProc)
 }
