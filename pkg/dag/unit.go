@@ -7,19 +7,16 @@ import (
 )
 
 type freeUnit struct {
-	nProc      uint16
-	creator    uint16
-	signature  gomel.Signature
-	hash       gomel.Hash
-	parents    []gomel.Unit
-	data       []byte
-	rsData     []byte
-	height     int
-	heightInit bool
-	level      int
-	levelInit  bool
-	floor      [][]gomel.Unit
-	floorInit  bool
+	nProc     uint16
+	creator   uint16
+	signature gomel.Signature
+	hash      gomel.Hash
+	parents   []gomel.Unit
+	data      []byte
+	rsData    []byte
+	height    *int
+	level     *int
+	floor     [][]gomel.Unit
 }
 
 func newUnit(pu gomel.Preunit, parents []gomel.Unit, nProc uint16) *freeUnit {
@@ -59,33 +56,33 @@ func (u *freeUnit) Parents() []gomel.Unit {
 }
 
 func (u *freeUnit) Height() int {
-	if !u.heightInit {
+	if u.height == nil {
 		u.computeHeight()
 	}
-	return u.height
+	return *u.height
 }
 
 func (u *freeUnit) computeHeight() {
+	u.height = new(int)
 	if gomel.Dealing(u) {
-		u.height = 0
+		*u.height = 0
 	} else {
 		predecessor, _ := gomel.Predecessor(u)
-		u.height = predecessor.Height() + 1
+		*u.height = predecessor.Height() + 1
 	}
-	u.heightInit = true
 }
 
 func (u *freeUnit) Level() int {
-	if !u.levelInit {
+	if u.level == nil {
 		u.computeLevel()
 	}
-	return u.level
+	return *u.level
 }
 
 func (u *freeUnit) computeLevel() {
+	u.level = new(int)
 	if gomel.Dealing(u) {
-		u.level = 0
-		u.levelInit = true
+		*u.level = 0
 		return
 	}
 
@@ -101,7 +98,7 @@ func (u *freeUnit) computeLevel() {
 		nSeen++
 	}
 	creator := u.Creator()
-	hasQuorum := IsQuorum(u.nProc, nSeen)
+	hasQuorum := gomel.IsQuorum(u.nProc, nSeen)
 	for pid, vs := range u.Floor() {
 		pid := uint16(pid)
 		if pid == creator {
@@ -111,7 +108,7 @@ func (u *freeUnit) computeLevel() {
 		for _, unit := range vs {
 			if unit.Level() == maxLevelParents {
 				nSeen++
-				if IsQuorum(u.nProc, nSeen) {
+				if gomel.IsQuorum(u.nProc, nSeen) {
 					level = maxLevelParents + 1
 					hasQuorum = true
 				}
@@ -119,16 +116,15 @@ func (u *freeUnit) computeLevel() {
 			}
 		}
 
-		if hasQuorum || !IsQuorum(u.nProc, nSeen+(u.nProc-(pid+1))) {
+		if hasQuorum || !gomel.IsQuorum(u.nProc, nSeen+(u.nProc-(pid+1))) {
 			break
 		}
 	}
-	u.level = level
-	u.levelInit = true
+	*u.level = level
 }
 
 func (u *freeUnit) Floor() [][]gomel.Unit {
-	if !u.floorInit {
+	if u.floor == nil {
 		u.computeFloor()
 	}
 	return u.floor

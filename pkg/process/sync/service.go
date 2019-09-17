@@ -118,9 +118,7 @@ func isFallback(name string, configs []*process.Sync) int {
 }
 
 // NewService creates a new syncing service for the given dag, with the given config.
-// When units received from a sync are added to the poset primeAlert is called on them.
-// The returned callback should be called on units created by this process after they are added to the poset.
-// It is used to multicast newly created units, when multicast is in use.
+// The returned dag will multicast units created by us, when they are added to it, when multicast is in use.
 func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log zerolog.Logger) (process.Service, gomel.Dag, error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err

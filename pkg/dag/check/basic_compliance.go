@@ -12,9 +12,7 @@ type basicCompliance struct {
 // BasicCompliance returns a version of the dag that will check the following notion of correctness:
 //  1. If a unit has 0 parents and is a dealing unit it is correct, otherwise
 //  2. A unit has to have at least two parents.
-//  3. A unit has to have a predecessor.
-//  4. A unit's first parent has to have the same creator as this unit.
-//  5. A unit's first parent has to be its predecessor.
+//  3. A unit has to have a predecessor with the same creator.
 func BasicCompliance(dag gomel.Dag) gomel.Dag {
 	return &basicCompliance{dag}
 }
@@ -37,14 +35,8 @@ func checkBasicCorrectness(u gomel.Unit) error {
 	if err != nil {
 		return gomel.NewComplianceError("Can not retrieve unit's self-predecessor")
 	}
-	firstParent := u.Parents()[0]
-	if firstParent.Creator() != u.Creator() {
-		return gomel.NewComplianceError("Not descendant of first parent")
+	if selfPredecessor.Creator() != u.Creator() {
+		return gomel.NewComplianceError("Not descendant of predecessor")
 	}
-	// self-predecessor and the first unit on the Parents list should be equal
-	if firstParent != selfPredecessor {
-		return gomel.NewComplianceError("First parent of a unit is not equal to its self-predecessor")
-	}
-
 	return nil
 }

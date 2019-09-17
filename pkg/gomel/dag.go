@@ -12,7 +12,7 @@ type Dag interface {
 	// Decode attempts to decode the given Preunit and return a Unit or an error, when that is impossible.
 	// The resulting Unit is NOT inserted in the dag -- to do that one needs to Emplace it.
 	Decode(Preunit) (Unit, error)
-	// Check if the Unit satisfies the assumptions of the poset. Should be called before Emplace.
+	// Check if the Unit satisfies the assumptions of the dag. Should be called before Emplace.
 	Check(Unit) error
 	// Emplace attempts to add the given Unit to the dag. It returns the unit that is included in the dag.
 	Emplace(Unit) Unit
@@ -27,4 +27,9 @@ type Dag interface {
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
+}
+
+// IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
+func IsQuorum(nProcesses, subsetSize uint16) bool {
+	return 3*subsetSize >= 2*nProcesses
 }

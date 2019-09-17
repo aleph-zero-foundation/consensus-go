@@ -7,10 +7,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// Parallel is a service for adding units to the poset parallelly.
+// Parallel is a service for adding units to the dag parallelly.
 // Units created by the same process will be added consecutively, even between different dags.
 // The idea is to have multiple wrapers around a single base dag, and while the wrappers can be used by separate
-// routines, they should stilluse one parallelization.
+// routines, they should still use one parallelization.
 type Parallel struct {
 	sources []<-chan addRequest
 	sinks   []chan<- addRequest
@@ -35,15 +35,15 @@ func (p *Parallel) Register(dag gomel.Dag) gomel.Adder {
 	if p.dags == nil {
 		p.initialize(uint16(dag.NProc()))
 	}
-	id := len(p.dags)
+	dagID := len(p.dags)
 	p.dags = append(p.dags, dag)
-	return &adder{id, p.sinks}
+	return &adder{dagID, p.sinks}
 }
 
 func (p *Parallel) adder(i int) {
 	defer p.wg.Done()
 	for req := range p.sources[i] {
-		_, *req.err = gomel.AddUnit(p.dags[req.id], req.pu)
+		_, *req.err = gomel.AddUnit(p.dags[req.dagID], req.pu)
 		req.wg.Done()
 	}
 }

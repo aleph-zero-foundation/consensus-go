@@ -63,7 +63,7 @@ var _ = Describe("Protocol", func() {
 
 	Describe("in a small dag", func() {
 
-		Context("when multicasting a single dealing unit to empty posets", func() {
+		Context("when multicasting a single dealing unit to empty dags", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}

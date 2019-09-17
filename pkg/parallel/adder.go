@@ -7,18 +7,18 @@ import (
 )
 
 type addRequest struct {
-	id  int
-	pu  gomel.Preunit
-	wg  *sync.WaitGroup
-	err *error
+	dagID int
+	pu    gomel.Preunit
+	wg    *sync.WaitGroup
+	err   *error
 }
 
 type adder struct {
-	id    int
+	dagID int
 	sinks []chan<- addRequest
 }
 
-// AddUnit to the internal dag, use the provided logger for logging.
+// AddUnit to the internal dag.
 func (da *adder) AddUnit(pu gomel.Preunit) error {
 	if int(pu.Creator()) >= len(da.sinks) {
 		return gomel.NewDataError("invalid creator")
@@ -26,12 +26,12 @@ func (da *adder) AddUnit(pu gomel.Preunit) error {
 	var wg sync.WaitGroup
 	var err error
 	wg.Add(1)
-	da.sinks[pu.Creator()] <- addRequest{da.id, pu, &wg, &err}
+	da.sinks[pu.Creator()] <- addRequest{da.dagID, pu, &wg, &err}
 	wg.Wait()
 	return err
 }
 
-// AddAntichain of units to the internal dag, use the provided logger for logging.
+// AddAntichain of units to the internal dag.
 func (da *adder) AddAntichain(preunits []gomel.Preunit) *gomel.AggregateError {
 	var wg sync.WaitGroup
 	result := make([]error, len(preunits))
@@ -41,7 +41,7 @@ func (da *adder) AddAntichain(preunits []gomel.Preunit) *gomel.AggregateError {
 			result[i] = gomel.NewDataError("invalid creator")
 			continue
 		}
-		da.sinks[pu.Creator()] <- addRequest{da.id, pu, &wg, &result[i]}
+		da.sinks[pu.Creator()] <- addRequest{da.dagID, pu, &wg, &result[i]}
 	}
 	wg.Wait()
 	return gomel.NewAggregateError(result)

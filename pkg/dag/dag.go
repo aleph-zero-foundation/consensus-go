@@ -22,14 +22,9 @@ func New(n uint16) gomel.Dag {
 	}
 }
 
-// IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
-func IsQuorum(nProcesses uint16, subsetSize uint16) bool {
-	return 3*subsetSize >= 2*nProcesses
-}
-
 // IsQuorum checks if the given number of processes forms a quorum amongst all processes.
 func (dag *dag) IsQuorum(number uint16) bool {
-	return IsQuorum(dag.nProcesses, number)
+	return gomel.IsQuorum(dag.nProcesses, number)
 }
 
 // NProc returns the number of processes which use the dag.

@@ -47,7 +47,8 @@ func (dag *noForks) Check(u gomel.Unit) error {
 }
 
 func (dag *noForks) Emplace(u gomel.Unit) gomel.Unit {
-	return &noForkUnit{u}
+	result := dag.Dag.Emplace(u)
+	return &noForkUnit{result}
 }
 
 func checkNoForks(dag gomel.Dag, u gomel.Unit) error {
@@ -71,7 +72,11 @@ type noForkUnit struct {
 // Because of that all its parents are in the dag, so at most it is on a forking branch of length 1.
 // Hence the height comparison plus checking for equality suffice.
 func (u *noForkUnit) Below(v gomel.Unit) bool {
-	if u.Height() < v.Height() {
+	vFloor := v.Floor()[u.Creator()]
+	if len(vFloor) == 0 {
+		return false
+	}
+	if u.Height() < vFloor[0].Height() {
 		return true
 	}
 	if *u.Hash() == *v.Hash() {
