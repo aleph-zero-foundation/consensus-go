@@ -13,11 +13,13 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/network/udp"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
+	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/retrying"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/rmc"
 )
 
 type service struct {
@@ -55,6 +57,13 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
 			server := multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
+			s.mcServer = server
+			servmap[c.Type] = server
+
+		case "rmc":
+			log = log.With().Int(logging.Service, logging.RMCService).Logger()
+			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
+			server := rmc.NewServer(pid, dag, randomSource, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, log)
 			s.mcServer = server
 			servmap[c.Type] = server
 

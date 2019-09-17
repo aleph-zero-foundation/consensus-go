@@ -41,6 +41,8 @@ func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process
 			RemoteAddresses: c.Addresses[i],
 			Params:          conf.Sync[i].Params,
 			Fallback:        conf.Sync[i].Fallback,
+			Pubs:            c.RMCVerificationKeys,
+			Priv:            m.RMCSecretKey,
 		}
 	}
 	return syncConfs
@@ -99,24 +101,12 @@ func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 	}
 }
 
-func generateRMCConfig(conf *Configuration, m *Member, c *Committee) *process.RMC {
-	return &process.RMC{
-		Pid:             m.Pid,
-		LocalAddress:    []string{c.SetupAddresses[0][m.Pid], c.SetupAddresses[1][m.Pid]},
-		RemoteAddresses: c.SetupAddresses[:2],
-		Pubs:            c.RMCVerificationKeys,
-		Priv:            m.RMCSecretKey,
-		Timeout:         time.Duration(2 * time.Second),
-	}
-}
-
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) process.Config {
 	return process.Config{
 		Dag:         generateDagConfig(c),
 		Sync:        generateSyncConfig(conf, m, c),
 		SyncSetup:   generateSyncSetupConfig(conf, m, c),
-		RMC:         generateRMCConfig(conf, m, c),
 		Create:      generateCreateConfig(conf, m, c),
 		CreateSetup: generateCreateSetupConfig(conf, m, c),
 		Order:       generateOrderConfig(conf, m, c),

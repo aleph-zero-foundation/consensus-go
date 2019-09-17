@@ -136,6 +136,7 @@ const (
 	FetchService
 	MCService
 	RetryingService
+	RMCService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
@@ -150,6 +151,7 @@ var serviceTypeDict = map[int]string{
 	FetchService:    "FETCH",
 	MCService:       "MCAST",
 	RetryingService: "RETRY",
+	RMCService:      "RMC",
 }
 
 // Genesis was better with Phil Collins.
