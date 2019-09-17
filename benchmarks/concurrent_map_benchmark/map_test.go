@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	initialElemsCount      = 100000
+	initialElemsCount      = 10000
 	numberOfRoutines       = 512
 	numberOfMapOperations  = 3 * 10 * 100
 	missReadsBias          = 10
 	newWrites              = 90
+	newOverwrites          = 0
 	operationGeneratorSeed = 0
 	dataGeneratorSeed      = 1
 	missGeneratorSeed      = 2
@@ -40,9 +41,6 @@ func newTestScenario() testScenario {
 }
 
 func (ts *testScenario) testMapAcess(testMap mapUnderTest, readBias uint64, count uint64, tdg testDataGenerator) {
-	if readBias > 100 {
-		panic("readBias argument should be no bigger than 100")
-	}
 
 	for i := uint64(0); i < count; i++ {
 		operation := uint64(ts.operationGenerator.Intn(100))
@@ -74,6 +72,7 @@ type tdgImpl struct {
 	storage       []byteKeyValuePair
 	missReadBias  uint64
 	newWritesBias uint64
+	newOvewrites  uint64
 }
 
 func generateSlice(result []byte, rand *rand.Rand) {
@@ -112,25 +111,30 @@ func (tdg *tdgImpl) getIndexAndValue() (keyType, []byte) {
 	} else if len(tdg.storage) > 0 {
 		ix := tdg.dataGenerator.Intn(len(tdg.storage))
 		stored := tdg.storage[ix]
+		if uint64(tdg.missGenerator.Intn(100)) < tdg.newOvewrites {
+			stored.value = generateData(tdg.minDataSize, tdg.maxDataSize, tdg.dataGenerator)
+		}
 		index = stored.key
 		value = stored.value
 	}
 	return index, value
 }
 
-func newTestDataGenerator(dataGenerator, missGenerator *rand.Rand, missReadBias, newWritesBias uint64, stored []byteKeyValuePair, minDataSize, maxDataSize int) *tdgImpl {
+func newTestDataGenerator(dataGenerator, missGenerator *rand.Rand, missReadBias, newWritesBias uint64, stored []byteKeyValuePair, minDataSize, maxDataSize int, overwritesBias uint64) *tdgImpl {
 	return &tdgImpl{
 		minDataSize:   minDataSize,
 		maxDataSize:   maxDataSize,
 		dataGenerator: dataGenerator,
 		missGenerator: missGenerator,
 		missReadBias:  missReadBias,
-		newWritesBias: newWritesBias}
+		newWritesBias: newWritesBias,
+		newOvewrites:  overwritesBias,
+	}
 }
 
 func testSyncMap(
 	numberOfInitialElements, goRoutinesCount int,
-	testsCount, readBias, missReads, newWrites uint64,
+	testsCount, readBias, missReads, newWrites, newOverwrites uint64,
 	testMap mapUnderTest,
 	b *testing.B) {
 
@@ -141,13 +145,15 @@ func testSyncMap(
 
 	dataGenerator := rand.New(rand.NewSource(dataSeedGenerator.Int63()))
 	missGenerator := rand.New(rand.NewSource(missSeedGenerator.Int63()))
-	tdg := newTestDataGenerator(dataGenerator, missGenerator, 100, 100, []byteKeyValuePair{}, 2*32, 3*32)
+	tdg := newTestDataGenerator(dataGenerator, missGenerator, 100, 100, []byteKeyValuePair{}, 2*32, 3*32, 0)
 
 	propagateMap(testMap, numberOfInitialElements, tdg)
 
 	startChannel := make(chan struct{})
 	wait := sync.WaitGroup{}
 	wait.Add(goRoutinesCount)
+	initWait := sync.WaitGroup{}
+	initWait.Add(goRoutinesCount)
 
 	tester := func(wait *sync.WaitGroup, count uint64, testMap mapUnderTest, startEvent chan struct{}, dataSeed, missSeed int64) {
 		defer wait.Done()
@@ -158,18 +164,19 @@ func testSyncMap(
 		ts := newTestScenario()
 		storage := make([]byteKeyValuePair, len(tdg.storage)+int(testsCount))
 		copy(storage, tdg.storage)
-		testerTdg := newTestDataGenerator(dataGenerator, missGenerator, missReads, newWrites, storage, 2*32, 3*32)
+		testerTdg := newTestDataGenerator(dataGenerator, missGenerator, missReads, newWrites, storage, 2*32, 3*32, newOverwrites)
+		initWait.Done()
 
 		<-startEvent
 
 		ts.testMapAcess(testMap, readBias, testsCount, testerTdg)
-
 	}
 
 	for i := 0; i < goRoutinesCount; i++ {
 		go tester(&wait, testsCount, testMap, startChannel, dataSeedGenerator.Int63(), missSeedGenerator.Int63())
 	}
 
+	initWait.Wait()
 	b.StartTimer()
 	close(startChannel)
 	wait.Wait()
@@ -264,8 +271,8 @@ func (pdb *pogrebDB) store(key keyType, value []byte) {
 	}
 }
 
-func (pdb *pogrebDB) closeDB() {
-	pdb.pg.Close()
+func (pdb *pogrebDB) closeDB() error {
+	return pdb.pg.Close()
 }
 
 func newPogrebDB(file string) *pogrebDB {
@@ -294,8 +301,8 @@ func (lvl *levelDB) store(key keyType, value []byte) {
 	}
 }
 
-func (lvl *levelDB) closeDB() {
-	lvl.levelDB.Close()
+func (lvl *levelDB) closeDB() error {
+	return lvl.levelDB.Close()
 }
 
 func newLevelDB(file string) (*levelDB, error) {
@@ -322,10 +329,12 @@ func (bdg *badgerDB) load(key keyType) ([]byte, bool) {
 			notFound = true
 			return nil
 		}
-		return value.Value(func(val []byte) error {
-			result = val
-			return nil
-		})
+		// return value.Value(func(val []byte) error {
+		// 	result = val
+		// 	return nil
+		// })
+		result, err = value.ValueCopy(nil)
+		return err
 	})
 	if err != nil {
 		panic("error while loading a value in badgerDB")
@@ -342,8 +351,8 @@ func (bdg *badgerDB) store(key keyType, value []byte) {
 	}
 }
 
-func (bdg *badgerDB) closeDB() {
-	bdg.badger.Close()
+func (bdg *badgerDB) closeDB() error {
+	return bdg.badger.Close()
 }
 
 func newBadgerDB(folder string) (*badgerDB, error) {
@@ -363,7 +372,7 @@ func propagateMap(storage mapUnderTest, size int, tdg testDataGenerator) {
 	}
 }
 
-func testMapPerformance(b *testing.B, testMap mapUnderTest, readBias, missReads, newWrites uint64) {
+func testMapPerformance(b *testing.B, testMap mapUnderTest, readBias, missReads, newWrites, newOverwrites uint64, numberOfRoutines int) {
 
 	for n := 0; n < b.N; n++ {
 		testSyncMap(
@@ -373,58 +382,53 @@ func testMapPerformance(b *testing.B, testMap mapUnderTest, readBias, missReads,
 			readBias,
 			missReads,
 			newWrites,
+			newOverwrites,
 			testMap,
 			b)
 	}
 }
 
+func benchmarkMap(b *testing.B, testMap mapUnderTest) {
+	b.Run("more reads", func(b *testing.B) {
+		b.ResetTimer()
+		testMapPerformance(b, testMap, 90, missReadsBias, newWrites, newOverwrites, numberOfRoutines)
+	})
+
+	b.Run("more writes", func(b *testing.B) {
+		b.ResetTimer()
+		testMapPerformance(b, testMap, 10, missReadsBias, newWrites, newOverwrites, numberOfRoutines)
+	})
+}
+
 func BenchmarkSyncedMap(b *testing.B) {
 	var testMap mapUnderTest = &syncedMap{}
-	b.ResetTimer()
-	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
+	benchmarkMap(b, testMap)
 }
 
 func BenchmarkRWMap(b *testing.B) {
 	var testMap mapUnderTest = newMapWithRWMutex()
-	b.ResetTimer()
-	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
+	benchmarkMap(b, testMap)
 }
 
 func BenchmarkMutexMap(b *testing.B) {
 	var testMap mapUnderTest = newMapWithMutex()
-	b.ResetTimer()
-	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
-}
-
-func BenchmarkSyncedMapMoreWrites(b *testing.B) {
-	var testMap mapUnderTest = &syncedMap{}
-	b.ResetTimer()
-	testMapPerformance(b, testMap, 10, missReadsBias, newWrites)
-}
-
-func BenchmarkRWMapMoreWrites(b *testing.B) {
-	var testMap mapUnderTest = newMapWithRWMutex()
-	b.ResetTimer()
-	testMapPerformance(b, testMap, 10, missReadsBias, newWrites)
-}
-
-func BenchmarkMutexMapMoreWrites(b *testing.B) {
-	var testMap mapUnderTest = newMapWithMutex()
-	b.ResetTimer()
-	testMapPerformance(b, testMap, 10, missReadsBias, newWrites)
+	benchmarkMap(b, testMap)
 }
 
 func benchmarkPogrebDB(b *testing.B, readBias uint64) {
 	file, err := ioutil.TempFile("", "pogrebDB")
-	defer file.Close()
 	if err != nil {
 		panic("unable to create temporary file for the pogreb database")
 	}
 	testMap := newPogrebDB(file.Name())
-	defer testMap.closeDB()
 	b.ResetTimer()
-	testMapPerformance(b, testMap, readBias, missReadsBias, newWrites)
-	testMap.closeDB()
+	testMapPerformance(b, testMap, readBias, missReadsBias, newWrites, newOverwrites, 1)
+	if err := testMap.closeDB(); err != nil {
+		panic(fmt.Sprintf("unable to close pogrebDB: %s", err.Error()))
+	}
+	if err := file.Close(); err != nil {
+		panic(fmt.Sprintf("unable to close file of pogrebDB: %s", err.Error()))
+	}
 }
 
 func BenchmarkPogrebDB(b *testing.B) {
@@ -446,8 +450,10 @@ func benchmarkLevelDB(b *testing.B, readBias uint64) {
 		panic(fmt.Sprintf("unable to initilize levelDB: %s", err.Error()))
 	}
 	b.ResetTimer()
-	testMapPerformance(b, testMap, 90, missReadsBias, newWrites)
-	testMap.closeDB()
+	testMapPerformance(b, testMap, 90, missReadsBias, newWrites, newOverwrites, 1)
+	if err := testMap.closeDB(); err != nil {
+		panic(fmt.Sprintf("unable to close levelDB: %s", err.Error()))
+	}
 }
 
 func BenchmarkLevelDB(b *testing.B) {
@@ -469,8 +475,10 @@ func benchmarkBadgerDB(b *testing.B, readBias uint64) {
 		panic(fmt.Sprintf("unable to initilize badgerDB: %s", err.Error()))
 	}
 	b.ResetTimer()
-	testMapPerformance(b, testMap, readBias, missReadsBias, newWrites)
-	testMap.closeDB()
+	testMapPerformance(b, testMap, readBias, missReadsBias, newWrites, newOverwrites, 1)
+	if err := testMap.closeDB(); err != nil {
+		panic(fmt.Sprintf("unable to close badgerDB: %s", err.Error()))
+	}
 }
 
 func BenchmarkBadgerDB(b *testing.B) {
