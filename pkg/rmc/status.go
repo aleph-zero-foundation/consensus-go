@@ -1,7 +1,7 @@
 package rmc
 
 // Status represents a state of a reliable multicast.
-type Status int
+type Status byte
 
 const (
 	// Unknown means we either never saw any data related to an instance of RMC, or we deleted it.

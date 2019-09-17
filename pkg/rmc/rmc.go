@@ -79,7 +79,7 @@ func (rmc *RMC) SendData(id uint64, data []byte, w io.Writer) error {
 }
 
 // AcceptSignature reads a signature from r and verifies it represents pid signing the data associated with id.
-// It returns true when at least threshold signatures have been gathered, and the proof has been accumulated.
+// It returns true when the signature is exactly threshold-th signature gathered.
 func (rmc *RMC) AcceptSignature(id uint64, pid uint16, r io.Reader) (bool, error) {
 	out, err := rmc.getOut(id)
 	if err != nil {

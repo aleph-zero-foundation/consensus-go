@@ -37,3 +37,12 @@ func MergeCallbacks(cb1, cb2 Callback) Callback {
 
 // NopCallback is an empty Callback.
 var NopCallback Callback = func(Preunit, Unit, error) {}
+
+// ChannelCallback returns a callback sending newly created unit to the given channel
+func ChannelCallback(ch chan<- Unit) Callback {
+	return func(pu Preunit, unit Unit, err error) {
+		if err == nil {
+			ch <- unit
+		}
+	}
+}

@@ -7,6 +7,7 @@ package bn256
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"encoding/base64"
 	"math/big"
 
 	"github.com/cloudflare/bn256"
@@ -103,4 +104,40 @@ func (sk *SecretKey) Unmarshal(data []byte) (*SecretKey, error) {
 // VerificationKey returns the verification key associated with this secret key.
 func (sk *SecretKey) VerificationKey() *VerificationKey {
 	return NewVerificationKey(&sk.key)
+}
+
+// Encode encodes given SecretKey into a base64 string
+func (sk *SecretKey) Encode() string {
+	return base64.StdEncoding.EncodeToString(sk.Marshal())
+}
+
+// Encode encodes given VerificationKey into a base64 string
+func (vk *VerificationKey) Encode() string {
+	return base64.StdEncoding.EncodeToString(vk.Marshal())
+}
+
+// DecodeSecretKey decodes a secret key encoded as a base64 string.
+func DecodeSecretKey(enc string) (*SecretKey, error) {
+	data, err := base64.StdEncoding.DecodeString(enc)
+	if err != nil {
+		return nil, err
+	}
+	sk, err := new(SecretKey).Unmarshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return sk, nil
+}
+
+// DecodeVerificationKey decodes a verification key encoded as a base64 string.
+func DecodeVerificationKey(enc string) (*VerificationKey, error) {
+	data, err := base64.StdEncoding.DecodeString(enc)
+	if err != nil {
+		return nil, err
+	}
+	vk, err := new(VerificationKey).Unmarshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return vk, nil
 }

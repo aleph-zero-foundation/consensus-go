@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -15,15 +16,21 @@ import (
 type proc struct {
 	publicKey       gomel.PublicKey
 	privateKey      gomel.PrivateKey
+	sekKey          *bn256.SecretKey
+	verKey          *bn256.VerificationKey
 	localAddrs      []string
 	setupLocalAddrs []string
 }
 
 func makeProcess(setupLocalAddrs []string, localAddrs []string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
+	verKey, sekKey, _ := bn256.GenerateKeys()
+
 	return proc{
 		publicKey:       pubKey,
 		privateKey:      privKey,
+		sekKey:          sekKey,
+		verKey:          verKey,
 		setupLocalAddrs: setupLocalAddrs,
 		localAddrs:      localAddrs,
 	}
@@ -92,6 +99,7 @@ func main() {
 	committee.Addresses = make([][]string, len(addresses[0]))
 	for _, p := range processes {
 		committee.PublicKeys = append(committee.PublicKeys, p.publicKey)
+		committee.RMCVerificationKeys = append(committee.RMCVerificationKeys, p.verKey)
 		for i, addr := range p.setupLocalAddrs {
 			committee.SetupAddresses[i] = append(committee.SetupAddresses[i], addr)
 		}
@@ -101,7 +109,7 @@ func main() {
 	}
 
 	for pid, p := range processes {
-		member := &config.Member{uint16(pid), p.privateKey}
+		member := &config.Member{uint16(pid), p.privateKey, p.sekKey}
 		f, err := os.Create(strconv.Itoa(pid) + ".pk")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())

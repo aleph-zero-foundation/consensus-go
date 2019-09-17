@@ -169,19 +169,20 @@ func (out *outgoing) acceptSignature(pid uint16, r io.Reader) (bool, error) {
 	out.Lock()
 	defer out.Unlock()
 	if err != nil {
-		return out.status == Finished, err
+		return false, err
 	}
 	if !out.keys.Verify(pid, append(out.signedData, signature...)) {
-		return out.status == Finished, errors.New("wrong signature")
+		return false, errors.New("wrong signature")
 	}
 	if out.status != Finished {
 		done, err := out.proof.Aggregate(pid, signature)
 		if done {
 			out.status = Finished
+			return true, err
 		}
-		return done, err
+		return false, err
 	}
-	return true, nil
+	return false, nil
 }
 
 func encodeUint32(w io.Writer, i uint32) error {

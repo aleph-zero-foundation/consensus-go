@@ -81,6 +81,8 @@ func NewDefaultConfiguration() Configuration {
 	},
 	}
 
+	syncSetupConf := []SyncConfiguration{}
+
 	result := Configuration{
 
 		NParents: uint16(10),
@@ -93,9 +95,9 @@ func NewDefaultConfiguration() Configuration {
 
 		StepSize: 0.0,
 
-		SyncSetup: syncConf,
+		SyncSetup: syncSetupConf,
 
-		Setup: "coin",
+		Setup: "beacon",
 
 		Sync: syncConf,
 

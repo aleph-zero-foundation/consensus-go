@@ -3,6 +3,7 @@ package process
 import (
 	"time"
 
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -15,6 +16,7 @@ type Config struct {
 	CreateSetup *Create
 	Order       *Order
 	OrderSetup  *Order
+	RMC         *RMC
 	TxValidate  *TxValidate
 	TxGenerate  *TxGenerate
 	MemLog      int
@@ -29,6 +31,16 @@ type Sync struct {
 	RemoteAddresses []string
 	Params          map[string]string
 	Fallback        string
+}
+
+// RMC represents a complete configuration needed for a rmc service to start.
+type RMC struct {
+	Pid             uint16
+	LocalAddress    []string
+	RemoteAddresses [][]string
+	Pubs            []*bn256.VerificationKey
+	Priv            *bn256.SecretKey
+	Timeout         time.Duration
 }
 
 // Create represents a complete configuration needed for a creating service to start.

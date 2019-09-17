@@ -148,7 +148,7 @@ func (b *Beacon) CheckCompliance(u gomel.Unit) error {
 			return err
 		}
 		for pid := uint16(0); pid < b.dag.NProc(); pid++ {
-			if b.votes[u.Creator()][pid].isCorrect() {
+			if b.votes[u.Creator()][pid] != nil && b.votes[u.Creator()][pid].isCorrect() {
 				if shares[pid] == nil {
 					return errors.New("missing share")
 				}
@@ -187,7 +187,7 @@ func (b *Beacon) Update(u gomel.Unit) {
 				providers[v.Creator()] = true
 				nBelowUOnVotingLevel++
 				for pid := uint16(0); pid < b.dag.NProc(); pid++ {
-					if b.votes[v.Creator()][pid].isCorrect() {
+					if b.votes[v.Creator()][pid] != nil && b.votes[v.Creator()][pid].isCorrect() {
 						coinsApprovedBy[pid]++
 					}
 				}
@@ -266,7 +266,7 @@ func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) 
 	if level >= sharesLevel {
 		cses := make([]*tcoin.CoinShare, b.dag.NProc())
 		for pid := uint16(0); pid < b.dag.NProc(); pid++ {
-			if b.votes[creator][pid].isCorrect() {
+			if b.votes[creator][pid] != nil && b.votes[creator][pid].isCorrect() {
 				cses[pid] = b.tcoins[pid].CreateCoinShare(level)
 			}
 		}
