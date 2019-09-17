@@ -8,6 +8,7 @@
 package custom
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 
@@ -155,4 +156,21 @@ func (d *decoder) DecodePreunit() (gomel.Preunit, error) {
 	result := creating.NewPreunit(creator, parents, unitData, rsData)
 	result.SetSignature(signature)
 	return result, nil
+}
+
+//EncodeUnit encodes a unit to a slice of bytes.
+func EncodeUnit(unit gomel.Unit) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := NewEncoder(&buf)
+	err := encoder.EncodeUnit(unit)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// DecodePreunit checks decodes the given data into preunit. Complementary to EncodeUnit.
+func DecodePreunit(data []byte) (gomel.Preunit, error) {
+	decoder := NewDecoder(bytes.NewReader(data))
+	return decoder.DecodePreunit()
 }

@@ -5,7 +5,6 @@
 package multicast
 
 import (
-	"bytes"
 	"math/rand"
 	"time"
 
@@ -86,14 +85,11 @@ func (s *server) SetFallback(qs sync.QueryServer) {
 }
 
 func (s *server) Send(unit gomel.Unit) {
-	buffer := &bytes.Buffer{}
-	encoder := custom.NewEncoder(buffer)
-	err := encoder.EncodeUnit(unit)
+	encUnit, err := custom.EncodeUnit(unit)
 	if err != nil {
-		s.log.Error().Str("where", "multicastServer.Send.Encode").Msg(err.Error())
+		s.log.Error().Str("where", "multicastServer.Send.EncodeUnit").Msg(err.Error())
 		return
 	}
-	encUnit := buffer.Bytes()[:]
 	for _, i := range rand.Perm(int(s.dag.NProc())) {
 		if i == int(s.pid) {
 			continue
