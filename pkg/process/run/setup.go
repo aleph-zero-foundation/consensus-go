@@ -57,11 +57,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	addService.Start()
 	defer addService.Stop()
 
-	syncService, _, err := sync.NewService(orderingDag, orderingAdder, config.SyncSetup, log)
-	if err != nil {
-		return
-	}
-	rmcService, rmcDag, err := rmc.NewService(orderingDag, config.RMC, log)
+	rmcService, rmcDag, err := rmc.NewService(orderingDag, orderingAdder, config.RMC, log)
 	if err != nil {
 		return
 	}
