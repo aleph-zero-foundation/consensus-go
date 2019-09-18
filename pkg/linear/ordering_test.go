@@ -24,7 +24,7 @@ var _ = Describe("Ordering", func() {
 	Describe("DecideTiming", func() {
 		Context("On empty dag on level 0", func() {
 			It("should return nil", func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
+				dag, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				dag = rs.Bind(dag)
@@ -34,7 +34,7 @@ var _ = Describe("Ordering", func() {
 		})
 		Context("On a dag with only dealing units on level 0", func() {
 			It("should return nil", func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/only_dealing.txt", tests.NewTestDagFactory())
+				dag, err = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				dag = rs.Bind(dag)
@@ -42,9 +42,9 @@ var _ = Describe("Ordering", func() {
 				Expect(ordering.DecideTiming()).To(BeNil())
 			})
 		})
-		Context("On a very regular dag with 4 processes and 60 units defined in regular1.txt file", func() {
+		Context("On a very regular dag with 4 processes and 60 units defined in regular.txt file", func() {
 			BeforeEach(func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/regular1.txt", tests.NewTestDagFactory())
+				dag, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				dag = rs.Bind(dag)
@@ -62,7 +62,7 @@ var _ = Describe("Ordering", func() {
 		var timingRounds [][]gomel.Unit
 		Context("On empty dag on level 0", func() {
 			It("should return nil", func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
+				dag, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				dag = rs.Bind(dag)
@@ -74,11 +74,11 @@ var _ = Describe("Ordering", func() {
 		Context("On a very regular dag with 4 processes and 60 units defined in regular1.txt file", func() {
 			Context("Without fixed prefix", func() {
 				BeforeEach(func() {
-					p, err = tests.CreateDagFromTestFile("../testdata/regular1.txt", tests.NewTestDagFactory())
+					dag, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 					Expect(err).NotTo(HaveOccurred())
 					rs = tests.NewTestRandomSource()
-					rs.Init(p)
-					ordering = NewOrdering(p, rs, 0, 0, zerolog.Nop())
+					dag = rs.Bind(dag)
+					ordering = NewOrdering(dag, rs, 0, 0, zerolog.Nop())
 					for level := 0; level < 5; level++ {
 						ordering.DecideTiming()
 						thisRound := ordering.TimingRound(level)
@@ -121,7 +121,7 @@ var _ = Describe("Ordering", func() {
 		})
 		Context("With fixed prefix", func() {
 			BeforeEach(func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/regular1.txt", tests.NewTestDagFactory())
+				dag, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
 				dag = rs.Bind(dag)

@@ -23,7 +23,7 @@ var _ = Describe("Creating", func() {
 		})
 		Context("that is empty", func() {
 			BeforeEach(func() {
-				dag, _ = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
+				dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 			})
 			Context("NewUnit", func() {
 				It("should return a dealing unit", func() {
@@ -63,7 +63,7 @@ var _ = Describe("Creating", func() {
 
 		Context("that contains a single dealing unit", func() {
 			BeforeEach(func() {
-				dag, _ = tests.CreateDagFromTestFile("../testdata/one_unit.txt", tests.NewTestDagFactory())
+				dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
 			})
 			Context("NewUnit", func() {
 				It("should return a dealing unit for a different creator", func() {
@@ -98,7 +98,7 @@ var _ = Describe("Creating", func() {
 
 		Context("that contains two dealing units", func() {
 			BeforeEach(func() {
-				dag, _ = tests.CreateDagFromTestFile("../testdata/two_dealing.txt", tests.NewTestDagFactory())
+				dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/two_dealing.txt", tests.NewTestDagFactory())
 				h1 = *dag.PrimeUnits(0).Get(0)[0].Hash()
 				h2 = *dag.PrimeUnits(0).Get(1)[0].Hash()
 			})
@@ -129,7 +129,7 @@ var _ = Describe("Creating", func() {
 
 		Context("that contains all the dealing units", func() {
 			BeforeEach(func() {
-				dag, _ = tests.CreateDagFromTestFile("../testdata/only_dealing.txt", tests.NewTestDagFactory())
+				dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
 				h1 = *dag.PrimeUnits(0).Get(0)[0].Hash()
 			})
 			Context("NewUnit", func() {

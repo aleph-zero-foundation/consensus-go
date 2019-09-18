@@ -68,8 +68,8 @@ var _ = Describe("Retrying", func() {
 
 			BeforeEach(func() {
 				interval = 10 * time.Millisecond
-				dag, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				op, _ := tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
+				dag, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+				op, _ := tests.CreateDagFromTestFile("../../testdata/dags/10/random_100u_2par_dead0.txt", tests.NewTestDagFactory())
 				for range servs {
 					dags = append(dags, op)
 				}

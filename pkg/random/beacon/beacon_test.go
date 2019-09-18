@@ -28,7 +28,7 @@ var _ = Describe("Beacon", func() {
 		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
 		for pid := uint16(0); pid < n; pid++ {
-			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
+			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			rs[pid] = New(pid)
 			dag[pid] = rs[pid].Bind(dag[pid])

@@ -68,12 +68,12 @@ var _ = Describe("Protocol", func() {
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
 
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit4.txt", tests.NewTestDagFactory())
+				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/one_unit.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
 				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
 
 				for i := 1; i < 4; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
+					tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 					dags = append(dags, tdag)
 				}
 			})
