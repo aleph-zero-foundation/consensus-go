@@ -11,6 +11,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -35,6 +36,17 @@ func generateRMCKeys(nProcesses uint16) (sekKeys []*bn256.SecretKey, verKeys []*
 		verKey, sekKey, _ := bn256.GenerateKeys()
 		sekKeys = append(sekKeys, sekKey)
 		verKeys = append(verKeys, verKey)
+	}
+	return
+}
+
+func generateEncKeys(nProcesses uint16) (encKeys []encrypt.EncryptionKey, decKeys []encrypt.DecryptionKey) {
+	encKeys = make([]encrypt.EncryptionKey, 0, nProcesses)
+	decKeys = make([]encrypt.DecryptionKey, 0, nProcesses)
+	for i := uint16(0); i < nProcesses; i++ {
+		encKey, decKey, _ := encrypt.GenerateKeys()
+		encKeys = append(encKeys, encKey)
+		decKeys = append(decKeys, decKey)
 	}
 	return
 }
@@ -66,6 +78,8 @@ func createAndStartProcess(
 	privKey gomel.PrivateKey,
 	verificationKeys []*bn256.VerificationKey,
 	secretKey *bn256.SecretKey,
+	eKeys []encrypt.EncryptionKey,
+	dKey encrypt.DecryptionKey,
 	userDB string,
 	maxLevel int,
 	finished *sync.WaitGroup,
@@ -75,10 +89,12 @@ func createAndStartProcess(
 		Pid:          id,
 		PrivateKey:   privKey,
 		RMCSecretKey: secretKey,
+		DKey:         dKey,
 	}
 	committee := config.Committee{
 		PublicKeys:          pubKeys,
 		RMCVerificationKeys: verificationKeys,
+		EKeys:               eKeys,
 		SetupAddresses:      [][]string{setupAddresses, setupMCAddresses},
 		Addresses:           [][]string{addresses, mcAddresses},
 	}
@@ -219,12 +235,13 @@ func main() {
 	addresses, setupAddresses, mcAddresses, setupMCAddresses := generateLocalhostAddresses("localhost", *testSize)
 	pubKeys, privKeys := generateKeys(uint16(*testSize))
 	sekKeys, verKeys := generateRMCKeys(uint16(*testSize))
+	eKeys, dKeys := generateEncKeys(uint16(*testSize))
 	dags := make([]gomel.Dag, int(*testSize))
 
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], eKeys, dKeys[id], *userDB, *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}

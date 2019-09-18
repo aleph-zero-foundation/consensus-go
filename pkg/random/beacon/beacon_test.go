@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -20,6 +21,8 @@ var _ = Describe("Beacon", func() {
 		maxLevel int
 		dag      []gomel.Dag
 		rs       []gomel.RandomSource
+		eKeys    []encrypt.EncryptionKey
+		dKeys    []encrypt.DecryptionKey
 		err      error
 	)
 	BeforeEach(func() {
@@ -27,10 +30,15 @@ var _ = Describe("Beacon", func() {
 		maxLevel = 13
 		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
+		eKeys = make([]encrypt.EncryptionKey, n)
+		dKeys = make([]encrypt.DecryptionKey, n)
+		for pid := uint16(0); pid < n; pid++ {
+			eKeys[pid], dKeys[pid], _ = encrypt.GenerateKeys()
+		}
 		for pid := uint16(0); pid < n; pid++ {
 			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
-			rs[pid] = New(pid)
+			rs[pid] = New(pid, eKeys, dKeys[pid])
 			dag[pid] = rs[pid].Bind(dag[pid])
 		}
 		// Generating very regular dag

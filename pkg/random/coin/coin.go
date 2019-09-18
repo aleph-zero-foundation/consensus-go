@@ -11,6 +11,7 @@ import (
 	"math/rand"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
@@ -42,21 +43,27 @@ func New(nProc, pid uint16, tcoin *tcoin.ThresholdCoin, shareProvider map[uint16
 // NewFixedCoin returns a Coin random source generated using the given seed.
 // This function should be used only for testing, as it is not safe,
 // because all the secrets could be revealed knowing the seed.
-func NewFixedCoin(nProc, pid uint16, seed int) gomel.RandomSource {
+func NewFixedCoin(nProc, pid uint16, seed int, shareProviders map[uint16]bool) gomel.RandomSource {
 	rnd := rand.New(rand.NewSource(int64(seed)))
 	threshold := nProc/3 + 1
-
-	shareProviders := make(map[uint16]bool)
-	for i := uint16(0); i < nProc; i++ {
-		shareProviders[i] = true
-	}
 
 	coeffs := make([]*big.Int, threshold)
 	for i := uint16(0); i < threshold; i++ {
 		coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Order)
 	}
 
-	return New(nProc, pid, tcoin.New(nProc, pid, coeffs), shareProviders)
+	eKeys := make([]encrypt.EncryptionKey, nProc)
+	dKeys := make([]encrypt.DecryptionKey, nProc)
+	for i := uint16(0); i < nProc; i++ {
+		eKeys[i], dKeys[i], _ = encrypt.GenerateKeys()
+	}
+
+	dealer := uint16(0)
+	gtc := tcoin.NewGlobal(nProc, coeffs)
+	tc, _ := gtc.Encrypt(dealer, eKeys)
+	myTC, _ := tcoin.Decode(tc.Encode(), dealer, pid, dKeys[pid])
+
+	return New(nProc, pid, myTC, shareProviders)
 }
 
 // Bind the coin with the dag.
@@ -187,7 +194,7 @@ func (c *coin) combineShares(level int) ([]byte, error) {
 			if cs != nil {
 				shares = append(shares, cs)
 				shareCollected[v.Creator()] = true
-				if len(shares) == int(c.tc.Threshold) {
+				if len(shares) == int(c.tc.Threshold()) {
 					return false
 				}
 				return true

@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -14,29 +13,28 @@ var _ = Describe("Coin", func() {
 	var (
 		n              uint16
 		maxLevel       int
+		seed           int
 		dag            []gomel.Dag
 		rs             []gomel.RandomSource
 		shareProviders map[uint16]bool
-		delt           []byte
 		err            error
 	)
 	BeforeEach(func() {
 		n = 4
 		maxLevel = 7
+		seed = 2137
 		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
+
 		shareProviders = make(map[uint16]bool)
-		for pid := uint16(0); pid < n-n/3; pid++ {
-			shareProviders[pid] = true
+		for i := uint16(0); i < n-n/3; i++ {
+			shareProviders[i] = true
 		}
-		delt = tcoin.Deal(n, n/3+1)
 
 		for pid := uint16(0); pid < n; pid++ {
 			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
-			tc, tcErr := tcoin.Decode(delt, pid)
-			Expect(tcErr).NotTo(HaveOccurred())
-			rs[pid] = New(n, pid, tc, shareProviders)
+			rs[pid] = NewFixedCoin(n, pid, seed, shareProviders)
 			dag[pid] = rs[pid].Bind(dag[pid])
 		}
 		// Generating very regular dag

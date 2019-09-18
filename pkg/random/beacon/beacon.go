@@ -11,6 +11,7 @@ import (
 	"errors"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
@@ -45,6 +46,8 @@ type Beacon struct {
 	// hash of a unit => the share for the i-th tcoin contained in the unit
 	shares       []*random.SyncCSMap
 	polyVerifier bn256.PolyVerifier
+	eKeys        []encrypt.EncryptionKey
+	dKey         encrypt.DecryptionKey
 }
 
 // vote is a vote for a tcoin
@@ -59,8 +62,12 @@ func (v *vote) isCorrect() bool {
 }
 
 // New returns a RandomSource using a beacon.
-func New(pid uint16) *Beacon {
-	return &Beacon{pid: pid}
+func New(pid uint16, eKeys []encrypt.EncryptionKey, dKey encrypt.DecryptionKey) *Beacon {
+	return &Beacon{
+		pid:   pid,
+		eKeys: eKeys,
+		dKey:  dKey,
+	}
 }
 
 // Bind the beacon with the given dag.
@@ -121,7 +128,7 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 func (b *Beacon) checkCompliance(u gomel.Unit) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
-		tc, err := tcoin.Decode(tcEncoded, b.pid)
+		tc, err := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.dKey)
 		if err != nil {
 			return err
 		}
@@ -165,7 +172,7 @@ func (b *Beacon) checkCompliance(u gomel.Unit) error {
 func (b *Beacon) update(u gomel.Unit) {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
-		tc, _ := tcoin.Decode(tcEncoded, b.pid)
+		tc, _ := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.dKey)
 		b.tcoins[u.Creator()] = tc
 	}
 	if u.Level() == votingLevel {
@@ -224,7 +231,7 @@ func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 		}
 		if shouldVote && !votes[v.Creator()].isCorrect() {
 			proof := votes[v.Creator()].proof
-			if !b.tcoins[v.Creator()].VerifyWrongSecretKeyProof(u.Creator(), proof) {
+			if !b.tcoins[v.Creator()].VerifyWrongSecretKeyProof(u.Creator(), proof, b.eKeys[u.Creator()]) {
 				return errors.New("the provided proof is incorrect")
 			}
 		}
@@ -249,7 +256,12 @@ func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
 func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
-		return tcoin.Deal(nProc, nProc/3+1), nil
+		gtc := tcoin.NewRandomGlobal(nProc, nProc/3+1)
+		tc, err := gtc.Encrypt(b.pid, b.eKeys)
+		if err != nil {
+			return nil, err
+		}
+		return tc.Encode(), nil
 	}
 	if level == votingLevel {
 		votes := make([]*vote, b.dag.NProc())

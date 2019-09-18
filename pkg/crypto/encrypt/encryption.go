@@ -22,4 +22,6 @@ type EncryptionKey interface {
 type DecryptionKey interface {
 	// Decrypt decrypts ciphertext that was encrypted with corresponding encryption key.
 	Decrypt(CipherText) ([]byte, error)
+	// Encode encodes the decryption key.
+	Encode() string
 }

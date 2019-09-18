@@ -70,25 +70,41 @@ var _ = Describe("Encryption", func() {
 			})
 		})
 		Describe("Checking encoding", func() {
-			var text string
+			var (
+				ekText string
+				dkText string
+			)
 			BeforeEach(func() {
-				text = ek.Encode()
+				ekText = ek.Encode()
+				dkText = dk.Encode()
 			})
 
 			It("Should decode correctly", func() {
-				ekd, err := NewEncryptionKey(text)
+				ekd, err := NewEncryptionKey(ekText)
 				Expect(err).To(BeNil())
-				Expect(eq(ek, ekd)).To(BeTrue())
+				Expect(eqE(ek, ekd)).To(BeTrue())
+
+				dkd, err := NewDecryptionKey(dkText)
+				Expect(err).To(BeNil())
+				Expect(eqD(dk, dkd)).To(BeTrue())
 			})
 			It("Should throw an error for malformed data", func() {
-				text = "|" + text[1:]
-				_, err := NewEncryptionKey(text)
+				ekText = "|" + ekText[1:]
+				_, err := NewEncryptionKey(ekText)
+				Expect(err).NotTo(BeNil())
+
+				dkText = "|" + dkText[1:]
+				_, err = NewDecryptionKey(dkText)
 				Expect(err).NotTo(BeNil())
 			})
 		})
 	})
 })
 
-func eq(ek1, ek2 EncryptionKey) bool {
+func eqE(ek1, ek2 EncryptionKey) bool {
 	return ek1.Encode() == ek2.Encode()
+}
+
+func eqD(dk1, dk2 DecryptionKey) bool {
+	return dk1.Encode() == dk2.Encode()
 }

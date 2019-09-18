@@ -119,5 +119,7 @@ func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 		TxGenerate:  generateTxGenerateConfig(conf),
 		MemLog:      conf.LogMemInterval,
 		Setup:       conf.Setup,
+		EKeys:       c.EKeys,
+		DKey:        m.DKey,
 	}
 }
