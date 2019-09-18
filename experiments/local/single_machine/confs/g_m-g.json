@@ -1,46 +1,36 @@
 {
-		"NParents": 2,
-
-		"PrimeOnly": true,
-
-    "CanSkipLevel": true,
-
-    "CreateDelay": 0.1,
-
-		"StepSize": 0.0,
-
-        "Sync": [{
-            "Type": "gossip",
-            "Params": {
-                "nIn": "3",
-                "nOut": "2",
-                "timeout": "2"},
-            "Fallback": ""
-        }, {
-            "Type": "multicast",
-            "Params": {
-                "mcType": "tcp",
-                "timeout": "2"},
-            "Fallback": "gossip"
-        } ],
-
-        "Setup": "coin",
-
-        "SyncSetup": [],
-
-		"Txpu": 1,
-
-		"LevelLimit": 20,
-
-		"LogLevel": 1,
-
-		"LogBuffer": 100000,
-
-		"LogMemInterval": 10,
-
-		"LogHuman": false,
-
-    "OrderStartLevel": 0,
-
-    "CRPFixedPrefix": 5
+  "NParents": 2,
+  "PrimeOnly": true,
+  "CanSkipLevel": true,
+  "CreateDelay": 0.1,
+  "StepSize": 0.0,
+  "Sync": [
+    {
+      "Type": "gossip",
+      "Params": {
+        "nIn": "3",
+        "nOut": "2",
+        "timeout": "2"
+      },
+      "Fallback": ""
+    },
+    {
+      "Type": "multicast",
+      "Params": {
+        "mcType": "tcp",
+        "timeout": "2"
+      },
+      "Fallback": "gossip"
+    }
+  ],
+  "Setup": "coin",
+  "SyncSetup": [],
+  "Txpu": 1,
+  "LevelLimit": 20,
+  "LogLevel": 1,
+  "LogBuffer": 100000,
+  "LogMemInterval": 10,
+  "LogHuman": false,
+  "OrderStartLevel": 0,
+  "CRPFixedPrefix": 5
 }
