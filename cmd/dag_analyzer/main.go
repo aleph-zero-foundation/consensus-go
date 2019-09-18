@@ -83,7 +83,6 @@ func computeStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) *dagStats {
 
 // StatAnalyzed represents basic statistics of slice of ints
 type StatAnalyzed struct {
-	Values       []int
 	Distribution map[int]int
 	Min          int
 	Max          int
@@ -129,9 +128,7 @@ func aggregate(stat stat, dag gomel.Dag, units []gomel.Unit, maxLevel int) StatA
 func analyze(values []int) StatAnalyzed {
 	size := len(values)
 	if size == 0 {
-		return StatAnalyzed{
-			Values: values,
-		}
+		return StatAnalyzed{}
 	}
 	sum := 0
 	min := values[0]
@@ -150,7 +147,6 @@ func analyze(values []int) StatAnalyzed {
 	}
 
 	return StatAnalyzed{
-		Values:       values,
 		Min:          min,
 		Max:          max,
 		Avg:          float64(sum) / float64(size),
