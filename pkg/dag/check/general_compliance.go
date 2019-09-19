@@ -4,23 +4,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type generalCompliance struct {
-	gomel.Dag
-	check func(dag gomel.Dag, u gomel.Unit) error
-}
-
-func (dag *generalCompliance) Check(u gomel.Unit) error {
-	if err := dag.Dag.Check(u); err != nil {
-		return err
-	}
-	return dag.check(dag, u)
-}
-
 // ExpandPrimes checks if the unit U respects the "expand primes" rule.
 func ExpandPrimes(dag gomel.Dag) gomel.Dag {
-	return &generalCompliance{
-		dag, func(dag gomel.Dag, u gomel.Unit) error { return ExpandPrimesCheck(dag, u.Parents()) },
-	}
+	return Units(dag, func(u gomel.Unit) error { return ExpandPrimesCheck(dag, u.Parents()) })
 }
 
 // ExpandPrimesCheck checks if the unit U respects the "expand primes" rule. Parents are checked consecutively. The first is

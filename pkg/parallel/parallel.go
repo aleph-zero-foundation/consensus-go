@@ -12,22 +12,16 @@ import (
 // The idea is to have multiple wrapers around a single base dag, and while the wrappers can be used by separate
 // routines, they should still use one parallelization.
 type Parallel struct {
-	sources []<-chan addRequest
-	sinks   []chan<- addRequest
-	dags    []gomel.Dag
-	wg      sync.WaitGroup
+	reqChans []chan addRequest
+	dags     []gomel.Dag
+	wg       sync.WaitGroup
 }
 
 func (p *Parallel) initialize(nProc uint16) {
-	sources := make([]<-chan addRequest, nProc)
-	sinks := make([]chan<- addRequest, nProc)
-	for i := range sinks {
-		reqChan := make(chan addRequest, 10)
-		sources[i] = reqChan
-		sinks[i] = reqChan
+	p.reqChans = make([]chan addRequest, nProc)
+	for i := range p.reqChans {
+		p.reqChans[i] = make(chan addRequest, 10)
 	}
-	p.sources = sources
-	p.sinks = sinks
 }
 
 // Register a dag for which you would like an adder.
@@ -37,12 +31,12 @@ func (p *Parallel) Register(dag gomel.Dag) gomel.Adder {
 	}
 	dagID := len(p.dags)
 	p.dags = append(p.dags, dag)
-	return &adder{dagID, p.sinks}
+	return &adder{dagID, p.reqChans}
 }
 
 func (p *Parallel) adder(i int) {
 	defer p.wg.Done()
-	for req := range p.sources[i] {
+	for req := range p.reqChans[i] {
 		_, *req.err = gomel.AddUnit(p.dags[req.dagID], req.pu)
 		req.wg.Done()
 	}
@@ -50,8 +44,8 @@ func (p *Parallel) adder(i int) {
 
 // Start the adding routines.
 func (p *Parallel) Start() error {
-	p.wg.Add(len(p.sources))
-	for i := range p.sources {
+	p.wg.Add(len(p.reqChans))
+	for i := range p.reqChans {
 		go p.adder(i)
 	}
 	return nil
@@ -59,7 +53,7 @@ func (p *Parallel) Start() error {
 
 // Stop the adding routines. After this is called, any attempts to use adders created by this Parallel will result in a panic.
 func (p *Parallel) Stop() {
-	for _, c := range p.sinks {
+	for _, c := range p.reqChans {
 		close(c)
 	}
 	p.wg.Wait()

@@ -15,7 +15,7 @@ type addRequest struct {
 
 type adder struct {
 	dagID int
-	sinks []chan<- addRequest
+	sinks []chan addRequest
 }
 
 // AddUnit to the internal dag.

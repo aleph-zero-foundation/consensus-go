@@ -6,6 +6,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+// freeUnit is a unit that is not yet included in the dag.
+// It performs some of the necessary computations (floor, level and height)
+// lazily, on demand.
 type freeUnit struct {
 	nProc     uint16
 	creator   uint16
@@ -180,6 +183,8 @@ func (u *freeUnit) computeFloor() {
 	}
 }
 
+// unit is a unit that is already inside the dag, and has all its properties precomputed and cached.
+// It uses forking heights to optimize Below calls.
 type unit struct {
 	creator       uint16
 	height        int

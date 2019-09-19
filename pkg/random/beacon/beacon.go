@@ -12,6 +12,8 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
@@ -78,7 +80,7 @@ func (b *Beacon) Bind(dag gomel.Dag) gomel.Dag {
 		b.shares[i] = random.NewSyncCSMap()
 		b.subcoins[i] = make(map[uint16]bool)
 	}
-	return random.Wrap(dag, b.checkCompliance, b.update)
+	return chdag.BeforeEmplace(check.Units(dag, b.checkCompliance), b.update)
 }
 
 // RandomBytes returns a sequence of random bits for a given unit.

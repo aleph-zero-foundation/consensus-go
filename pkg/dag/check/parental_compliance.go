@@ -4,23 +4,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type parentalCompliance struct {
-	gomel.Dag
-	check func(parents []gomel.Unit) error
-}
-
-func (dag *parentalCompliance) Check(u gomel.Unit) error {
-	if err := dag.Dag.Check(u); err != nil {
-		return err
-	}
-	return dag.check(u.Parents())
-}
-
 // ParentDiversity checks if all parents are created by pairwise different processes.
 func ParentDiversity(dag gomel.Dag) gomel.Dag {
-	return &parentalCompliance{
-		dag, parentDiversityCheck,
-	}
+	return Units(dag, func(u gomel.Unit) error { return parentDiversityCheck(u.Parents()) })
 }
 
 func parentDiversityCheck(parents []gomel.Unit) error {
@@ -36,9 +22,7 @@ func parentDiversityCheck(parents []gomel.Unit) error {
 
 // NoSelfForkingEvidence checks if a unit does not provide evidence of its creator forking.
 func NoSelfForkingEvidence(dag gomel.Dag) gomel.Dag {
-	return &parentalCompliance{
-		dag, noSelfForkingEvidenceCheck,
-	}
+	return Units(dag, func(u gomel.Unit) error { return noSelfForkingEvidenceCheck(u.Parents()) })
 }
 
 func noSelfForkingEvidenceCheck(parents []gomel.Unit) error {
@@ -50,9 +34,7 @@ func noSelfForkingEvidenceCheck(parents []gomel.Unit) error {
 
 // ForkerMuting checks if the set of units respects the forker-muting policy.
 func ForkerMuting(dag gomel.Dag) gomel.Dag {
-	return &parentalCompliance{
-		dag, ForkerMutingCheck,
-	}
+	return Units(dag, func(u gomel.Unit) error { return ForkerMutingCheck(u.Parents()) })
 }
 
 // ForkerMutingCheck checks if the set of units respects the forker-muting policy, i.e.:
