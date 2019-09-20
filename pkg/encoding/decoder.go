@@ -82,7 +82,7 @@ func (d *decoder) DecodePreunit() (gomel.Preunit, error) {
     return result, nil
 }
 
-func (d *decoder) DecodeAntichain() ([]gomel.Preunit, error) {
+func (d *decoder) decodeAntichain() ([]gomel.Preunit, error) {
     k, err := d.decodeUint32()
     if err != nil {
         return nil, err
@@ -105,7 +105,7 @@ func (d *decoder) DecodePreunits() ([][]gomel.Preunit, int, error) {
     result := make([][]gomel.Preunit, k)
     nUnits := 0
     for i := range result {
-        layer, err := d.DecodeAntichain()
+        layer, err := d.decodeAntichain()
         if err != nil {
             return nil, 0, err
         }

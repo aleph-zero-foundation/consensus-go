@@ -19,28 +19,6 @@ type processRequests []*gomel.Hash
 
 type requests []processRequests
 
-func sendDagInfo(info dagInfo, conn network.Connection) error {
-	for _, pi := range info {
-		err := encodeProcessInfo(conn, pi)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func getDagInfo(nProc uint16, conn network.Connection) (dagInfo, error) {
-	info := make(dagInfo, nProc)
-	for i := range info {
-		pi, err := decodeProcessInfo(conn)
-		if err != nil {
-			return nil, err
-		}
-		info[i] = pi
-	}
-	return info, nil
-}
-
 func toInfo(unit gomel.Unit) unitInfo {
 	return unitInfo{unit.Hash(), uint32(unit.Height())}
 }
@@ -214,40 +192,6 @@ func requestedToSend(dag gomel.Dag, info processInfo, req processRequests) ([]go
 		knownRemotes = dropToHeight(knownRemotes, operationHeight)
 	}
 	return result, nil
-}
-
-func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {
-	if layer[u] == -1 {
-		maxParentLayer := 0
-		for _, v := range u.Parents() {
-			if computeLayer(v, layer) > maxParentLayer {
-				maxParentLayer = computeLayer(v, layer)
-			}
-		}
-		layer[u] = maxParentLayer + 1
-	}
-	return layer[u]
-}
-
-// toLayers divides the provided units into antichains, so that each antichain is
-// maximal, and depends only on units from outside or from previous antichains.
-func toLayers(units []gomel.Unit) [][]gomel.Unit {
-	layer := map[gomel.Unit]int{}
-	maxLayer := 0
-	for _, u := range units {
-		layer[u] = -1
-	}
-	for _, u := range units {
-		layer[u] = computeLayer(u, layer)
-		if layer[u] > maxLayer {
-			maxLayer = layer[u]
-		}
-	}
-	result := make([][]gomel.Unit, maxLayer)
-	for _, u := range units {
-		result[layer[u]-1] = append(result[layer[u]-1], u)
-	}
-	return result
 }
 
 func unitsToSend(dag gomel.Dag, maxSnapshot [][]gomel.Unit, info dagInfo, req requests) ([]gomel.Unit, error) {

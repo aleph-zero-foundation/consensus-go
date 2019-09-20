@@ -23,6 +23,36 @@ func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	return decoder.DecodePreunit()
 }
 
-func toLayers([]gomel.Unit) [][]gomel.Unit {
-	return nil
+func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {
+	if layer[u] == -1 {
+		maxParentLayer := 0
+		for _, v := range u.Parents() {
+			if computeLayer(v, layer) > maxParentLayer {
+				maxParentLayer = computeLayer(v, layer)
+			}
+		}
+		layer[u] = maxParentLayer + 1
+	}
+	return layer[u]
+}
+
+// toLayers divides the provided units into antichains, so that each antichain is
+// maximal, and depends only on units from outside or from previous antichains.
+func toLayers(units []gomel.Unit) [][]gomel.Unit {
+	layer := map[gomel.Unit]int{}
+	maxLayer := 0
+	for _, u := range units {
+		layer[u] = -1
+	}
+	for _, u := range units {
+		layer[u] = computeLayer(u, layer)
+		if layer[u] > maxLayer {
+			maxLayer = layer[u]
+		}
+	}
+	result := make([][]gomel.Unit, maxLayer)
+	for _, u := range units {
+		result[layer[u]-1] = append(result[layer[u]-1], u)
+	}
+	return result
 }

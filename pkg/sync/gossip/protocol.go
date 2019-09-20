@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
@@ -68,9 +69,9 @@ func (p *server) in() {
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
-	err = encodeUnits(conn, toLayers(units))
+	err = sendUnits(units, conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.in.encodeUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.in.sendUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
@@ -89,17 +90,17 @@ func (p *server) in() {
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := decodeUnits(conn)
+	theirPreunitsReceived, nReceived, err := getPreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.in.decodeUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.in.getPreunits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirFreshPreunitsReceived, nFreshReceived, err := decodeUnits(conn)
+	theirFreshPreunitsReceived, nFreshReceived, err := getPreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.in.decodeUnits fresh").Msg(err.Error())
+		log.Error().Str("where", "gossip.in.getPreunits fresh").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nFreshReceived).Msg(logging.ReceivedPreunits)
@@ -119,9 +120,9 @@ func (p *server) in() {
 			return
 		}
 		log.Debug().Msg(logging.SendUnits)
-		err = encodeUnits(conn, toLayers(units))
+		err = sendUnits(units, conn)
 		if err != nil {
-			log.Error().Str("where", "gossip.in.encodeUnits(extra round)").Msg(err.Error())
+			log.Error().Str("where", "gossip.in.sendUnits(extra round)").Msg(err.Error())
 			return
 		}
 		err = conn.Flush()
@@ -134,12 +135,12 @@ func (p *server) in() {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived, "gossip.In.addUnits", log)
+	err = add.Units(p.dag, p.adder, theirPreunitsReceived, p.fallback, "gossip.In.addUnits", log)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.addUnits").Msg(err.Error())
 		return
 	}
-	err = p.addUnits(theirFreshPreunitsReceived, "gossip.In.addUnits fresh", log)
+	err = add.Units(p.dag, p.adder, theirFreshPreunitsReceived, p.fallback, "gossip.In.addUnits fresh", log)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.addUnits fresh").Msg(err.Error())
 		return
@@ -196,7 +197,7 @@ func (p *server) out() {
 		log.Error().Str("where", "gossip.out.sendDagInfo").Msg(err.Error())
 		return
 	}
-	err := conn.Flush()
+	err = conn.Flush()
 	if err != nil {
 		log.Error().Str("where", "gossip.out.Flush(first)").Msg(err.Error())
 		return
@@ -208,9 +209,9 @@ func (p *server) out() {
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := decodeUnits(conn)
+	theirPreunitsReceived, nReceived, err := getPreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.out.decodeUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.out.getPreunits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
@@ -226,9 +227,9 @@ func (p *server) out() {
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
-	err = encodeUnits(conn, toLayers(units))
+	err = sendUnits(units, conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.out.encodeUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.out.sendUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
@@ -240,9 +241,9 @@ func (p *server) out() {
 	theirPreunitsHashSet := newStaticHashSet(hashesFromAcquiredUnits(theirPreunitsReceived))
 	freshUnitsUnknown := theirPreunitsHashSet.filterOutKnownUnits(freshUnits)
 	log.Debug().Msg(logging.SendFreshUnits)
-	err = encodeUnits(conn, toLayers(freshUnitsUnknown))
+	err = sendUnits(freshUnitsUnknown, conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.out.encodeUnits").Msg(err.Error())
+		log.Error().Str("where", "gossip.out.sendUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(freshUnitsUnknown)).Msg(logging.SentFreshUnits)
@@ -261,15 +262,15 @@ func (p *server) out() {
 	if nonempty(req) {
 		log.Info().Msg(logging.AdditionalExchange)
 		log.Debug().Msg(logging.GetPreunits)
-		theirPreunitsReceived, nReceived, err = decodeUnits(conn)
+		theirPreunitsReceived, nReceived, err = getPreunits(conn)
 		if err != nil {
-			log.Error().Str("where", "gossip.out.decodeUnits(extra round)").Msg(err.Error())
+			log.Error().Str("where", "gossip.out.getPreunits(extra round)").Msg(err.Error())
 			return
 		}
 		log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 	}
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived, "gossip.Out.addUnits", log)
+	err = add.Units(p.dag, p.adder, theirPreunitsReceived, p.fallback, "gossip.Out.addUnits", log)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.addUnits").Msg(err.Error())
 		return

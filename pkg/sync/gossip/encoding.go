@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -137,4 +137,34 @@ func decodeRequests(r io.Reader, myDagInfo dagInfo) (requests, error) {
 		}
 	}
 	return result, nil
+}
+
+func sendDagInfo(info dagInfo, w io.Writer) error {
+	for _, pi := range info {
+		err := encodeProcessInfo(w, pi)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getDagInfo(nProc uint16, r io.Reader) (dagInfo, error) {
+	info := make(dagInfo, nProc)
+	for i := range info {
+		pi, err := decodeProcessInfo(r)
+		if err != nil {
+			return nil, err
+		}
+		info[i] = pi
+	}
+	return info, nil
+}
+
+func sendUnits(units []gomel.Unit, w io.Writer) error {
+	return encoding.NewEncoder(w).EncodeUnits(units)
+}
+
+func getPreunits(r io.Reader) ([][]gomel.Preunit, int, error) {
+	return encoding.NewDecoder(r).DecodePreunits()
 }

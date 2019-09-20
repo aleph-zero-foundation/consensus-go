@@ -74,7 +74,7 @@ func (e *encoder) EncodeUnit(unit gomel.Unit) error {
 	return nil
 }
 
-func (e *encoder) EncodeAntichain(units []gomel.Unit) error {
+func (e *encoder) encodeAntichain(units []gomel.Unit) error {
 	err := e.encodeUint32(uint32(len(units)))
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (e *encoder) EncodeUnits(units []gomel.Unit) error {
 		return err
 	}
 	for _, layer := range layers {
-		err := e.EncodeAntichain(layer)
+		err := e.encodeAntichain(layer)
 		if err != nil {
 			return err
 		}
