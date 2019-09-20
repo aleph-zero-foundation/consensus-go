@@ -5,7 +5,7 @@ import (
 	"io"
 	"math/rand"
 
-	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
@@ -32,7 +32,7 @@ func (p *server) in() {
 			p.log.Error().Str("where", "rmc.in.AcceptData").Msg(err.Error())
 			return
 		}
-		pu, err := custom.DecodePreunit(data)
+		pu, err := encoding.DecodePreunit(data)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.in.DecodePreunit").Msg(err.Error())
 			return
@@ -54,7 +54,7 @@ func (p *server) in() {
 				p.log.Error().Str("where", "rmc.in.AcceptFinished").Msg(err.Error())
 				return
 			}
-			predecessor, err := custom.DecodePreunit(data)
+			predecessor, err := encoding.DecodePreunit(data)
 			if err != nil {
 				p.log.Error().Str("where", "rmc.in.DecodePreunit2").Msg(err.Error())
 				return
@@ -63,7 +63,7 @@ func (p *server) in() {
 				p.log.Error().Str("where", "rmc.in.").Msg("wrong unit height")
 				return
 			}
-			err = add.Unit(p.dag, p.adder, predecessor, p.fallback, p.log)
+			err = add.Unit(p.dag, p.adder, predecessor, p.fallback, "rmc.in.AddPredecessor", p.log)
 			if err != nil {
 				p.log.Error().Str("where", "rmc.in.AddPredecessor").Msg(err.Error())
 				return
@@ -93,12 +93,12 @@ func (p *server) in() {
 			p.log.Error().Str("where", "rmc.in.AcceptFinished2").Msg(err.Error())
 			return
 		}
-		pu, err := custom.DecodePreunit(p.state.Data(id))
+		pu, err := encoding.DecodePreunit(p.state.Data(id))
 		if err != nil {
 			p.log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 			return
 		}
-		err = add.Unit(p.dag, p.adder, pu, p.fallback, p.log)
+		err = add.Unit(p.dag, p.adder, pu, p.fallback, "rmc.in.AddUnit", p.log)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.in.AddUnit").Msg(err.Error())
 			return

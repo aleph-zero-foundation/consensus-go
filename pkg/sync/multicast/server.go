@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -85,7 +85,7 @@ func (s *server) SetFallback(qs sync.QueryServer) {
 }
 
 func (s *server) Send(unit gomel.Unit) {
-	encUnit, err := custom.EncodeUnit(unit)
+	encUnit, err := encoding.EncodeUnit(unit)
 	if err != nil {
 		s.log.Error().Str("where", "multicastServer.Send.EncodeUnit").Msg(err.Error())
 		return

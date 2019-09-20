@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
@@ -84,7 +84,7 @@ func (s *server) SetFallback(qs sync.QueryServer) {
 
 func (s *server) Send(unit gomel.Unit) {
 	id := unitID(unit, s.dag.NProc())
-	data, err := custom.EncodeUnit(unit)
+	data, err := encoding.EncodeUnit(unit)
 	if err != nil {
 		s.log.Error().Str("where", "rmcServer.Send.EncodeUnit").Msg(err.Error())
 		return

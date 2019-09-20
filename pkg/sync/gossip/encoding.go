@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"io"
 
-	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -159,12 +158,4 @@ func getDagInfo(nProc uint16, r io.Reader) (dagInfo, error) {
 		info[i] = pi
 	}
 	return info, nil
-}
-
-func sendUnits(units []gomel.Unit, w io.Writer) error {
-	return encoding.NewEncoder(w).EncodeUnits(units)
-}
-
-func getPreunits(r io.Reader) ([][]gomel.Preunit, int, error) {
-	return encoding.NewDecoder(r).DecodePreunits()
 }

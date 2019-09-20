@@ -2,15 +2,14 @@ package fetch
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 
-	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	//"gitlab.com/alephledger/consensus-go/pkg/sync/add"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
@@ -45,7 +44,7 @@ func (p *server) in() {
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
-	err = sendUnits(conn, units)
+	err = encoding.SendUnits(units, conn)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.in.sendUnits").Msg(err.Error())
 		return
@@ -83,13 +82,18 @@ func (p *server) out() {
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
-	units, err := receivePreunits(conn, r.hashes)
+	units, nReceived, err := encoding.GetPreunits(conn)
 	if err != nil {
 		log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	//TODO add units!
+	err = add.Units(p.dag, p.adder, units, p.fallback, "fetch.out.addUnits", log)
+	if err != nil {
+		log.Error().Str("where", "fetch.out.addUnits").Msg(err.Error())
+		return
+	}
+	log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }
 
 func sendRequests(conn network.Connection, hashes []*gomel.Hash) error {
@@ -120,33 +124,6 @@ func receiveRequests(conn network.Connection) ([]*gomel.Hash, error) {
 		_, err = io.ReadFull(conn, result[i][:])
 		if err != nil {
 			return nil, err
-		}
-	}
-	return result, nil
-}
-
-func sendUnits(conn network.Connection, units []gomel.Unit) error {
-	encoder := custom.NewEncoder(conn)
-	for _, u := range units {
-		err := encoder.EncodeUnit(u)
-		if err != nil {
-			return err
-		}
-	}
-	return conn.Flush()
-}
-
-func receivePreunits(conn network.Connection, requested []*gomel.Hash) ([]gomel.Preunit, error) {
-	var err error
-	result := make([]gomel.Preunit, len(requested))
-	decoder := custom.NewDecoder(conn)
-	for i := range result {
-		result[i], err = decoder.DecodePreunit()
-		if err != nil {
-			return nil, err
-		}
-		if *result[i].Hash() != *requested[i] {
-			return nil, errors.New("received unit has different hash than requested")
 		}
 	}
 	return result, nil

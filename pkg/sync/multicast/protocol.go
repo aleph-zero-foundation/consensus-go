@@ -1,7 +1,7 @@
 package multicast
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
@@ -15,13 +15,13 @@ func (p *server) in() {
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
 
-	decoder := custom.NewDecoder(conn)
+	decoder := encoding.NewDecoder(conn)
 	preunit, err := decoder.DecodePreunit()
 	if err != nil {
 		p.log.Error().Str("where", "multicast.in.Decode").Msg(err.Error())
 		return
 	}
-	err = add.Unit(p.dag, p.adder, preunit, p.fallback, p.log)
+	err = add.Unit(p.dag, p.adder, preunit, p.fallback, "multicast.in.AddUnit", p.log)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.in.AddUnit").Msg(err.Error())
 		return

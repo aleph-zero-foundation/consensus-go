@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"bytes"
+	"io"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -21,6 +22,16 @@ func EncodeUnit(unit gomel.Unit) ([]byte, error) {
 func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	decoder := NewDecoder(bytes.NewReader(data))
 	return decoder.DecodePreunit()
+}
+
+//SendUnits TODO
+func SendUnits(units []gomel.Unit, w io.Writer) error {
+	return NewEncoder(w).EncodeUnits(units)
+}
+
+//GetPreunits TODO
+func GetPreunits(r io.Reader) ([][]gomel.Preunit, int, error) {
+	return NewDecoder(r).DecodePreunits()
 }
 
 func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {

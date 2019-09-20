@@ -106,7 +106,7 @@ func (f *server) update() {
 }
 
 func (f *server) addUnit(pu gomel.Preunit) {
-	err := add.Unit(f.dag, f.adder, pu, f.inner, f.log)
+	err := add.Unit(f.dag, f.adder, pu, f.inner, "retryingFallback.addUnit", f.log)
 	if err != nil {
 		f.log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}
