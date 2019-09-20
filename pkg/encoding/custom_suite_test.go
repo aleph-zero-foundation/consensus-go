@@ -1,4 +1,4 @@
-package custom_test
+package encoding_test
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package custom_test
+package encoding_test
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding"
-	. "gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
@@ -20,7 +19,7 @@ var _ = Describe("Encoding/Decoding", func() {
 		network    *bytes.Buffer
 	)
 	BeforeEach(func() {
-		dag, readingErr = tests.CreateDagFromTestFile("../../testdata/regular1.txt", tests.NewTestDagFactory())
+		dag, readingErr = tests.CreateDagFromTestFile("../testdata/regular1.txt", tests.NewTestDagFactory())
 		Expect(readingErr).NotTo(HaveOccurred())
 		network = &bytes.Buffer{}
 		encoder = NewEncoder(network)
