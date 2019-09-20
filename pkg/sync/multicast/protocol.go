@@ -21,12 +21,9 @@ func (p *server) in() {
 		p.log.Error().Str("where", "multicast.in.Decode").Msg(err.Error())
 		return
 	}
-	err = add.Unit(p.dag, p.adder, preunit, p.fallback, "multicast.in.AddUnit", p.log)
-	if err != nil {
-		p.log.Error().Str("where", "multicast.in.AddUnit").Msg(err.Error())
-		return
+	if add.Unit(p.dag, p.adder, preunit, p.fallback, "multicast.in", p.log) {
+		p.log.Info().Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 	}
-	p.log.Info().Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 }
 
 func (p *server) out(pid uint16) {
