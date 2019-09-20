@@ -13,11 +13,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-type request struct {
-	pid    uint16
-	hashes []*gomel.Hash
-}
-
 type server struct {
 	pid      uint16
 	dag      gomel.Dag
