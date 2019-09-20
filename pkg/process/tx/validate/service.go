@@ -22,12 +22,12 @@ type service struct {
 }
 
 // NewService creates a new transaction validation service for the given dag, with the given configuration.
-func NewService(dag gomel.Dag, config *process.TxValidate, unitSource <-chan []gomel.Unit, log zerolog.Logger) (process.Service, error) {
+func NewService(config *process.TxValidate, unitSource <-chan []gomel.Unit, log zerolog.Logger) process.Service {
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),
 		log:        log,
-	}, nil
+	}
 }
 
 func (s *service) main() {

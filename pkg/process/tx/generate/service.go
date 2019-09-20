@@ -11,7 +11,6 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
@@ -25,13 +24,13 @@ type service struct {
 }
 
 // NewService creates a service generating transactions.
-func NewService(dag gomel.Dag, config *process.TxGenerate, txChan chan<- []byte, log zerolog.Logger) (process.Service, error) {
+func NewService(config *process.TxGenerate, txChan chan<- []byte, log zerolog.Logger) process.Service {
 	return &service{
 		txpu:     config.Txpu,
 		txChan:   txChan,
 		exitChan: make(chan struct{}),
 		log:      log,
-	}, nil
+	}
 }
 
 func (s *service) generateRandom() []byte {

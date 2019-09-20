@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -38,14 +38,14 @@ func startAll(services []process.Service) error {
 
 func makeStandardDag(conf *gomel.DagConfig) gomel.Dag {
 	nProc := uint16(len(conf.Keys))
-	dag := chdag.New(nProc)
-	dag, _ = check.Signatures(dag, conf.Keys)
-	dag = check.BasicCompliance(dag)
-	dag = check.ParentDiversity(dag)
-	dag = check.NoSelfForkingEvidence(dag)
-	dag = check.ForkerMuting(dag)
-	dag = check.ExpandPrimes(dag)
-	return dag
+	d := dag.New(nProc)
+	d, _ = check.Signatures(d, conf.Keys)
+	d = check.BasicCompliance(d)
+	d = check.ParentDiversity(d)
+	d = check.NoSelfForkingEvidence(d)
+	d = check.ForkerMuting(d)
+	d = check.ExpandPrimes(d)
+	return d
 }
 
 // Process starts the main and setup processes.
@@ -74,42 +74,33 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 
-	dag := makeStandardDag(config.Dag)
+	d := makeStandardDag(config.Dag)
 	rs, ok := <-rsCh
 	if !ok {
 		return nil, errors.New("setup phase failed")
 	}
-	dag = rs.Bind(dag)
+	d = rs.Bind(d)
 
-	orderService, orderingDag := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	orderService, orderIfPrime := order.NewService(d, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	d = dag.AfterEmplace(d, orderIfPrime)
 
-	addService := &parallel.Parallel{}
-	orderingAdder := addService.Register(orderingDag)
-	addService.Start()
-	defer addService.Stop()
+	adderService := &parallel.Parallel{}
+	adder := adderService.Register(d)
 
-	syncService, multicastDag, err := sync.NewService(orderingDag, orderingAdder, config.Sync, log)
+	syncService, multicastUnit, err := sync.NewService(d, adder, config.Sync, log)
 	if err != nil {
 		return nil, err
 	}
-	multicastAdder := addService.Register(multicastDag)
-	createService, err := create.NewService(multicastDag, multicastAdder, rs, config.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
-	if err != nil {
-		return nil, err
-	}
-	validateService, err := validate.NewService(dag, config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
-	if err != nil {
-		return nil, err
-	}
-	generateService, err := generate.NewService(dag, config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
-	if err != nil {
-		return nil, err
-	}
-	memlogService, err := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-	if err != nil {
-		return nil, err
-	}
-	services := []process.Service{createService, orderService, generateService, validateService, memlogService, syncService}
+	dmc := dag.AfterEmplace(d, multicastUnit)
+	adderMC := adderService.Register(dmc)
+
+	createService := create.NewService(dmc, adderMC, rs, config.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+
+	validateService := validate.NewService(config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
+	generateService := generate.NewService(config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
+	memlogService := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+
+	services := []process.Service{adderService, createService, orderService, generateService, validateService, memlogService, syncService}
 
 	err = startAll(services)
 	if err != nil {
@@ -117,5 +108,5 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	}
 	defer stopAll(services)
 	<-dagFinished
-	return dag, nil
+	return d, nil
 }

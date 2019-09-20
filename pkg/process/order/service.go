@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
-
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -29,7 +27,7 @@ type service struct {
 // This service sorts units in linear order.
 // orderedUnits is an output channel where it writes these units in order.
 // Ordering is attempted when a prime unit is added to the returned dag.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, gomel.Dag) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, func(gomel.Unit)) {
 	primeAlert := make(chan struct{}, 1)
 	return &service{
 			pid:                 config.Pid,
@@ -40,14 +38,14 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.
 			exitChan:            make(chan struct{}),
 			currentRound:        config.OrderStartLevel,
 			log:                 log,
-		}, chdag.AfterEmplace(dag, func(u gomel.Unit) {
+		}, func(u gomel.Unit) {
 			if gomel.Prime(u) {
 				select {
 				case primeAlert <- struct{}{}:
 				default:
 				}
 			}
-		})
+		}
 }
 
 func (s *service) attemptOrdering() {

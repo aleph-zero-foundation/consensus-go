@@ -13,7 +13,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
-	"gitlab.com/alephledger/consensus-go/pkg/process/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
