@@ -114,21 +114,32 @@ var _ = Describe("Tcoin", func() {
 	})
 
 	Context("Multicoin", func() {
+		var (
+			tcs1 []*ThresholdCoin
+			tcs2 []*ThresholdCoin
+		)
 		BeforeEach(func() {
 			n, t = 10, 4
-			dealt1 := Deal(n, t)
-			dealt2 := Deal(n, t)
+
 			tcs = make([]*ThresholdCoin, n)
 			tcs1 = make([]*ThresholdCoin, n)
 			tcs2 = make([]*ThresholdCoin, n)
-
+			eKeys = make([]encrypt.EncryptionKey, n)
+			dKeys = make([]encrypt.DecryptionKey, n)
 			for i := uint16(0); i < n; i++ {
-				tc, err := Decode(dealt1, i)
-				Expect(err).NotTo(HaveOccurred())
-				tcs1[i] = tc
-				tc, err = Decode(dealt2, i)
-				Expect(err).NotTo(HaveOccurred())
-				tcs2[i] = tc
+				eKeys[i], dKeys[i], _ = encrypt.GenerateKeys()
+			}
+
+			gtc1 := NewRandomGlobal(n, t)
+			tc1, _ := gtc1.Encrypt(0, eKeys)
+			gtc2 := NewRandomGlobal(n, t)
+			tc2, _ := gtc2.Encrypt(0, eKeys)
+
+			tc1Encoded := tc1.Encode()
+			tc2Encoded := tc2.Encode()
+			for i := uint16(0); i < n; i++ {
+				tcs1[i], _ = Decode(tc1Encoded, 0, i, dKeys[i])
+				tcs2[i], _ = Decode(tc2Encoded, 0, i, dKeys[i])
 				tcs[i] = CreateMulticoin([]*ThresholdCoin{tcs1[i], tcs2[i]})
 			}
 			nonce = 123
