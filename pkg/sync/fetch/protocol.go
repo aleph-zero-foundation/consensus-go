@@ -16,7 +16,7 @@ func (p *server) in() {
 	conn.TimeoutAfter(p.timeout)
 	pid, sid, err := handshake.AcceptGreeting(conn)
 	if err != nil {
-		p.log.Error().Str("where", "fetchProtocol.in.greeting").Msg(err.Error())
+		p.log.Error().Str("where", "fetch.in.greeting").Msg(err.Error())
 		return
 	}
 	if pid >= p.dag.NProc() {
@@ -29,18 +29,18 @@ func (p *server) in() {
 	log.Debug().Msg(logging.GetRequests)
 	hashes, err := receiveRequests(conn)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.in.receiveRequests").Msg(err.Error())
+		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
 		return
 	}
 	units, err := getUnits(p.dag, hashes)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.in.getUnits").Msg(err.Error())
+		log.Error().Str("where", "fetch.in.getUnits").Msg(err.Error())
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
 	err = encoding.SendUnits(units, conn)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.in.sendUnits").Msg(err.Error())
+		log.Error().Str("where", "fetch.in.sendUnits").Msg(err.Error())
 		return
 	}
 	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
@@ -54,7 +54,7 @@ func (p *server) out() {
 	remotePid := r.pid
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "fetchProtocol.out.dial").Msg(err.Error())
+		p.log.Error().Str("where", "fetch.out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
@@ -63,7 +63,7 @@ func (p *server) out() {
 	p.syncIds[remotePid]++
 	err = handshake.Greet(conn, p.pid, sid)
 	if err != nil {
-		p.log.Error().Str("where", "fetchProtocol.out.greeting").Msg(err.Error())
+		p.log.Error().Str("where", "fetch.out.greeting").Msg(err.Error())
 		return
 	}
 	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
@@ -72,20 +72,17 @@ func (p *server) out() {
 	log.Debug().Msg(logging.SendRequests)
 	err = sendRequests(conn, r.hashes)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.out.sendRequests").Msg(err.Error())
+		log.Error().Str("where", "fetch.out.sendRequests").Msg(err.Error())
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
 	units, nReceived, err := encoding.GetPreunits(conn)
 	if err != nil {
-		log.Error().Str("where", "fetchProtocol.out.receivePreunits").Msg(err.Error())
+		log.Error().Str("where", "fetch.out.receivePreunits").Msg(err.Error())
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	err = add.Units(p.dag, p.adder, units, p.fallback, "fetch.out.addUnits", log)
-	if err != nil {
-		log.Error().Str("where", "fetch.out.addUnits").Msg(err.Error())
-		return
+	if add.Units(p.adder, units, p.fallback, "fetch.out", log) {
+		log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 	}
-	log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }

@@ -63,9 +63,7 @@ func (p *server) in() {
 				p.log.Error().Str("where", "rmc.in.").Msg("wrong unit height")
 				return
 			}
-			err = add.Unit(p.dag, p.adder, predecessor, p.fallback, "rmc.in.AddPredecessor", p.log)
-			if err != nil {
-				p.log.Error().Str("where", "rmc.in.AddPredecessor").Msg(err.Error())
+			if !add.Unit(p.adder, predecessor, p.fallback, "rmc.in.Predecessor", p.log) {
 				return
 			}
 		} else {
@@ -98,11 +96,7 @@ func (p *server) in() {
 			p.log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 			return
 		}
-		err = add.Unit(p.dag, p.adder, pu, p.fallback, "rmc.in.AddUnit", p.log)
-		if err != nil {
-			p.log.Error().Str("where", "rmc.in.AddUnit").Msg(err.Error())
-			return
-		}
+		add.Unit(p.adder, pu, p.fallback, "rmc.in", p.log)
 	}
 }
 
@@ -139,7 +133,7 @@ func (p *server) out(pid uint16) {
 
 		requestPredecessor, err := readSingleByte(conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.out.readSingleByte").Msg(err.Error())
+			p.log.Error().Str("where", "rmc.out.ReadSingleByte").Msg(err.Error())
 			return
 		}
 		if requestPredecessor == byte(1) {

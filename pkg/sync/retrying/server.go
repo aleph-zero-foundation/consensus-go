@@ -70,7 +70,7 @@ func (f *server) addToBacklog(pu gomel.Preunit) bool {
 	}
 	if len(missing) == 0 {
 		// we got the parents in the meantime, all is fine
-		f.addUnit(pu)
+		add.Unit(f.adder, pu, f.inner, "retrying.addToBacklog", f.log)
 		return false
 	}
 	// The code below has the invariant that if a unit is in dependencies, then it is also in the backlog.
@@ -97,17 +97,10 @@ func (f *server) update() {
 		for _, h := range addableHashes {
 			// There is no need for nil checks, because of the invariant mentioned above.
 			pu := f.backlog.get(h)
-			f.addUnit(pu)
+			add.Unit(f.adder, pu, f.inner, "retrying.update", f.log)
 			f.backlog.del(h)
 			f.log.Info().Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.RemovedFromBacklog)
 		}
 		presentHashes = addableHashes
-	}
-}
-
-func (f *server) addUnit(pu gomel.Preunit) {
-	err := add.Unit(f.dag, f.adder, pu, f.inner, "retryingFallback.addUnit", f.log)
-	if err != nil {
-		f.log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}
 }

@@ -9,7 +9,7 @@ import (
 func (p *server) in() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.in.Listen").Msg(err.Error())
+		p.log.Error().Str("where", "multicast.in.listen").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
@@ -18,10 +18,10 @@ func (p *server) in() {
 	decoder := encoding.NewDecoder(conn)
 	preunit, err := decoder.DecodePreunit()
 	if err != nil {
-		p.log.Error().Str("where", "multicast.in.Decode").Msg(err.Error())
+		p.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
 		return
 	}
-	if add.Unit(p.dag, p.adder, preunit, p.fallback, "multicast.in", p.log) {
+	if add.Unit(p.adder, preunit, p.fallback, "multicast.in", p.log) {
 		p.log.Info().Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 	}
 }
@@ -33,19 +33,19 @@ func (p *server) out(pid uint16) {
 	}
 	conn, err := p.netserv.Dial(pid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.out.Dial").Msg(err.Error())
+		p.log.Error().Str("where", "multicast.out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
 	_, err = conn.Write(r.encUnit)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.out.SendUnit").Msg(err.Error())
+		p.log.Error().Str("where", "multicast.out.sendUnit").Msg(err.Error())
 		return
 	}
 	err = conn.Flush()
 	if err != nil {
-		p.log.Error().Str("where", "multicast.out.Flush").Msg(err.Error())
+		p.log.Error().Str("where", "multicast.out.flush").Msg(err.Error())
 		return
 	}
 	p.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, pid).Msg(logging.UnitBroadcasted)

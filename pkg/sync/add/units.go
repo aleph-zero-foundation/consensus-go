@@ -38,7 +38,7 @@ func handleError(err error, pu gomel.Preunit, fallback sync.QueryServer, where s
 				fallback.FindOut(pu)
 			}
 		default:
-			log.Error().Str("where", where).Msg(err.Error())
+			log.Error().Str("addUnit", where).Msg(err.Error())
 			return false
 		}
 	}
