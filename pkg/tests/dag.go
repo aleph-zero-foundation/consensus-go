@@ -38,22 +38,29 @@ func newDag(dagConfiguration gomel.DagConfig) *Dag {
 	return newDag
 }
 
-// AddUnit adds a unit in a thread safe manner without trying to be clever.
-func (dag *Dag) AddUnit(pu gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
+// Decode the given preunit to a unit.
+func (dag *Dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	var u unit
 	err := dehashParents(&u, dag, pu)
 	if err != nil {
-		callback(pu, nil, err)
-		return
+		return nil, err
 	}
 	// Setting height, creator, signature, version, hash
 	setBasicInfo(&u, dag, pu)
 	setLevel(&u, dag)
 	setFloor(&u, dag)
+	return &u, nil
+}
 
-	//Setting dag variables
-	updateDag(&u, dag)
-	callback(pu, &u, nil)
+// Check accepts everything.
+func (dag *Dag) Check(u gomel.Unit) error {
+	return nil
+}
+
+// Emplace the unit in the dag.
+func (dag *Dag) Emplace(u gomel.Unit) gomel.Unit {
+	updateDag(u, dag)
+	return u
 }
 
 // PrimeUnits returns the prime units at the given level.
@@ -140,7 +147,7 @@ func setBasicInfo(u *unit, dag *Dag, pu gomel.Preunit) {
 	}
 }
 
-func updateDag(u *unit, dag *Dag) {
+func updateDag(u gomel.Unit, dag *Dag) {
 	dag.Lock()
 	defer dag.Unlock()
 

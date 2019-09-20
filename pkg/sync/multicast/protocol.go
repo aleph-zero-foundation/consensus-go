@@ -9,7 +9,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
 const (
@@ -20,35 +19,27 @@ const (
 )
 
 type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	requests     <-chan request
-	netserv      network.Server
-	callback     gomel.Callback
-	timeout      time.Duration
-	fallback     sync.Fallback
-	log          zerolog.Logger
+	pid      uint16
+	dag      gomel.Dag
+	adder    gomel.Adder
+	requests <-chan request
+	netserv  network.Server
+	timeout  time.Duration
+	fallback sync.Fallback
+	log      zerolog.Logger
 }
 
-func newProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, requests <-chan request, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
-
-	logSuccess := func(_ gomel.Preunit, added gomel.Unit, err error) {
-		if err == nil {
-			log.Info().Uint16(logging.Creator, added.Creator()).Int(logging.Height, added.Height()).Msg(logging.AddedBCUnit)
-		}
-	}
+func newProtocol(pid uint16, dag gomel.Dag, adder gomel.Adder, requests <-chan request, netserv network.Server, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
 
 	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		requests:     requests,
-		netserv:      netserv,
-		callback:     gomel.MergeCallbacks(callback, logSuccess),
-		timeout:      timeout,
-		fallback:     fallback,
-		log:          log,
+		pid:      pid,
+		dag:      dag,
+		adder:    adder,
+		requests: requests,
+		netserv:  netserv,
+		timeout:  timeout,
+		fallback: fallback,
+		log:      log,
 	}
 }
 
@@ -67,11 +58,11 @@ func (p *protocol) In() {
 		p.log.Error().Str("where", "multicast.In.Decode").Msg(err.Error())
 		return
 	}
-	err = add.Unit(p.dag, p.randomSource, preunit, p.callback, p.fallback, p.log)
+	err = sync.LogAddUnitError(preunit, p.adder.AddUnit(preunit), p.fallback, "multicast.In.AddUnit", p.log)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.In.AddUnit").Msg(err.Error())
 		return
 	}
+	p.log.Info().Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 }
 
 func (p *protocol) Out() {

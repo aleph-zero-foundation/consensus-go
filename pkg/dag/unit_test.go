@@ -1,18 +1,18 @@
-package growing_test
+package dag_test
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	. "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	. "gitlab.com/alephledger/consensus-go/pkg/growing"
-	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 type dagFactory struct{}
 
 func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
-	return NewDag(&dc)
+	return New(uint16(len(dc.Keys)))
 }
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
@@ -59,20 +59,6 @@ var _ = Describe("Units", func() {
 	Describe("small", func() {
 		JustBeforeEach(func() {
 			units = collectUnits(dag)
-		})
-		AfterEach(func() {
-			dag.(*Dag).Stop()
-		})
-		Describe("HasForkingEvidence works properly in case of forks even when combined floors is not an evidence of forking", func() {
-
-			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/self_forking_evidence.txt", df)
-				dag = df.CreateDag(gomel.DagConfig{Keys: nil})
-			})
-
-			It("should confirm that a unit exploiting it is a self-forking evidence", func() {
-				Expect(readingErr).To(Equal(gomel.NewComplianceError("A unit is evidence of self forking")))
-			})
 		})
 		Describe("Checking reflexivity of Below", func() {
 			BeforeEach(func() {
@@ -191,7 +177,7 @@ var _ = Describe("Units", func() {
 					for version := 0; version < 2; version++ {
 						inside := false
 						for _, u := range floor[0] {
-							if u.Hash() == units[0][0][version].Hash() {
+							if *u.Hash() == *units[0][0][version].Hash() {
 								inside = true
 							}
 						}

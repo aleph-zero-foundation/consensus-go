@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -65,7 +66,7 @@ func valid(configs []*process.Sync) error {
 }
 
 // getFallback builds a fallback for process.Sync configuration.
-func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.RandomSource, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
+func getFallback(c *process.Sync, s *service, dag gomel.Dag, adder gomel.Adder, log zerolog.Logger) (sync.Fallback, chan uint16, chan fetch.Request, error) {
 	var fbk sync.Fallback
 	nProc := dag.NProc()
 	switch c.Fallback {
@@ -89,12 +90,12 @@ func getFallback(c *process.Sync, s *service, dag gomel.Dag, randomSource gomel.
 		case "gossip":
 			reqChan := make(chan uint16, nProc)
 			baseFbk = fallback.NewGossip(reqChan)
-			fbk = fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
+			fbk = fallback.NewRetrying(baseFbk, dag, adder, ri, log)
 			return fbk, reqChan, nil, nil
 		case "fetch":
 			reqChan := make(chan fetch.Request, nProc)
 			baseFbk = fallback.NewFetch(dag, reqChan)
-			retrying := fallback.NewRetrying(baseFbk, dag, randomSource, ri, log)
+			retrying := fallback.NewRetrying(baseFbk, dag, adder, ri, log)
 			s.subservices = append(s.subservices, retrying)
 			fbk = retrying
 			return fbk, nil, reqChan, nil
@@ -117,18 +118,16 @@ func isFallback(name string, configs []*process.Sync) int {
 }
 
 // NewService creates a new syncing service for the given dag, with the given config.
-// When units received from a sync are added to the poset primeAlert is called on them.
-// The returned callback should be called on units created by this process after they are added to the poset.
-// It is used to multicast newly created units, when multicast is in use.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, primeAlert gomel.Callback, log zerolog.Logger) (process.Service, gomel.Callback, error) {
+// The returned dag will multicast units created by us, when they are added to it, when multicast is in use.
+func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log zerolog.Logger) (process.Service, gomel.Dag, error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
+	resultDag := dag
 	pid := configs[0].Pid
 	nProc := dag.NProc()
 	s := &service{log: log.With().Int(logging.Service, logging.SyncService).Logger()}
 	fallbacks := make(map[string]sync.Fallback)
-	callback := gomel.NopCallback
 
 	for i, c := range configs {
 		var (
@@ -163,7 +162,9 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if fbk == nil {
 				fbk = sync.NopFallback()
 			}
-			server, callback = multicast.NewServer(pid, dag, randomSource, netserv, primeAlert, t, fbk, log)
+			var cb func(gomel.Unit)
+			server, cb = multicast.NewServer(pid, dag, adder, netserv, t, fbk, log)
+			resultDag = chdag.AfterEmplace(dag, cb)
 		case "gossip":
 			log = log.With().Int(logging.Service, logging.GossipService).Logger()
 
@@ -174,7 +175,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 
 			var peerSource gossip.PeerSource
 			if id := isFallback("fetch", configs[i+1:]); id != -1 || (c.Fallback == "retrying" && c.Params["retryingFallback"] == "gossip") {
-				fbk, reqChan, _, err := getFallback(configs[i+1+id], s, dag, randomSource, log)
+				fbk, reqChan, _, err := getFallback(configs[i+1+id], s, dag, adder, log)
 				fallbacks["gossip"] = fbk
 				if err != nil {
 					return nil, nil, err
@@ -191,7 +192,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server = gossip.NewServer(pid, dag, randomSource, netserv, peerSource, primeAlert, t, log, nOut, nIn)
+			server = gossip.NewServer(pid, dag, adder, netserv, peerSource, t, log, nOut, nIn)
 		case "fetch":
 			log = log.With().Int(logging.Service, logging.FetchService).Logger()
 			netserv, err := tcp.NewServer(c.LocalAddress, c.RemoteAddresses, log)
@@ -201,7 +202,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 
 			var reqChan chan fetch.Request
 			if id := isFallback("fetch", configs[i+1:]); id != -1 || c.Fallback == "fetch" || (c.Fallback == "retrying" && c.Params["retryingFallback"] == "fetch") {
-				fbk, _, reqChan, err = getFallback(configs[i+1+id], s, dag, randomSource, log)
+				fbk, _, reqChan, err = getFallback(configs[i+1+id], s, dag, adder, log)
 				if id != 1 || c.Fallback == "fetch" {
 					fallbacks["fetch"] = fbk
 				}
@@ -223,12 +224,12 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server = fetch.NewServer(pid, dag, randomSource, reqChan, netserv, primeAlert, t, fbk, log, nOut, nIn)
+			server = fetch.NewServer(pid, dag, adder, reqChan, netserv, t, fbk, log, nOut, nIn)
 		}
 		s.servers = append(s.servers, server)
 	}
 
-	return s, callback, nil
+	return s, resultDag, nil
 }
 
 func (s *service) Start() error {

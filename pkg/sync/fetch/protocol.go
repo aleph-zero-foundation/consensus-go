@@ -17,39 +17,36 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
 type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	reqs         <-chan Request
-	netserv      network.Server
-	syncIds      []uint32
-	callback     gomel.Callback
-	timeout      time.Duration
-	fallback     sync.Fallback
-	log          zerolog.Logger
+	pid      uint16
+	dag      gomel.Dag
+	adder    gomel.Adder
+	reqs     <-chan Request
+	netserv  network.Server
+	syncIds  []uint32
+	timeout  time.Duration
+	fallback sync.Fallback
+	log      zerolog.Logger
 }
 
 // NewProtocol returns a new fetching protocol.
 // It will wait on reqs to initiate syncing.
 // When adding units fails because of missing parents it will call fallback with the unit containing the unknown parents.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, reqs <-chan Request, netserv network.Server, callback gomel.Callback, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, adder gomel.Adder, reqs <-chan Request, netserv network.Server, timeout time.Duration, fallback sync.Fallback, log zerolog.Logger) sync.Protocol {
 	nProc := dag.NProc()
 	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		reqs:         reqs,
-		netserv:      netserv,
-		syncIds:      make([]uint32, nProc),
-		callback:     callback,
-		timeout:      timeout,
-		fallback:     fallback,
-		log:          log,
+		pid:      pid,
+		dag:      dag,
+		adder:    adder,
+		reqs:     reqs,
+		netserv:  netserv,
+		syncIds:  make([]uint32, nProc),
+		timeout:  timeout,
+		fallback: fallback,
+		log:      log,
 	}
 }
 
@@ -128,13 +125,21 @@ func (p *protocol) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	aggErr := add.Antichain(p.dag, p.randomSource, units, p.callback, p.fallback, log)
-	aggErr = aggErr.Pruned(true)
-	if aggErr != nil {
-		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())
-		return
+	aggErr := p.adder.AddAntichain(units)
+	realError := false
+	for i, err := range aggErr.Errors() {
+		if err != nil {
+			err := sync.LogAddUnitError(units[i], err, p.fallback, "fetchProtocol.out.addAntichain", p.log)
+			if !realError && err != nil {
+				if _, ok := err.(*gomel.UnknownParents); !ok {
+					realError = true
+				}
+			}
+		}
 	}
-	log.Info().Int(logging.Recv, len(units)).Msg(logging.SyncCompleted)
+	if !realError {
+		log.Info().Int(logging.Recv, len(units)).Msg(logging.SyncCompleted)
+	}
 }
 
 func sendRequests(conn network.Connection, hashes []*gomel.Hash) error {

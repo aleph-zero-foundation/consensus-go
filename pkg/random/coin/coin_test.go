@@ -1,8 +1,6 @@
 package coin_test
 
 import (
-	"sync"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
@@ -39,37 +37,27 @@ var _ = Describe("Coin", func() {
 			tc, tcErr := tcoin.Decode(delt, pid)
 			Expect(tcErr).NotTo(HaveOccurred())
 			rs[pid] = New(n, pid, tc, shareProviders)
-			rs[pid].Init(dag[pid])
+			dag[pid] = rs[pid].Bind(dag[pid])
 		}
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
 			for creator := uint16(0); creator < n; creator++ {
-				pu, err := creating.NewUnit(dag[creator], creator, 2*(n/3)+1, []byte{}, rs[creator], false)
+				pu, _, _, err := creating.NewUnit(dag[creator], creator, 2*(n/3)+1, []byte{}, rs[creator], false)
 				Expect(err).NotTo(HaveOccurred())
 				for pid := uint16(0); pid < n; pid++ {
-					var wg sync.WaitGroup
-					wg.Add(1)
-					var added gomel.Unit
-					dag[pid].AddUnit(pu, rs[pid], func(_ gomel.Preunit, u gomel.Unit, err error) {
-						defer wg.Done()
-						added = u
-						Expect(err).NotTo(HaveOccurred())
-					})
-					errComp := rs[pid].CheckCompliance(added)
-					Expect(errComp).NotTo(HaveOccurred())
-					rs[pid].Update(added)
-					wg.Wait()
+					_, err = gomel.AddUnit(dag[pid], pu)
+					Expect(err).NotTo(HaveOccurred())
 				}
 			}
 		}
 	})
-	Describe("CheckCompliance", func() {
-		Context("on a prime unit created by a share provider", func() {
+	Describe("Adding a unit", func() {
+		Context("that is a prime unit created by a share provider", func() {
 			Context("without random source data", func() {
 				It("should return an error", func() {
 					u := dag[0].PrimeUnits(2).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -78,7 +66,7 @@ var _ = Describe("Coin", func() {
 					u := dag[0].PrimeUnits(2).Get(0)[0]
 					v := dag[0].PrimeUnits(3).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -88,7 +76,7 @@ var _ = Describe("Coin", func() {
 				It("should return an error", func() {
 					u := dag[0].PrimeUnits(2).Get(n - 1)[0]
 					um := newUnitMock(u, []byte{1, 2, 3})
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})

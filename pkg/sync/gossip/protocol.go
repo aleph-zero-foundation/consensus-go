@@ -15,36 +15,34 @@ import (
 )
 
 type protocol struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	netserv      network.Server
-	peerSource   PeerSource
-	callback     gomel.Callback
-	timeout      time.Duration
-	log          zerolog.Logger
-	inUse        []*mutex
-	syncIds      []uint32
+	pid        uint16
+	dag        gomel.Dag
+	adder      gomel.Adder
+	netserv    network.Server
+	peerSource PeerSource
+	timeout    time.Duration
+	log        zerolog.Logger
+	inUse      []*mutex
+	syncIds    []uint32
 }
 
 // NewProtocol returns a new gossiping protocol.
-func NewProtocol(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, peerSource PeerSource, callback gomel.Callback, timeout time.Duration, log zerolog.Logger) sync.Protocol {
+func NewProtocol(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, peerSource PeerSource, timeout time.Duration, log zerolog.Logger) sync.Protocol {
 	nProc := dag.NProc()
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
 		inUse[i] = newMutex()
 	}
 	return &protocol{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		netserv:      netserv,
-		peerSource:   peerSource,
-		callback:     callback,
-		timeout:      timeout,
-		log:          log,
-		inUse:        inUse,
-		syncIds:      make([]uint32, nProc),
+		pid:        pid,
+		dag:        dag,
+		adder:      adder,
+		netserv:    netserv,
+		peerSource: peerSource,
+		timeout:    timeout,
+		log:        log,
+		inUse:      inUse,
+		syncIds:    make([]uint32, nProc),
 	}
 }
 

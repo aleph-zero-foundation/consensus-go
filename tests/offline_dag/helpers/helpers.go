@@ -5,13 +5,13 @@ import (
 	"math/rand"
 	"os"
 	"sort"
-	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+	"gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
@@ -121,7 +121,7 @@ func NewNoOpAdder() AddingHandler {
 // NewDefaultCreator creates an instance of Creator that when called attempts to create a unit using default data.
 func NewDefaultCreator(maxParents uint16) Creator {
 	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		pu, err := creating.NewUnit(dag, creator, maxParents, NewDefaultDataContent(), rs, false)
+		pu, _, _, err := creating.NewUnit(dag, creator, maxParents, NewDefaultDataContent(), rs, false)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
 			return nil, err
@@ -131,26 +131,11 @@ func NewDefaultCreator(maxParents uint16) Creator {
 	}
 }
 
-// AddToDag is a helper method for synchronous addition of a unit to a given dag.
-func AddToDag(dag gomel.Dag, pu gomel.Preunit, rs gomel.RandomSource) (gomel.Unit, error) {
-	var result gomel.Unit
-	var caughtError error
-	var wg sync.WaitGroup
-	wg.Add(1)
-	dag.AddUnit(pu, rs, func(pu gomel.Preunit, u gomel.Unit, err error) {
-		result = u
-		caughtError = err
-		wg.Done()
-	})
-	wg.Wait()
-	return result, caughtError
-}
-
 // AddToDags is a helper function that adds a given unit to all provided dags.
 func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (gomel.Unit, error) {
 	var resultUnit gomel.Unit
 	for ix, dag := range dags {
-		result, err := AddToDag(dag, unit, rss[ix])
+		result, err := gomel.AddUnit(dag, unit)
 		if err != nil {
 			return nil, err
 		}
@@ -162,10 +147,10 @@ func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (
 }
 
 // AddToDagsIngoringErrors adds a unit to all dags ignoring all errors while doing it. It returns, if possible, a Unit added the owning dag (assuming that order of 'dags' lists corresponds with their ids).
-func AddToDagsIngoringErrors(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) gomel.Unit {
+func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 	var resultUnit gomel.Unit
-	for ix, dag := range dags {
-		result, err := AddToDag(dag, unit, rss[ix])
+	for _, dag := range dags {
+		result, err := gomel.AddUnit(dag, unit)
 		if resultUnit == nil {
 			if result != nil {
 				resultUnit = result
@@ -212,14 +197,14 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, rss []gomel.RandomSource, dags 
 }
 
 // AddUnitsToDagsInRandomOrder adds a set of units in random order (per each dag) to all provided dags.
-func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag, rss []gomel.RandomSource) error {
-	for ix, dag := range dags {
+func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag) error {
+	for _, dag := range dags {
 		rand.Shuffle(len(units), func(i, j int) {
 			units[i], units[j] = units[j], units[i]
 		})
 
 		for _, pu := range units {
-			if _, err := AddToDag(dag, pu, rss[ix]); err != nil {
+			if _, err := gomel.AddUnit(dag, pu); err != nil {
 				return err
 			}
 		}
@@ -574,7 +559,8 @@ func newTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
 }
 
-func (rs *testRandomSource) Init(dag gomel.Dag) {
+func (rs *testRandomSource) Bind(dag gomel.Dag) gomel.Dag {
+	return dag
 }
 
 func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
@@ -582,13 +568,6 @@ func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 		return []byte{0}
 	}
 	return []byte{1}
-}
-
-func (*testRandomSource) Update(gomel.Unit) {
-}
-
-func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
-	return nil
 }
 
 func (*testRandomSource) DataToInclude(uint16, []gomel.Unit, int) ([]byte, error) {
@@ -602,10 +581,10 @@ func Test(
 	configurations []config.Configuration,
 	testingRoutine *TestingRoutine,
 ) error {
-	rssProvider := func(pid uint16, dag gomel.Dag) gomel.RandomSource {
+	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
 		rs := coin.NewFixedCoin(dag.NProc(), pid, 0)
-		rs.Init(dag)
-		return rs
+		dag = rs.Bind(dag)
+		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
 }
@@ -618,12 +597,18 @@ func TestUsingTestRandomSource(
 	configurations []config.Configuration,
 	testingRoutine *TestingRoutine,
 ) error {
-	rssProvider := func(pid uint16, dag gomel.Dag) gomel.RandomSource {
+	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
 		rs := newTestRandomSource()
-		rs.Init(dag)
-		return rs
+		dag = rs.Bind(dag)
+		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
+}
+
+// MakeStandardDag returns a daag with standard checks.
+func MakeStandardDag(dc gomel.DagConfig) gomel.Dag {
+	dag, _ := check.Signatures(dag.New(uint16(len(dc.Keys))), dc.Keys)
+	return check.ExpandPrimes(check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentDiversity(check.BasicCompliance(dag)))))
 }
 
 // TestUsingRandomSourceProvider is a helper function that performs a single test using provided TestingRoutineFactory.
@@ -631,7 +616,7 @@ func TestUsingRandomSourceProvider(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
 	configurations []config.Configuration,
-	rssProvider func(pid uint16, dag gomel.Dag) gomel.RandomSource,
+	rssProvider func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag),
 	testingRoutine *TestingRoutine,
 ) error {
 
@@ -641,12 +626,11 @@ func TestUsingRandomSourceProvider(
 	rss := make([]gomel.RandomSource, 0, nProcesses)
 
 	for pid := uint16(0); len(dags) < int(nProcesses); pid++ {
-		dag := growing.NewDag(&gomel.DagConfig{Keys: pubKeys})
-		defer dag.Stop()
-		dags = append(dags, dag)
+		dag := MakeStandardDag(gomel.DagConfig{Keys: pubKeys})
 
 		pids = append(pids, pid)
-		rs := rssProvider(pid, dag)
+		rs, dag := rssProvider(pid, dag)
+		dags = append(dags, dag)
 		rss = append(rss, rs)
 	}
 

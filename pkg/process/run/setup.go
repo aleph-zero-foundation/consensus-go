@@ -5,9 +5,11 @@ import (
 
 	"github.com/rs/zerolog"
 
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/parallel"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
@@ -25,6 +27,17 @@ func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolo
 	close(rsCh)
 }
 
+func makeBeaconDag(conf *gomel.DagConfig) gomel.Dag {
+	nProc := uint16(len(conf.Keys))
+	dag := chdag.New(nProc)
+	dag, _ = check.Signatures(dag, conf.Keys)
+	dag = check.BasicCompliance(dag)
+	dag = check.ParentDiversity(dag)
+	dag = check.PrimeOnlyNoSkipping(dag)
+	dag = check.NoForks(dag)
+	return dag
+}
+
 // beaconSetup is the setup described in the whitepaper.
 func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	defer close(rsCh)
@@ -33,19 +46,23 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	// orderer sends ordered rounds to the channel
 	orderedUnits := make(chan []gomel.Unit, 5)
 
-	dag := growing.NewDag(config.Dag)
+	dag := makeBeaconDag(config.Dag)
 	rs := beacon.New(config.Create.Pid)
-	rs.Init(dag)
+	dag = rs.Bind(dag)
 
-	orderService, primeAlert, err := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	orderService, orderingDag := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+
+	addService := &parallel.Parallel{}
+	orderingAdder := addService.Register(orderingDag)
+	addService.Start()
+	defer addService.Stop()
+
+	rmcService, rmcDag, err := rmc.NewService(orderingDag, orderingAdder, config.RMC, log)
 	if err != nil {
 		return
 	}
-	rmcService, unitsToRMC, err := rmc.NewService(dag, rs, config.RMC, log)
-	if err != nil {
-		return
-	}
-	createService, err := create.NewService(dag, rs, config.CreateSetup, dagFinished, gomel.MergeCallbacks(gomel.ChannelCallback(unitsToRMC), primeAlert), nil, log.With().Int(logging.Service, logging.CreateService).Logger())
+	rmcAdder := addService.Register(rmcDag)
+	createService, err := create.NewService(rmcDag, rmcAdder, rs, config.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return
 	}
@@ -84,6 +101,4 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	time.Sleep(60 * time.Second)
 	rmcService.Stop()
 	<-dagFinished
-	dag.Stop()
-	close(unitsToRMC)
 }

@@ -6,9 +6,11 @@ import (
 
 	"github.com/rs/zerolog"
 
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/parallel"
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
@@ -32,6 +34,18 @@ func startAll(services []process.Service) error {
 		}
 	}
 	return nil
+}
+
+func makeStandardDag(conf *gomel.DagConfig) gomel.Dag {
+	nProc := uint16(len(conf.Keys))
+	dag := chdag.New(nProc)
+	dag, _ = check.Signatures(dag, conf.Keys)
+	dag = check.BasicCompliance(dag)
+	dag = check.ParentDiversity(dag)
+	dag = check.NoSelfForkingEvidence(dag)
+	dag = check.ForkerMuting(dag)
+	dag = check.ExpandPrimes(dag)
+	return dag
 }
 
 // Process starts the main and setup processes.
@@ -60,23 +74,26 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 
-	dag := growing.NewDag(config.Dag)
-	defer dag.Stop()
+	dag := makeStandardDag(config.Dag)
 	rs, ok := <-rsCh
 	if !ok {
 		return nil, errors.New("setup phase failed")
 	}
-	rs.Init(dag)
+	dag = rs.Bind(dag)
 
-	orderService, primeAlert, err := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	orderService, orderingDag := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+
+	addService := &parallel.Parallel{}
+	orderingAdder := addService.Register(orderingDag)
+	addService.Start()
+	defer addService.Stop()
+
+	syncService, multicastDag, err := sync.NewService(orderingDag, orderingAdder, config.Sync, log)
 	if err != nil {
 		return nil, err
 	}
-	syncService, requestMulticast, err := sync.NewService(dag, rs, config.Sync, primeAlert, log)
-	if err != nil {
-		return nil, err
-	}
-	createService, err := create.NewService(dag, rs, config.Create, dagFinished, gomel.MergeCallbacks(requestMulticast, primeAlert), txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	multicastAdder := addService.Register(multicastDag)
+	createService, err := create.NewService(multicastDag, multicastAdder, rs, config.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 	if err != nil {
 		return nil, err
 	}

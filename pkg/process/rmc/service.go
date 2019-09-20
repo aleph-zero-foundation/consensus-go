@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
@@ -26,8 +27,8 @@ const (
 type service struct {
 	pid          uint16
 	dag          gomel.Dag
-	rs           gomel.RandomSource
-	units        <-chan gomel.Unit
+	adder        gomel.Adder
+	units        chan gomel.Unit
 	accepted     chan []byte
 	mcRequests   chan *multicast.Request
 	mcServer     *multicast.Server
@@ -42,7 +43,7 @@ type service struct {
 // NewService creates a new service for rmc.
 // It returns the service and a unit channel
 // for creator to send newly created units.
-func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log zerolog.Logger) (process.Service, chan<- gomel.Unit, error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, config *process.RMC, log zerolog.Logger) (process.Service, gomel.Dag, error) {
 	// state contains information about all rmc exchanges
 	state := rmc.New(config.Pubs, config.Priv)
 
@@ -65,14 +66,14 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 
 	fetchRequests := make(chan fetch.Request, dag.NProc())
 	fbk := fallback.NewFetch(dag, fetchRequests)
-	fetchServer := fetch.NewServer(uint16(config.Pid), dag, rs, fetchRequests, netserv, gomel.NopCallback, config.Timeout, fbk, log, 1, 1)
+	fetchServer := fetch.NewServer(config.Pid, dag, adder, fetchRequests, netserv, config.Timeout, fbk, log, 1, 1)
 
 	// units is a channel on which create service should send newly created units for rmc
 	units := make(chan gomel.Unit)
 
 	return &service{
 			dag:          dag,
-			rs:           rs,
+			adder:        adder,
 			pid:          config.Pid,
 			units:        units,
 			accepted:     accepted,
@@ -84,7 +85,11 @@ func NewService(dag gomel.Dag, rs gomel.RandomSource, config *process.RMC, log z
 			log:          log,
 			exitChan:     make(chan struct{}),
 		},
-		units,
+		chdag.AfterEmplace(dag, func(u gomel.Unit) {
+			if u.Creator() == config.Pid {
+				units <- u
+			}
+		}),
 		nil
 }
 
@@ -130,14 +135,13 @@ func (s *service) validator() {
 					s.log.Error().Str("where", "multicast.DecodePreunit").Msg(err.Error())
 					continue
 				}
-				s.dag.AddUnit(pu, s.rs, func(preunit gomel.Preunit, u gomel.Unit, err error) {
-					if err != nil {
-						switch err.(type) {
-						case *gomel.UnknownParents:
-							s.fallback.Run(pu)
-						}
+				err := s.adder.AddUnit(pu)
+				if err != nil {
+					switch err.(type) {
+					case *gomel.UnknownParents:
+						s.fallback.Run(pu)
 					}
-				})
+				}
 			}
 		case <-s.exitChan:
 			return
@@ -163,6 +167,7 @@ func (s *service) Stop() {
 	s.fetchServer.StopIn()
 	close(s.accepted)
 	close(s.exitChan)
+	close(s.units)
 	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }

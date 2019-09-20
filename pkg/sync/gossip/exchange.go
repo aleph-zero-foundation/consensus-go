@@ -6,7 +6,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
 func sendDagInfo(info dagInfo, conn network.Connection) error {
@@ -32,11 +31,20 @@ func getDagInfo(nProc uint16, conn network.Connection) (dagInfo, error) {
 }
 
 // addUnits adds the provided units to the dag, assuming they are divided into antichains as described in toLayers
-func (p *protocol) addUnits(preunits [][]gomel.Preunit, log zerolog.Logger) error {
+func (p *protocol) addUnits(preunits [][]gomel.Preunit, where string, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		err := add.Antichain(p.dag, p.randomSource, pus, p.callback, sync.NopFallback(), log)
-		if err != nil {
-			return err
+		aggErr := p.adder.AddAntichain(pus)
+		realError := false
+		for i, err := range aggErr.Errors() {
+			if err != nil {
+				err := sync.LogAddUnitError(pus[i], err, sync.NopFallback(), where, p.log)
+				if err != nil {
+					realError = true
+				}
+			}
+		}
+		if realError {
+			return aggErr
 		}
 	}
 	return nil
@@ -159,14 +167,12 @@ func (p *protocol) inExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived, log)
+	err = p.addUnits(theirPreunitsReceived, "gossip.In.addUnits", log)
 	if err != nil {
-		log.Error().Str("where", "gossip.In.addUnits").Msg(err.Error())
 		return
 	}
-	err = p.addUnits(theirFreshPreunitsReceived, log)
+	err = p.addUnits(theirFreshPreunitsReceived, "gossip.In.addUnits fresh", log)
 	if err != nil {
-		log.Error().Str("where", "gossip.In.addUnits fresh").Msg(err.Error())
 		return
 	}
 	log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Int(logging.FreshRecv, nFreshReceived).Msg(logging.SyncCompleted)
@@ -284,9 +290,8 @@ func (p *protocol) outExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived, log)
+	err = p.addUnits(theirPreunitsReceived, "gossip.Out.addUnits", log)
 	if err != nil {
-		log.Error().Str("where", "gossip.Out.addUnits").Msg(err.Error())
 		return
 	}
 	log.Info().Int(logging.Sent, len(units)).Int(logging.FreshSent, len(freshUnitsUnknown)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
