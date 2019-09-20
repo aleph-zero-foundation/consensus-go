@@ -19,6 +19,28 @@ type processRequests []*gomel.Hash
 
 type requests []processRequests
 
+func sendDagInfo(info dagInfo, conn network.Connection) error {
+	for _, pi := range info {
+		err := encodeProcessInfo(conn, pi)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getDagInfo(nProc uint16, conn network.Connection) (dagInfo, error) {
+	info := make(dagInfo, nProc)
+	for i := range info {
+		pi, err := decodeProcessInfo(conn)
+		if err != nil {
+			return nil, err
+		}
+		info[i] = pi
+	}
+	return info, nil
+}
+
 func toInfo(unit gomel.Unit) unitInfo {
 	return unitInfo{unit.Hash(), uint32(unit.Height())}
 }
@@ -93,6 +115,15 @@ func maximalHeight(units []gomel.Unit) int {
 		}
 	}
 	return result
+}
+
+func nonempty(req requests) bool {
+	for _, r := range req {
+		if len(r) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // unitsToSendByProcess returns the units that are predecessors of maxes and successors of tops.

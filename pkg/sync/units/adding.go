@@ -26,3 +26,15 @@ package add
 //	}
 //}
 //
+
+// addUnits adds the provided units to the dag, assuming they are divided into antichains as described in toLayers
+//func (p *server) addUnits(preunits [][]gomel.Preunit, where string, log zerolog.Logger) error {
+//	for _, pus := range preunits {
+//		err := add.Antichain(p.dag, p.adder, pus, p.fallback, log)
+//		if err != nil {
+//			return err
+//		}
+//	}
+//	return nil
+//}
+//

@@ -1,8 +1,8 @@
-// Package add implements functions for adding units to the dag in ways appropriate for various synchronisation methods.
-package add
+// Package units implements functions for adding units to the dag in ways appropriate for various synchronization methods.
+package units
 
 import (
-	//	"sync"
+	//	"sync"add
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -28,7 +28,7 @@ import (
 //		}
 //	}
 //}
-//
+
 // Unit adds a preunit to the dag and returns an error if it fails.
 func Unit(dag gomel.Dag, adder gomel.Adder, preunit gomel.Preunit, fallback gsync.QueryServer, log zerolog.Logger) error {
 	//	var wg sync.WaitGroup
