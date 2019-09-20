@@ -23,35 +23,35 @@ const (
 
 // server is a multicast server
 type server struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	netserv      network.Server
-	fallback     sync.QueryServer
-	requests     []chan *request
-	state        *rmcbox.RMC
-	outPool      sync.WorkerPool
-	inPool       sync.WorkerPool
-	timeout      time.Duration
-	log          zerolog.Logger
+	pid      uint16
+	dag      gomel.Dag
+	adder    gomel.Adder
+	netserv  network.Server
+	fallback sync.QueryServer
+	requests []chan *request
+	state    *rmcbox.RMC
+	outPool  sync.WorkerPool
+	inPool   sync.WorkerPool
+	timeout  time.Duration
+	log      zerolog.Logger
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
 	nProc := int(dag.NProc())
 	requests := make([]chan *request, nProc)
 	for i := 0; i < nProc; i++ {
 		requests[i] = make(chan *request, requestSize)
 	}
 	s := &server{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		netserv:      netserv,
-		requests:     requests,
-		state:        state,
-		timeout:      timeout,
-		log:          log,
+		pid:      pid,
+		dag:      dag,
+		adder:    adder,
+		netserv:  netserv,
+		requests: requests,
+		state:    state,
+		timeout:  timeout,
+		log:      log,
 	}
 	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.out)
 	s.inPool = sync.NewPool(inPoolSize*nProc, s.in)

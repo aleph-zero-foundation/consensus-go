@@ -10,11 +10,12 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
 type server struct {
 	dag      gomel.Dag
-	rs       gomel.RandomSource
+	adder    gomel.Adder
 	interval time.Duration
 	inner    gsync.QueryServer
 	backlog  *backlog
@@ -25,10 +26,10 @@ type server struct {
 }
 
 // NewServer creates a server that runs a retrying routine that keeps trying to add problematic units.
-func NewServer(dag gomel.Dag, rs gomel.RandomSource, interval time.Duration, log zerolog.Logger) gsync.QueryServer {
+func NewServer(dag gomel.Dag, adder gomel.Adder, interval time.Duration, log zerolog.Logger) gsync.QueryServer {
 	return &server{
 		dag:     dag,
-		rs:      rs,
+		adder:   adder,
 		backlog: newBacklog(),
 		deps:    newDeps(),
 		log:     log,
@@ -105,8 +106,8 @@ func (f *server) update() {
 }
 
 func (f *server) addUnit(pu gomel.Preunit) {
-	err := add.Unit(f.dag, f.rs, pu, f.inner, f.log)
+	err := add.Unit(f.dag, f.adder, pu, f.inner, f.log)
 	if err != nil {
-		log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
+		f.log.Error().Str("where", "retryingFallback.addUnit").Msg(err.Error())
 	}
 }

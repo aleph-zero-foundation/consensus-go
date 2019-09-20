@@ -13,23 +13,23 @@ import (
 )
 
 type server struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	netserv      network.Server
-	fallback     sync.QueryServer
-	requests     chan uint16
-	peerSource   PeerSource
-	inUse        []*mutex
-	syncIds      []uint32
-	outPool      sync.WorkerPool
-	inPool       sync.WorkerPool
-	timeout      time.Duration
-	log          zerolog.Logger
+	pid        uint16
+	dag        gomel.Dag
+	adder      gomel.Adder
+	netserv    network.Server
+	fallback   sync.QueryServer
+	requests   chan uint16
+	peerSource PeerSource
+	inUse      []*mutex
+	syncIds    []uint32
+	outPool    sync.WorkerPool
+	inPool     sync.WorkerPool
+	timeout    time.Duration
+	log        zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.QueryServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.QueryServer {
 	nProc := int(dag.NProc())
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
@@ -37,16 +37,16 @@ func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netse
 	}
 	requests := make(chan uint16, nProc)
 	s := &server{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		netserv:      netserv,
-		requests:     requests,
-		peerSource:   NewMixedPeerSource(dag.NProc(), pid, requests),
-		inUse:        inUse,
-		syncIds:      make([]uint32, nProc),
-		timeout:      timeout,
-		log:          log,
+		pid:        pid,
+		dag:        dag,
+		adder:      adder,
+		netserv:    netserv,
+		requests:   requests,
+		peerSource: NewMixedPeerSource(dag.NProc(), pid, requests),
+		inUse:      inUse,
+		syncIds:    make([]uint32, nProc),
+		timeout:    timeout,
+		log:        log,
 	}
 	s.outPool = sync.NewPool(nOut, s.out)
 	s.inPool = sync.NewPool(nIn, s.in)

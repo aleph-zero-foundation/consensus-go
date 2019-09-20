@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -33,11 +32,10 @@ type service struct {
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*process.Sync, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
-	resultDag := dag
 	pid := configs[0].Pid
 	s := &service{
 		queryServers: make(map[string]sync.QueryServer),
@@ -58,14 +56,14 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 		case "multicast":
 			log = log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
-			server := multicast.NewServer(pid, dag, randomSource, netserv, timeout, log)
+			server := multicast.NewServer(pid, dag, adder, netserv, timeout, log)
 			s.mcServer = server
 			servmap[c.Type] = server
 
 		case "rmc":
 			log = log.With().Int(logging.Service, logging.RMCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
-			server := rmc.NewServer(pid, dag, randomSource, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, log)
+			server := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, log)
 			s.mcServer = server
 			servmap[c.Type] = server
 
@@ -80,7 +78,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server := gossip.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
+			server := gossip.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
 			s.queryServers[c.Type] = server
 			servmap[c.Type] = server
 
@@ -95,7 +93,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server := fetch.NewServer(pid, dag, randomSource, netserv, timeout, log, nOut, nIn)
+			server := fetch.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
 			s.queryServers[c.Type] = server
 			servmap[c.Type] = server
 
@@ -105,7 +103,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 			if err != nil {
 				return nil, nil, err
 			}
-			server := retrying.NewServer(dag, randomSource, interval, log)
+			server := retrying.NewServer(dag, adder, interval, log)
 			s.queryServers[c.Type] = server
 			servmap[c.Type] = server
 		}

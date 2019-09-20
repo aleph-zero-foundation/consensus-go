@@ -31,9 +31,9 @@ func getDagInfo(nProc uint16, conn network.Connection) (dagInfo, error) {
 }
 
 // addUnits adds the provided units to the dag, assuming they are divided into antichains as described in toLayers
-func (p *server) addUnits(preunits [][]gomel.Preunit, log zerolog.Logger) error {
+func (p *server) addUnits(preunits [][]gomel.Preunit, where string, log zerolog.Logger) error {
 	for _, pus := range preunits {
-		err := add.Antichain(p.dag, p.randomSource, pus, p.fallback, log)
+		err := add.Antichain(p.dag, p.adder, pus, p.fallback, log)
 		if err != nil {
 			return err
 		}

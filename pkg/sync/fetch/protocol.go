@@ -10,7 +10,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
+	//"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
@@ -89,8 +89,7 @@ func (p *server) out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-
-	}
+	//TODO add units!
 }
 
 func sendRequests(conn network.Connection, hashes []*gomel.Hash) error {

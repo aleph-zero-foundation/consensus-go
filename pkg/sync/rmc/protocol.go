@@ -63,7 +63,7 @@ func (p *server) in() {
 				p.log.Error().Str("where", "rmc.in.").Msg("wrong unit height")
 				return
 			}
-			err = add.Unit(p.dag, p.randomSource, predecessor, p.fallback, p.log)
+			err = add.Unit(p.dag, p.adder, predecessor, p.fallback, p.log)
 			if err != nil {
 				p.log.Error().Str("where", "rmc.in.AddPredecessor").Msg(err.Error())
 				return
@@ -98,7 +98,7 @@ func (p *server) in() {
 			p.log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 			return
 		}
-		err = add.Unit(p.dag, p.randomSource, pu, p.fallback, p.log)
+		err = add.Unit(p.dag, p.adder, pu, p.fallback, p.log)
 		if err != nil {
 			p.log.Error().Str("where", "rmc.in.AddUnit").Msg(err.Error())
 			return

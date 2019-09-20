@@ -19,32 +19,32 @@ type request struct {
 }
 
 type server struct {
-	pid          uint16
-	dag          gomel.Dag
-	randomSource gomel.RandomSource
-	netserv      network.Server
-	fallback     sync.QueryServer
-	requests     chan request
-	syncIds      []uint32
-	outPool      sync.WorkerPool
-	inPool       sync.WorkerPool
-	timeout      time.Duration
-	log          zerolog.Logger
+	pid      uint16
+	dag      gomel.Dag
+	adder    gomel.Adder
+	netserv  network.Server
+	fallback sync.QueryServer
+	requests chan request
+	syncIds  []uint32
+	outPool  sync.WorkerPool
+	inPool   sync.WorkerPool
+	timeout  time.Duration
+	log      zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(pid uint16, dag gomel.Dag, randomSource gomel.RandomSource, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.QueryServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.QueryServer {
 	nProc := int(dag.NProc())
 	requests := make(chan request, nProc)
 	s := &server{
-		pid:          pid,
-		dag:          dag,
-		randomSource: randomSource,
-		netserv:      netserv,
-		requests:     requests,
-		syncIds:      make([]uint32, nProc),
-		timeout:      timeout,
-		log:          log,
+		pid:      pid,
+		dag:      dag,
+		adder:    adder,
+		netserv:  netserv,
+		requests: requests,
+		syncIds:  make([]uint32, nProc),
+		timeout:  timeout,
+		log:      log,
 	}
 	s.outPool = sync.NewPool(nOut, s.out)
 	s.inPool = sync.NewPool(nIn, s.in)
