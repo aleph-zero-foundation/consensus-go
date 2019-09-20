@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"gitlab.com/alephledger/consensus-go/pkg/dag"
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -38,14 +38,14 @@ func startAll(services []process.Service) error {
 
 func makeStandardDag(conf *gomel.DagConfig) gomel.Dag {
 	nProc := uint16(len(conf.Keys))
-	d := dag.New(nProc)
-	d, _ = check.Signatures(d, conf.Keys)
-	d = check.BasicCompliance(d)
-	d = check.ParentDiversity(d)
-	d = check.NoSelfForkingEvidence(d)
-	d = check.ForkerMuting(d)
-	d = check.ExpandPrimes(d)
-	return d
+	dag := chdag.New(nProc)
+	dag, _ = check.Signatures(dag, conf.Keys)
+	dag = check.BasicCompliance(dag)
+	dag = check.ParentDiversity(dag)
+	dag = check.NoSelfForkingEvidence(dag)
+	dag = check.ForkerMuting(dag)
+	dag = check.ExpandPrimes(dag)
+	return dag
 }
 
 // Process starts the main and setup processes.
@@ -70,35 +70,39 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	dagFinished := make(chan struct{})
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
-	orderedUnits := make(chan []gomel.Unit, 5)
+	orderedUnits := make(chan []gomel.Unit, 10)
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 
-	d := makeStandardDag(config.Dag)
+	dag := makeStandardDag(config.Dag)
 	rs, ok := <-rsCh
 	if !ok {
 		return nil, errors.New("setup phase failed")
 	}
-	d = rs.Bind(d)
 
-	orderService, orderIfPrime := order.NewService(d, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
-	d = dag.AfterEmplace(d, orderIfPrime)
+	// common with setup:
+	dag = rs.Bind(dag)
+
+	orderService, orderIfPrime := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	dag = chdag.AfterEmplace(dag, orderIfPrime)
 
 	adderService := &parallel.Parallel{}
-	adder := adderService.Register(d)
+	adder := adderService.Register(dag)
 
-	syncService, multicastUnit, err := sync.NewService(d, adder, config.Sync, log)
+	syncService, multicastUnit, err := sync.NewService(dag, adder, config.Sync, log)
 	if err != nil {
 		return nil, err
 	}
-	dmc := dag.AfterEmplace(d, multicastUnit)
-	adderMC := adderService.Register(dmc)
+	dagMC := chdag.AfterEmplace(dag, multicastUnit)
+	adderMC := adderService.Register(dagMC)
 
-	createService := create.NewService(dmc, adderMC, rs, config.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService := create.NewService(dagMC, adderMC, rs, config.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+
+	memlogService := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+	// end common
 
 	validateService := validate.NewService(config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
 	generateService := generate.NewService(config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
-	memlogService := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
 	services := []process.Service{adderService, createService, orderService, generateService, validateService, memlogService, syncService}
 
@@ -108,5 +112,5 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	}
 	defer stopAll(services)
 	<-dagFinished
-	return d, nil
+	return dag, nil
 }

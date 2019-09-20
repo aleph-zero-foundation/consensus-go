@@ -18,13 +18,14 @@ func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*pr
 	syncConfs := make([]*process.Sync, nTypes)
 	for i := range syncConfs {
 		syncConfs[i] = &process.Sync{
-			Type: conf.SyncSetup[i].Type,
-			Pid:  m.Pid,
-			// first two Address lists are used for RMC
-			LocalAddress:    c.SetupAddresses[2+i][m.Pid],
-			RemoteAddresses: c.SetupAddresses[2+i],
+			Type:            conf.SyncSetup[i].Type,
+			Pid:             m.Pid,
+			LocalAddress:    c.SetupAddresses[i][m.Pid],
+			RemoteAddresses: c.SetupAddresses[i],
 			Params:          conf.SyncSetup[i].Params,
 			Fallback:        conf.SyncSetup[i].Fallback,
+			Pubs:            c.RMCVerificationKeys,
+			Priv:            m.RMCSecretKey,
 		}
 	}
 	return syncConfs
