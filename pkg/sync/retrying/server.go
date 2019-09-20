@@ -7,11 +7,9 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
 type server struct {
@@ -71,7 +69,7 @@ func (f *server) addToBacklog(pu gomel.Preunit) bool {
 	}
 	if len(missing) == 0 {
 		// we got the parents in the meantime, all is fine
-		go f.addUnit(pu)
+		f.addUnit(pu)
 		return false
 	}
 	// The code below has the invariant that if a unit is in dependencies, then it is also in the backlog.

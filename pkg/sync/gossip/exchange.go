@@ -158,12 +158,12 @@ func (p *server) inExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived, log)
+	err = p.addUnits(theirPreunitsReceived, "gossip.In.addUnits", log)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.addUnits").Msg(err.Error())
 		return
 	}
-	err = p.addUnits(theirFreshPreunitsReceived, log)
+	err = p.addUnits(theirFreshPreunitsReceived, "gossip.In.addUnits fresh", log)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.addUnits fresh").Msg(err.Error())
 		return
@@ -283,7 +283,7 @@ func (p *server) outExchange(conn network.Connection) {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	err = p.addUnits(theirPreunitsReceived, log)
+	err = p.addUnits(theirPreunitsReceived, "gossip.Out.addUnits", log)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.addUnits").Msg(err.Error())
 		return

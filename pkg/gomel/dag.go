@@ -7,13 +7,15 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
-// Callback is a generic function called during AddUnit on the Preunit that is being added, and the resulting Unit (if successful) or encountered error (if not).
-type Callback func(Preunit, Unit, error)
-
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
-	// AddUnits tries to transform a preunit to a corresponding unit and add it to the dag. After that, it calls the Callback.
-	AddUnit(Preunit, RandomSource, Callback)
+	// Decode attempts to decode the given Preunit and return a Unit or an error, when that is impossible.
+	// The resulting Unit is NOT inserted in the dag -- to do that one needs to Emplace it.
+	Decode(Preunit) (Unit, error)
+	// Check if the Unit satisfies the assumptions of the dag. Should be called before Emplace.
+	Check(Unit) error
+	// Emplace attempts to add the given Unit to the dag. It returns the unit that is included in the dag.
+	Emplace(Unit) Unit
 	// PrimeUnits returns all prime units on a given level of the dag.
 	PrimeUnits(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
@@ -27,22 +29,7 @@ type Dag interface {
 	NProc() uint16
 }
 
-// MergeCallbacks combines two callbacks into one.
-func MergeCallbacks(cb1, cb2 Callback) Callback {
-	return func(pu Preunit, unit Unit, err error) {
-		cb1(pu, unit, err)
-		cb2(pu, unit, err)
-	}
-}
-
-// NopCallback is an empty Callback.
-var NopCallback Callback = func(Preunit, Unit, error) {}
-
-// ChannelCallback returns a callback sending newly created unit to the given channel
-func ChannelCallback(ch chan<- Unit) Callback {
-	return func(pu Preunit, unit Unit, err error) {
-		if err == nil {
-			ch <- unit
-		}
-	}
+// IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
+func IsQuorum(nProcesses, subsetSize uint16) bool {
+	return 3*subsetSize >= 2*nProcesses
 }

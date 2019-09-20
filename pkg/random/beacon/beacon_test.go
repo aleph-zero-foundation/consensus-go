@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/big"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,62 +31,52 @@ var _ = Describe("Beacon", func() {
 			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			rs[pid] = New(pid)
-			rs[pid].Init(dag[pid])
+			dag[pid] = rs[pid].Bind(dag[pid])
 		}
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
 			for creator := uint16(0); creator < n; creator++ {
-				pu, err := creating.NewNonSkippingUnit(dag[creator], creator, []byte{}, rs[creator])
+				pu, _, err := creating.NewNonSkippingUnit(dag[creator], creator, []byte{}, rs[creator])
 				Expect(err).NotTo(HaveOccurred())
 				for pid := uint16(0); pid < n; pid++ {
-					var wg sync.WaitGroup
-					wg.Add(1)
-					var added gomel.Unit
-					dag[pid].AddUnit(pu, rs[pid], func(_ gomel.Preunit, u gomel.Unit, err error) {
-						defer wg.Done()
-						added = u
-						Expect(err).NotTo(HaveOccurred())
-					})
-					errComp := rs[pid].CheckCompliance(added)
-					Expect(errComp).NotTo(HaveOccurred())
-					rs[pid].Update(added)
-					wg.Wait()
+					_, err = gomel.AddUnit(dag[pid], pu)
+					Expect(err).NotTo(HaveOccurred())
 				}
 			}
 		}
 	})
-	Describe("CheckCompliance", func() {
-		Context("On a dealing unit without tcoin included", func() {
+	Describe("Adding units", func() {
+		Context("that are dealing, but without a tcoin included", func() {
 			It("Should return an error", func() {
 				u := dag[0].PrimeUnits(0).Get(0)[0]
 				um := newUnitMock(u, []byte{})
-				err := rs[0].CheckCompliance(um)
+				err := dag[0].Check(um)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(HavePrefix("Decoding tcoin failed")))
 			})
 		})
-		Context("On a voting unit", func() {
-			Context("Having no votes", func() {
+		Context("that are voting", func() {
+			Context("but have no votes", func() {
 				It("Should return an error", func() {
 					u := dag[0].PrimeUnits(3).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError(HavePrefix("votes wrongly encoded")))
 				})
 			})
-			Context("Having one vote missing", func() {
+			Context("but have one vote missing", func() {
 				It("Should return an error", func() {
 					u := dag[0].PrimeUnits(3).Get(0)[0]
 					votes := u.RandomSourceData()
 					votes[0] = 0
 					um := newUnitMock(u, votes)
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("missing vote"))
 				})
 			})
-			Context("Having incorrect vote", func() {
+			Context("but have an incorrect vote", func() {
 				It("Should return an error", func() {
 					u := dag[0].PrimeUnits(3).Get(0)[0]
 					votes := u.RandomSourceData()
@@ -101,18 +90,18 @@ var _ = Describe("Beacon", func() {
 					votes = append(votes, buf.Bytes()...)
 
 					um := newUnitMock(u, votes)
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("the provided proof is incorrect"))
 				})
 			})
 		})
-		Context("On a unit which should contain shares", func() {
+		Context("that should contain shares", func() {
 			Context("Without random source data", func() {
 				It("Should return an error", func() {
 					u := dag[0].PrimeUnits(8).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("cses wrongly encoded"))
 				})
@@ -122,7 +111,7 @@ var _ = Describe("Beacon", func() {
 					u := dag[0].PrimeUnits(8).Get(0)[0]
 					shares := make([]byte, dag[0].NProc())
 					um := newUnitMock(u, shares)
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("missing share"))
 				})
@@ -133,7 +122,7 @@ var _ = Describe("Beacon", func() {
 					// taking shares of a unit of different level
 					v := dag[0].PrimeUnits(9).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
-					err := rs[0].CheckCompliance(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("invalid share"))
 				})

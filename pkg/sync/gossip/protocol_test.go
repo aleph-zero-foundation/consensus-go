@@ -15,14 +15,19 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type dag struct {
-	*tests.Dag
+type adder struct {
+	gomel.Adder
 	attemptedAdd []gomel.Preunit
 }
 
-func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
-	dag.attemptedAdd = append(dag.attemptedAdd, unit)
-	dag.Dag.AddUnit(unit, rs, callback)
+func (a *adder) AddUnit(unit gomel.Preunit) error {
+	a.attemptedAdd = append(a.attemptedAdd, unit)
+	return a.Adder.AddUnit(unit)
+}
+
+func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+	a.attemptedAdd = append(a.attemptedAdd, units...)
+	return a.Adder.AddAntichain(units)
 }
 
 var _ = Describe("Protocol", func() {

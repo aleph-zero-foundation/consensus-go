@@ -4,9 +4,7 @@
 //
 // Beacon assumes the following about the dag:
 //  (1) there are no forks,
-//  (2) every unit is a prime unit,
-//  (3) level = height for each unit,
-//  (4) each unit has at least 2f + 1 parents.
+//  (2) level = height for each unit,
 package beacon
 
 import (
@@ -14,6 +12,8 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
@@ -63,8 +63,8 @@ func New(pid uint16) *Beacon {
 	return &Beacon{pid: pid}
 }
 
-// Init initializes the beacon with the given dag.
-func (b *Beacon) Init(dag gomel.Dag) {
+// Bind the beacon with the given dag.
+func (b *Beacon) Bind(dag gomel.Dag) gomel.Dag {
 	n := dag.NProc()
 	b.dag = dag
 	b.multicoins = make([]*tcoin.ThresholdCoin, n)
@@ -80,6 +80,7 @@ func (b *Beacon) Init(dag gomel.Dag) {
 		b.shares[i] = random.NewSyncCSMap()
 		b.subcoins[i] = make(map[uint16]bool)
 	}
+	return chdag.BeforeEmplace(check.Units(dag, b.checkCompliance), b.update)
 }
 
 // RandomBytes returns a sequence of random bits for a given unit.
@@ -117,9 +118,7 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 	return coin.RandomBytes()
 }
 
-// CheckCompliance checks wheather the data included in the preunit
-// is compliant.
-func (b *Beacon) CheckCompliance(u gomel.Unit) error {
+func (b *Beacon) checkCompliance(u gomel.Unit) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
 		tc, err := tcoin.Decode(tcEncoded, b.pid)
@@ -163,8 +162,7 @@ func (b *Beacon) CheckCompliance(u gomel.Unit) error {
 	return nil
 }
 
-// Update the RandomSource with the data included in the preunit.
-func (b *Beacon) Update(u gomel.Unit) {
+func (b *Beacon) update(u gomel.Unit) {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
 		tc, _ := tcoin.Decode(tcEncoded, b.pid)

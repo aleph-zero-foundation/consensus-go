@@ -26,6 +26,7 @@ func (p *server) in() {
 		p.log.Error().Str("where", "multicast.in.AddUnit").Msg(err.Error())
 		return
 	}
+	p.log.Info().Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 }
 
 func (p *server) out(pid uint16) {

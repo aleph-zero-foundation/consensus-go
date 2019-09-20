@@ -101,8 +101,8 @@ func createAndStartProcess(
 	go func() {
 		dag, err := run.Process(config, setupLog, log)
 		if err != nil {
-			panic(err)
 			log.Err(err).Msg("failed to initialize a process")
+			panic(err)
 		}
 		dags[id] = dag
 		finished.Done()

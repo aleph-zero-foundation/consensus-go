@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -36,6 +37,7 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, configs []*proce
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
+	resultDag := dag
 	pid := configs[0].Pid
 	s := &service{
 		queryServers: make(map[string]sync.QueryServer),

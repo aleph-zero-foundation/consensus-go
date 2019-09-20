@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"os"
 
+	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 type dagFactory struct{}
 
 func (dagFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
-	return growing.NewDag(&dc)
+	return dag.New(uint16(len(dc.Keys)))
 }
 
 type cliOptions struct {

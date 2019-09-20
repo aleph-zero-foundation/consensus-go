@@ -7,7 +7,6 @@ import (
 )
 
 type testRandomSource struct {
-	nProc uint16
 }
 
 // NewTestRandomSource returns a simple RandomSource for testing.
@@ -15,9 +14,9 @@ func NewTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
 }
 
-// Init initializes the random source with the given dag.
-func (rs *testRandomSource) Init(dag gomel.Dag) {
-	rs.nProc = dag.NProc()
+// Bind the random source with the given dag.
+func (rs *testRandomSource) Bind(dag gomel.Dag) gomel.Dag {
+	return dag
 }
 
 // RandomBytes returns a sequence of "random" bits for a given unit.
@@ -26,15 +25,6 @@ func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 	answer := make([]byte, 32)
 	answer = append(answer, []byte(strconv.Itoa(int(pid)+level))...)
 	return answer
-}
-
-// Update is a noop.
-func (*testRandomSource) Update(gomel.Unit) {
-}
-
-// CheckCompliance accepts everything.
-func (rs *testRandomSource) CheckCompliance(gomel.Unit) error {
-	return nil
 }
 
 // ToInclude always returns nil.

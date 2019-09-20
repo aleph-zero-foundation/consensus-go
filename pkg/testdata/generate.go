@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
@@ -31,9 +31,9 @@ func writeToFile(filename string, dag gomel.Dag) error {
 // nUnits     - number of units to include in the dag
 func CreateRandomNonForkingUsingCreating(nProcesses, maxParents uint16, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	dag := growing.NewDag(&gomel.DagConfig{Keys: make([]gomel.PublicKey, nProcesses)})
+	dag := dag.New(nProcesses)
 	rs := tests.NewTestRandomSource()
-	rs.Init(dag)
+	dag = rs.Bind(dag)
 	created := 0
 	pus := make([]gomel.Preunit, nProcesses)
 	for created < nUnits {
@@ -41,7 +41,7 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents uint16, nUnits i
 		if pus[pid] != nil {
 			var wg sync.WaitGroup
 			wg.Add(1)
-			dag.AddUnit(pus[pid], rs, func(_ gomel.Preunit, _ gomel.Unit, _ error) {
+			dag.AddUnit(pus[pid], func(_ gomel.Preunit, _ gomel.Unit, _ error) {
 				wg.Done()
 			})
 			wg.Wait()

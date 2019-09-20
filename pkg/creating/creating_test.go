@@ -19,21 +19,25 @@ var _ = Describe("Creating", func() {
 		)
 		JustBeforeEach(func() {
 			rs = tests.NewTestRandomSource()
-			rs.Init(dag)
+			dag = rs.Bind(dag)
 		})
 		Context("that is empty", func() {
 			BeforeEach(func() {
 				dag, _ = tests.CreateDagFromTestFile("../testdata/empty.txt", tests.NewTestDagFactory())
 			})
 			It("should return a dealing unit", func() {
-				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
+				pu, level, isPrime, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(level).To(Equal(0))
+				Expect(isPrime).To(BeTrue())
 				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
 			It("should return a dealing unit", func() {
-				pu, err := NewUnit(dag, 3, dag.NProc(), []byte{}, rs, true)
+				pu, level, isPrime, err := NewUnit(dag, 3, dag.NProc(), []byte{}, rs, true)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(level).To(Equal(0))
+				Expect(isPrime).To(BeTrue())
 				Expect(pu.Creator()).To(Equal(uint16(3)))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
@@ -44,14 +48,16 @@ var _ = Describe("Creating", func() {
 				dag, _ = tests.CreateDagFromTestFile("../testdata/one_unit.txt", tests.NewTestDagFactory())
 			})
 			It("should return a dealing unit for a different creator", func() {
-				pu, err := NewUnit(dag, 3, dag.NProc(), []byte{}, rs, false)
+				pu, level, isPrime, err := NewUnit(dag, 3, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(level).To(Equal(0))
+				Expect(isPrime).To(BeTrue())
 				Expect(pu.Creator()).To(Equal(uint16(3)))
 				Expect(pu.Parents()).To(BeEmpty())
 			})
 
 			It("should fail due to not enough parents for the same creator", func() {
-				_, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
+				_, _, _, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
 				Expect(err).To(MatchError("No legal parents for the unit."))
 			})
 		})
@@ -63,8 +69,10 @@ var _ = Describe("Creating", func() {
 				h2 = *dag.PrimeUnits(0).Get(1)[0].Hash()
 			})
 			It("should return a unit with these parents", func() {
-				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
+				pu, level, isPrime, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(level).To(Equal(0))
+				Expect(isPrime).To(BeFalse())
 				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).NotTo(BeEmpty())
 				Expect(len(pu.Parents())).To(BeEquivalentTo(2))
@@ -73,7 +81,7 @@ var _ = Describe("Creating", func() {
 			})
 
 			It("should fail due to not enough parents when we request a prime unit", func() {
-				_, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, true)
+				_, _, _, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, true)
 				Expect(err).To(MatchError("No legal parents for the unit."))
 			})
 		})
@@ -84,7 +92,7 @@ var _ = Describe("Creating", func() {
 				h1 = *dag.PrimeUnits(0).Get(0)[0].Hash()
 			})
 			It("should return a unit with some parents", func() {
-				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
+				pu, _, _, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).NotTo(BeEmpty())
@@ -93,8 +101,10 @@ var _ = Describe("Creating", func() {
 			})
 
 			It("should return a prime unit if we request it", func() {
-				pu, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, true)
+				pu, level, isPrime, err := NewUnit(dag, 0, dag.NProc(), []byte{}, rs, true)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(level).To(Equal(1))
+				Expect(isPrime).To(BeTrue())
 				Expect(pu.Creator()).To(Equal(uint16(0)))
 				Expect(pu.Parents()).NotTo(BeEmpty())
 				Expect(dag.IsQuorum(uint16(len(pu.Parents())))).To(BeTrue())

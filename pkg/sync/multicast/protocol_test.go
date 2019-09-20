@@ -15,14 +15,19 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type dag struct {
-	*tests.Dag
+type adder struct {
+	gomel.Adder
 	attemptedAdd []gomel.Preunit
 }
 
-func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
-	dag.attemptedAdd = append(dag.attemptedAdd, unit)
-	dag.Dag.AddUnit(unit, rs, callback)
+func (a *adder) AddUnit(unit gomel.Preunit) error {
+	a.attemptedAdd = append(a.attemptedAdd, unit)
+	return a.Adder.AddUnit(unit)
+}
+
+func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+	a.attemptedAdd = append(a.attemptedAdd, units...)
+	return a.Adder.AddAntichain(units)
 }
 
 var _ = Describe("Protocol", func() {
@@ -50,23 +55,18 @@ var _ = Describe("Protocol", func() {
 
 	Describe("in a small dag", func() {
 
-		Context("when multicasting a single dealing unit to empty posets", func() {
+		Context("when multicasting a single dealing unit to empty dags", func() {
 
 			BeforeEach(func() {
-				rs = []gomel.RandomSource{}
-				dags = []*dag{}
+				dags = []gomel.Dag{}
 
 				tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit4.txt", tests.NewTestDagFactory())
-				rs = append(rs, tests.NewTestRandomSource())
-				rs[0].Init(tdag)
-				dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
+				dags = append(dags, tdag)
 				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
 
 				for i := 1; i < 4; i++ {
 					tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
-					rs = append(rs, tests.NewTestRandomSource())
-					rs[i].Init(tdag)
-					dags = append(dags, &dag{Dag: tdag.(*tests.Dag)})
+					dags = append(dags, tdag)
 				}
 			})
 
@@ -80,12 +80,12 @@ var _ = Describe("Protocol", func() {
 				for i := 0; i < 4; i++ {
 					servs[i].StopIn()
 				}
-				Expect(dags[0].attemptedAdd).To(BeEmpty())
+				Expect(adders[0].attemptedAdd).To(BeEmpty())
 				for i := 1; i < 4; i++ {
-					Expect(dags[i].attemptedAdd).To(HaveLen(1))
-					Expect(dags[i].attemptedAdd[0].Parents()).To(HaveLen(0))
-					Expect(dags[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-					Expect(dags[i].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+					Expect(adders[i].attemptedAdd).To(HaveLen(1))
+					Expect(adders[i].attemptedAdd[0].Parents()).To(HaveLen(0))
+					Expect(adders[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
+					Expect(adders[i].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 				}
 			})
 

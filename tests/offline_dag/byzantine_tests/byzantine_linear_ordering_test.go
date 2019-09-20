@@ -13,8 +13,8 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/growing"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/tests/offline_dag/helpers"
@@ -54,7 +54,7 @@ func newForkerUsingDifferentDataStrategy() forker {
 func createForkUsingNewUnit(parentsCount uint16) forker {
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		pu, err := creating.NewUnit(dag, preunit.Creator(), parentsCount, helpers.NewDefaultDataContent(), rs, false)
+		pu, _, _, err := creating.NewUnit(dag, preunit.Creator(), parentsCount, helpers.NewDefaultDataContent(), rs, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
@@ -80,10 +80,10 @@ func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error 
 	if checkSelfForkingEvidence(parents, creator) {
 		return gomel.NewComplianceError("parents contain evidence of self forking")
 	}
-	if growing.CheckForkerMuting(parents) != nil {
+	if check.ForkerMutingCheck(parents) != nil {
 		return gomel.NewComplianceError("parents do not satisfy the forker-muting rule")
 	}
-	if growing.CheckExpandPrimes(dag, parents) != nil {
+	if check.ExpandPrimesCheck(dag, parents) != nil {
 		return gomel.NewComplianceError("parents violate the expand-primes rule")
 	}
 	return nil
@@ -234,7 +234,7 @@ func newForkAndHideAdder(
 		// add forking units to all dags
 		if len(createdForks) > 0 && unit.Level() >= showOffLevel {
 			// show all created forks to all participants
-			if err := helpers.AddUnitsToDagsInRandomOrder(createdForks, dags, rss); err != nil {
+			if err := helpers.AddUnitsToDagsInRandomOrder(createdForks, dags); err != nil {
 				return err
 			}
 			fmt.Println("Byzantine node added a fork:", createdForks[0].Creator())
@@ -300,7 +300,7 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 				if len(units) == 0 {
 					return nil
 				}
-				err := helpers.AddUnitsToDagsInRandomOrder(units, dags, rss)
+				err := helpers.AddUnitsToDagsInRandomOrder(units, dags)
 				if err != nil {
 					return err
 				}
@@ -622,7 +622,7 @@ func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 	adder := func(units []gomel.Unit, dag gomel.Dag, rs gomel.RandomSource) error {
 		for _, unit := range units {
 			preunit := unitToPreunit(unit)
-			_, err := helpers.AddToDag(dag, preunit, rs)
+			_, err := gomel.AddUnit(dag, preunit)
 			if err != nil {
 				return err
 			}
@@ -873,7 +873,7 @@ func makeDagsUndecidedForLongTime(
 			if newUnit.r > level {
 				break
 			}
-			addedUnit := helpers.AddToDagsIngoringErrors(newUnit.l, sinkRss, sink)
+			addedUnit := helpers.AddToDagsIngoringErrors(newUnit.l, sink)
 			*source = (*source)[1:]
 			if addedUnit != nil && addedUnit.Level() == level {
 				seen[uint16(addedUnit.Creator())] = true
@@ -1057,12 +1057,12 @@ func buildOneLevelUp(
 			if createdOnLevel {
 				break
 			}
-			preunit, err := creating.NewUnit(dag, ids[ix], ones, helpers.NewDefaultDataContent(), rss[ix], true)
+			preunit, _, _, err := creating.NewUnit(dag, ids[ix], ones, helpers.NewDefaultDataContent(), rss[ix], true)
 			if err != nil {
 				return nil, fmt.Errorf("error while creating a unit for dag no %d: %s", ids[ix], err.Error())
 			}
 			// add only to its creator's dag
-			addedUnit, err := helpers.AddToDag(dag, preunit, rss[ix])
+			addedUnit, err := gomel.AddUnit(dag, preunit)
 			if err != nil {
 				return nil, fmt.Errorf("error while adding to dag no %d: %s", ids[ix], err.Error())
 			}
@@ -1092,10 +1092,9 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 				if unit.Creator() != crp(*startLevel) {
 					lastCreated = unit
 					return true
-				} else {
-					seen = map[uint16]bool{}
-					*startLevel++
 				}
+				seen = map[uint16]bool{}
+				*startLevel++
 			}
 			return false
 		}
@@ -1112,7 +1111,7 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 
 			triggeringDag := crp(*startLevel)
 			fmt.Println("triggering dag no", triggeringDag)
-			triggeringPreunit, err := creating.NewUnit(
+			triggeringPreunit, _, _, err := creating.NewUnit(
 				dags[triggeringDag],
 				triggeringDag,
 				uint16(len(dags)),
@@ -1122,7 +1121,7 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 			if err != nil {
 				return err
 			}
-			triggeringUnit, err := helpers.AddToDag(dags[triggeringDag], triggeringPreunit, rss[triggeringDag])
+			triggeringUnit, err := gomel.AddUnit(dags[triggeringDag], triggeringPreunit)
 			if err != nil {
 				return err
 			}

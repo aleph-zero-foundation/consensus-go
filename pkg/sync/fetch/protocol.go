@@ -89,13 +89,8 @@ func (p *server) out() {
 		return
 	}
 	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
-	aggErr := add.Antichain(p.dag, p.randomSource, units, p.fallback, log)
-	aggErr = aggErr.Pruned(true)
-	if aggErr != nil {
-		log.Error().Str("where", "fetchProtocol.out.addAntichain").Msg(err.Error())
-		return
+
 	}
-	log.Info().Int(logging.Recv, len(units)).Msg(logging.SyncCompleted)
 }
 
 func sendRequests(conn network.Connection, hashes []*gomel.Hash) error {

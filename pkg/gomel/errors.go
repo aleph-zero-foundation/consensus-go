@@ -1,5 +1,7 @@
 package gomel
 
+import "strings"
+
 // DataError represents incorrect data received from a process.
 // Indicates a problem with the process providing the data.
 type DataError struct {
@@ -74,4 +76,30 @@ func (e *ConfigError) Error() string {
 // NewConfigError constructs a ConfigError from a given msg.
 func NewConfigError(msg string) *ConfigError {
 	return &ConfigError{msg}
+}
+
+// AggregateError represents a set of errors returned from adding an antichain of units.
+type AggregateError struct {
+	errs []error
+}
+
+// NewAggregateError using the given slice of errors.
+func NewAggregateError(errs []error) *AggregateError {
+	return &AggregateError{errs}
+}
+
+func (ae *AggregateError) Error() string {
+	var result strings.Builder
+	for _, e := range ae.errs {
+		if e != nil {
+			result.WriteString(e.Error())
+			result.WriteRune('\n')
+		}
+	}
+	return result.String()
+}
+
+// Errors returns a slice of all the aggregated errors, in the same order as the preunits added.
+func (ae *AggregateError) Errors() []error {
+	return ae.errs
 }
