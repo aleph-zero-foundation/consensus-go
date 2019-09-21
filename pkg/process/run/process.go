@@ -110,7 +110,8 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	if err != nil {
 		return nil, err
 	}
-	defer stopAll(services)
+	defer adderService.Stop()
+	defer stopAll(services[1:])
 	<-dagFinished
 	return dag, nil
 }

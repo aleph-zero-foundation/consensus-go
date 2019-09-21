@@ -59,8 +59,9 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
 
-	syncService, multicastUnit, err := sync.NewService(dag, adder, config.Sync, log)
+	syncService, multicastUnit, err := sync.NewService(dag, adder, config.SyncSetup, log)
 	if err != nil {
+		//TODO silenced error
 		return
 	}
 	dagMC := chdag.AfterEmplace(dag, multicastUnit)
@@ -75,6 +76,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 
 	err = startAll(services)
 	if err != nil {
+		//TODO silenced error
 		return
 	}
 

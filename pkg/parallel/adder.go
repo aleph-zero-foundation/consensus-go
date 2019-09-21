@@ -23,10 +23,10 @@ func (da *adder) AddUnit(pu gomel.Preunit) error {
 	if int(pu.Creator()) >= len(da.sinks) {
 		return gomel.NewDataError("invalid creator")
 	}
-	var wg sync.WaitGroup
+	wg := new(sync.WaitGroup)
 	var err error
 	wg.Add(1)
-	da.sinks[pu.Creator()] <- addRequest{da.dagID, pu, &wg, &err}
+	da.sinks[pu.Creator()] <- addRequest{da.dagID, pu, wg, &err}
 	wg.Wait()
 	return err
 }

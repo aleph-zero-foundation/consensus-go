@@ -106,6 +106,9 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 			server := retrying.NewServer(dag, adder, interval, log)
 			s.queryServers[c.Type] = server
 			servmap[c.Type] = server
+
+		default:
+			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
 		}
 	}
 
