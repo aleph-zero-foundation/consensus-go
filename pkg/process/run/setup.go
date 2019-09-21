@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -29,7 +29,7 @@ func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolo
 
 func makeBeaconDag(conf *gomel.DagConfig) gomel.Dag {
 	nProc := uint16(len(conf.Keys))
-	dag := chdag.New(nProc)
+	dag := dagutils.New(nProc)
 	dag, _ = check.Signatures(dag, conf.Keys)
 	dag = check.BasicCompliance(dag)
 	dag = check.ParentDiversity(dag)
@@ -54,7 +54,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	dag = rs.Bind(dag)
 
 	orderService, orderIfPrime := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
-	dag = chdag.AfterEmplace(dag, orderIfPrime)
+	dag = dagutils.AfterEmplace(dag, orderIfPrime)
 
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
@@ -64,7 +64,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 		//TODO silenced error
 		return
 	}
-	dagMC := chdag.AfterEmplace(dag, multicastUnit)
+	dagMC := dagutils.AfterEmplace(dag, multicastUnit)
 	adderMC := adderService.Register(dagMC)
 
 	createService := create.NewService(dagMC, adderMC, rs, config.CreateSetup, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())

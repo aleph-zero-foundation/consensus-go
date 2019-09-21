@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -38,7 +38,7 @@ func startAll(services []process.Service) error {
 
 func makeStandardDag(conf *gomel.DagConfig) gomel.Dag {
 	nProc := uint16(len(conf.Keys))
-	dag := chdag.New(nProc)
+	dag := dagutils.New(nProc)
 	dag, _ = check.Signatures(dag, conf.Keys)
 	dag = check.BasicCompliance(dag)
 	dag = check.ParentDiversity(dag)
@@ -84,7 +84,7 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	dag = rs.Bind(dag)
 
 	orderService, orderIfPrime := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
-	dag = chdag.AfterEmplace(dag, orderIfPrime)
+	dag = dagutils.AfterEmplace(dag, orderIfPrime)
 
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
@@ -93,7 +93,7 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	if err != nil {
 		return nil, err
 	}
-	dagMC := chdag.AfterEmplace(dag, multicastUnit)
+	dagMC := dagutils.AfterEmplace(dag, multicastUnit)
 	adderMC := adderService.Register(dagMC)
 
 	createService := create.NewService(dagMC, adderMC, rs, config.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())

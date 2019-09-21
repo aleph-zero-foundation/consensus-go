@@ -62,7 +62,7 @@ func (rmc *RMC) AcceptProof(id uint64, r io.Reader) error {
 	return in.acceptProof(r)
 }
 
-// SendData writes data catenated with the id and signed by us to w.
+// SendData writes data concatenated with the id and signed by us to w.
 func (rmc *RMC) SendData(id uint64, data []byte, w io.Writer) error {
 	if rmc.Status(id) != Unknown {
 		out, err := rmc.getOut(id)

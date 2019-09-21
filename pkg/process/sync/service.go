@@ -118,7 +118,11 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 		}
 	}
 
-	return s, func(unit gomel.Unit) { s.mcServer.Send(unit) }, nil
+	return s, func(unit gomel.Unit) {
+		if s.mcServer != nil {
+			s.mcServer.Send(unit)
+		}
+	}, nil
 }
 
 func (s *service) Start() error {
@@ -128,13 +132,17 @@ func (s *service) Start() error {
 	for _, server := range s.queryServers {
 		server.Start()
 	}
-	s.mcServer.Start()
+	if s.mcServer != nil {
+		s.mcServer.Start()
+	}
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 func (s *service) Stop() {
-	s.mcServer.StopOut()
+	if s.mcServer != nil {
+		s.mcServer.StopOut()
+	}
 	for _, server := range s.queryServers {
 		server.StopOut()
 	}

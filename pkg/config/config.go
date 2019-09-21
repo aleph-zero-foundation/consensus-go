@@ -72,7 +72,7 @@ type Configuration struct {
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
 		Type:     "gossip",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
+		Params:   map[string]string{"nIn": "10", "nOut": "3", "timeout": "2s"},
 		Fallback: "",
 	}, SyncConfiguration{
 		Type:     "multicast",
@@ -81,7 +81,16 @@ func NewDefaultConfiguration() Configuration {
 	},
 	}
 
-	syncSetupConf := []SyncConfiguration{}
+	syncSetupConf := []SyncConfiguration{SyncConfiguration{
+		Type:     "fetch",
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
+		Fallback: "",
+	}, SyncConfiguration{
+		Type:     "rmc",
+		Params:   map[string]string{"network": "pers", "timeout": "2s"},
+		Fallback: "fetch",
+	},
+	}
 
 	result := Configuration{
 
@@ -97,7 +106,7 @@ func NewDefaultConfiguration() Configuration {
 
 		SyncSetup: syncSetupConf,
 
-		Setup: "beacon",
+		Setup: "coin",
 
 		Sync: syncConf,
 

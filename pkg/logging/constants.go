@@ -52,7 +52,7 @@ var eventTypeDict = map[string]string{
 	ConnectionEstablished: "dialer established a TCP connection",
 	NotEnoughParents:      "creating.NewUnit failed (not enough parents)",
 	SyncStarted:           "new sync started",
-	SyncCompleted:         "sync completed (stats = units)",
+	SyncCompleted:         "sync completed",
 	GetDagInfo:            "receiving dag info started",
 	SendDagInfo:           "sending dag info started",
 	GetPreunits:           "receiving preunits started",
