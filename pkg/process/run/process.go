@@ -19,17 +19,17 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
 )
 
-func stopAll(services []process.Service) {
+func stop(services ...process.Service) {
 	for _, s := range services {
 		s.Stop()
 	}
 }
 
-func startAll(services []process.Service) error {
+func start(services ...process.Service) error {
 	for i, s := range services {
 		err := s.Start()
 		if err != nil {
-			stopAll(services[:i])
+			stop(services[:i]...)
 			return err
 		}
 	}
@@ -79,6 +79,7 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	if !ok {
 		return nil, errors.New("setup phase failed")
 	}
+	log.Info().Msg(logging.GotRandomSource)
 
 	// common with setup:
 	dag = rs.Bind(dag)
@@ -104,14 +105,11 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	validateService := validate.NewService(config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
 	generateService := generate.NewService(config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
 
-	services := []process.Service{adderService, createService, orderService, generateService, validateService, memlogService, syncService}
-
-	err = startAll(services)
+	err = start(adderService, createService, orderService, generateService, validateService, memlogService, syncService)
 	if err != nil {
 		return nil, err
 	}
-	defer adderService.Stop()
-	defer stopAll(services[1:])
 	<-dagFinished
+	stop(createService, orderService, generateService, validateService, memlogService, syncService, adderService)
 	return dag, nil
 }

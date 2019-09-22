@@ -38,6 +38,7 @@ const (
 	AddedBCUnit           = "g"
 	AddedToBacklog        = "h"
 	RemovedFromBacklog    = "i"
+	GotRandomSource       = "j"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -76,6 +77,7 @@ var eventTypeDict = map[string]string{
 	AddedBCUnit:           "successfully added unit from multicast",
 	AddedToBacklog:        "added unit to retrying backlog",
 	RemovedFromBacklog:    "removed unit from retrying backlog",
+	GotRandomSource:       "received randomness source",
 }
 
 // Field names.

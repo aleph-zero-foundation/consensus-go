@@ -82,13 +82,13 @@ func NewDefaultConfiguration() Configuration {
 	}
 
 	syncSetupConf := []SyncConfiguration{SyncConfiguration{
-		Type:     "fetch",
+		Type:     "gossip",
 		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 		Fallback: "",
 	}, SyncConfiguration{
-		Type:     "rmc",
+		Type:     "multicast",
 		Params:   map[string]string{"network": "pers", "timeout": "2s"},
-		Fallback: "fetch",
+		Fallback: "",
 	},
 	}
 
@@ -106,7 +106,7 @@ func NewDefaultConfiguration() Configuration {
 
 		SyncSetup: syncSetupConf,
 
-		Setup: "coin",
+		Setup: "beacon",
 
 		Sync: syncConf,
 

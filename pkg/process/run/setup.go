@@ -72,9 +72,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	memlogService := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 	// end common
 
-	services := []process.Service{adderService, createService, orderService, memlogService, syncService}
-
-	err = startAll(services)
+	err = start(adderService, createService, orderService, memlogService, syncService)
 	if err != nil {
 		//TODO silenced error
 		return
@@ -95,12 +93,11 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 		for range orderedUnits {
 		}
 	}()
-	// we should still sync with each other
 
 	// We need to figure out a condition for stopping the setup phase syncs
 	// For now just syncing for the next minute
-	stopAll(services[len(services)-1:])
-	time.Sleep(60 * time.Second)
-	syncService.Stop()
+	stop(createService, orderService, memlogService)
+	time.Sleep(10 * time.Second)
+	stop(syncService, adderService)
 	<-dagFinished
 }
