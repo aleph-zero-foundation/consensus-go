@@ -51,7 +51,7 @@ func getUnits(dag gomel.Dag, hashes []*gomel.Hash) ([]gomel.Unit, error) {
 	units := dag.Get(hashes)
 	for i, u := range units {
 		if u == nil {
-			return nil, fmt.Errorf("received request for unknown hash: %s", hashes[i].Short()) //TODO pedantic
+			return nil, fmt.Errorf("received request for unknown hash: %s", hashes[i].Short())
 		}
 	}
 	return units, nil

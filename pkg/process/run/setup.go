@@ -61,7 +61,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 
 	syncService, multicastUnit, err := sync.NewService(dag, adder, config.SyncSetup, log)
 	if err != nil {
-		//TODO silenced error
+		log.Error().Str("where", "setup.sync").Msg(err.Error())
 		return
 	}
 	dagMC := dagutils.AfterEmplace(dag, multicastUnit)
@@ -74,7 +74,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 
 	err = start(adderService, createService, orderService, memlogService, syncService)
 	if err != nil {
-		//TODO silenced error
+		log.Error().Str("where", "setup.start").Msg(err.Error())
 		return
 	}
 

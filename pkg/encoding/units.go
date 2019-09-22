@@ -24,12 +24,12 @@ func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	return decoder.DecodePreunit()
 }
 
-//SendUnits TODO
+//SendUnits encodes units and writes them to writer.
 func SendUnits(units []gomel.Unit, w io.Writer) error {
 	return NewEncoder(w).EncodeUnits(units)
 }
 
-//GetPreunits TODO
+//GetPreunits decodes slice of preunit antichains from reader.
 func GetPreunits(r io.Reader) ([][]gomel.Preunit, int, error) {
 	return NewDecoder(r).DecodePreunits()
 }

@@ -12,20 +12,20 @@ import (
 	"io"
 )
 
-// Encoder encodes data for sending it over the network.
+// Encoder extends io.Writer with ability to encode units.
 type Encoder interface {
-	// EncodeUnit encodes a unit to be sent over the network.
-	// The encoder writes the encoded data to a io.Writer it was instantiated with.
 	io.Writer
+	// EncodeUnit encodes a single unit.
 	EncodeUnit(gomel.Unit) error
+	// EncodeUnits encodes a slice of units.
 	EncodeUnits([]gomel.Unit) error
 }
 
-// Decoder decodes data received from the network.
+// Decoder extends io.Reader with ability to encode units.
 type Decoder interface {
-	// DecodePreunit reads encoded data from a io.Reader it was instantiated with and
-	// tries to decode it as a preunit.
 	io.Reader
+	// DecodePreunit tries to decode preunit from incoming data.
 	DecodePreunit() (gomel.Preunit, error)
+	// DecodePreunits tries to a slice consecutive antichains from incoming data.
 	DecodePreunits() ([][]gomel.Preunit, int, error)
 }
