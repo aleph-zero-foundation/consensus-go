@@ -32,65 +32,72 @@ func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
 
 var _ = Describe("Protocol", func() {
 
-	var (
-		dags     []*dag
-		rs       []gomel.RandomSource
-		servs    []sync.MulticastServer
-		netservs []network.Server
-		serv     sync.MulticastServer
-		theUnit  gomel.Unit
-	)
+	var _ = Describe("Protocol", func() {
 
-	BeforeEach(func() {
-		netservs = tests.NewNetwork(4)
-	})
+		var (
+			dags     []gomel.Dag
+			adders   []*adder
+			servs    []sync.MulticastServer
+			netservs []network.Server
+			serv     sync.MulticastServer
+			theUnit  gomel.Unit
+		)
 
-	JustBeforeEach(func() {
-		for i := 0; i < 4; i++ {
-			serv = NewServer(uint16(i), dags[i], rs[i], netservs[i], time.Millisecond*200, zerolog.Nop())
-			servs = append(servs, serv)
-			serv.Start()
-		}
-	})
+		BeforeEach(func() {
+			netservs = tests.NewNetwork(4)
+		})
 
-	Describe("in a small dag", func() {
+		JustBeforeEach(func() {
+			adders = nil
+			for _, dag := range dags {
+				adders = append(adders, &adder{tests.NewAdder(dag), nil})
+			}
+			for i := 0; i < 4; i++ {
+				serv = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop())
+				servs = append(servs, serv)
+				serv.Start()
+			}
+		})
 
-		Context("when multicasting a single dealing unit to empty dags", func() {
+		Describe("in a small dag", func() {
 
-			BeforeEach(func() {
-				dags = []gomel.Dag{}
+			Context("when multicasting a single dealing unit to empty dags", func() {
 
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit4.txt", tests.NewTestDagFactory())
-				dags = append(dags, tdag)
-				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
+				BeforeEach(func() {
+					dags = []gomel.Dag{}
 
-				for i := 1; i < 4; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
+					tdag, _ := tests.CreateDagFromTestFile("../../testdata/one_unit4.txt", tests.NewTestDagFactory())
 					dags = append(dags, tdag)
-				}
-			})
+					theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
 
-			It("should add the unit to empty copies", func() {
-				servs[0].Send(theUnit)
-				time.Sleep(time.Millisecond * 500)
-				for i := 0; i < 4; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
-					servs[i].StopIn()
-				}
-				Expect(adders[0].attemptedAdd).To(BeEmpty())
-				for i := 1; i < 4; i++ {
-					Expect(adders[i].attemptedAdd).To(HaveLen(1))
-					Expect(adders[i].attemptedAdd[0].Parents()).To(HaveLen(0))
-					Expect(adders[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-					Expect(adders[i].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
-				}
+					for i := 1; i < 4; i++ {
+						tdag, _ = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
+						dags = append(dags, tdag)
+					}
+				})
+
+				It("should add the unit to empty copies", func() {
+					servs[0].Send(theUnit)
+					time.Sleep(time.Millisecond * 500)
+					for i := 0; i < 4; i++ {
+						servs[i].StopOut()
+					}
+					tests.CloseNetwork(netservs)
+					for i := 0; i < 4; i++ {
+						servs[i].StopIn()
+					}
+					Expect(adders[0].attemptedAdd).To(BeEmpty())
+					for i := 1; i < 4; i++ {
+						Expect(adders[i].attemptedAdd).To(HaveLen(1))
+						Expect(adders[i].attemptedAdd[0].Parents()).To(HaveLen(0))
+						Expect(adders[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
+						Expect(adders[i].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+					}
+				})
+
 			})
 
 		})
 
 	})
-
 })

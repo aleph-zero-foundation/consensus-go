@@ -33,10 +33,10 @@ func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
 var _ = Describe("Protocol", func() {
 
 	var (
-		dag1     *dag
-		dag2     *dag
-		rs1      gomel.RandomSource
-		rs2      gomel.RandomSource
+		dag1     gomel.Dag
+		dag2     gomel.Dag
+		adder1   *adder
+		adder2   *adder
 		serv1    sync.Server
 		serv2    sync.Server
 		netservs []network.Server
@@ -49,8 +49,10 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		serv1 = NewServer(0, dag1, rs1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
-		serv2 = NewServer(1, dag2, rs2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
+		adder1 = &adder{tests.NewAdder(dag1), nil}
+		adder2 = &adder{tests.NewAdder(dag2), nil}
+		serv1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
+		serv2 = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
 		serv1.Start()
 		serv2.Start()
 	})
@@ -60,14 +62,8 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies are empty", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource()
-				rs1.Init(tdag1)
-				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource()
-				rs2.Init(tdag2)
-				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
 			})
 
 			It("should not add anything", func() {
@@ -75,8 +71,8 @@ var _ = Describe("Protocol", func() {
 				serv1.StopOut()
 				tests.CloseNetwork(netservs)
 				serv2.StopIn()
-				Expect(dag1.attemptedAdd).To(BeEmpty())
-				Expect(dag2.attemptedAdd).To(BeEmpty())
+				Expect(adder1.attemptedAdd).To(BeEmpty())
+				Expect(adder2.attemptedAdd).To(BeEmpty())
 			})
 		})
 
@@ -87,15 +83,9 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/one_unit2.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource()
-				rs1.Init(tdag1)
-				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
-				theUnit = tdag1.MaximalUnitsPerProcess().Get(0)[0]
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource()
-				rs2.Init(tdag2)
-				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/one_unit2.txt", tests.NewTestDagFactory())
+				theUnit = dag1.MaximalUnitsPerProcess().Get(0)[0]
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
 			})
 
 			It("should add the unit to the second copy", func() {
@@ -103,11 +93,11 @@ var _ = Describe("Protocol", func() {
 				serv1.StopOut()
 				tests.CloseNetwork(netservs)
 				serv2.StopIn()
-				Expect(dag1.attemptedAdd).To(BeEmpty())
-				Expect(dag2.attemptedAdd).To(HaveLen(1))
-				Expect(dag2.attemptedAdd[0].Parents()).To(HaveLen(0))
-				Expect(dag2.attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-				Expect(dag2.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+				Expect(adder1.attemptedAdd).To(BeEmpty())
+				Expect(adder2.attemptedAdd).To(HaveLen(1))
+				Expect(adder2.attemptedAdd[0].Parents()).To(HaveLen(0))
+				Expect(adder2.attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
+				Expect(adder2.attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 			})
 
 		})
@@ -115,14 +105,8 @@ var _ = Describe("Protocol", func() {
 		Context("when the second copy contains a single dealing unit", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource()
-				rs1.Init(tdag1)
-				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/other_unit2.txt", tests.NewTestDagFactory())
-				rs2 = tests.NewTestRandomSource()
-				rs2.Init(tdag2)
-				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty2.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/other_unit2.txt", tests.NewTestDagFactory())
 			})
 
 			It("should add the unit to the first copy", func() {
@@ -130,10 +114,10 @@ var _ = Describe("Protocol", func() {
 				serv1.StopOut()
 				tests.CloseNetwork(netservs)
 				serv2.StopIn()
-				Expect(dag2.attemptedAdd).To(BeEmpty())
-				Expect(dag1.attemptedAdd).To(HaveLen(1))
-				Expect(dag1.attemptedAdd[0].Parents()).To(HaveLen(0))
-				Expect(dag1.attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
+				Expect(adder2.attemptedAdd).To(BeEmpty())
+				Expect(adder1.attemptedAdd).To(HaveLen(1))
+				Expect(adder1.attemptedAdd[0].Parents()).To(HaveLen(0))
+				Expect(adder1.attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
 			})
 
 		})
@@ -141,14 +125,8 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies contain all the dealing units", func() {
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/only_dealing2.txt", tests.NewTestDagFactory())
-				rs1 = tests.NewTestRandomSource()
-				rs1.Init(tdag1)
-				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
-				tdag2 := tdag1
-				rs2 = tests.NewTestRandomSource()
-				rs2.Init(tdag2)
-				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/only_dealing2.txt", tests.NewTestDagFactory())
+				dag2 = dag1
 			})
 
 			It("should not add anything", func() {
@@ -156,8 +134,8 @@ var _ = Describe("Protocol", func() {
 				serv1.StopOut()
 				tests.CloseNetwork(netservs)
 				serv2.StopIn()
-				Expect(dag1.attemptedAdd).To(BeEmpty())
-				Expect(dag2.attemptedAdd).To(BeEmpty())
+				Expect(adder1.attemptedAdd).To(BeEmpty())
+				Expect(adder2.attemptedAdd).To(BeEmpty())
 			})
 
 		})

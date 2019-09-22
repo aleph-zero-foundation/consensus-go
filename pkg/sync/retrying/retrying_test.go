@@ -16,14 +16,19 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type dag struct {
-	*tests.Dag
+type adder struct {
+	gomel.Adder
 	attemptedAdd []gomel.Preunit
 }
 
-func (dag *dag) AddUnit(unit gomel.Preunit, rs gomel.RandomSource, callback gomel.Callback) {
-	dag.attemptedAdd = append(dag.attemptedAdd, unit)
-	dag.Dag.AddUnit(unit, rs, callback)
+func (a *adder) AddUnit(unit gomel.Preunit) error {
+	a.attemptedAdd = append(a.attemptedAdd, unit)
+	return a.Adder.AddUnit(unit)
+}
+
+func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+	a.attemptedAdd = append(a.attemptedAdd, units...)
+	return a.Adder.AddAntichain(units)
 }
 
 func pre(u gomel.Unit) gomel.Preunit {
@@ -40,27 +45,29 @@ func pre(u gomel.Unit) gomel.Preunit {
 var _ = Describe("Protocol", func() {
 
 	var (
-		dag1     *dag
-		dag2     *dag
-		rs1      gomel.RandomSource
-		rs2      gomel.RandomSource
-		serv1    sync.QueryServer
-		serv2    sync.QueryServer
-		retr     sync.QueryServer
+		dags     []gomel.Dag
+		adders   []*adder
+		fetches  []sync.QueryServer
 		netservs []network.Server
+		retr     sync.QueryServer
 	)
 
 	BeforeEach(func() {
 		netservs = tests.NewNetwork(10)
+		dags = make([]gomel.Dag, 10)
+		adders = make([]*adder, 10)
+		fetches = make([]sync.QueryServer, 10)
 	})
 
 	JustBeforeEach(func() {
-		serv1 = fetch.NewServer(0, dag1, rs1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
-		serv2 = fetch.NewServer(1, dag2, rs2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
-		retr = NewServer(dag1, rs1, time.Millisecond*100, zerolog.Nop())
-		retr.SetFallback(serv1)
-		serv1.Start()
-		serv2.Start()
+		for i := 0; i < 10; i++ {
+			adders[i] = &adder{tests.NewAdder(dags[i]), nil}
+			fetches[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 2, 5)
+			fetches[i].Start()
+		}
+		retr = NewServer(dags[0], adders[0], time.Millisecond*10, zerolog.Nop())
+		retr.SetFallback(fetches[0])
+		fetches[0].SetFallback(retr)
 		retr.Start()
 	})
 
@@ -74,11 +81,11 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				tdag1, _ := tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag1 = &dag{Dag: tdag1.(*tests.Dag)}
-				tdag2, _ := tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
-				dag2 = &dag{Dag: tdag2.(*tests.Dag)}
-				maxes := dag2.MaximalUnitsPerProcess()
+				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				for i := 1; i < 10; i++ {
+					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				}
+				maxes := dags[1].MaximalUnitsPerProcess()
 				unit = maxes.Get(0)[0]
 				pu = pre(unit)
 			})
@@ -88,16 +95,63 @@ var _ = Describe("Protocol", func() {
 
 				time.Sleep(time.Millisecond * 500)
 				retr.StopIn()
-				serv1.StopOut()
+				for _, f := range fetches {
+					f.StopOut()
+				}
 				tests.CloseNetwork(netservs)
-				serv2.StopIn()
+				for _, f := range fetches {
+					f.StopIn()
+				}
+				Expect(adders[0].attemptedAdd).To(HaveLen(1))
+				Expect(adders[0].attemptedAdd[0].Creator()).To(Equal(unit.Creator()))
+				Expect(adders[0].attemptedAdd[0].Signature()).To(Equal(unit.Signature()))
+				Expect(adders[0].attemptedAdd[0].Data()).To(Equal(unit.Data()))
+				Expect(adders[0].attemptedAdd[0].RandomSourceData()).To(Equal(unit.RandomSourceData()))
+				Expect(adders[0].attemptedAdd[0].Hash()).To(Equal(unit.Hash()))
+			})
 
-				Expect(dag1.attemptedAdd).To(HaveLen(1))
-				Expect(dag1.attemptedAdd[0].Creator()).To(Equal(unit.Creator()))
-				Expect(dag1.attemptedAdd[0].Signature()).To(Equal(unit.Signature()))
-				Expect(dag1.attemptedAdd[0].Data()).To(Equal(unit.Data()))
-				Expect(dag1.attemptedAdd[0].RandomSourceData()).To(Equal(unit.RandomSourceData()))
-				Expect(dag1.attemptedAdd[0].Hash()).To(Equal(unit.Hash()))
+		})
+
+		Context("when requesting a unit with unknown parents", func() {
+
+			var (
+				unit gomel.Unit
+				pu   gomel.Preunit
+			)
+			BeforeEach(func() {
+				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				for i := 1; i < 10; i++ {
+					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
+				}
+				maxes := dags[1].MaximalUnitsPerProcess()
+				unit = maxes.Get(1)[0]
+				pu = pre(unit)
+			})
+
+			It("should eventually add the unit", func() {
+				retr.FindOut(pu)
+
+				time.Sleep(time.Millisecond * 500)
+				retr.StopIn()
+				for _, f := range fetches {
+					f.StopOut()
+				}
+				tests.CloseNetwork(netservs)
+				for _, f := range fetches {
+					f.StopIn()
+				}
+
+				uh := []*gomel.Hash{unit.Hash()}
+				theUnitTransferred := dags[0].Get(uh)[0]
+				for theUnitTransferred == nil {
+					time.Sleep(time.Millisecond * 30)
+					theUnitTransferred = dags[0].Get(uh)[0]
+				}
+				Expect(theUnitTransferred.Creator()).To(Equal(unit.Creator()))
+				Expect(theUnitTransferred.Signature()).To(Equal(unit.Signature()))
+				Expect(theUnitTransferred.Data()).To(Equal(unit.Data()))
+				Expect(theUnitTransferred.RandomSourceData()).To(Equal(unit.RandomSourceData()))
+				Expect(theUnitTransferred.Hash()).To(Equal(unit.Hash()))
 			})
 
 		})
