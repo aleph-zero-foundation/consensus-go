@@ -72,7 +72,7 @@ type Configuration struct {
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
 		Type:     "gossip",
-		Params:   map[string]string{"nIn": "10", "nOut": "3", "timeout": "2s"},
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 		Fallback: "",
 	}, SyncConfiguration{
 		Type:     "multicast",
