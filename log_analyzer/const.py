@@ -35,6 +35,7 @@ UnknownParents        = "f"
 AddedBCUnit           = "g"
 AddedToBacklog        = "h"
 RemovedFromBacklog    = "i"
+GotRandomSource       = "j"
 
 Time      = "T"
 Level     = "L"
