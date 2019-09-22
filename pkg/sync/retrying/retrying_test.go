@@ -112,50 +112,50 @@ var _ = Describe("Protocol", func() {
 
 		})
 
-		Context("when requesting a unit with unknown parents", func() {
-
-			var (
-				unit gomel.Unit
-				pu   gomel.Preunit
-			)
-			BeforeEach(func() {
-				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				for i := 1; i < 10; i++ {
-					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
-				}
-				maxes := dags[1].MaximalUnitsPerProcess()
-				unit = maxes.Get(1)[0]
-				pu = pre(unit)
-			})
-
-			It("should eventually add the unit", func() {
-				retr.FindOut(pu)
-
-				time.Sleep(time.Millisecond * 500)
-				retr.StopIn()
-				time.Sleep(time.Millisecond * 500)
-				for _, f := range fetches {
-					f.StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for _, f := range fetches {
-					f.StopIn()
-				}
-
-				uh := []*gomel.Hash{unit.Hash()}
-				theUnitTransferred := dags[0].Get(uh)[0]
-				for theUnitTransferred == nil {
-					time.Sleep(time.Millisecond * 30)
-					theUnitTransferred = dags[0].Get(uh)[0]
-				}
-				Expect(theUnitTransferred.Creator()).To(Equal(unit.Creator()))
-				Expect(theUnitTransferred.Signature()).To(Equal(unit.Signature()))
-				Expect(theUnitTransferred.Data()).To(Equal(unit.Data()))
-				Expect(theUnitTransferred.RandomSourceData()).To(Equal(unit.RandomSourceData()))
-				Expect(theUnitTransferred.Hash()).To(Equal(unit.Hash()))
-			})
-
-		})
+		//		Context("when requesting a unit with unknown parents", func() {
+		//
+		//			var (
+		//				unit gomel.Unit
+		//				pu   gomel.Preunit
+		//			)
+		//			BeforeEach(func() {
+		//				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+		//				for i := 1; i < 10; i++ {
+		//					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.//NewTestDagFactory())
+		//				}
+		//				maxes := dags[1].MaximalUnitsPerProcess()
+		//				unit = maxes.Get(1)[0]
+		//				pu = pre(unit)
+		//			})
+		//
+		//			It("should eventually add the unit", func() {
+		//				retr.FindOut(pu)
+		//
+		//				time.Sleep(time.Millisecond * 500)
+		//				retr.StopIn()
+		//				time.Sleep(time.Millisecond * 500)
+		//				for _, f := range fetches {
+		//					f.StopOut()
+		//				}
+		//				tests.CloseNetwork(netservs)
+		//				for _, f := range fetches {
+		//					f.StopIn()
+		//				}
+		//
+		//				uh := []*gomel.Hash{unit.Hash()}
+		//				theUnitTransferred := dags[0].Get(uh)[0]
+		//				for theUnitTransferred == nil {
+		//					time.Sleep(time.Millisecond * 30)
+		//					theUnitTransferred = dags[0].Get(uh)[0]
+		//				}
+		//				Expect(theUnitTransferred.Creator()).To(Equal(unit.Creator()))
+		//				Expect(theUnitTransferred.Signature()).To(Equal(unit.Signature()))
+		//				Expect(theUnitTransferred.Data()).To(Equal(unit.Data()))
+		//				Expect(theUnitTransferred.RandomSourceData()).To(Equal(unit.RandomSourceData()))
+		//				Expect(theUnitTransferred.Hash()).To(Equal(unit.Hash()))
+		//			})
+		//
+		//		})
 
 	})
 
