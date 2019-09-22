@@ -133,6 +133,7 @@ var _ = Describe("Protocol", func() {
 
 				time.Sleep(time.Millisecond * 500)
 				retr.StopIn()
+				time.Sleep(time.Millisecond * 500)
 				for _, f := range fetches {
 					f.StopOut()
 				}
