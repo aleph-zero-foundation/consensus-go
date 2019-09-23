@@ -63,7 +63,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 		case "rmc":
 			lg := log.With().Int(logging.Service, logging.RMCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			server := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, log)
+			server := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
 			s.mcServer = server
 			s.servers[c.Type] = server
 

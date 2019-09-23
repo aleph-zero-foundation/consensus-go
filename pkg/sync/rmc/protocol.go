@@ -30,6 +30,7 @@ func (p *server) in() {
 	conn.SetLogger(log)
 	log.Info().Msg(logging.SyncStarted)
 
+	var toAdd gomel.Preunit
 	switch msgType {
 	case sendData:
 		data, err := p.state.AcceptData(id, pid, conn)
@@ -64,11 +65,9 @@ func (p *server) in() {
 				log.Error().Str("where", "rmc.in.DecodePreunit2").Msg(err.Error())
 				return
 			}
+			toAdd = predecessor
 			if *pu.Parents()[0] != *predecessor.Hash() {
 				log.Error().Str("where", "rmc.in").Msg("wrong unit height")
-				return
-			}
-			if !add.Unit(p.adder, predecessor, p.fallback, "rmc.in.Predecessor", log) {
 				return
 			}
 		} else {
@@ -101,7 +100,10 @@ func (p *server) in() {
 			log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 			return
 		}
-		if !add.Unit(p.adder, pu, p.fallback, "rmc.in", p.log) {
+		toAdd = pu
+	}
+	if toAdd != nil {
+		if !add.Unit(p.adder, toAdd, p.fallback, "rmc.in.Predecessor", log) {
 			return
 		}
 	}
@@ -171,7 +173,7 @@ func (p *server) out(pid uint16) {
 				}
 				p.requests[i] <- newRequest(r.id, r.data, sendFinished)
 			}
-			//p.canMulticast.Unlock()
+			p.canMulticast.Unlock()
 		}
 
 	case sendFinished:

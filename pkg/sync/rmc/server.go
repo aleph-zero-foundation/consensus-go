@@ -5,6 +5,7 @@ package rmc
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -12,7 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 const (
@@ -23,43 +24,50 @@ const (
 
 // server is a multicast server
 type server struct {
-	pid      uint16
-	dag      gomel.Dag
-	adder    gomel.Adder
-	netserv  network.Server
-	fallback sync.Fallback
-	requests []chan *request
-	state    *rmcbox.RMC
-	outPool  sync.WorkerPool
-	inPool   sync.WorkerPool
-	timeout  time.Duration
-	log      zerolog.Logger
+	pid          uint16
+	dag          gomel.Dag
+	adder        gomel.Adder
+	netserv      network.Server
+	fallback     gsync.Fallback
+	requests     []chan *request
+	waitingUnits chan gomel.Unit
+	state        *rmcbox.RMC
+	canMulticast sync.Mutex
+	wg           sync.WaitGroup
+	outPool      gsync.WorkerPool
+	inPool       gsync.WorkerPool
+	timeout      time.Duration
+	log          zerolog.Logger
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.MulticastServer {
 	nProc := int(dag.NProc())
 	requests := make([]chan *request, nProc)
 	for i := 0; i < nProc; i++ {
 		requests[i] = make(chan *request, requestSize)
 	}
+	waitingUnits := make(chan gomel.Unit, nProc)
 	s := &server{
-		pid:      pid,
-		dag:      dag,
-		adder:    adder,
-		netserv:  netserv,
-		requests: requests,
-		state:    state,
-		timeout:  timeout,
-		log:      log,
+		pid:          pid,
+		dag:          dag,
+		adder:        adder,
+		netserv:      netserv,
+		requests:     requests,
+		waitingUnits: waitingUnits,
+		state:        state,
+		timeout:      timeout,
+		log:          log,
 	}
-	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.out)
-	s.inPool = sync.NewPool(inPoolSize*nProc, s.in)
+	s.outPool = gsync.NewPerPidPool(dag.NProc(), outPoolSize, s.out)
+	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
 	return s
 }
 
 // Start starts worker pools
 func (s *server) Start() {
+	s.wg.Add(1)
+	go s.translator()
 	s.outPool.Start()
 	s.inPool.Start()
 }
@@ -76,23 +84,38 @@ func (s *server) StopOut() {
 		close(s.requests[i])
 	}
 	s.outPool.Stop()
+	close(s.waitingUnits)
+	s.wg.Wait()
 }
 
-func (s *server) SetFallback(qs sync.Fallback) {
-	s.fallback = qs
+func (s *server) SetFallback(fbk gsync.Fallback) {
+	s.fallback = fbk
 }
 
 func (s *server) Send(unit gomel.Unit) {
-	id := unitID(unit, s.dag.NProc())
-	data, err := encoding.EncodeUnit(unit)
-	if err != nil {
-		s.log.Error().Str("where", "rmcServer.Send.EncodeUnit").Msg(err.Error())
-		return
-	}
-	for _, i := range rand.Perm(int(s.dag.NProc())) {
-		if i == int(s.pid) {
-			continue
+	s.waitingUnits <- unit
+}
+
+func (s *server) translator() {
+	defer s.wg.Done()
+	for {
+		unit, isOpen := <-s.waitingUnits
+		if !isOpen {
+			return
 		}
-		s.requests[i] <- newRequest(id, data, sendData)
+		id := unitID(unit, s.dag.NProc())
+		data, err := encoding.EncodeUnit(unit)
+		if err != nil {
+			s.log.Error().Str("where", "rmcServer.Send.EncodeUnit").Msg(err.Error())
+			return
+		}
+		s.canMulticast.Lock()
+		for _, i := range rand.Perm(int(s.dag.NProc())) {
+			if i == int(s.pid) {
+				continue
+			}
+			s.requests[i] <- newRequest(id, data, sendData)
+
+		}
 	}
 }
