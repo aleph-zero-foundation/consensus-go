@@ -26,7 +26,7 @@ var _ = Describe("Encoding/Decoding", func() {
 			u := dag.PrimeUnits(0).Get(0)[0]
 			err := SendUnit(u, network)
 			Expect(err).NotTo(HaveOccurred())
-			pu, err := GetPreunit(network)
+			pu, err := ReceivePreunit(network)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
@@ -42,7 +42,7 @@ var _ = Describe("Encoding/Decoding", func() {
 			u := dag.MaximalUnitsPerProcess().Get(0)[0]
 			err := SendUnit(u, network)
 			Expect(err).NotTo(HaveOccurred())
-			pu, err := GetPreunit(network)
+			pu, err := ReceivePreunit(network)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
