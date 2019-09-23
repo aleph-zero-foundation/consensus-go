@@ -104,7 +104,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 			fallback := s.fallbacks[c.Fallback]
 			if c.Retry > 0 {
 				lg := log.With().Int(logging.Service, logging.RetryingService).Logger()
-				service, fallback = retrying.NewServer(dag, adder, fallback, c.Retry, lg)
+				service, fallback = retrying.NewService(dag, adder, fallback, c.Retry, lg)
 				s.subservices = append(s.subservices, service)
 			}
 			s.servers[c.Type].SetFallback(fallback)

@@ -69,7 +69,7 @@ var _ = Describe("Protocol", func() {
 			fetches[i], fallbacks[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 2, 5)
 			fetches[i].Start()
 		}
-		retrService, retr = NewServer(dags[0], adders[0], fallbacks[0], time.Millisecond*10, zerolog.Nop())
+		retrService, retr = NewService(dags[0], adders[0], fallbacks[0], time.Millisecond*10, zerolog.Nop())
 		fetches[0].SetFallback(retr)
 		retrService.Start()
 	})

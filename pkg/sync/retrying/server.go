@@ -26,8 +26,8 @@ type server struct {
 	log      zerolog.Logger
 }
 
-// NewServer creates a server that runs a retrying routine that keeps trying to add problematic units.
-func NewServer(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, interval time.Duration, log zerolog.Logger) (process.Service, gsync.Fallback) {
+// NewService creates a service that continuously tries to add problematic units using provided Fallback.
+func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, interval time.Duration, log zerolog.Logger) (process.Service, gsync.Fallback) {
 	s := &server{
 		dag:     dag,
 		adder:   adder,
