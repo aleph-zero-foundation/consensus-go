@@ -39,10 +39,10 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, inter
 	return s, s
 }
 
-func (f *server) FindOut(preunit gomel.Preunit) {
+func (f *server) Resolve(preunit gomel.Preunit) {
 	if f.addToBacklog(preunit) {
 		f.log.Info().Str(logging.Hash, gomel.Nickname(preunit)).Msg(logging.AddedToBacklog)
-		f.inner.FindOut(preunit)
+		f.inner.Resolve(preunit)
 	}
 }
 
@@ -84,7 +84,7 @@ func (f *server) work() {
 	for atomic.LoadInt32(&f.quit) != 1 {
 		time.Sleep(f.interval)
 		f.update()
-		f.backlog.refallback(f.inner.FindOut)
+		f.backlog.refallback(f.inner.Resolve)
 	}
 }
 

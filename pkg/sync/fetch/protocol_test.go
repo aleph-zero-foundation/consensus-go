@@ -34,7 +34,7 @@ type mockFB struct {
 	happened bool
 }
 
-func (s *mockFB) FindOut(gomel.Preunit) {
+func (s *mockFB) Resolve(gomel.Preunit) {
 	s.happened = true
 }
 
@@ -81,7 +81,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should not add anything", func() {
 				pu = creating.NewPreunit(0, nil, nil, nil)
-				fbk1.FindOut(pu) //this is just a roundabout way to send a request to serv1
+				fbk1.Resolve(pu) //this is just a roundabout way to send a request to serv1
 
 				time.Sleep(time.Millisecond * 500)
 				serv1.StopOut()
@@ -106,7 +106,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add that unit", func() {
-				fbk1.FindOut(pu)
+				fbk1.Resolve(pu)
 
 				time.Sleep(time.Millisecond * 500)
 				serv1.StopOut()
@@ -142,7 +142,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should fall back", func() {
-				fbk1.FindOut(pu)
+				fbk1.Resolve(pu)
 
 				time.Sleep(time.Millisecond * 500)
 				serv1.StopOut()

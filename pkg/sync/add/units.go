@@ -36,7 +36,7 @@ func handleError(err error, pu gomel.Preunit, fallback sync.Fallback, where stri
 		case *gomel.UnknownParents:
 			log.Info().Uint16(logging.Creator, pu.Creator()).Int(logging.Size, e.Amount).Msg(logging.UnknownParents)
 			if fallback != nil {
-				fallback.FindOut(pu)
+				fallback.Resolve(pu)
 			}
 		default:
 			log.Error().Str("addUnit", where).Msg(err.Error())

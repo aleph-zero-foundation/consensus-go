@@ -94,7 +94,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add it directly", func() {
-				retr.FindOut(pu)
+				retr.Resolve(pu)
 
 				time.Sleep(time.Millisecond * 300)
 				retrService.Stop()
@@ -132,7 +132,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should eventually add the unit", func() {
-				retr.FindOut(pu)
+				retr.Resolve(pu)
 
 				time.Sleep(time.Millisecond * 200)
 				retrService.Stop()

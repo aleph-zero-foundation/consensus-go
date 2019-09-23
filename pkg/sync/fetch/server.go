@@ -64,8 +64,8 @@ func (s *server) SetFallback(qs sync.Fallback) {
 	s.fallback = qs
 }
 
-// FindOut builds a fetch request containing all the unknown parents of a problematic preunit.
-func (s *server) FindOut(preunit gomel.Preunit) {
+// Resolve builds a fetch request containing all the unknown parents of a problematic preunit.
+func (s *server) Resolve(preunit gomel.Preunit) {
 	hashes := preunit.Parents()
 	parents := s.dag.Get(hashes)
 	toRequest := []*gomel.Hash{}

@@ -8,15 +8,15 @@ import (
 
 // Fallback can find out information about an unknown preunit.
 type Fallback interface {
-	// FindOut requests information about a problematic preunit.
-	FindOut(gomel.Preunit)
+	// Resolve requests information about a problematic preunit.
+	Resolve(gomel.Preunit)
 }
 
 type def struct {
 	log zerolog.Logger
 }
 
-func (d *def) FindOut(pu gomel.Preunit) {
+func (d *def) Resolve(pu gomel.Preunit) {
 	d.log.Error().Uint16(logging.Creator, pu.Creator()).Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.FallbackUsed)
 }
 
