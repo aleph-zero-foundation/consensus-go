@@ -9,12 +9,12 @@ import (
 )
 
 // Unit adds a preunit to the dag and returns whether everything went fine.
-func Unit(adder gomel.Adder, pu gomel.Preunit, fallback sync.QueryServer, where string, log zerolog.Logger) bool {
+func Unit(adder gomel.Adder, pu gomel.Preunit, fallback sync.Fallback, where string, log zerolog.Logger) bool {
 	return handleError(adder.AddUnit(pu), pu, fallback, where, log)
 }
 
 // Chunk adds slice of antichains to the dag and returns whether everything went fine.
-func Chunk(adder gomel.Adder, antichains [][]gomel.Preunit, fallback sync.QueryServer, where string, log zerolog.Logger) bool {
+func Chunk(adder gomel.Adder, antichains [][]gomel.Preunit, fallback sync.Fallback, where string, log zerolog.Logger) bool {
 	success := true
 	for _, antichain := range antichains {
 		aggErr := adder.AddAntichain(antichain)
@@ -28,7 +28,7 @@ func Chunk(adder gomel.Adder, antichains [][]gomel.Preunit, fallback sync.QueryS
 }
 
 //handleError abstracts error processing for both above function. Returns false on serious errors.
-func handleError(err error, pu gomel.Preunit, fallback sync.QueryServer, where string, log zerolog.Logger) bool {
+func handleError(err error, pu gomel.Preunit, fallback sync.Fallback, where string, log zerolog.Logger) bool {
 	if err != nil {
 		switch e := err.(type) {
 		case *gomel.DuplicateUnit:

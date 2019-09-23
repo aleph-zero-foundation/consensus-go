@@ -34,10 +34,6 @@ type mockFB struct {
 	happened bool
 }
 
-func (s *mockFB) Start()                       {}
-func (s *mockFB) StopIn()                      {}
-func (s *mockFB) StopOut()                     {}
-func (s *mockFB) SetFallback(sync.QueryServer) {}
 func (s *mockFB) FindOut(gomel.Preunit) {
 	s.happened = true
 }
@@ -49,8 +45,9 @@ var _ = Describe("Protocol", func() {
 		dag2     gomel.Dag
 		adder1   *adder
 		adder2   *adder
-		serv1    sync.QueryServer
-		serv2    sync.QueryServer
+		serv1    sync.Server
+		serv2    sync.Server
+		fbk1     sync.Fallback
 		fb       *mockFB
 		netservs []network.Server
 		pu       gomel.Preunit
@@ -64,8 +61,8 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		adder1 = &adder{tests.NewAdder(dag1), nil}
 		adder2 = &adder{tests.NewAdder(dag2), nil}
-		serv1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
-		serv2 = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
+		serv1, fbk1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
+		serv2, _ = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
 		fb = &mockFB{}
 		serv1.SetFallback(fb)
 		serv1.Start()
@@ -84,7 +81,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should not add anything", func() {
 				pu = creating.NewPreunit(0, nil, nil, nil)
-				serv1.FindOut(pu)
+				fbk1.FindOut(pu) //this is just a roundabout way to send a request to serv1
 
 				time.Sleep(time.Millisecond * 500)
 				serv1.StopOut()
@@ -109,7 +106,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add that unit", func() {
-				serv1.FindOut(pu)
+				fbk1.FindOut(pu)
 
 				time.Sleep(time.Millisecond * 500)
 				serv1.StopOut()
@@ -145,7 +142,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should fall back", func() {
-				serv1.FindOut(pu)
+				fbk1.FindOut(pu)
 
 				time.Sleep(time.Millisecond * 500)
 				serv1.StopOut()

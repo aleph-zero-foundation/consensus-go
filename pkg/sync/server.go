@@ -11,15 +11,8 @@ type Server interface {
 	StopIn()
 	// StopOut stops handling outgoing synchronizations.
 	StopOut()
-	// SetFallback registers a QueryServer that will be used to query information about problematic preunits.
-	SetFallback(QueryServer)
-}
-
-// QueryServer is a Server that can find out information about an unknown preunit.
-type QueryServer interface {
-	Server
-	// FindOut requests information about a problematic preunit.
-	FindOut(gomel.Preunit)
+	// SetFallback registers a Fallback that will be used to query information about problematic preunits.
+	SetFallback(Fallback)
 }
 
 // MulticastServer is a Server that can multicast units to other committee members.

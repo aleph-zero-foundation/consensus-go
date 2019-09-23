@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
@@ -17,7 +18,7 @@ type server struct {
 	dag      gomel.Dag
 	adder    gomel.Adder
 	interval time.Duration
-	inner    gsync.QueryServer
+	inner    gsync.Fallback
 	backlog  *backlog
 	deps     *dependencies
 	quit     int32
@@ -26,14 +27,16 @@ type server struct {
 }
 
 // NewServer creates a server that runs a retrying routine that keeps trying to add problematic units.
-func NewServer(dag gomel.Dag, adder gomel.Adder, interval time.Duration, log zerolog.Logger) gsync.QueryServer {
-	return &server{
+func NewServer(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, interval time.Duration, log zerolog.Logger) (process.Service, gsync.Fallback) {
+	s := &server{
 		dag:     dag,
 		adder:   adder,
+		inner:   fallback,
 		backlog: newBacklog(),
 		deps:    newDeps(),
 		log:     log,
 	}
+	return s, s
 }
 
 func (f *server) FindOut(preunit gomel.Preunit) {
@@ -43,20 +46,15 @@ func (f *server) FindOut(preunit gomel.Preunit) {
 	}
 }
 
-func (f *server) Start() {
+func (f *server) Start() error {
 	f.wg.Add(1)
 	go f.work()
+	return nil
 }
 
-func (f *server) StopIn() {
+func (f *server) Stop() {
 	atomic.StoreInt32(&f.quit, 1)
 	f.wg.Wait()
-}
-
-func (f *server) StopOut() {}
-
-func (f *server) SetFallback(qs gsync.QueryServer) {
-	f.inner = qs
 }
 
 func (f *server) addToBacklog(pu gomel.Preunit) bool {

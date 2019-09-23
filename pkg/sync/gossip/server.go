@@ -17,7 +17,7 @@ type server struct {
 	dag        gomel.Dag
 	adder      gomel.Adder
 	netserv    network.Server
-	fallback   sync.QueryServer
+	fallback   sync.Fallback
 	requests   chan uint16
 	peerSource PeerSource
 	inUse      []*mutex
@@ -29,7 +29,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.QueryServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
 	nProc := int(dag.NProc())
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
@@ -50,7 +50,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 	}
 	s.outPool = sync.NewPool(nOut, s.out)
 	s.inPool = sync.NewPool(nIn, s.in)
-	return s
+	return s, s
 }
 
 func (s *server) Start() {
@@ -67,7 +67,7 @@ func (s *server) StopOut() {
 	s.outPool.Stop()
 }
 
-func (s *server) SetFallback(qs sync.QueryServer) {
+func (s *server) SetFallback(qs sync.Fallback) {
 	s.fallback = qs
 }
 

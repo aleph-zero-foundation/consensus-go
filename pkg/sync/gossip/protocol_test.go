@@ -51,8 +51,8 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		adder1 = &adder{tests.NewAdder(dag1), nil}
 		adder2 = &adder{tests.NewAdder(dag2), nil}
-		serv1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
-		serv2 = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
+		serv1, _ = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
+		serv2, _ = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
 		serv1.Start()
 		serv2.Start()
 	})

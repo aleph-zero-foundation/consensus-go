@@ -23,10 +23,11 @@ import (
 )
 
 type service struct {
-	queryServers map[string]sync.QueryServer
-	mcServer     sync.MulticastServer
-	subservices  []process.Service
-	log          zerolog.Logger
+	fallbacks   map[string]sync.Fallback
+	servers     map[string]sync.Server
+	mcServer    sync.MulticastServer
+	subservices []process.Service
+	log         zerolog.Logger
 }
 
 // NewService creates a new syncing service and the function for multicasting units.
@@ -38,11 +39,10 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 	}
 	pid := configs[0].Pid
 	s := &service{
-		queryServers: make(map[string]sync.QueryServer),
-		log:          log.With().Int(logging.Service, logging.SyncService).Logger(),
+		fallbacks: make(map[string]sync.Fallback),
+		servers:   make(map[string]sync.Server),
+		log:       log.With().Int(logging.Service, logging.SyncService).Logger(),
 	}
-
-	servmap := make(map[string]sync.Server)
 
 	for _, c := range configs {
 		var netserv network.Server
@@ -54,22 +54,22 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 
 		switch c.Type {
 		case "multicast":
-			log = log.With().Int(logging.Service, logging.MCService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
+			lg := log.With().Int(logging.Service, logging.MCService).Logger()
+			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
 			server := multicast.NewServer(pid, dag, adder, netserv, timeout, log)
 			s.mcServer = server
-			servmap[c.Type] = server
+			s.servers[c.Type] = server
 
 		case "rmc":
-			log = log.With().Int(logging.Service, logging.RMCService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
+			lg := log.With().Int(logging.Service, logging.RMCService).Logger()
+			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
 			server := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, log)
 			s.mcServer = server
-			servmap[c.Type] = server
+			s.servers[c.Type] = server
 
 		case "gossip":
-			log = log.With().Int(logging.Service, logging.GossipService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
+			lg := log.With().Int(logging.Service, logging.GossipService).Logger()
+			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
 				return nil, nil, err
@@ -78,13 +78,11 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 			if err != nil {
 				return nil, nil, err
 			}
-			server := gossip.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
-			s.queryServers[c.Type] = server
-			servmap[c.Type] = server
+			s.servers[c.Type], s.fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
 
 		case "fetch":
-			log = log.With().Int(logging.Service, logging.FetchService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, log)
+			lg := log.With().Int(logging.Service, logging.FetchService).Logger()
+			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
 				return nil, nil, err
@@ -93,19 +91,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 			if err != nil {
 				return nil, nil, err
 			}
-			server := fetch.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
-			s.queryServers[c.Type] = server
-			servmap[c.Type] = server
-
-		case "retrying":
-			log := log.With().Int(logging.Service, logging.RetryingService).Logger()
-			interval, err := time.ParseDuration(c.Params["interval"])
-			if err != nil {
-				return nil, nil, err
-			}
-			server := retrying.NewServer(dag, adder, interval, log)
-			s.queryServers[c.Type] = server
-			servmap[c.Type] = server
+			s.servers[c.Type], s.fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
 
 		default:
 			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
@@ -113,8 +99,15 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 	}
 
 	for _, c := range configs {
+		var service process.Service
 		if c.Fallback != "" {
-			servmap[c.Type].SetFallback(s.queryServers[c.Fallback])
+			fallback := s.fallbacks[c.Fallback]
+			if c.Retry > 0 {
+				lg := log.With().Int(logging.Service, logging.RetryingService).Logger()
+				service, fallback = retrying.NewServer(dag, adder, fallback, c.Retry, lg)
+				s.subservices = append(s.subservices, service)
+			}
+			s.servers[c.Type].SetFallback(fallback)
 		}
 	}
 
@@ -129,27 +122,20 @@ func (s *service) Start() error {
 	for _, service := range s.subservices {
 		service.Start()
 	}
-	for _, server := range s.queryServers {
+	for _, server := range s.servers {
 		server.Start()
-	}
-	if s.mcServer != nil {
-		s.mcServer.Start()
 	}
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
 func (s *service) Stop() {
-	if s.mcServer != nil {
-		s.mcServer.StopOut()
-	}
-	for _, server := range s.queryServers {
+	for _, server := range s.servers {
 		server.StopOut()
 	}
 	// let other processes sync with us some more
 	time.Sleep(5 * time.Second)
-	s.mcServer.StopIn()
-	for _, server := range s.queryServers {
+	for _, server := range s.servers {
 		server.StopIn()
 	}
 	for _, service := range s.subservices {

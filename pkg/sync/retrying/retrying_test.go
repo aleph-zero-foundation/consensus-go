@@ -10,6 +10,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/retrying"
@@ -45,30 +46,32 @@ func pre(u gomel.Unit) gomel.Preunit {
 var _ = Describe("Protocol", func() {
 
 	var (
-		dags     []gomel.Dag
-		adders   []*adder
-		fetches  []sync.QueryServer
-		netservs []network.Server
-		retr     sync.QueryServer
+		dags        []gomel.Dag
+		adders      []*adder
+		fetches     []sync.Server
+		fallbacks   []sync.Fallback
+		netservs    []network.Server
+		retr        sync.Fallback
+		retrService process.Service
 	)
 
 	BeforeEach(func() {
 		netservs = tests.NewNetwork(10)
 		dags = make([]gomel.Dag, 10)
 		adders = make([]*adder, 10)
-		fetches = make([]sync.QueryServer, 10)
+		fetches = make([]sync.Server, 10)
+		fallbacks = make([]sync.Fallback, 10)
 	})
 
 	JustBeforeEach(func() {
 		for i := 0; i < 10; i++ {
 			adders[i] = &adder{tests.NewAdder(dags[i]), nil}
-			fetches[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 2, 5)
+			fetches[i], fallbacks[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 2, 5)
 			fetches[i].Start()
 		}
-		retr = NewServer(dags[0], adders[0], time.Millisecond*10, zerolog.Nop())
-		retr.SetFallback(fetches[0])
+		retrService, retr = NewServer(dags[0], adders[0], fallbacks[0], time.Millisecond*10, zerolog.Nop())
 		fetches[0].SetFallback(retr)
-		retr.Start()
+		retrService.Start()
 	})
 
 	Describe("with only two participants", func() {
@@ -94,7 +97,7 @@ var _ = Describe("Protocol", func() {
 				retr.FindOut(pu)
 
 				time.Sleep(time.Millisecond * 500)
-				retr.StopIn()
+				retrService.Stop()
 				for _, f := range fetches {
 					f.StopOut()
 				}

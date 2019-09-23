@@ -18,7 +18,7 @@ type server struct {
 	dag      gomel.Dag
 	adder    gomel.Adder
 	netserv  network.Server
-	fallback sync.QueryServer
+	fallback sync.Fallback
 	requests chan request
 	syncIds  []uint32
 	outPool  sync.WorkerPool
@@ -28,7 +28,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.QueryServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
 	nProc := int(dag.NProc())
 	requests := make(chan request, nProc)
 	s := &server{
@@ -43,7 +43,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 	}
 	s.outPool = sync.NewPool(nOut, s.out)
 	s.inPool = sync.NewPool(nIn, s.in)
-	return s
+	return s, s
 }
 
 func (s *server) Start() {
@@ -60,7 +60,7 @@ func (s *server) StopOut() {
 	s.outPool.Stop()
 }
 
-func (s *server) SetFallback(qs sync.QueryServer) {
+func (s *server) SetFallback(qs sync.Fallback) {
 	s.fallback = qs
 }
 
