@@ -78,7 +78,7 @@ var _ = Describe("Protocol", func() {
 		Context("when requesting a nonexistent unit", func() {
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				dag2 = dag1
 			})
 
@@ -113,7 +113,7 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
 				dag2 = dag1
 				maxes := dag1.MaximalUnitsPerProcess()
 				// Pick the hash of the only unit.
@@ -161,8 +161,8 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag2, _ = tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par.txt", tests.NewTestDagFactory())
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/random_100u_2par.txt", tests.NewTestDagFactory())
 				maxes := dag2.MaximalUnitsPerProcess()
 				// Pick the hash of any maximal unit.
 				maxes.Iterate(func(units []gomel.Unit) bool {

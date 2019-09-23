@@ -40,4 +40,20 @@ var _ = Describe("Signing", func() {
 			})
 		})
 	})
+	Context("A key when marshalled and unmarshalled", func() {
+		It("Should return the key", func() {
+			priv2 := new(SecretKey)
+			_, err := priv2.Unmarshal(priv.Marshal())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(priv2).To(Equal(priv))
+
+			pub2 := new(VerificationKey)
+			_, err = pub2.Unmarshal(pub.Marshal())
+			Expect(err).NotTo(HaveOccurred())
+			// The public keys cannot be compared using Equal,
+			// because the same public key (element of G1) can be represented
+			// in different ways in memory.
+			Expect(pub.Marshal()).To(Equal(pub2.Marshal()))
+		})
+	})
 })

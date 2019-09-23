@@ -16,7 +16,7 @@ var _ = Describe("DagReader", func() {
 	Describe("CreateDagFromTestFile", func() {
 		Context("On random_10_100u_2par file", func() {
 			BeforeEach(func() {
-				dag, err = CreateDagFromTestFile("../testdata/random_10p_100u_2par.txt", NewTestDagFactory())
+				dag, err = CreateDagFromTestFile("../testdata/dags/10/random_100u_2par.txt", NewTestDagFactory())
 			})
 			It("Should return dag with 10 parents and 100 units", func() {
 				Expect(err).NotTo(HaveOccurred())

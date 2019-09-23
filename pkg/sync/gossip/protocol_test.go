@@ -61,8 +61,8 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies are empty", func() {
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag2, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 			})
 
 			It("should not add anything", func() {
@@ -89,9 +89,9 @@ var _ = Describe("Protocol", func() {
 			)
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
 				theUnit = dag1.MaximalUnitsPerProcess().Get(0)[0]
-				dag2, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 			})
 
 			It("should add the unit to the second copy", func() {
@@ -118,8 +118,8 @@ var _ = Describe("Protocol", func() {
 		Context("when the second copy contains a single dealing unit", func() {
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				dag2, _ = tests.CreateDagFromTestFile("../../testdata/other_unit.txt", tests.NewTestDagFactory())
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/other_unit.txt", tests.NewTestDagFactory())
 			})
 
 			It("should add the unit to the first copy", func() {
@@ -145,7 +145,7 @@ var _ = Describe("Protocol", func() {
 		Context("when both copies contain all the dealing units", func() {
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/only_dealing.txt", tests.NewTestDagFactory())
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
 				dag2 = dag1
 			})
 
@@ -165,6 +165,55 @@ var _ = Describe("Protocol", func() {
 				Expect(adder2.attemptedAdd).To(BeEmpty())
 			})
 
+		})
+		Context("when one copy is empty and the other has 60 units", func() {
+
+			BeforeEach(func() {
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
+			})
+
+			It("should add everything", func() {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() {
+					proto1.In()
+					wg.Done()
+				}()
+				go func() {
+					proto2.Out()
+					wg.Done()
+				}()
+				wg.Wait()
+				Expect(adder1.attemptedAdd).To(HaveLen(60))
+				Expect(adder2.attemptedAdd).To(BeEmpty())
+			})
+		})
+		Context("when trolled by a forker", func() {
+
+			BeforeEach(func() {
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view1.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
+			})
+
+			// This behaviour is expected by the current design of the protocol.
+			// However this gives an opportunity to a malicious node to enforce
+			// huge exchanges between honest nodes.
+			It("should add all units", func() {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() {
+					proto1.In()
+					wg.Done()
+				}()
+				go func() {
+					proto2.Out()
+					wg.Done()
+				}()
+				wg.Wait()
+				Expect(adder1.attemptedAdd).To(HaveLen(3))
+				Expect(adder2.attemptedAdd).To(HaveLen(3))
+			})
 		})
 
 	})
