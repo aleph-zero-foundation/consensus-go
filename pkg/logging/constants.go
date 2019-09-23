@@ -101,6 +101,7 @@ const (
 	Memory    = "M"
 	ID        = "D"
 	Hash      = "#"
+	Lvl       = "Q"
 )
 
 // fieldNameDict maps short field names to human readable form.
@@ -124,6 +125,7 @@ var fieldNameDict = map[string]string{
 	Memory:    "bytes",
 	ID:        "ID",
 	Hash:      "hash",
+	Lvl:       "level",
 }
 
 // Service types.

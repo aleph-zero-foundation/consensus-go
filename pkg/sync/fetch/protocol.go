@@ -81,7 +81,7 @@ func (p *server) out() {
 		log.Error().Str("where", "fetch.out.receivePreunits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, len(units)).Msg(logging.ReceivedPreunits)
+	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 	if add.Units(p.adder, units, p.fallback, "fetch.out", log) {
 		log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 	}

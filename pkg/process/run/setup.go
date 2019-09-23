@@ -95,7 +95,7 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	}()
 
 	// We need to figure out a condition for stopping the setup phase syncs
-	// For now just syncing for the next minute
+	// For now just syncing for some time
 	stop(createService, orderService, memlogService)
 	time.Sleep(10 * time.Second)
 	stop(syncService, adderService)

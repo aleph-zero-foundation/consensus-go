@@ -161,10 +161,10 @@ func (s *service) createUnit() bool {
 	}
 
 	if isPrime {
-		s.log.Info().Int(logging.Height, level).Int(logging.NParents, len(created.Parents())).Msg(logging.PrimeUnitCreated)
+		s.log.Info().Int(logging.Lvl, level).Int(logging.NParents, len(created.Parents())).Msg(logging.PrimeUnitCreated)
 		s.quicker()
 	} else {
-		s.log.Info().Int(logging.Height, level).Int(logging.NParents, len(created.Parents())).Msg(logging.UnitCreated)
+		s.log.Info().Int(logging.Lvl, level).Int(logging.NParents, len(created.Parents())).Msg(logging.UnitCreated)
 		s.slower()
 	}
 
