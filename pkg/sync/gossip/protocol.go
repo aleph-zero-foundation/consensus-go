@@ -70,7 +70,7 @@ func (p *server) in() {
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
-	err = encoding.SendUnits(units, conn)
+	err = encoding.SendChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.sendUnits").Msg(err.Error())
 		return
@@ -91,7 +91,7 @@ func (p *server) in() {
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := encoding.GetPreunits(conn)
+	theirPreunitsReceived, nReceived, err := encoding.ReceiveChunk(conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getPreunits").Msg(err.Error())
 		return
@@ -99,7 +99,7 @@ func (p *server) in() {
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirFreshPreunitsReceived, nFreshReceived, err := encoding.GetPreunits(conn)
+	theirFreshPreunitsReceived, nFreshReceived, err := encoding.ReceiveChunk(conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getPreunitsFresh").Msg(err.Error())
 		return
@@ -121,7 +121,7 @@ func (p *server) in() {
 			return
 		}
 		log.Debug().Msg(logging.SendUnits)
-		err = encoding.SendUnits(units, conn)
+		err = encoding.SendChunk(units, conn)
 		if err != nil {
 			log.Error().Str("where", "gossip.in.sendUnits(extra)").Msg(err.Error())
 			return
@@ -135,8 +135,8 @@ func (p *server) in() {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	if add.Units(p.adder, theirPreunitsReceived, p.fallback, "gossip.in", log) &&
-		add.Units(p.adder, theirFreshPreunitsReceived, p.fallback, "gossip.in.fresh", log) {
+	if add.Chunk(p.adder, theirPreunitsReceived, p.fallback, "gossip.in", log) &&
+		add.Chunk(p.adder, theirFreshPreunitsReceived, p.fallback, "gossip.in.fresh", log) {
 		log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Int(logging.FreshRecv, nFreshReceived).Msg(logging.SyncCompleted)
 	}
 }
@@ -202,7 +202,7 @@ func (p *server) out() {
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := encoding.GetPreunits(conn)
+	theirPreunitsReceived, nReceived, err := encoding.ReceiveChunk(conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.getPreunits").Msg(err.Error())
 		return
@@ -220,7 +220,7 @@ func (p *server) out() {
 		return
 	}
 	log.Debug().Msg(logging.SendUnits)
-	err = encoding.SendUnits(units, conn)
+	err = encoding.SendChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.sendUnits").Msg(err.Error())
 		return
@@ -234,7 +234,7 @@ func (p *server) out() {
 	theirPreunitsHashSet := newStaticHashSet(hashesFromAcquiredUnits(theirPreunitsReceived))
 	freshUnitsUnknown := theirPreunitsHashSet.filterOutKnownUnits(freshUnits)
 	log.Debug().Msg(logging.SendFreshUnits)
-	err = encoding.SendUnits(freshUnitsUnknown, conn)
+	err = encoding.SendChunk(freshUnitsUnknown, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.sendUnits").Msg(err.Error())
 		return
@@ -255,7 +255,7 @@ func (p *server) out() {
 	if nonempty(req) {
 		log.Info().Msg(logging.AdditionalExchange)
 		log.Debug().Msg(logging.GetPreunits)
-		theirPreunitsReceived, nReceived, err = encoding.GetPreunits(conn)
+		theirPreunitsReceived, nReceived, err = encoding.ReceiveChunk(conn)
 		if err != nil {
 			log.Error().Str("where", "gossip.out.getPreunits(extra)").Msg(err.Error())
 			return
@@ -263,7 +263,7 @@ func (p *server) out() {
 		log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 	}
 	log.Debug().Msg(logging.AddUnits)
-	if add.Units(p.adder, theirPreunitsReceived, p.fallback, "gossip.out", log) {
+	if add.Chunk(p.adder, theirPreunitsReceived, p.fallback, "gossip.out", log) {
 		log.Info().Int(logging.Sent, len(units)).Int(logging.FreshSent, len(freshUnitsUnknown)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 	}
 }

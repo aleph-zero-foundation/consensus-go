@@ -29,18 +29,18 @@ func SendUnit(unit gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeUnit(unit)
 }
 
-//GetPreunit decodes a preunit from reader.
-func GetPreunit(r io.Reader) (gomel.Preunit, error) {
+//ReceivePreunit decodes a preunit from reader.
+func ReceivePreunit(r io.Reader) (gomel.Preunit, error) {
 	return newDecoder(r).decodePreunit()
 }
 
-//SendUnits encodes units and writes them to writer.
-func SendUnits(units []gomel.Unit, w io.Writer) error {
+//SendChunk encodes units and writes them to writer.
+func SendChunk(units []gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeChunk(units)
 }
 
-//GetPreunits decodes slice of preunit antichains from reader.
-func GetPreunits(r io.Reader) ([][]gomel.Preunit, int, error) {
+//ReceiveChunk decodes slice of preunit antichains from reader.
+func ReceiveChunk(r io.Reader) ([][]gomel.Preunit, int, error) {
 	return newDecoder(r).decodeChunk()
 }
 

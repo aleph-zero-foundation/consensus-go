@@ -13,8 +13,8 @@ func Unit(adder gomel.Adder, pu gomel.Preunit, fallback sync.QueryServer, where 
 	return handleError(adder.AddUnit(pu), pu, fallback, where, log)
 }
 
-// Units adds slice of antichains to the dag and returns whether everything went fine.
-func Units(adder gomel.Adder, antichains [][]gomel.Preunit, fallback sync.QueryServer, where string, log zerolog.Logger) bool {
+// Chunk adds slice of antichains to the dag and returns whether everything went fine.
+func Chunk(adder gomel.Adder, antichains [][]gomel.Preunit, fallback sync.QueryServer, where string, log zerolog.Logger) bool {
 	success := true
 	for _, antichain := range antichains {
 		aggErr := adder.AddAntichain(antichain)

@@ -15,7 +15,7 @@ func (p *server) in() {
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
 
-	preunit, err := encoding.GetPreunit(conn)
+	preunit, err := encoding.ReceivePreunit(conn)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
 		return
