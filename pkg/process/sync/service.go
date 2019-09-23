@@ -199,11 +199,11 @@ func getNetServ(net string, localAddress string, remoteAddresses []string, servi
 		}
 		return netserv, services, nil
 	case "pers":
-		netserv, err := persistent.NewServer(localAddress, remoteAddresses, log)
+		netserv, service, err := persistent.NewServer(localAddress, remoteAddresses, log)
 		if err != nil {
 			return nil, services, err
 		}
-		return netserv, append(services, netserv.(process.Service)), nil
+		return netserv, append(services, service), nil
 	default:
 		netserv, err := tcp.NewServer(localAddress, remoteAddresses, log)
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 type server struct {
@@ -27,7 +28,7 @@ type server struct {
 // NewServer initializes network setup for the given local address and the set of remote addresses.
 // Returns an object that implements BOTH network.Server and process.Service interfaces.
 // It needs to be started as a service to activate listening for incoming TCP connections.
-func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Server, error) {
+func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Server, process.Service, error) {
 	nProc := len(remoteAddresses)
 	s := &server{
 		localAddr:   localAddress,
@@ -38,7 +39,7 @@ func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger
 		mx:          make([]sync.Mutex, nProc),
 		log:         log,
 	}
-	return s, nil
+	return s, s, nil
 }
 
 func (s *server) Dial(pid uint16, timeout time.Duration) (network.Connection, error) {
