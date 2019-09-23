@@ -108,6 +108,8 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 				s.subservices = append(s.subservices, service)
 			}
 			s.servers[c.Type].SetFallback(fallback)
+		} else {
+			s.servers[c.Type].SetFallback(sync.DefaultFallback(log))
 		}
 	}
 

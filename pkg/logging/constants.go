@@ -39,6 +39,7 @@ const (
 	AddedToBacklog        = "h"
 	RemovedFromBacklog    = "i"
 	GotRandomSource       = "j"
+	FallbackUsed          = "k"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -78,6 +79,7 @@ var eventTypeDict = map[string]string{
 	AddedToBacklog:        "added unit to retrying backlog",
 	RemovedFromBacklog:    "removed unit from retrying backlog",
 	GotRandomSource:       "received randomness source",
+	FallbackUsed:          "server used fallback due to missing parents",
 }
 
 // Field names.
