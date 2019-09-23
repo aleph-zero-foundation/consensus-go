@@ -65,7 +65,7 @@ func (p *server) in() {
 				return
 			}
 			if *pu.Parents()[0] != *predecessor.Hash() {
-				log.Error().Str("where", "rmc.in.").Msg("wrong unit height")
+				log.Error().Str("where", "rmc.in").Msg("wrong unit height")
 				return
 			}
 			if !add.Unit(p.adder, predecessor, p.fallback, "rmc.in.Predecessor", log) {

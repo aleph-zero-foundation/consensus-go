@@ -14,23 +14,19 @@ var _ = Describe("Encoding/Decoding", func() {
 	var (
 		dag        gomel.Dag
 		readingErr error
-		encoder    Encoder
-		decoder    Decoder
 		network    *bytes.Buffer
 	)
 	BeforeEach(func() {
 		dag, readingErr = tests.CreateDagFromTestFile("../testdata/regular1.txt", tests.NewTestDagFactory())
 		Expect(readingErr).NotTo(HaveOccurred())
 		network = &bytes.Buffer{}
-		encoder = NewEncoder(network)
-		decoder = NewDecoder(network)
 	})
 	Context("A dealing unit", func() {
 		It("should be encoded/decoded to a preunit representing the original unit", func() {
 			u := dag.PrimeUnits(0).Get(0)[0]
-			err := encoder.EncodeUnit(u)
+			err := SendUnit(u, network)
 			Expect(err).NotTo(HaveOccurred())
-			pu, err := decoder.DecodePreunit()
+			pu, err := GetPreunit(network)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
@@ -44,9 +40,9 @@ var _ = Describe("Encoding/Decoding", func() {
 	Context("A non-dealing unit", func() {
 		It("should be encoded/decoded to a preunit representing the original unit", func() {
 			u := dag.MaximalUnitsPerProcess().Get(0)[0]
-			err := encoder.EncodeUnit(u)
+			err := SendUnit(u, network)
 			Expect(err).NotTo(HaveOccurred())
-			pu, err := decoder.DecodePreunit()
+			pu, err := GetPreunit(network)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())

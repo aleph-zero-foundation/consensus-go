@@ -15,15 +15,16 @@ func Unit(adder gomel.Adder, pu gomel.Preunit, fallback sync.QueryServer, where 
 
 // Units adds slice of antichains to the dag and returns whether everything went fine.
 func Units(adder gomel.Adder, antichains [][]gomel.Preunit, fallback sync.QueryServer, where string, log zerolog.Logger) bool {
+	success := true
 	for _, antichain := range antichains {
 		aggErr := adder.AddAntichain(antichain)
 		for i, err := range aggErr.Errors() {
 			if !handleError(err, antichain[i], fallback, where, log) {
-				return false
+				success = false
 			}
 		}
 	}
-	return true
+	return success
 }
 
 //handleError abstracts error processing for both above function. Returns false on serious errors.

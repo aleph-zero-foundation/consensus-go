@@ -7,11 +7,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type encoder struct {
+type enc struct {
 	io.Writer
 }
 
-// NewEncoder creates a new encoding.Encoder that is threadsafe.
+// newEncoder creates a new encoding.Encoder that is threadsafe.
 // It encodes units in the following format:
 //  1. Creator id, 2 bytes.
 //  2. Signature, 64 bytes.
@@ -22,12 +22,12 @@ type encoder struct {
 //  7. Size of the random source data in bytes, 4 bytes.
 //  8. The random source data, as much as declared in 7.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
-func NewEncoder(w io.Writer) Encoder {
-	return &encoder{w}
+func newEncoder(w io.Writer) encoder {
+	return &enc{w}
 }
 
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
-func (e *encoder) EncodeUnit(unit gomel.Unit) error {
+func (e *enc) encodeUnit(unit gomel.Unit) error {
 	nParents := uint16(len(unit.Parents()))
 	data := make([]byte, 2+64+2+nParents*32+4)
 	s := 0
@@ -74,13 +74,13 @@ func (e *encoder) EncodeUnit(unit gomel.Unit) error {
 	return nil
 }
 
-func (e *encoder) encodeAntichain(units []gomel.Unit) error {
+func (e *enc) encodeAntichain(units []gomel.Unit) error {
 	err := e.encodeUint32(uint32(len(units)))
 	if err != nil {
 		return err
 	}
 	for _, u := range units {
-		err = e.EncodeUnit(u)
+		err = e.encodeUnit(u)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func (e *encoder) encodeAntichain(units []gomel.Unit) error {
 	return nil
 }
 
-func (e *encoder) EncodeUnits(units []gomel.Unit) error {
+func (e *enc) encodeChunk(units []gomel.Unit) error {
 	layers := toLayers(units)
 	err := e.encodeUint32(uint32(len(layers)))
 	if err != nil {
@@ -103,7 +103,7 @@ func (e *encoder) EncodeUnits(units []gomel.Unit) error {
 	return nil
 }
 
-func (e *encoder) encodeUint32(i uint32) error {
+func (e *enc) encodeUint32(i uint32) error {
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, i)
 	_, err := e.Write(buf)

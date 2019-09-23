@@ -10,8 +10,8 @@ import (
 //EncodeUnit encodes a unit to a slice of bytes.
 func EncodeUnit(unit gomel.Unit) ([]byte, error) {
 	var buf bytes.Buffer
-	encoder := NewEncoder(&buf)
-	err := encoder.EncodeUnit(unit)
+	encoder := newEncoder(&buf)
+	err := encoder.encodeUnit(unit)
 	if err != nil {
 		return nil, err
 	}
@@ -20,18 +20,28 @@ func EncodeUnit(unit gomel.Unit) ([]byte, error) {
 
 // DecodePreunit checks decodes the given data into preunit. Complementary to EncodeUnit.
 func DecodePreunit(data []byte) (gomel.Preunit, error) {
-	decoder := NewDecoder(bytes.NewReader(data))
-	return decoder.DecodePreunit()
+	decoder := newDecoder(bytes.NewReader(data))
+	return decoder.decodePreunit()
+}
+
+//SendUnit writes encoded unit to writer.
+func SendUnit(unit gomel.Unit, w io.Writer) error {
+	return newEncoder(w).encodeUnit(unit)
+}
+
+//GetPreunit decodes a preunit from reader.
+func GetPreunit(r io.Reader) (gomel.Preunit, error) {
+	return newDecoder(r).decodePreunit()
 }
 
 //SendUnits encodes units and writes them to writer.
 func SendUnits(units []gomel.Unit, w io.Writer) error {
-	return NewEncoder(w).EncodeUnits(units)
+	return newEncoder(w).encodeChunk(units)
 }
 
 //GetPreunits decodes slice of preunit antichains from reader.
 func GetPreunits(r io.Reader) ([][]gomel.Preunit, int, error) {
-	return NewDecoder(r).DecodePreunits()
+	return newDecoder(r).decodeChunk()
 }
 
 func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {

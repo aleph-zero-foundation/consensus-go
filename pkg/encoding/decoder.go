@@ -8,11 +8,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type decoder struct {
+type dec struct {
 	io.Reader
 }
 
-// NewDecoder creates a new encoding.Decoder that is threadsafe.
+// newDecoder creates a new encoding.Decoder that is threadsafe.
 // It assumes the data encodes units in the following format:
 //  1. Creator id, 2 bytes.
 //  2. Signature, 64 bytes.
@@ -24,13 +24,13 @@ type decoder struct {
 //  8. The random source data, as much as declared in 7.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
 // It is guaranteed to read only as much data as needed.
-func NewDecoder(r io.Reader) Decoder {
-	return &decoder{r}
+func newDecoder(r io.Reader) decoder {
+	return &dec{r}
 }
 
-// DecodePreunit reads encoded data from the io.Reader and tries to decode it
+// decodePreunit reads encoded data from the io.Reader and tries to decode it
 // as a preunit.
-func (d *decoder) DecodePreunit() (gomel.Preunit, error) {
+func (d *dec) decodePreunit() (gomel.Preunit, error) {
 	uint16Buf := make([]byte, 2)
 	uint32Buf := make([]byte, 4)
 	_, err := io.ReadFull(d, uint16Buf)
@@ -82,14 +82,14 @@ func (d *decoder) DecodePreunit() (gomel.Preunit, error) {
 	return result, nil
 }
 
-func (d *decoder) decodeAntichain() ([]gomel.Preunit, error) {
+func (d *dec) decodeAntichain() ([]gomel.Preunit, error) {
 	k, err := d.decodeUint32()
 	if err != nil {
 		return nil, err
 	}
 	result := make([]gomel.Preunit, k)
 	for i := range result {
-		result[i], err = d.DecodePreunit()
+		result[i], err = d.decodePreunit()
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +97,7 @@ func (d *decoder) decodeAntichain() ([]gomel.Preunit, error) {
 	return result, nil
 }
 
-func (d *decoder) DecodePreunits() ([][]gomel.Preunit, int, error) {
+func (d *dec) decodeChunk() ([][]gomel.Preunit, int, error) {
 	k, err := d.decodeUint32()
 	if err != nil {
 		return nil, 0, err
@@ -115,7 +115,7 @@ func (d *decoder) DecodePreunits() ([][]gomel.Preunit, int, error) {
 	return result, nUnits, nil
 }
 
-func (d *decoder) decodeUint32() (uint32, error) {
+func (d *dec) decodeUint32() (uint32, error) {
 	buf := make([]byte, 4)
 	_, err := io.ReadFull(d, buf)
 	if err != nil {
