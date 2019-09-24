@@ -41,4 +41,4 @@ driver.add_pipeline('Multicast', [
 ])
 
 driver.add_pipeline('Network traffic', NetworkTraffic())
-driver.add_pipeline('Memory', MemoryStats(unit = 'kB'))
+driver.add_pipeline('Memory', MemoryStats(unit = 'MB'))
