@@ -133,13 +133,11 @@ var _ = Describe("Protocol", func() {
 			It("should eventually add the unit", func() {
 				retr.Resolve(pu)
 
-				time.Sleep(time.Millisecond * 600)
+				time.Sleep(time.Millisecond * 2000)
 				retrService.Stop()
-				time.Sleep(time.Millisecond * 100)
 				for _, f := range fetches {
 					f.StopOut()
 				}
-				time.Sleep(time.Millisecond * 100)
 				tests.CloseNetwork(netservs)
 				for _, f := range fetches {
 					f.StopIn()
