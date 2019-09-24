@@ -53,20 +53,22 @@ var _ = Describe("Protocol", func() {
 		netservs    []network.Server
 		retr        sync.Fallback
 		retrService process.Service
+		unit        gomel.Unit
+		pu          gomel.Preunit
 	)
 
 	BeforeEach(func() {
-		netservs = tests.NewNetwork(10)
-		dags = make([]gomel.Dag, 10)
-		adders = make([]*adder, 10)
-		fetches = make([]sync.Server, 10)
-		fallbacks = make([]sync.Fallback, 10)
+		netservs = tests.NewNetwork(4)
+		dags = make([]gomel.Dag, 4)
+		adders = make([]*adder, 4)
+		fetches = make([]sync.Server, 4)
+		fallbacks = make([]sync.Fallback, 4)
 	})
 
 	JustBeforeEach(func() {
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 4; i++ {
 			adders[i] = &adder{tests.NewAdder(dags[i]), nil}
-			fetches[i], fallbacks[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 2, 5)
+			fetches[i], fallbacks[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			fetches[i].Start()
 		}
 		retrService, retr = NewService(dags[0], adders[0], fallbacks[0], time.Millisecond, zerolog.Nop())
@@ -74,19 +76,14 @@ var _ = Describe("Protocol", func() {
 		retrService.Start()
 	})
 
-	Describe("with only two participants", func() {
+	Describe("with four participants", func() {
 
 		Context("when requesting a dealing unit", func() {
 
-			var (
-				unit gomel.Unit
-				pu   gomel.Preunit
-			)
-
 			BeforeEach(func() {
-				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				for i := 1; i < 10; i++ {
-					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/one_unit.txt", tests.NewTestDagFactory())
+				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				for i := 1; i < 4; i++ {
+					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/dags/4/one_unit.txt", tests.NewTestDagFactory())
 				}
 				maxes := dags[1].MaximalUnitsPerProcess()
 				unit = maxes.Get(0)[0]
@@ -116,14 +113,10 @@ var _ = Describe("Protocol", func() {
 		})
 		Context("when requesting a unit with unknown parents", func() {
 
-			var (
-				unit gomel.Unit
-				pu   gomel.Preunit
-			)
 			BeforeEach(func() {
-				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/empty.txt", tests.NewTestDagFactory())
-				for i := 1; i < 10; i++ {
-					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/random_10p_100u_2par_dead0.txt", tests.NewTestDagFactory())
+				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				for i := 1; i < 4; i++ {
+					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/dags/4/dead0.txt", tests.NewTestDagFactory())
 				}
 				maxes := dags[1].MaximalUnitsPerProcess()
 				unit = maxes.Get(1)[0]
@@ -154,7 +147,7 @@ var _ = Describe("Protocol", func() {
 				Expect(theUnitTransferred.Data()).To(Equal(unit.Data()))
 				Expect(theUnitTransferred.RandomSourceData()).To(Equal(unit.RandomSourceData()))
 				Expect(theUnitTransferred.Hash()).To(Equal(unit.Hash()))
-			})
+			}, 60)
 
 		})
 

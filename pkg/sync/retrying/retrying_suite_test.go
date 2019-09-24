@@ -9,5 +9,5 @@ import (
 
 func TestFallback(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Fallback Suite")
+	RunSpecs(t, "Retrying Suite")
 }
