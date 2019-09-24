@@ -102,7 +102,7 @@ var _ = Describe("Dag", func() {
 		Describe("HasForkingEvidence works properly in case of forks even when combined floors is not an evidence of forking", func() {
 
 			It("should confirm that a unit exploiting it is a self-forking evidence", func() {
-				_, err := tests.CreateDagFromTestFile("../../testdata/self_forking_evidence.txt", noSelfForkingEvidenceFactory{})
+				_, err := tests.CreateDagFromTestFile("../../testdata/dags/10/self_forking_evidence.txt", noSelfForkingEvidenceFactory{})
 				Expect(err).To(Equal(gomel.NewComplianceError("A unit is evidence of self forking")))
 			})
 		})

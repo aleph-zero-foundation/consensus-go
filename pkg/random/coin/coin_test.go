@@ -32,7 +32,7 @@ var _ = Describe("Coin", func() {
 		delt = tcoin.Deal(n, n/3+1)
 
 		for pid := uint16(0); pid < n; pid++ {
-			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/empty4.txt", tests.NewTestDagFactory())
+			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			tc, tcErr := tcoin.Decode(delt, pid)
 			Expect(tcErr).NotTo(HaveOccurred())

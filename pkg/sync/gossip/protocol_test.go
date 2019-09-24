@@ -139,6 +139,55 @@ var _ = Describe("Protocol", func() {
 			})
 
 		})
+		Context("when one copy is empty and the other has 60 units", func() {
+
+			BeforeEach(func() {
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
+			})
+
+			It("should add everything", func() {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() {
+					proto1.In()
+					wg.Done()
+				}()
+				go func() {
+					proto2.Out()
+					wg.Done()
+				}()
+				wg.Wait()
+				Expect(adder1.attemptedAdd).To(HaveLen(60))
+				Expect(adder2.attemptedAdd).To(BeEmpty())
+			})
+		})
+		Context("when trolled by a forker", func() {
+
+			BeforeEach(func() {
+				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view1.txt", tests.NewTestDagFactory())
+				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
+			})
+
+			// This behaviour is expected by the current design of the protocol.
+			// However this gives an opportunity to a malicious node to enforce
+			// huge exchanges between honest nodes.
+			It("should add all units", func() {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() {
+					proto1.In()
+					wg.Done()
+				}()
+				go func() {
+					proto2.Out()
+					wg.Done()
+				}()
+				wg.Wait()
+				Expect(adder1.attemptedAdd).To(HaveLen(3))
+				Expect(adder2.attemptedAdd).To(HaveLen(3))
+			})
+		})
 
 	})
 
