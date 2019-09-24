@@ -120,7 +120,7 @@ var _ = Describe("Protocol", func() {
 		Context("when requesting a unit with unknown parents", func() {
 
 			BeforeEach(func() {
-				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				dags[0], _ = tests.CreateDagFromTestFile("../../testdata/dags/4/one_unit.txt", tests.NewTestDagFactory())
 				for i := 1; i < 4; i++ {
 					dags[i], _ = tests.CreateDagFromTestFile("../../testdata/dags/4/dead0.txt", tests.NewTestDagFactory())
 				}
