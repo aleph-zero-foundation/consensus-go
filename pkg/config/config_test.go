@@ -19,7 +19,7 @@ var _ = Describe("Configuration", func() {
 		Describe("Store and Load Configuration", func() {
 			It("should return same Configuration", func() {
 				config := NewDefaultConfiguration()
-				config.NParents = 10000
+				config.LevelLimit = 10000
 				configCopy := config
 
 				// store configuation using a buffer
@@ -37,7 +37,7 @@ var _ = Describe("Configuration", func() {
 
 		Describe("parsing incomplete JSON configuration", func() {
 			It("should return an error", func() {
-				jsonConfig := "{\"NParents\": 1000}"
+				jsonConfig := "{\"LevelLimit\": 1000}"
 				configStream := strings.NewReader(jsonConfig)
 
 				var config Configuration

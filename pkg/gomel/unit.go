@@ -1,13 +1,11 @@
 package gomel
 
-import "errors"
-
 // Unit that belongs to the dag.
 type Unit interface {
 	BaseUnit
 	// Height of a unit is the length of the path between this unit and a dealing unit in the (induced) sub-dag containing all units produced by the same creator.
 	Height() int
-	// Parents of this unit, with predecessor being the first element of the returned slice.
+	// Parents of this unit.
 	Parents() []Unit
 	// Level of this unit in the dag, as defined in the Aleph protocol whitepaper.
 	Level() int
@@ -24,7 +22,9 @@ func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {
 	startIx := len(*out)
 
 	for _, parent := range parents {
-
+		if parent == nil {
+			continue
+		}
 		for _, w := range parent.Floor()[pid] {
 			found, ri := false, -1
 			for ix, v := range (*out)[startIx:] {
@@ -54,22 +54,22 @@ func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {
 	}
 }
 
-// HasSelfForkingEvidence returns true iff the given set of parents proves that the creator (that is parents[0].Creator())
+// HasSelfForkingEvidence returns true iff the given set of parents proves that the creator
 // made a fork.
-func HasSelfForkingEvidence(parents []Unit) bool {
-	if len(parents) == 0 {
+func HasSelfForkingEvidence(parents []Unit, creator uint16) bool {
+	if parents[creator] == nil {
 		return false
 	}
 	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
 	// check whether collection of these maximal units has a single maximal element
 	var storage [1]Unit
 	combinedFloor := storage[:0]
-	CombineParentsFloorsPerProc(parents, parents[0].Creator(), &combinedFloor)
+	CombineParentsFloorsPerProc(parents, creator, &combinedFloor)
 	if len(combinedFloor) > 1 {
 		return true
 	}
 	// check if some other parent has an evidence of a unit made by 'creator' that is above our self-predecessor
-	return *parents[0].Hash() != *combinedFloor[0].Hash()
+	return *parents[creator].Hash() != *combinedFloor[0].Hash()
 }
 
 // HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
@@ -81,30 +81,23 @@ func HasForkingEvidence(u Unit, creator uint16) bool {
 	if creator != u.Creator() {
 		return len(u.Floor()[creator]) > 1
 	}
-	return HasSelfForkingEvidence(u.Parents())
-}
-
-// Predecessor of a unit is one of its parents, the one created by the same process as the given unit.
-func Predecessor(u Unit) (Unit, error) {
-	pars := u.Parents()
-	if len(pars) == 0 {
-		return nil, errors.New("no parents")
-	}
-	return pars[0], nil
+	return HasSelfForkingEvidence(u.Parents(), creator)
 }
 
 // Prime checks whether the given unit is a prime unit.
 func Prime(u Unit) bool {
-	p, err := Predecessor(u)
-	if err != nil {
-		return true
-	}
-	return u.Level() > p.Level()
+	p := Predecessor(u)
+	return (p == nil) || u.Level() > p.Level()
+}
+
+// Predecessor of a unit is one of its parents, the one created by the same process as the given unit.
+func Predecessor(u Unit) Unit {
+	return u.Parents()[u.Creator()]
 }
 
 // Dealing checks if u is a dealing unit.
 func Dealing(u Unit) bool {
-	return len(u.Parents()) == 0
+	return Predecessor(u) == nil
 }
 
 // BelowAny checks whether u is below any of the units in us.

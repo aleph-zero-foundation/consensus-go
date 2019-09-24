@@ -42,7 +42,7 @@ var _ = Describe("Coin", func() {
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
 			for creator := uint16(0); creator < n; creator++ {
-				pu, _, _, err := creating.NewUnit(dag[creator], creator, 2*(n/3)+1, []byte{}, rs[creator], false)
+				pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
 				Expect(err).NotTo(HaveOccurred())
 				for pid := uint16(0); pid < n; pid++ {
 					_, err = gomel.AddUnit(dag[pid], pu)

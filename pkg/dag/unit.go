@@ -70,8 +70,7 @@ func (u *freeUnit) computeHeight() {
 	if gomel.Dealing(u) {
 		*u.height = 0
 	} else {
-		predecessor, _ := gomel.Predecessor(u)
-		*u.height = predecessor.Height() + 1
+		*u.height = gomel.Predecessor(u).Height() + 1
 	}
 }
 
@@ -88,40 +87,21 @@ func (u *freeUnit) computeLevel() {
 		*u.level = 0
 		return
 	}
-
-	// compliant unit have parents in ascending order of level
-	maxLevelParents := u.parents[len(u.parents)-1].Level()
-
-	level := maxLevelParents
-	nSeen := uint16(0)
-
-	// we should consider our self predecessor
-	// it assumes that this unit is not an evidence of self-forking
-	if pred, err := gomel.Predecessor(u); err == nil && pred.Level() == maxLevelParents {
-		nSeen++
-	}
-	creator := u.Creator()
-	hasQuorum := gomel.IsQuorum(u.nProc, nSeen)
-	for pid, vs := range u.Floor() {
-		pid := uint16(pid)
-		if pid == creator {
+	level := 0
+	onLevel := uint16(0)
+	for i := uint16(0); i < u.nProc; i++ {
+		if u.parents[i] == nil {
 			continue
 		}
-
-		for _, unit := range vs {
-			if unit.Level() == maxLevelParents {
-				nSeen++
-				if gomel.IsQuorum(u.nProc, nSeen) {
-					level = maxLevelParents + 1
-					hasQuorum = true
-				}
-				break
-			}
+		if u.parents[i].Level() == level {
+			onLevel++
+		} else if u.parents[i].Level() > level {
+			onLevel = 1
+			level = u.parents[i].Level()
 		}
-
-		if hasQuorum || !gomel.IsQuorum(u.nProc, nSeen+(u.nProc-(pid+1))) {
-			break
-		}
+	}
+	if gomel.IsQuorum(u.nProc, onLevel) {
+		level++
 	}
 	*u.level = level
 }
@@ -152,7 +132,7 @@ func (u *freeUnit) computeFloor() {
 
 	// pre-allocate memory for storing values for each process
 	u.floor = make([][]gomel.Unit, u.nProc)
-	if len(u.parents) == 0 {
+	if u.parents[u.creator] == nil {
 		u.floor[u.creator] = []gomel.Unit{u}
 		return
 	}
@@ -268,7 +248,7 @@ func (u *unit) computeForkingHeight(dag *dag) {
 		}
 		return
 	}
-	predTmp, _ := gomel.Predecessor(u)
+	predTmp := gomel.Predecessor(u)
 	predecessor := predTmp.(*unit)
 	found := false
 	for _, v := range dag.MaximalUnitsPerProcess().Get(u.creator) {

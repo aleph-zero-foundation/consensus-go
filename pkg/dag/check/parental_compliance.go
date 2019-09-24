@@ -4,29 +4,39 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// ParentDiversity checks if all parents are created by pairwise different processes.
-func ParentDiversity(dag gomel.Dag) gomel.Dag {
-	return Units(dag, func(u gomel.Unit) error { return parentDiversityCheck(u.Parents()) })
+// ParentConsistency checks the consistency rule.
+func ParentConsistency(dag gomel.Dag) gomel.Dag {
+	return Units(dag, func(u gomel.Unit) error { return parentConsistencyCheck(u.Parents(), dag.NProc()) })
 }
 
-func parentDiversityCheck(parents []gomel.Unit) error {
-	processFilter := map[uint16]bool{}
-	for _, parent := range parents {
-		if processFilter[parent.Creator()] {
-			return gomel.NewComplianceError("Some of a unit's parents are created by the same process")
+func parentConsistencyCheck(parents []gomel.Unit, nProc uint16) error {
+	for i := uint16(0); i < nProc; i++ {
+		for j := uint16(0); j < nProc; j++ {
+			if parents[j] == nil {
+				continue
+			}
+			u := parents[j].Parents()[i]
+			if parents[i] == nil {
+				if u != nil {
+					return gomel.NewComplianceError("parent consistency rule violated")
+				}
+				continue
+			}
+			if parents[i].Below(u) && *u.Hash() != *parents[i].Hash() {
+				return gomel.NewComplianceError("parent consistency rule violated")
+			}
 		}
-		processFilter[parent.Creator()] = true
 	}
 	return nil
 }
 
 // NoSelfForkingEvidence checks if a unit does not provide evidence of its creator forking.
 func NoSelfForkingEvidence(dag gomel.Dag) gomel.Dag {
-	return Units(dag, func(u gomel.Unit) error { return noSelfForkingEvidenceCheck(u.Parents()) })
+	return Units(dag, func(u gomel.Unit) error { return noSelfForkingEvidenceCheck(u.Parents(), u.Creator()) })
 }
 
-func noSelfForkingEvidenceCheck(parents []gomel.Unit) error {
-	if gomel.HasSelfForkingEvidence(parents) {
+func noSelfForkingEvidenceCheck(parents []gomel.Unit, creator uint16) error {
+	if gomel.HasSelfForkingEvidence(parents, creator) {
 		return gomel.NewComplianceError("A unit is evidence of self forking")
 	}
 	return nil
@@ -44,7 +54,13 @@ func ForkerMuting(dag gomel.Dag) gomel.Dag {
 //   - one of the parents has evidence that j is forking.
 func ForkerMutingCheck(parents []gomel.Unit) error {
 	for _, parent1 := range parents {
+		if parent1 == nil {
+			continue
+		}
 		for _, parent2 := range parents {
+			if parent2 == nil {
+				continue
+			}
 			if parent1 == parent2 {
 				continue
 			}

@@ -32,7 +32,7 @@ func makeBeaconDag(conf *gomel.DagConfig) gomel.Dag {
 	dag := dagutils.New(nProc)
 	dag, _ = check.Signatures(dag, conf.Keys)
 	dag = check.BasicCompliance(dag)
-	dag = check.ParentDiversity(dag)
+	dag = check.ParentConsistency(dag)
 	dag = check.PrimeOnlyNoSkipping(dag)
 	dag = check.NoForks(dag)
 	return dag

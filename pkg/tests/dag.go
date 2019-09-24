@@ -92,7 +92,9 @@ func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
 	defer dag.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
 	for i, h := range hashes {
-		result[i] = dag.unitByHash[*h]
+		if h != nil {
+			result[i] = dag.unitByHash[*h]
+		}
 	}
 	return result
 }
@@ -112,13 +114,16 @@ func (dag *Dag) IsQuorum(number uint16) bool {
 func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
 	dag.RLock()
 	defer dag.RUnlock()
-	u.parents = []gomel.Unit{}
+	u.parents = make([]gomel.Unit, dag.NProc())
 	unknown := 0
-	for _, parentHash := range pu.Parents() {
+	for i, parentHash := range pu.Parents() {
+		if parentHash == nil {
+			continue
+		}
 		if _, ok := dag.unitByHash[*parentHash]; !ok {
 			unknown++
 		} else {
-			u.parents = append(u.parents, dag.unitByHash[*parentHash])
+			u.parents[i] = dag.unitByHash[*parentHash]
 		}
 	}
 	if unknown > 0 {
@@ -131,10 +136,10 @@ func setBasicInfo(u *unit, dag *Dag, pu gomel.Preunit) {
 	dag.RLock()
 	defer dag.RUnlock()
 	u.creator = pu.Creator()
-	if len(u.parents) == 0 {
+	if gomel.Predecessor(u) == nil {
 		u.height = 0
 	} else {
-		u.height = u.parents[0].Height() + 1
+		u.height = gomel.Predecessor(u).Height() + 1
 	}
 	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
@@ -184,6 +189,9 @@ func setFloor(u *unit, dag *Dag) {
 	parentsFloorUnion := make([][]gomel.Unit, dag.NProc())
 	parentsFloorUnion[u.Creator()] = []gomel.Unit{u}
 	for _, v := range u.Parents() {
+		if v == nil {
+			continue
+		}
 		for pid, units := range v.Floor() {
 			parentsFloorUnion[pid] = append(parentsFloorUnion[pid], units...)
 		}
@@ -216,34 +224,21 @@ func setLevel(u *unit, dag *Dag) {
 		u.level = 0
 		return
 	}
-	maxLevelBelow := -1
-	for _, up := range u.Parents() {
-		if up.Level() > maxLevelBelow {
-			maxLevelBelow = up.Level()
+	u.level = 0
+	onLevel := uint16(0)
+	for i := uint16(0); i < dag.NProc(); i++ {
+		if u.Parents()[i] == nil {
+			continue
+		}
+		if u.Parents()[i].Level() == u.level {
+			onLevel++
+		} else if u.Parents()[i].Level() > u.level {
+			onLevel = 1
+			u.level = u.Parents()[i].Level()
 		}
 	}
-	u.level = maxLevelBelow
-	seenProcesses := make(map[uint16]bool)
-	seenUnits := make(map[gomel.Hash]bool)
-	seenUnits[*u.Hash()] = true
-	queue := []gomel.Unit{}
-	queue = append(queue, u.Parents()...)
-	for len(queue) > 0 {
-		w := queue[0]
-		queue = queue[1:]
-		if w.Level() == maxLevelBelow {
-			seenUnits[*w.Hash()] = true
-			seenProcesses[w.Creator()] = true
-			for _, wParent := range w.Parents() {
-				if _, exists := seenUnits[*wParent.Hash()]; !exists {
-					queue = append(queue, wParent)
-					seenUnits[*wParent.Hash()] = true
-				}
-			}
-		}
-	}
-	if dag.IsQuorum(uint16(len(seenProcesses))) {
-		u.level = maxLevelBelow + 1
+	if gomel.IsQuorum(dag.NProc(), onLevel) {
+		u.level++
 	}
 }
 

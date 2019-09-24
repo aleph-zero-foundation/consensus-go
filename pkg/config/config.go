@@ -17,13 +17,6 @@ type SyncConfiguration struct {
 
 // Configuration represents project-wide configuration.
 type Configuration struct {
-	// How many parents we try to give every unit.
-	// Depending on other settings and circumstances, this might be ignored in either direction.
-	NParents uint16
-
-	// Whether only prime units should be created.
-	PrimeOnly bool
-
 	// Whether a process is allowed not to create a unit at a level.
 	CanSkipLevel bool
 
@@ -95,10 +88,6 @@ func NewDefaultConfiguration() Configuration {
 	}
 
 	result := Configuration{
-
-		NParents: uint16(10),
-
-		PrimeOnly: true,
 
 		CanSkipLevel: true,
 

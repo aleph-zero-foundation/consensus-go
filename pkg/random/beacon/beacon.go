@@ -274,10 +274,10 @@ func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) 
 }
 
 func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {
-	if len(pu.Parents()) == 0 {
+	if pu.Parents()[pu.Creator()] == nil {
 		return 0, nil
 	}
-	predecessor := dag.Get(pu.Parents()[:1])
+	predecessor := dag.Get([]*gomel.Hash{pu.Parents()[pu.Creator()]})
 	if predecessor[0] == nil {
 		return 0, errors.New("predecessor doesn't exist in the dag")
 	}

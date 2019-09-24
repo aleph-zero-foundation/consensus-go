@@ -62,7 +62,7 @@ func (f *server) addToBacklog(pu gomel.Preunit) bool {
 	parents := f.dag.Get(hashes)
 	missing := []*gomel.Hash{}
 	for i, h := range hashes {
-		if parents[i] == nil {
+		if parents[i] == nil && hashes[i] != nil {
 			missing = append(missing, h)
 		}
 	}

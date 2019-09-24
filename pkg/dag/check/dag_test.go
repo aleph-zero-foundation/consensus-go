@@ -12,12 +12,13 @@ import (
 )
 
 type preunitMock struct {
-	creator   uint16
-	signature gomel.Signature
-	hash      gomel.Hash
-	parents   []*gomel.Hash
-	data      []byte
-	rsData    []byte
+	creator     uint16
+	signature   gomel.Signature
+	hash        gomel.Hash
+	controlHash gomel.Hash
+	parents     []*gomel.Hash
+	data        []byte
+	rsData      []byte
 }
 
 func (pu *preunitMock) RandomSourceData() []byte {
@@ -40,6 +41,10 @@ func (pu *preunitMock) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
+func (pu *preunitMock) ControlHash() *gomel.Hash {
+	return &pu.controlHash
+}
+
 func (pu *preunitMock) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
@@ -52,7 +57,7 @@ type defaultChecksFactory struct{}
 
 func (defaultChecksFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
 	dag, _ := check.Signatures(New(uint16(len(dc.Keys))), dc.Keys)
-	return check.ExpandPrimes(check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentDiversity(check.BasicCompliance(dag)))))
+	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(dag))))
 }
 
 type noSelfForkingEvidenceFactory struct{}
@@ -120,7 +125,7 @@ var _ = Describe("Dag", func() {
 				addedUnit = &preunitMock{}
 				addedCreator = 0
 				addedHash = gomel.Hash{}
-				parentHashes = []*gomel.Hash{}
+				parentHashes = make([]*gomel.Hash, nProcesses)
 			})
 
 			JustBeforeEach(func() {
@@ -168,6 +173,7 @@ var _ = Describe("Dag", func() {
 					BeforeEach(func() {
 						pu := &preunitMock{}
 						pu.hash[0] = 1
+						pu.parents = make([]*gomel.Hash, nProcesses)
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
@@ -176,7 +182,7 @@ var _ = Describe("Dag", func() {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 						Expect(gomel.Prime(result)).To(BeTrue())
-						Expect(len(result.Parents())).To(BeZero())
+						Expect(result.Parents()[result.Creator()]).To(BeNil())
 					})
 
 				})
@@ -187,7 +193,7 @@ var _ = Describe("Dag", func() {
 
 				BeforeEach(func() {
 					addedHash[0] = 43
-					parentHashes = make([]*gomel.Hash, 1)
+					parentHashes = make([]*gomel.Hash, nProcesses)
 					parentHashes[0] = &gomel.Hash{1}
 				})
 
@@ -206,26 +212,28 @@ var _ = Describe("Dag", func() {
 					BeforeEach(func() {
 						pu := &preunitMock{}
 						pu.hash = *parentHashes[0]
+						pu.parents = make([]*gomel.Hash, nProcesses)
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
-					It("Should fail because of too few parents", func() {
+					It("Should fail because of non prime unit", func() {
 						result, err := gomel.AddUnit(dag, addedUnit)
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewComplianceError("Not enough parents")))
+						Expect(err).To(MatchError(gomel.NewComplianceError("non-prime unit")))
 					})
 
 				})
 
 			})
 
-			Context("With two parents", func() {
+			Context("With three parents", func() {
 
 				BeforeEach(func() {
 					addedHash[0] = 43
-					parentHashes = make([]*gomel.Hash, 2)
+					parentHashes = make([]*gomel.Hash, nProcesses)
 					parentHashes[0] = &gomel.Hash{1}
 					parentHashes[1] = &gomel.Hash{2}
+					parentHashes[2] = &gomel.Hash{3}
 				})
 
 				Context("When the dag is empty", func() {
@@ -233,7 +241,7 @@ var _ = Describe("Dag", func() {
 					It("Should fail because of lack of parents", func() {
 						result, err := gomel.AddUnit(dag, addedUnit)
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewUnknownParents(2)))
+						Expect(err).To(MatchError(gomel.NewUnknownParents(3)))
 					})
 
 				})
@@ -243,13 +251,14 @@ var _ = Describe("Dag", func() {
 					BeforeEach(func() {
 						pu := &preunitMock{}
 						pu.hash = *parentHashes[0]
+						pu.parents = make([]*gomel.Hash, nProcesses)
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 
 					It("Should fail because of lack of parents", func() {
 						result, err := gomel.AddUnit(dag, addedUnit)
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewUnknownParents(1)))
+						Expect(err).To(MatchError(gomel.NewUnknownParents(2)))
 					})
 
 				})
@@ -259,19 +268,21 @@ var _ = Describe("Dag", func() {
 					BeforeEach(func() {
 						pu1 := &preunitMock{}
 						pu1.hash = *parentHashes[0]
+						pu1.parents = make([]*gomel.Hash, nProcesses)
 						pu2 := &preunitMock{}
 						pu2.hash = *parentHashes[1]
 						pu2.creator = 1
-						addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
+						pu2.parents = make([]*gomel.Hash, nProcesses)
+						pu3 := &preunitMock{}
+						pu3.hash = *parentHashes[2]
+						pu3.creator = 2
+						pu3.parents = make([]*gomel.Hash, nProcesses)
+						addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2, pu3}}
 					})
 
-					It("Should add the unit successfully", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
+					It("Should add the unit succesfully", func() {
+						_, err := gomel.AddUnit(dag, addedUnit)
 						Expect(err).NotTo(HaveOccurred())
-						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-						Expect(gomel.Prime(result)).To(BeFalse())
-						Expect(*result.Parents()[0].Hash()).To(Equal(*addedUnit.Parents()[0]))
-						Expect(*result.Parents()[1].Hash()).To(Equal(*addedUnit.Parents()[1]))
 					})
 
 					Context("When the dag already contains the unit", func() {
@@ -323,6 +334,7 @@ var _ = Describe("Dag", func() {
 
 				BeforeEach(func() {
 					pu := &preunitMock{}
+					pu.parents = make([]*gomel.Hash, nProcesses)
 					pu.hash[0] = 1
 					pu.creator = 0
 					addFirst = [][]*preunitMock{[]*preunitMock{pu}}
@@ -356,9 +368,11 @@ var _ = Describe("Dag", func() {
 					pu1 := &preunitMock{}
 					pu1.hash[0] = 1
 					pu1.creator = 0
+					pu1.parents = make([]*gomel.Hash, nProcesses)
 					pu2 := &preunitMock{}
 					pu2.hash[0] = 2
 					pu2.creator = 1
+					pu2.parents = make([]*gomel.Hash, nProcesses)
 					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
 				})
 
@@ -394,9 +408,11 @@ var _ = Describe("Dag", func() {
 					pu1 := &preunitMock{}
 					pu1.hash[0] = 1
 					pu1.creator = 0
+					pu1.parents = make([]*gomel.Hash, nProcesses)
 					pu2 := &preunitMock{}
 					pu2.hash[0] = 2
 					pu2.creator = 0
+					pu2.parents = make([]*gomel.Hash, nProcesses)
 					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}}
 				})
 
@@ -430,14 +446,27 @@ var _ = Describe("Dag", func() {
 					pu1 := &preunitMock{}
 					pu1.hash[0] = 1
 					pu1.creator = 0
+					pu1.parents = make([]*gomel.Hash, nProcesses)
+
 					pu2 := &preunitMock{}
 					pu2.hash[0] = 2
 					pu2.creator = 1
+					pu2.parents = make([]*gomel.Hash, nProcesses)
+
+					pu3 := &preunitMock{}
+					pu3.hash[0] = 3
+					pu3.creator = 2
+					pu3.parents = make([]*gomel.Hash, nProcesses)
+
 					pu11 := &preunitMock{}
 					pu11.hash[0] = 11
 					pu11.creator = 0
-					pu11.parents = []*gomel.Hash{&pu1.hash, &pu2.hash}
-					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2}, []*preunitMock{pu11}}
+					pu11.parents = make([]*gomel.Hash, nProcesses)
+					pu11.parents[0] = &pu1.hash
+					pu11.parents[1] = &pu2.hash
+					pu11.parents[2] = &pu3.hash
+
+					addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2, pu3}, []*preunitMock{pu11}}
 				})
 
 				It("Should return it and one of its parents as maximal units", func() {
@@ -445,26 +474,31 @@ var _ = Describe("Dag", func() {
 					Expect(maxUnits).NotTo(BeNil())
 					Expect(len(maxUnits.Get(0))).To(Equal(1))
 					Expect(len(maxUnits.Get(1))).To(Equal(1))
+					Expect(len(maxUnits.Get(2))).To(Equal(1))
 					Expect(maxUnits.Get(0)[0].Hash()).To(Equal(addFirst[1][0].Hash()))
 					Expect(maxUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := uint16(2); i < nProcesses; i++ {
+					Expect(maxUnits.Get(2)[0].Hash()).To(Equal(addFirst[0][2].Hash()))
+					for i := uint16(3); i < nProcesses; i++ {
 						Expect(len(maxUnits.Get(i))).To(BeZero())
 					}
 				})
 
-				It("Should return both of the parents as the respective prime units and not the top unit", func() {
+				It("Should return the parents as the respective prime units on level 0 and top unit as a prime unit on level 1", func() {
 					primeUnits := dag.PrimeUnits(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(len(primeUnits.Get(1))).To(Equal(1))
+					Expect(len(primeUnits.Get(2))).To(Equal(1))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
 					Expect(primeUnits.Get(1)[0].Hash()).To(Equal(addFirst[0][1].Hash()))
-					for i := uint16(2); i < nProcesses; i++ {
+					Expect(primeUnits.Get(2)[0].Hash()).To(Equal(addFirst[0][2].Hash()))
+					for i := uint16(3); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
 					primeUnits = dag.PrimeUnits(1)
 					Expect(primeUnits).NotTo(BeNil())
-					for i := uint16(0); i < nProcesses; i++ {
+					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[1][0].Hash()))
+					for i := uint16(1); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
 				})
@@ -481,15 +515,22 @@ var _ = Describe("Dag", func() {
 					pu0 := &preunitMock{}
 					pu0.hash[0] = 1
 					pu0.creator = 0
+					pu0.parents = make([]*gomel.Hash, nProcesses)
+
 					pu1 := &preunitMock{}
 					pu1.hash[0] = 2
 					pu1.creator = 1
+					pu1.parents = make([]*gomel.Hash, nProcesses)
+
 					pu2 := &preunitMock{}
 					pu2.hash[0] = 3
 					pu2.creator = 2
+					pu2.parents = make([]*gomel.Hash, nProcesses)
+
 					pu3 := &preunitMock{}
 					pu3.hash[0] = 4
 					pu3.creator = 3
+					pu3.parents = make([]*gomel.Hash, nProcesses)
 
 					puAbove4 := &preunitMock{}
 					puAbove4.creator = 0
@@ -498,15 +539,13 @@ var _ = Describe("Dag", func() {
 
 					puAbove3 := &preunitMock{}
 					puAbove3.creator = 1
-					puAbove3.parents = []*gomel.Hash{&pu1.hash, &pu0.hash, &pu2.hash}
+					puAbove3.parents = make([]*gomel.Hash, nProcesses)
+					puAbove3.parents[0] = &pu0.hash
+					puAbove3.parents[1] = &pu1.hash
+					puAbove3.parents[2] = &pu2.hash
 					puAbove3.hash[0] = 113
 
-					puAbove2 := &preunitMock{}
-					puAbove2.creator = 2
-					puAbove2.parents = []*gomel.Hash{&pu2.hash, &pu0.hash}
-					puAbove2.hash[0] = 112
-
-					addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1, pu2, pu3}, []*preunitMock{puAbove4, puAbove3, puAbove2}}
+					addFirst = [][]*preunitMock{[]*preunitMock{pu0, pu1, pu2, pu3}, []*preunitMock{puAbove4, puAbove3}}
 				})
 
 				It("Should return exactly two prime units at level 1 (processes 0, 1).", func() {
@@ -537,15 +576,15 @@ var _ = Describe("Dag", func() {
 			BeforeEach(func() {
 				pu1.creator = 1
 				pu1.hash[0] = 1
-				pu1.parents = nil
+				pu1.parents = make([]*gomel.Hash, nProcesses)
 
 				pu2.creator = 2
 				pu2.hash[0] = 2
-				pu2.parents = nil
+				pu2.parents = make([]*gomel.Hash, nProcesses)
 
 				pu3.creator = 3
 				pu3.hash[0] = 3
-				pu3.parents = nil
+				pu3.parents = make([]*gomel.Hash, nProcesses)
 
 				addFirst = [][]*preunitMock{[]*preunitMock{&pu1, &pu2, &pu3}}
 			})
@@ -555,205 +594,15 @@ var _ = Describe("Dag", func() {
 				It("should confirm that a unit is valid", func() {
 					validUnit := pu1
 					validUnit.hash[0] = 4
-					validUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash}
+					validUnit.parents = make([]*gomel.Hash, nProcesses)
+					validUnit.parents[1] = &pu1.hash
+					validUnit.parents[2] = &pu2.hash
+					validUnit.parents[3] = &pu3.hash
+
 					validUnit.SetSignature(privKeys[validUnit.creator].Sign(&validUnit))
 
 					_, err := gomel.AddUnit(dag, &validUnit)
 					Expect(err).NotTo(HaveOccurred())
-				})
-			})
-
-			Describe("invalid units", func() {
-				var (
-					invalidUnit preunitMock
-				)
-
-				JustBeforeEach(func() {
-					(&invalidUnit).SetSignature(privKeys[invalidUnit.creator].Sign(&invalidUnit))
-				})
-
-				Describe("violated expand primes", func() {
-					BeforeEach(func() {
-						pu4 := preunitMock{}
-						pu4.creator = pu1.creator
-						pu4.hash[0] = 4
-						pu4.parents = []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash}
-
-						pu5 := preunitMock{}
-						pu5.creator = pu2.creator
-						pu5.hash[0] = 5
-						pu5.parents = []*gomel.Hash{&pu2.hash, &pu1.hash, &pu3.hash}
-
-						addFirst = append(addFirst, []*preunitMock{&pu4, &pu5})
-
-						invalidUnit = preunitMock{}
-						invalidUnit.creator = 0
-						invalidUnit.hash[0] = 6
-						invalidUnit.parents = []*gomel.Hash{&pu4.hash, &pu5.hash}
-					})
-
-					It("should reject a unit", func() {
-						_, err := gomel.AddUnit(dag, &invalidUnit)
-						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-					})
-				})
-
-				Describe("violated self forking evidence", func() {
-					BeforeEach(func() {
-						// forking dealing unit
-						pu3.creator = pu1.creator
-
-						// evidence of the first fork
-						pu4 := preunitMock{}
-						pu4.creator = pu1.creator
-						pu4.hash[0] = 4
-						pu4.parents = []*gomel.Hash{&pu1.hash, &pu2.hash}
-
-						// evidence of the second fork
-						pu5 := preunitMock{}
-						pu5.creator = pu2.creator
-						pu5.hash[0] = 5
-						pu5.parents = []*gomel.Hash{&pu2.hash, &pu3.hash}
-
-						addFirst = append(addFirst, []*preunitMock{&pu4, &pu5})
-
-						// self forking evidence - merge of two previous forks
-						invalidUnit.creator = pu1.creator
-						invalidUnit.hash[0] = 6
-						invalidUnit.parents = []*gomel.Hash{&pu4.hash, &pu5.hash}
-					})
-
-					It("should reject a unit", func() {
-						_, err := gomel.AddUnit(dag, &invalidUnit)
-						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-					})
-				})
-
-				Describe("violated forker muting rule", func() {
-					var muted *preunitMock
-
-					BeforeEach(func() {
-						pForker1 := preunitMock{}
-						pForker1.creator = 0
-						pForker1.hash[0] = 0
-
-						pForker2 := preunitMock{}
-						pForker2.creator = 0
-						pForker2.hash[0] = 1
-
-						pu1 := preunitMock{}
-						pu1.creator = 1
-						pu1.hash[0] = 2
-
-						pu2 := preunitMock{}
-						pu2.creator = 1
-						pu2.hash[0] = 3
-						pu2.parents = []*gomel.Hash{&pu1.hash, &pForker1.hash}
-
-						// we have to add some helper unit in order to satisfy 'expand_primes' rule
-						fixingPrime := preunitMock{}
-						fixingPrime.creator = 2
-						fixingPrime.hash[0] = 4
-
-						fixingUnit := preunitMock{}
-						fixingUnit.creator = 2
-						fixingUnit.hash[0] = 5
-						fixingUnit.parents = []*gomel.Hash{&fixingPrime.hash, &pForker2.hash}
-
-						pu3 := preunitMock{}
-						pu3.creator = 1
-						pu3.hash[0] = 6
-						pu3.parents = []*gomel.Hash{&pu2.hash, &fixingUnit.hash}
-
-						addFirst = [][]*preunitMock{
-							[]*preunitMock{&pForker1, &pForker2, &pu1, &fixingPrime},
-							[]*preunitMock{&pu2, &fixingUnit},
-							[]*preunitMock{&pu3}}
-
-						muted = &preunitMock{}
-						muted.creator = 0
-						muted.hash[0] = 7
-						muted.parents = []*gomel.Hash{&pForker1.hash, &pu3.hash}
-						muted.SetSignature(privKeys[muted.creator].Sign(muted))
-					})
-
-					It("should reject a unit", func() {
-						_, err := gomel.AddUnit(dag, muted)
-						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-					})
-				})
-
-				Describe("violated precheck", func() {
-
-					Describe("invalid self predecessor", func() {
-
-						BeforeEach(func() {
-							invalidUnit = preunitMock{}
-							invalidUnit.creator = 0
-							invalidUnit.hash[0] = 4
-							invalidUnit.parents = []*gomel.Hash{&pu1.hash, &pu2.hash}
-						})
-
-						It("should reject a unit", func() {
-							_, err := gomel.AddUnit(dag, &invalidUnit)
-							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-						})
-					})
-
-					Describe("invalid number of parents", func() {
-
-						BeforeEach(func() {
-							invalidUnit = preunitMock{}
-							invalidUnit.creator = 1
-							invalidUnit.hash[0] = 4
-							invalidUnit.parents = []*gomel.Hash{&pu1.hash}
-						})
-
-						It("should reject a unit", func() {
-
-							_, err := gomel.AddUnit(dag, &invalidUnit)
-							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-						})
-					})
-
-					Describe("first parent is not self-predecessor", func() {
-
-						BeforeEach(func() {
-							invalidUnit = preunitMock{}
-							invalidUnit.creator = 1
-							invalidUnit.hash[0] = 4
-							invalidUnit.parents = []*gomel.Hash{&pu2.hash, &pu1.hash}
-						})
-
-						It("should reject a unit", func() {
-
-							_, err := gomel.AddUnit(dag, &invalidUnit)
-							Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-						})
-					})
-				})
-
-				Describe("parents are not created by pairwise different process", func() {
-
-					BeforeEach(func() {
-
-						pu4 := preunitMock{}
-						pu4.creator = pu2.creator
-						pu4.hash[0] = 4
-						pu4.parents = []*gomel.Hash{&pu2.hash, &pu1.hash}
-
-						addFirst = append(addFirst, []*preunitMock{&pu4})
-
-						invalidUnit = preunitMock{}
-						invalidUnit.creator = pu3.creator
-						invalidUnit.hash[0] = 5
-						invalidUnit.parents = []*gomel.Hash{&pu3.hash, &pu2.hash, &pu4.hash}
-					})
-
-					It("should reject a unit", func() {
-						_, err := gomel.AddUnit(dag, &invalidUnit)
-						Expect(err).To(MatchError(HavePrefix("ComplianceError")))
-					})
 				})
 			})
 		})

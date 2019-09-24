@@ -2,10 +2,8 @@ package main
 
 import (
 	"bufio"
-	"math/rand"
 	"os"
 	"sync"
-	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
@@ -30,14 +28,15 @@ func writeToFile(filename string, dag gomel.Dag) error {
 // maxParents - maximal number of unit parents (valid for non-dealing units)
 // nUnits     - number of units to include in the dag
 func CreateRandomNonForkingUsingCreating(nProcesses, maxParents uint16, nUnits int) gomel.Dag {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	dag := dag.New(nProcesses)
 	rs := tests.NewTestRandomSource()
 	dag = rs.Bind(dag)
 	created := 0
 	pus := make([]gomel.Preunit, nProcesses)
+	pid := -1
 	for created < nUnits {
-		pid := r.Intn(nProcesses)
+		pid = (pid + 1) % nProcesses
 		if pus[pid] != nil {
 			var wg sync.WaitGroup
 			wg.Add(1)
@@ -60,5 +59,5 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents uint16, nUnits i
 
 // Use this to generate more test files
 func main() {
-	writeToFile("dag.out", CreateRandomNonForkingUsingCreating(10, 2, 100))
+	writeToFile("dag.out", CreateRandomNonForkingUsingCreating(4, 60))
 }

@@ -11,15 +11,14 @@ func commonForkingHeight(u, v *unit) int {
 	return v.forkingHeight
 }
 
-func brutalBelowWithinProc(u, v gomel.Unit) (bool, error) {
-	for v.Height() > u.Height() {
-		w, err := gomel.Predecessor(v)
-		if err != nil {
-			return false, err
-		}
-		v = w
+func brutalBelowWithinProc(u, v gomel.Unit) bool {
+	for v != nil && v.Height() > u.Height() {
+		v = gomel.Predecessor(v)
 	}
-	return *v.Hash() == *u.Hash(), nil
+	if v == nil {
+		return false
+	}
+	return *v.Hash() == *u.Hash()
 }
 
 func (u *unit) belowWithinProc(v gomel.Unit) (bool, error) {
@@ -37,10 +36,13 @@ func (u *unit) belowWithinProc(v gomel.Unit) (bool, error) {
 	}
 
 	// Either we have a fork or a different type of unit, either way no optimization is possible.
-	return brutalBelowWithinProc(u, v)
+	return brutalBelowWithinProc(u, v), nil
 }
 
 func (u *unit) Below(v gomel.Unit) bool {
+	if v == nil {
+		return false
+	}
 	for _, w := range v.Floor()[u.creator] {
 
 		if ok, _ := u.belowWithinProc(w); ok {
@@ -51,9 +53,12 @@ func (u *unit) Below(v gomel.Unit) bool {
 }
 
 func (u *freeUnit) Below(v gomel.Unit) bool {
+	if v == nil {
+		return false
+	}
 	for _, w := range v.Floor()[u.creator] {
 
-		if ok, _ := brutalBelowWithinProc(u, w); ok {
+		if ok := brutalBelowWithinProc(u, w); ok {
 			return true
 		}
 	}

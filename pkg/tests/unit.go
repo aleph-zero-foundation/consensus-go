@@ -54,6 +54,9 @@ func (u *unit) Level() int {
 }
 
 func (u *unit) Below(v gomel.Unit) bool {
+	if v == nil {
+		return false
+	}
 	// BFS from v
 	// If we need faster implementation we probably should use floors here
 	seenUnits := make(map[gomel.Hash]bool)
@@ -66,6 +69,9 @@ func (u *unit) Below(v gomel.Unit) bool {
 			return true
 		}
 		for _, wParent := range w.Parents() {
+			if wParent == nil {
+				continue
+			}
 			if _, exists := seenUnits[*wParent.Hash()]; !exists {
 				queue = append(queue, wParent)
 				seenUnits[*wParent.Hash()] = true

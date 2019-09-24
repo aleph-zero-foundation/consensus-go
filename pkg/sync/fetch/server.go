@@ -70,7 +70,7 @@ func (s *server) Resolve(preunit gomel.Preunit) {
 	parents := s.dag.Get(hashes)
 	toRequest := []*gomel.Hash{}
 	for i, h := range hashes {
-		if parents[i] == nil {
+		if parents[i] == nil && hashes[i] != nil {
 			toRequest = append(toRequest, h)
 		}
 	}

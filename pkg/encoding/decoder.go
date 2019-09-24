@@ -55,6 +55,16 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		if err != nil {
 			return nil, err
 		}
+		allZeros := true
+		for _, b := range parents[i][:] {
+			if b != 0 {
+				allZeros = false
+				break
+			}
+		}
+		if allZeros {
+			parents[i] = nil
+		}
 	}
 	_, err = io.ReadFull(d, uint32Buf)
 	if err != nil {

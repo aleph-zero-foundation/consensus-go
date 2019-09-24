@@ -54,13 +54,13 @@ func newForkerUsingDifferentDataStrategy() forker {
 func createForkUsingNewUnit(parentsCount uint16) forker {
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		pu, _, _, err := creating.NewUnit(dag, preunit.Creator(), parentsCount, helpers.NewDefaultDataContent(), rs, false)
+		pu, _, err := creating.NewUnit(dag, preunit.Creator(), helpers.NewDefaultDataContent(), rs, true)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
 
 		parents := pu.Parents()
-		parents[0] = preunit.Parents()[0]
+		parents[pu.Creator()] = preunit.Parents()[pu.Creator()]
 		freshData := generateFreshData(preunit.Data())
 		parentUnits := dag.Get(parents)
 		level := helpers.ComputeLevel(dag, parentUnits)
@@ -73,7 +73,7 @@ func createForkUsingNewUnit(parentsCount uint16) forker {
 }
 
 func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
-	return gomel.HasSelfForkingEvidence(parents)
+	return gomel.HasSelfForkingEvidence(parents, creator)
 }
 
 func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error {
@@ -82,9 +82,6 @@ func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error 
 	}
 	if check.ForkerMutingCheck(parents) != nil {
 		return gomel.NewComplianceError("parents do not satisfy the forker-muting rule")
-	}
-	if check.ExpandPrimesCheck(dag, parents) != nil {
-		return gomel.NewComplianceError("parents violate the expand-primes rule")
 	}
 	return nil
 }
@@ -95,7 +92,7 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 
 		parents := make([]*gomel.Hash, 0, parentsCount)
 		parentUnits := make([]gomel.Unit, 0, parentsCount)
-		selfPredecessor := dag.Get([]*gomel.Hash{preunit.Parents()[0]})[0]
+		selfPredecessor := dag.Get([]*gomel.Hash{preunit.Parents()[preunit.Creator()]})[0]
 		parents = append(parents, selfPredecessor.Hash())
 		parentUnits = append(parentUnits, selfPredecessor)
 
@@ -118,8 +115,8 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 				parentUnits = append(parentUnits, selectedParent)
 				if err := checkCompliance(dag, preunit.Creator(), parentUnits); err != nil {
 					parentUnits = parentUnits[:len(parentUnits)-1]
-					predecessor, err := gomel.Predecessor(selectedParent)
-					if err != nil || predecessor.Below(selfPredecessor) {
+					predecessor := gomel.Predecessor(selectedParent)
+					if predecessor == nil || predecessor.Below(selfPredecessor) {
 						availableParents = availableParents[:len(availableParents)-1]
 					} else {
 						availableParents[len(availableParents)-1] = predecessor
@@ -591,8 +588,8 @@ func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 						break
 					}
 
-					predecessor, err := gomel.Predecessor(current)
-					if err != nil || predecessor == nil {
+					predecessor := gomel.Predecessor(current)
+					if predecessor == nil {
 						current = nil
 					} else {
 						current = predecessor
@@ -1041,7 +1038,6 @@ func buildOneLevelUp(
 	// IMPORTANT instead of adding units immediately to all dags, save them so they will be processed on the next round
 
 	createdUnits := make([]gomel.Preunit, 0, len(dags))
-	ones, _ := subsetSizesOfLowerLevelBasedOnCommonVote(true, dags[0].NProc())
 	for ix, dag := range dags {
 		createdOnLevel := false
 		for !createdOnLevel {
@@ -1057,7 +1053,7 @@ func buildOneLevelUp(
 			if createdOnLevel {
 				break
 			}
-			preunit, _, _, err := creating.NewUnit(dag, ids[ix], ones, helpers.NewDefaultDataContent(), rss[ix], true)
+			preunit, _, err := creating.NewUnit(dag, ids[ix], helpers.NewDefaultDataContent(), rss[ix], true)
 			if err != nil {
 				return nil, fmt.Errorf("error while creating a unit for dag no %d: %s", ids[ix], err.Error())
 			}
@@ -1111,12 +1107,11 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 
 			triggeringDag := crp(*startLevel)
 			fmt.Println("triggering dag no", triggeringDag)
-			triggeringPreunit, _, _, err := creating.NewUnit(
+			triggeringPreunit, _, err := creating.NewUnit(
 				dags[triggeringDag],
 				triggeringDag,
-				uint16(len(dags)),
 				helpers.NewDefaultDataContent(),
-				rss[triggeringDag], false,
+				rss[triggeringDag], true,
 			)
 			if err != nil {
 				return err

@@ -42,7 +42,11 @@ func pre(u gomel.Unit) gomel.Preunit {
 	parents := u.Parents()
 	hashes := make([]*gomel.Hash, len(parents))
 	for i := 0; i < len(parents); i++ {
-		hashes[i] = parents[i].Hash()
+		if parents[i] != nil {
+			hashes[i] = parents[i].Hash()
+		} else {
+			hashes[i] = nil
+		}
 	}
 	pu := creating.NewPreunit(u.Creator(), hashes, u.Data(), u.RandomSourceData())
 	pu.SetSignature(u.Signature())

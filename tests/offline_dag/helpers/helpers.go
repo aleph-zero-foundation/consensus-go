@@ -121,7 +121,7 @@ func NewNoOpAdder() AddingHandler {
 // NewDefaultCreator creates an instance of Creator that when called attempts to create a unit using default data.
 func NewDefaultCreator(maxParents uint16) Creator {
 	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		pu, _, _, err := creating.NewUnit(dag, creator, maxParents, NewDefaultDataContent(), rs, false)
+		pu, _, err := creating.NewUnit(dag, creator, NewDefaultDataContent(), rs, true)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
 			return nil, err
@@ -220,6 +220,9 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 	level := 0
 	nProcesses := dag.NProc()
 	for _, parent := range parents {
+		if parent == nil {
+			continue
+		}
 		if pl := parent.Level(); pl > level {
 			level = pl
 		}
@@ -608,7 +611,7 @@ func TestUsingTestRandomSource(
 // MakeStandardDag returns a daag with standard checks.
 func MakeStandardDag(dc gomel.DagConfig) gomel.Dag {
 	dag, _ := check.Signatures(dag.New(uint16(len(dc.Keys))), dc.Keys)
-	return check.ExpandPrimes(check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentDiversity(check.BasicCompliance(dag)))))
+	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(dag))))
 }
 
 // TestUsingRandomSourceProvider is a helper function that performs a single test using provided TestingRoutineFactory.

@@ -33,7 +33,11 @@ var _ = Describe("Encoding/Decoding", func() {
 			Expect(pu.Hash()).To(Equal(u.Hash()))
 			Expect(len(pu.Parents())).To(Equal(len(u.Parents())))
 			for i, parent := range u.Parents() {
-				Expect(*parent.Hash()).To(Equal(pu.Parents()[i]))
+				if parent == nil {
+					Expect(pu.Parents()[i]).To(BeNil())
+				} else {
+					Expect(*parent.Hash()).To(Equal(*pu.Parents()[i]))
+				}
 			}
 		})
 	})
@@ -49,7 +53,11 @@ var _ = Describe("Encoding/Decoding", func() {
 			Expect(pu.Hash()).To(Equal(u.Hash()))
 			Expect(len(pu.Parents())).To(Equal(len(u.Parents())))
 			for i, parent := range u.Parents() {
-				Expect(*parent.Hash()).To(Equal(*pu.Parents()[i]))
+				if parent == nil {
+					Expect(pu.Parents()[i]).To(BeNil())
+				} else {
+					Expect(*parent.Hash()).To(Equal(*pu.Parents()[i]))
+				}
 			}
 		})
 	})

@@ -32,6 +32,9 @@ func collectUnits(dag gomel.Dag) map[uint16]map[int][]gomel.Unit {
 		}
 		result[u.Creator()][u.Height()] = append(result[u.Creator()][u.Height()], u)
 		for _, uParent := range u.Parents() {
+			if uParent == nil {
+				continue
+			}
 			if !seenUnits[*uParent.Hash()] {
 				dfs(uParent)
 			}
