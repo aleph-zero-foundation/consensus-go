@@ -1,6 +1,7 @@
 package gossip_test
 
 import (
+	snc "sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -17,16 +18,21 @@ import (
 
 type adder struct {
 	gomel.Adder
+	mx           snc.Mutex
 	attemptedAdd []gomel.Preunit
 }
 
 func (a *adder) AddUnit(unit gomel.Preunit) error {
+	a.mx.Lock()
 	a.attemptedAdd = append(a.attemptedAdd, unit)
+	a.mx.Unlock()
 	return a.Adder.AddUnit(unit)
 }
 
 func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+	a.mx.Lock()
 	a.attemptedAdd = append(a.attemptedAdd, units...)
+	a.mx.Unlock()
 	return a.Adder.AddAntichain(units)
 }
 
@@ -59,7 +65,7 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		adders = nil
 		for _, dag := range dags {
-			adders = append(adders, &adder{tests.NewAdder(dag), nil})
+			adders = append(adders, &adder{tests.NewAdder(dag), snc.Mutex{}, nil})
 		}
 		servs = make([]sync.Server, 4)
 		for i := 0; i < 4; i++ {

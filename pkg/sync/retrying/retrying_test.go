@@ -1,6 +1,7 @@
 package retrying_test
 
 import (
+	snc "sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -19,16 +20,21 @@ import (
 
 type adder struct {
 	gomel.Adder
+	mx           snc.Mutex
 	attemptedAdd []gomel.Preunit
 }
 
 func (a *adder) AddUnit(unit gomel.Preunit) error {
+	a.mx.Lock()
 	a.attemptedAdd = append(a.attemptedAdd, unit)
+	a.mx.Unlock()
 	return a.Adder.AddUnit(unit)
 }
 
 func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+	a.mx.Lock()
 	a.attemptedAdd = append(a.attemptedAdd, units...)
+	a.mx.Unlock()
 	return a.Adder.AddAntichain(units)
 }
 
@@ -67,7 +73,7 @@ var _ = Describe("Protocol", func() {
 
 	JustBeforeEach(func() {
 		for i := 0; i < 4; i++ {
-			adders[i] = &adder{tests.NewAdder(dags[i]), nil}
+			adders[i] = &adder{tests.NewAdder(dags[i]), snc.Mutex{}, nil}
 			fetches[i], fallbacks[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			fetches[i].Start()
 		}
