@@ -1,22 +1,26 @@
 package sync
 
-import "gitlab.com/alephledger/consensus-go/pkg/gomel"
+import (
+	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
+)
 
-// Fallback describes what should be done when encountering a unit with unknown parents.
+// Fallback can find out information about an unknown preunit.
 type Fallback interface {
-	// Run takes the unit with unknown parents and falls back appropriately.
-	Run(gomel.Preunit)
-	// Stop the underlying service.
-	Stop()
+	// Resolve requests information about a problematic preunit.
+	Resolve(gomel.Preunit)
 }
 
-type noop struct{}
+type def struct {
+	log zerolog.Logger
+}
 
-func (f noop) Run(gomel.Preunit) {}
+func (d *def) Resolve(pu gomel.Preunit) {
+	d.log.Error().Uint16(logging.Creator, pu.Creator()).Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.FallbackUsed)
+}
 
-func (f noop) Stop() {}
-
-// NopFallback is a fallback that does nothing.
-func NopFallback() Fallback {
-	return noop{}
+// DefaultFallback returns a fallback that does nothing and logs an error to provided with logger.
+func DefaultFallback(log zerolog.Logger) Fallback {
+	return &def{log}
 }

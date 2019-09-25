@@ -1,3 +1,6 @@
+// Package gossip implements a protocol for synchronising dags through gossiping.
+//
+// This protocol should always succeed with adding units received from honest peers, so it needs no fallback.
 package gossip
 
 import (
@@ -9,18 +12,45 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
-// NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, peerSource PeerSource, timeout time.Duration, log zerolog.Logger, nOut, nIn int) sync.Server {
-	proto := NewProtocol(pid, dag, adder, netserv, peerSource, timeout, log)
-	return &server{
-		outPool: sync.NewPool(nOut, proto.Out),
-		inPool:  sync.NewPool(nIn, proto.In),
-	}
+type server struct {
+	pid        uint16
+	dag        gomel.Dag
+	adder      gomel.Adder
+	netserv    network.Server
+	fallback   sync.Fallback
+	requests   chan uint16
+	peerSource PeerSource
+	inUse      []*mutex
+	syncIds    []uint32
+	outPool    sync.WorkerPool
+	inPool     sync.WorkerPool
+	timeout    time.Duration
+	log        zerolog.Logger
 }
 
-type server struct {
-	outPool *sync.Pool
-	inPool  *sync.Pool
+// NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
+	nProc := int(dag.NProc())
+	inUse := make([]*mutex, nProc)
+	for i := range inUse {
+		inUse[i] = newMutex()
+	}
+	requests := make(chan uint16, 5*nOut)
+	s := &server{
+		pid:        pid,
+		dag:        dag,
+		adder:      adder,
+		netserv:    netserv,
+		requests:   requests,
+		peerSource: NewMixedPeerSource(dag.NProc(), pid, requests),
+		inUse:      inUse,
+		syncIds:    make([]uint32, nProc),
+		timeout:    timeout,
+		log:        log,
+	}
+	s.outPool = sync.NewPool(nOut, s.out)
+	s.inPool = sync.NewPool(nIn, s.in)
+	return s, s
 }
 
 func (s *server) Start() {
@@ -33,5 +63,18 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
+	close(s.requests)
 	s.outPool.Stop()
+}
+
+func (s *server) SetFallback(qs sync.Fallback) {
+	s.fallback = qs
+}
+
+// Resolve requests next gossip to happen with the creator of a problematic preunit.
+func (s *server) Resolve(preunit gomel.Preunit) {
+	select {
+	case s.requests <- preunit.Creator():
+	default:
+	}
 }

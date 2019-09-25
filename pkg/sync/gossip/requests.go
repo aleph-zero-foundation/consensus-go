@@ -95,6 +95,15 @@ func maximalHeight(units []gomel.Unit) int {
 	return result
 }
 
+func nonempty(req requests) bool {
+	for _, r := range req {
+		if len(r) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // unitsToSendByProcess returns the units that are predecessors of maxes and successors of tops.
 // A special case occurs when there are no tops, but maxes exist --
 // then simply all predecessors of maxes are returned.
@@ -183,40 +192,6 @@ func requestedToSend(dag gomel.Dag, info processInfo, req processRequests) ([]go
 		knownRemotes = dropToHeight(knownRemotes, operationHeight)
 	}
 	return result, nil
-}
-
-func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {
-	if layer[u] == -1 {
-		maxParentLayer := 0
-		for _, v := range u.Parents() {
-			if computeLayer(v, layer) > maxParentLayer {
-				maxParentLayer = computeLayer(v, layer)
-			}
-		}
-		layer[u] = maxParentLayer + 1
-	}
-	return layer[u]
-}
-
-// toLayers divides the provided units into antichains, so that each antichain is
-// maximal, and depends only on units from outside or from previous antichains.
-func toLayers(units []gomel.Unit) [][]gomel.Unit {
-	layer := map[gomel.Unit]int{}
-	maxLayer := 0
-	for _, u := range units {
-		layer[u] = -1
-	}
-	for _, u := range units {
-		layer[u] = computeLayer(u, layer)
-		if layer[u] > maxLayer {
-			maxLayer = layer[u]
-		}
-	}
-	result := make([][]gomel.Unit, maxLayer)
-	for _, u := range units {
-		result[layer[u]-1] = append(result[layer[u]-1], u)
-	}
-	return result
 }
 
 func unitsToSend(dag gomel.Dag, maxSnapshot [][]gomel.Unit, info dagInfo, req requests) ([]gomel.Unit, error) {

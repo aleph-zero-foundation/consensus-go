@@ -38,6 +38,8 @@ const (
 	AddedBCUnit           = "g"
 	AddedToBacklog        = "h"
 	RemovedFromBacklog    = "i"
+	GotRandomSource       = "j"
+	FallbackUsed          = "k"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -52,7 +54,7 @@ var eventTypeDict = map[string]string{
 	ConnectionEstablished: "dialer established a TCP connection",
 	NotEnoughParents:      "creating.NewUnit failed (not enough parents)",
 	SyncStarted:           "new sync started",
-	SyncCompleted:         "sync completed (stats = units)",
+	SyncCompleted:         "sync completed",
 	GetDagInfo:            "receiving dag info started",
 	SendDagInfo:           "sending dag info started",
 	GetPreunits:           "receiving preunits started",
@@ -76,6 +78,8 @@ var eventTypeDict = map[string]string{
 	AddedBCUnit:           "successfully added unit from multicast",
 	AddedToBacklog:        "added unit to retrying backlog",
 	RemovedFromBacklog:    "removed unit from retrying backlog",
+	GotRandomSource:       "received randomness source",
+	FallbackUsed:          "server used fallback due to missing parents",
 }
 
 // Field names.
@@ -99,6 +103,7 @@ const (
 	Memory    = "M"
 	ID        = "D"
 	Hash      = "#"
+	Lvl       = "Q"
 )
 
 // fieldNameDict maps short field names to human readable form.
@@ -122,6 +127,7 @@ var fieldNameDict = map[string]string{
 	Memory:    "bytes",
 	ID:        "ID",
 	Hash:      "hash",
+	Lvl:       "level",
 }
 
 // Service types.
@@ -136,6 +142,7 @@ const (
 	FetchService
 	MCService
 	RetryingService
+	RMCService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
@@ -150,6 +157,7 @@ var serviceTypeDict = map[int]string{
 	FetchService:    "FETCH",
 	MCService:       "MCAST",
 	RetryingService: "RETRY",
+	RMCService:      "RMC",
 }
 
 // Genesis was better with Phil Collins.

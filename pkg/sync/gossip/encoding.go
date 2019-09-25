@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"io"
 
-	"gitlab.com/alephledger/consensus-go/pkg/encoding/custom"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -139,14 +138,9 @@ func decodeRequests(r io.Reader, myDagInfo dagInfo) (requests, error) {
 	return result, nil
 }
 
-func encodeLayer(w io.Writer, layer []gomel.Unit) error {
-	err := encodeUint32(w, uint32(len(layer)))
-	if err != nil {
-		return err
-	}
-	encoder := custom.NewEncoder(w)
-	for _, u := range layer {
-		err = encoder.EncodeUnit(u)
+func sendDagInfo(info dagInfo, w io.Writer) error {
+	for _, pi := range info {
+		err := encodeProcessInfo(w, pi)
 		if err != nil {
 			return err
 		}
@@ -154,50 +148,14 @@ func encodeLayer(w io.Writer, layer []gomel.Unit) error {
 	return nil
 }
 
-func decodeLayer(r io.Reader) ([]gomel.Preunit, error) {
-	k, err := decodeUint32(r)
-	if err != nil {
-		return nil, err
-	}
-	decoder := custom.NewDecoder(r)
-	result := make([]gomel.Preunit, k)
-	for i := range result {
-		result[i], err = decoder.DecodePreunit()
+func getDagInfo(nProc uint16, r io.Reader) (dagInfo, error) {
+	info := make(dagInfo, nProc)
+	for i := range info {
+		pi, err := decodeProcessInfo(r)
 		if err != nil {
 			return nil, err
 		}
+		info[i] = pi
 	}
-	return result, nil
-}
-
-func encodeUnits(w io.Writer, units [][]gomel.Unit) error {
-	err := encodeUint32(w, uint32(len(units)))
-	if err != nil {
-		return err
-	}
-	for _, layer := range units {
-		err := encodeLayer(w, layer)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func decodeUnits(r io.Reader) ([][]gomel.Preunit, int, error) {
-	k, err := decodeUint32(r)
-	if err != nil {
-		return nil, 0, err
-	}
-	result := make([][]gomel.Preunit, k)
-	nUnits := 0
-	for i := range result {
-		layer, err := decodeLayer(r)
-		if err != nil {
-			return nil, 0, err
-		}
-		result[i] = layer
-		nUnits += len(layer)
-	}
-	return result, nUnits, nil
+	return info, nil
 }

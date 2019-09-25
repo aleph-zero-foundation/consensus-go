@@ -48,7 +48,7 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close the dagFinished channel when it stops.
-func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, dataSource <-chan []byte, log zerolog.Logger) (process.Service, error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, dataSource <-chan []byte, log zerolog.Logger) process.Service {
 	return &service{
 		dag:             dag,
 		adder:           adder,
@@ -67,7 +67,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSourc
 		dagFinished:     dagFinished,
 		done:            make(chan struct{}),
 		log:             log,
-	}, nil
+	}
 }
 
 func (s *service) Start() error {
@@ -161,10 +161,10 @@ func (s *service) createUnit() bool {
 	}
 
 	if isPrime {
-		s.log.Info().Int(logging.NParents, len(created.Parents())).Msg(logging.PrimeUnitCreated)
+		s.log.Info().Int(logging.Lvl, level).Int(logging.NParents, len(created.Parents())).Msg(logging.PrimeUnitCreated)
 		s.quicker()
 	} else {
-		s.log.Info().Int(logging.NParents, len(created.Parents())).Msg(logging.UnitCreated)
+		s.log.Info().Int(logging.Lvl, level).Int(logging.NParents, len(created.Parents())).Msg(logging.UnitCreated)
 		s.slower()
 	}
 

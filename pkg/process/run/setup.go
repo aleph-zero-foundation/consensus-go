@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -13,7 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
-	"gitlab.com/alephledger/consensus-go/pkg/process/rmc"
+	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 )
@@ -29,7 +29,7 @@ func coinSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zerolo
 
 func makeBeaconDag(conf *gomel.DagConfig) gomel.Dag {
 	nProc := uint16(len(conf.Keys))
-	dag := chdag.New(nProc)
+	dag := dagutils.New(nProc)
 	dag, _ = check.Signatures(dag, conf.Keys)
 	dag = check.BasicCompliance(dag)
 	dag = check.ParentDiversity(dag)
@@ -44,36 +44,37 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 	dagFinished := make(chan struct{})
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
-	orderedUnits := make(chan []gomel.Unit, 5)
+	orderedUnits := make(chan []gomel.Unit, 10)
+	txChan := (chan []byte)(nil)
 
 	dag := makeBeaconDag(config.Dag)
 	rs := beacon.New(config.Create.Pid)
+
+	// common with main:
 	dag = rs.Bind(dag)
 
-	orderService, orderingDag := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	orderService, orderIfPrime := order.NewService(dag, rs, config.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	dag = dagutils.AfterEmplace(dag, orderIfPrime)
 
-	addService := &parallel.Parallel{}
-	orderingAdder := addService.Register(orderingDag)
-	addService.Start()
-	defer addService.Stop()
+	adderService := &parallel.Parallel{}
+	adder := adderService.Register(dag)
 
-	rmcService, rmcDag, err := rmc.NewService(orderingDag, orderingAdder, config.RMC, log)
+	syncService, multicastUnit, err := sync.NewService(dag, adder, config.SyncSetup, log)
 	if err != nil {
+		log.Error().Str("where", "setup.sync").Msg(err.Error())
 		return
 	}
-	rmcAdder := addService.Register(rmcDag)
-	createService, err := create.NewService(rmcDag, rmcAdder, rs, config.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
-	if err != nil {
-		return
-	}
-	memlogService, err := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-	if err != nil {
-		return
-	}
-	services := []process.Service{createService, orderService, memlogService, rmcService}
+	dagMC := dagutils.AfterEmplace(dag, multicastUnit)
+	adderMC := adderService.Register(dagMC)
 
-	err = startAll(services)
+	createService := create.NewService(dagMC, adderMC, rs, config.CreateSetup, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+
+	memlogService := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+	// end common
+
+	err = start(adderService, createService, orderService, memlogService, syncService)
 	if err != nil {
+		log.Error().Str("where", "setup.start").Msg(err.Error())
 		return
 	}
 
@@ -92,13 +93,11 @@ func beaconSetup(config process.Config, rsCh chan<- gomel.RandomSource, log zero
 		for range orderedUnits {
 		}
 	}()
-	// we should still sync with each other
-	services = services[:(len(services) - 1)]
-	stopAll(services)
 
 	// We need to figure out a condition for stopping the setup phase syncs
-	// For now just syncing for the next minute
-	time.Sleep(60 * time.Second)
-	rmcService.Stop()
+	// For now just syncing for some time
+	stop(createService, orderService, memlogService)
+	time.Sleep(10 * time.Second)
+	stop(syncService, adderService)
 	<-dagFinished
 }

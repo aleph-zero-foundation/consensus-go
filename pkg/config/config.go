@@ -11,6 +11,8 @@ type SyncConfiguration struct {
 	Params map[string]string
 	// Fallback is a name of a service that is to be used as a fallback to this service.
 	Fallback string
+	// Retry tells how often retry the fallback (0 disables retrying)
+	Retry string
 }
 
 // Configuration represents project-wide configuration.
@@ -72,16 +74,25 @@ type Configuration struct {
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
 		Type:     "gossip",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2"},
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 		Fallback: "",
 	}, SyncConfiguration{
 		Type:     "multicast",
-		Params:   map[string]string{"mcType": "pers", "timeout": "2"},
+		Params:   map[string]string{"network": "pers", "timeout": "2s"},
 		Fallback: "",
 	},
 	}
 
-	syncSetupConf := []SyncConfiguration{}
+	syncSetupConf := []SyncConfiguration{SyncConfiguration{
+		Type:     "gossip",
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
+		Fallback: "",
+	}, SyncConfiguration{
+		Type:     "multicast",
+		Params:   map[string]string{"network": "pers", "timeout": "2s"},
+		Fallback: "",
+	},
+	}
 
 	result := Configuration{
 

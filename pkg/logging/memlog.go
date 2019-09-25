@@ -18,7 +18,7 @@ type service struct {
 }
 
 // NewService constructs a new service that logs current total memory consumption every n seconds.
-func NewService(n int, log zerolog.Logger) (process.Service, error) {
+func NewService(n int, log zerolog.Logger) process.Service {
 	var ticker <-chan time.Time
 	if n == 0 {
 		ticker = make(<-chan time.Time)
@@ -29,7 +29,7 @@ func NewService(n int, log zerolog.Logger) (process.Service, error) {
 		ticker:   ticker,
 		exitChan: make(chan struct{}),
 		log:      log,
-	}, nil
+	}
 }
 
 func (s *service) Start() error {

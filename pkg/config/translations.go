@@ -7,6 +7,14 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
+func parseDuration(s string) time.Duration {
+	ret, err := time.ParseDuration(s)
+	if err != nil {
+		return time.Duration(0)
+	}
+	return ret
+}
+
 func generateDagConfig(c *Committee) *gomel.DagConfig {
 	return &gomel.DagConfig{
 		Keys: c.PublicKeys,
@@ -18,13 +26,15 @@ func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*pr
 	syncConfs := make([]*process.Sync, nTypes)
 	for i := range syncConfs {
 		syncConfs[i] = &process.Sync{
-			Type: conf.SyncSetup[i].Type,
-			Pid:  m.Pid,
-			// first two Address lists are used for RMC
-			LocalAddress:    c.SetupAddresses[2+i][m.Pid],
-			RemoteAddresses: c.SetupAddresses[2+i],
+			Type:            conf.SyncSetup[i].Type,
+			Pid:             m.Pid,
+			LocalAddress:    c.SetupAddresses[i][m.Pid],
+			RemoteAddresses: c.SetupAddresses[i],
 			Params:          conf.SyncSetup[i].Params,
 			Fallback:        conf.SyncSetup[i].Fallback,
+			Retry:           parseDuration(conf.SyncSetup[i].Retry),
+			Pubs:            c.RMCVerificationKeys,
+			Priv:            m.RMCSecretKey,
 		}
 	}
 	return syncConfs
@@ -41,6 +51,9 @@ func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process
 			RemoteAddresses: c.Addresses[i],
 			Params:          conf.Sync[i].Params,
 			Fallback:        conf.Sync[i].Fallback,
+			Retry:           parseDuration(conf.Sync[i].Retry),
+			Pubs:            c.RMCVerificationKeys,
+			Priv:            m.RMCSecretKey,
 		}
 	}
 	return syncConfs
@@ -99,24 +112,12 @@ func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
 	}
 }
 
-func generateRMCConfig(conf *Configuration, m *Member, c *Committee) *process.RMC {
-	return &process.RMC{
-		Pid:             m.Pid,
-		LocalAddress:    []string{c.SetupAddresses[0][m.Pid], c.SetupAddresses[1][m.Pid]},
-		RemoteAddresses: c.SetupAddresses[:2],
-		Pubs:            c.RMCVerificationKeys,
-		Priv:            m.RMCSecretKey,
-		Timeout:         time.Duration(2 * time.Second),
-	}
-}
-
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) process.Config {
 	return process.Config{
 		Dag:         generateDagConfig(c),
 		Sync:        generateSyncConfig(conf, m, c),
 		SyncSetup:   generateSyncSetupConfig(conf, m, c),
-		RMC:         generateRMCConfig(conf, m, c),
 		Create:      generateCreateConfig(conf, m, c),
 		CreateSetup: generateCreateSetupConfig(conf, m, c),
 		Order:       generateOrderConfig(conf, m, c),

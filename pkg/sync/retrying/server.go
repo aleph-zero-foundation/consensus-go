@@ -1,5 +1,5 @@
-// Package fallback implements several algorithms for acquiring unknown parents of units received in syncs.
-package fallback
+// Package retrying implements several algorithms for acquiring unknown parents of units received in syncs.
+package retrying
 
 import (
 	"sync"
@@ -9,15 +9,16 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/process"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-// Retrying is a wrapper for a fallback that continuously tries adding the problematic preunits to the dag.
-type Retrying struct {
+type server struct {
 	dag      gomel.Dag
 	adder    gomel.Adder
-	inner    gsync.Fallback
 	interval time.Duration
+	inner    gsync.Fallback
 	backlog  *backlog
 	deps     *dependencies
 	quit     int32
@@ -25,40 +26,38 @@ type Retrying struct {
 	log      zerolog.Logger
 }
 
-// NewRetrying wraps the given fallback with a retrying routine that keeps trying to add problematic units.
-func NewRetrying(inner gsync.Fallback, dag gomel.Dag, adder gomel.Adder, interval time.Duration, log zerolog.Logger) *Retrying {
-	return &Retrying{
+// NewService creates a service that continuously tries to add problematic units using provided Fallback.
+func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, interval time.Duration, log zerolog.Logger) (process.Service, gsync.Fallback) {
+	s := &server{
 		dag:     dag,
 		adder:   adder,
-		inner:   inner,
+		inner:   fallback,
 		backlog: newBacklog(),
 		deps:    newDeps(),
 		log:     log,
 	}
+	return s, s
 }
 
-// Run executes the fallback and memorizes the preunit for later retries.
-func (f *Retrying) Run(pu gomel.Preunit) {
-	if f.addToBacklog(pu) {
-		f.log.Info().Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.AddedToBacklog)
-		f.inner.Run(pu)
+func (f *server) Resolve(preunit gomel.Preunit) {
+	if f.addToBacklog(preunit) {
+		f.log.Info().Str(logging.Hash, gomel.Nickname(preunit)).Msg(logging.AddedToBacklog)
+		f.inner.Resolve(preunit)
 	}
 }
 
-// Start runs a goroutine that attempts to add units from the backlog in set intervals.
-func (f *Retrying) Start() error {
+func (f *server) Start() error {
 	f.wg.Add(1)
 	go f.work()
 	return nil
 }
 
-// Stop signals the adding goroutine to halt and blocks until it does.
-func (f *Retrying) Stop() {
+func (f *server) Stop() {
 	atomic.StoreInt32(&f.quit, 1)
 	f.wg.Wait()
 }
 
-func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
+func (f *server) addToBacklog(pu gomel.Preunit) bool {
 	hashes := pu.Parents()
 	parents := f.dag.Get(hashes)
 	missing := []*gomel.Hash{}
@@ -69,7 +68,7 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 	}
 	if len(missing) == 0 {
 		// we got the parents in the meantime, all is fine
-		f.addUnit(pu)
+		add.Unit(f.adder, pu, f.inner, "retrying.addToBacklog", f.log)
 		return false
 	}
 	// The code below has the invariant that if a unit is in dependencies, then it is also in the backlog.
@@ -80,30 +79,26 @@ func (f *Retrying) addToBacklog(pu gomel.Preunit) bool {
 	return true
 }
 
-func (f *Retrying) work() {
+func (f *server) work() {
 	defer f.wg.Done()
 	for atomic.LoadInt32(&f.quit) != 1 {
 		time.Sleep(f.interval)
 		f.update()
-		f.backlog.refallback(f.inner)
+		f.backlog.refallback(f.inner.Resolve)
 	}
 }
 
-func (f *Retrying) update() {
+func (f *server) update() {
 	presentHashes := f.deps.scan(f.dag)
 	for len(presentHashes) != 0 {
 		addableHashes := f.deps.satisfy(presentHashes)
 		for _, h := range addableHashes {
 			// There is no need for nil checks, because of the invariant mentioned above.
 			pu := f.backlog.get(h)
-			f.addUnit(pu)
+			add.Unit(f.adder, pu, f.inner, "retrying.update", f.log)
 			f.backlog.del(h)
 			f.log.Info().Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.RemovedFromBacklog)
 		}
 		presentHashes = addableHashes
 	}
-}
-
-func (f *Retrying) addUnit(pu gomel.Preunit) {
-	gsync.LogAddUnitError(pu, f.adder.AddUnit(pu), gsync.NopFallback(), "retryingFallback.addUnit", f.log)
 }
