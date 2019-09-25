@@ -143,6 +143,7 @@ func setBasicInfo(u *unit, dag *Dag, pu gomel.Preunit) {
 	}
 	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
+	u.controlHash = *pu.ControlHash()
 	u.data = pu.Data()
 	u.rsData = pu.RandomSourceData()
 	if len(dag.unitsByHeight) <= u.height {

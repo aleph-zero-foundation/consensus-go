@@ -108,6 +108,10 @@ func (um *unitMock) Hash() *gomel.Hash {
 	return um.u.Hash()
 }
 
+func (um *unitMock) ControlHash() *gomel.Hash {
+	return um.u.ControlHash()
+}
+
 func (um *unitMock) Data() []byte {
 	return um.u.Data()
 }

@@ -8,6 +8,8 @@ type BaseUnit interface {
 	Signature() Signature
 	// Hash value of this unit.
 	Hash() *Hash
+	// ControlHash value of this unit.
+	ControlHash() *Hash
 	// Data is the slice of data contained in the unit.
 	Data() []byte
 	// RandomSourceData is data contained in the unit needed to maintain
