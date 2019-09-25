@@ -35,7 +35,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 	for i := range inUse {
 		inUse[i] = newMutex()
 	}
-	requests := make(chan uint16, nProc)
+	requests := make(chan uint16, 5*nOut)
 	s := &server{
 		pid:        pid,
 		dag:        dag,
