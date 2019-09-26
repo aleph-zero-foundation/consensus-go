@@ -1,5 +1,7 @@
 // Package creating contains functions responsible for creating new units.
+//
 // It also contains a publicly available implementation of a preunit.
+//
 package creating
 
 import (
@@ -91,6 +93,10 @@ func pickParents(dag gomel.Dag, mu gomel.SlottedUnits, predecessor gomel.Unit, c
 }
 
 // NewUnit creates a preunit for a given process.
+// If this is the first unit by the creator it returns a dealing unit.
+// Otherwise for each process it chooses maximal unit with the highest level created by the process,
+// and uses those units as parents of the newly created unit.
+// If canSkipLevel flag isn't set, we are considering only parents of level at most predecessor.Level().
 func NewUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource, canSkipLevel bool) (gomel.Preunit, int, error) {
 	mu := dag.MaximalUnitsPerProcess()
 	predecessor := getPredecessor(mu, creator)
