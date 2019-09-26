@@ -22,7 +22,7 @@ func parentConsistencyCheck(parents []gomel.Unit, nProc uint16) error {
 				}
 				continue
 			}
-			if parents[i].Below(u) && *u.Hash() != *parents[i].Hash() {
+			if u != nil && parents[i].Level() < u.Level() {
 				return gomel.NewComplianceError("parent consistency rule violated")
 			}
 		}

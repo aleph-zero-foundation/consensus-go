@@ -34,7 +34,7 @@ func makeConsistent(parents []gomel.Unit) {
 				continue
 			}
 			u := parents[j].Parents()[i]
-			if parents[i] == nil || parents[i].Below(u) {
+			if parents[i] == nil || (u != nil && u.Level() > parents[i].Level()) {
 				parents[i] = u
 			}
 		}
@@ -73,9 +73,13 @@ func pickParents(dag gomel.Dag, mu gomel.SlottedUnits, predecessor gomel.Unit, c
 		if len(units) == 0 {
 			parents[i] = nil
 		} else {
-			// If there is a fork we should choose the one we have committed to.
-			// For now just taking the first option.
+			// If there is a fork we are choosing the parent with highest possible level.
 			candidate := units[0]
+			for _, fork := range units {
+				if fork.Level() > candidate.Level() {
+					candidate = fork
+				}
+			}
 			if !canSkipLevel {
 				candidate = ancestorBelowLevel(candidate, predecessor.Level())
 			}
