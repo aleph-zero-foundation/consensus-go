@@ -2,8 +2,9 @@ package main
 
 import (
 	"bufio"
+	"math/rand"
 	"os"
-	"sync"
+	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
@@ -25,29 +26,25 @@ func writeToFile(filename string, dag gomel.Dag) error {
 
 // CreateRandomNonForkingUsingCreating creates a random test dag when given
 // nProcesses - number of processes
-// maxParents - maximal number of unit parents (valid for non-dealing units)
 // nUnits     - number of units to include in the dag
-func CreateRandomNonForkingUsingCreating(nProcesses, maxParents uint16, nUnits int) gomel.Dag {
-	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
+// canSkipLevel - if the processes can skip some levels
+func CreateRandomNonForkingUsingCreating(nProcesses uint16, nUnits int, canSkipLevel bool) gomel.Dag {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	dag := dag.New(nProcesses)
 	rs := tests.NewTestRandomSource()
 	dag = rs.Bind(dag)
 	created := 0
 	pus := make([]gomel.Preunit, nProcesses)
-	pid := -1
 	for created < nUnits {
-		pid = (pid + 1) % nProcesses
+		pid := uint16(r.Intn(int(nProcesses)))
 		if pus[pid] != nil {
-			var wg sync.WaitGroup
-			wg.Add(1)
-			dag.AddUnit(pus[pid], func(_ gomel.Preunit, _ gomel.Unit, _ error) {
-				wg.Done()
-			})
-			wg.Wait()
-			created++
-			pus[pid] = nil
+			_, err := gomel.AddUnit(dag, pus[pid])
+			if err == nil {
+				created++
+				pus[pid] = nil
+			}
 		} else {
-			pu, err := creating.NewUnit(dag, pid, maxParents, []byte{}, rs, true)
+			pu, _, err := creating.NewUnit(dag, pid, []byte{}, rs, canSkipLevel)
 			if err != nil {
 				continue
 			}
@@ -59,5 +56,5 @@ func CreateRandomNonForkingUsingCreating(nProcesses, maxParents uint16, nUnits i
 
 // Use this to generate more test files
 func main() {
-	writeToFile("dag.out", CreateRandomNonForkingUsingCreating(4, 60))
+	writeToFile("dag.out", CreateRandomNonForkingUsingCreating(4, 60, true))
 }
