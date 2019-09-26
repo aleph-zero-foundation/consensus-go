@@ -38,3 +38,6 @@ func (h *Hash) XOREqual(k *Hash) {
 		h[i] ^= k[i]
 	}
 }
+
+// ZeroHash is a hash containing zeros at all 32 positions.
+var ZeroHash Hash

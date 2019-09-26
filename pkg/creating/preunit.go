@@ -78,8 +78,7 @@ func (pu *preunit) computeHash() {
 		if p != nil {
 			data.Write(p[:])
 		} else {
-			var zeroHash gomel.Hash
-			data.Write(zeroHash[:])
+			data.Write(gomel.ZeroHash[:])
 		}
 	}
 	sha3.ShakeSum128(pu.controlHash[:], data.Bytes())
