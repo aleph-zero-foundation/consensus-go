@@ -25,3 +25,11 @@ type DecryptionKey interface {
 	// Encode encodes the decryption key.
 	Encode() string
 }
+
+// SymmetricKey is used for both encrypting and decrypting messages.
+type SymmetricKey interface {
+	// Encrypt encrypts message.
+	Encrypt([]byte) (CipherText, error)
+	// Decrypt decrypts ciphertext that was encrypted with the key.
+	Decrypt(CipherText) ([]byte, error)
+}

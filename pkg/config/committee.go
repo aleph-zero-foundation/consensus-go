@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -26,7 +25,7 @@ type Member struct {
 	RMCSecretKey *bn256.SecretKey
 
 	// The decryption key for decrypting messages.
-	DKey encrypt.DecryptionKey
+	DKey *bn256.SecretKey
 }
 
 // Committee represents the public data about the committee known before the algorithm starts.
@@ -38,7 +37,7 @@ type Committee struct {
 	RMCVerificationKeys []*bn256.VerificationKey
 
 	// Encryption keys of all committee members use for encrypting messages, ordered according to process ids.
-	EKeys []encrypt.EncryptionKey
+	EKeys []*bn256.VerificationKey
 
 	// Addresses use for the setup phase, ordered as above.
 	SetupAddresses [][]string
@@ -76,7 +75,7 @@ func LoadMember(r io.Reader) (*Member, error) {
 	if !scanner.Scan() {
 		return nil, errors.New(malformedData)
 	}
-	dKey, err := encrypt.NewDecryptionKey(scanner.Text())
+	dKey, err := bn256.DecodeSecretKey(scanner.Text())
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +132,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 
 	publicKeys := []gomel.PublicKey{}
 	verificationKeys := []*bn256.VerificationKey{}
-	encryptionKeys := []encrypt.EncryptionKey{}
+	encryptionKeys := []*bn256.VerificationKey{}
 	sRemoteAddresses := [][]string{}
 	remoteAddresses := [][]string{}
 	for scanner.Scan() {
@@ -152,7 +151,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 			return nil, err
 		}
 
-		encryptionKey, err := encrypt.NewEncryptionKey(ek)
+		encryptionKey, err := bn256.DecodeVerificationKey(ek)
 		if err != nil {
 			return nil, err
 		}

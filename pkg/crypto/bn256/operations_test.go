@@ -63,4 +63,14 @@ var _ = Describe("Operations", func() {
 			})
 		})
 	})
+	Context("Shared Keys", func() {
+		var shk1, shk2 *VerificationKey
+		BeforeEach(func() {
+			shk1 = SharedKey(sk1, vk2)
+			shk2 = SharedKey(sk2, vk1)
+		})
+		It("Should agree on the same key", func() {
+			Expect(shk1.Marshal()).To(Equal(shk2.Marshal()))
+		})
+	})
 })

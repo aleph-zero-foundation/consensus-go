@@ -54,7 +54,7 @@ func NewRandomGlobal(nProc, threshold uint16) *GlobalThresholdCoin {
 
 // Encrypt encrypts secretKeys of the given GlobalThresholdCoin
 // using given set of encryptionKeys and returns a (unowned)ThresholdCoin.
-func (gtc *GlobalThresholdCoin) Encrypt(dealer uint16, encryptionKeys []encrypt.EncryptionKey) (*ThresholdCoin, error) {
+func (gtc *GlobalThresholdCoin) Encrypt(dealer uint16, encryptionKeys []encrypt.SymmetricKey) (*ThresholdCoin, error) {
 	nProc := uint16(len(encryptionKeys))
 	encSKs := make([]encrypt.CipherText, nProc)
 
@@ -118,7 +118,7 @@ func (tc *ThresholdCoin) Encode() []byte {
 }
 
 // Decode decodes encoded ThresholdCoin obtained from the sender using given decryptionKey.
-func Decode(data []byte, sender, owner uint16, decryptionKey encrypt.DecryptionKey) (*ThresholdCoin, error) {
+func Decode(data []byte, sender, owner uint16, decryptionKey encrypt.SymmetricKey) (*ThresholdCoin, error) {
 	ind := 0
 	dataTooShort := errors.New("Decoding tcoin failed. Given bytes slice is too short")
 	if len(data) < ind+2 {

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -21,8 +20,8 @@ type Config struct {
 	TxGenerate  *TxGenerate
 	MemLog      int
 	Setup       string
-	EKeys       []encrypt.EncryptionKey
-	DKey        encrypt.DecryptionKey
+	EKeys       []*bn256.VerificationKey
+	DKey        *bn256.SecretKey
 }
 
 // Dag contains configuration required to create a dag.

@@ -53,3 +53,16 @@ func MulSignature(sgn *Signature, n *big.Int) *Signature {
 		*result,
 	}
 }
+
+// SharedKey is a key shared between two agents.
+func SharedKey(sk1 *SecretKey, vk2 *VerificationKey) *VerificationKey {
+	return &VerificationKey{
+		key: *new(bn256.G2).ScalarMult(&vk2.key, &sk1.key),
+	}
+}
+
+// VerifySharedKey checks whether the shared key comes from the given keys.
+func VerifySharedKey(vk1, vk2, shk *VerificationKey) bool {
+	// This function has to implemented somehow.
+	return true
+}
