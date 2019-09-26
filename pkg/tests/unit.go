@@ -70,7 +70,7 @@ func (u *unit) Below(v gomel.Unit) bool {
 	for len(queue) > 0 {
 		w := queue[0]
 		queue = queue[1:]
-		if *w.Hash() == *u.Hash() {
+		if w == u {
 			return true
 		}
 		for _, wParent := range w.Parents() {
