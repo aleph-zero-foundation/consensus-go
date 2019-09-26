@@ -23,7 +23,7 @@ func getPredecessor(mu gomel.SlottedUnits, creator uint16) gomel.Unit {
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
 func newDealingUnit(creator, NProc uint16, data []byte, rs gomel.RandomSource) gomel.Preunit {
-	rsData, _ := rs.DataToInclude(creator, nil, 0)
+	rsData, _ := rs.DataToInclude(creator, make([]gomel.Unit, NProc), 0)
 	return NewPreunit(creator, make([]*gomel.Hash, NProc), data, rsData)
 }
 

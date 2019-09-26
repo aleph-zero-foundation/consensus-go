@@ -143,13 +143,13 @@ func (c *coin) checkCompliance(u gomel.Unit) error {
 // it returns an error. This means that someone had included a wrong coin share
 // and we should start an alert.
 func (c *coin) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
-	if len(parents) == 0 {
+	if parents[creator] == nil {
 		if c.shareProvider[creator] {
 			return c.tc.CreateCoinShare(level).Marshal(), nil
 		}
 		return nil, nil
 	}
-	if parents[0].Level() != level {
+	if parents[creator].Level() != level {
 		var rb []byte
 		if rbl := c.randomBytes.Get(level - 1); rbl != nil {
 			rb = make([]byte, bn256.SignatureLength)
