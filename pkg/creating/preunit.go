@@ -87,8 +87,8 @@ func (pu *preunit) computeHash() {
 	creatorBytes := make([]byte, 2)
 	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
 	data.Write(creatorBytes)
-	data.Write(pu.Data())
-	data.Write(pu.RandomSourceData())
+	data.Write(pu.data)
+	data.Write(pu.rsData)
 	data.Write(pu.controlHash[:])
 	sha3.ShakeSum128(pu.hash[:], data.Bytes())
 }
