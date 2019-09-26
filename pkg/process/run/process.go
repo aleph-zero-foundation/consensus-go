@@ -75,6 +75,7 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	txChan := make(chan []byte, 10)
 
 	dag := makeStandardDag(config.Dag)
+
 	rs, ok := <-rsCh
 	if !ok {
 		return nil, errors.New("setup phase failed")

@@ -159,5 +159,4 @@ def get_log(conn, pid):
 def test(conn):
     ''' Tests if connection is ready '''
 
-    print(conn.host)
     conn.open()

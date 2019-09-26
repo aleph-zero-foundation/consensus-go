@@ -1,60 +1,57 @@
 {
-	"NParents": 128,
+		"NParents": 128,
 
-	"PrimeOnly": true,
+		"PrimeOnly": true,
 
-	"CanSkipLevel": true,
+        "CanSkipLevel": true, 
 
-	"CreateDelay": 0.1,
+		"CreateDelay": 0.2,
 
-	"StepSize": 0.0,
+		"StepSize": 0.0,
 
-    "Sync": [{
-        "Type": "fetch",
-        "Params": {
-            "nIn": "20",
-            "nOut": "40",
-            "timeout": "2s",
+        "Sync": [{
+            "Type": "gossip",
+            "Params": {
+                "nIn": "2",
+                "nOut": "1",
+                "timeout": "2s"},
+            "Fallback": ""
+            }, {
+            "Type": "fetch",
+            "Params": {
+                "nIn": "10",
+                "nOut": "15",
+                "timeout": "2s"
             },
-        "Fallback": "retrying"
-    }, {
-        "Type": "retrying",
-        "Params": {
-            "interval": "0.3s"
-        },
-        "Fallback": "fetch"
-    }, {
-        "Type": "multicast",
-        "Params": {
-            "network": "tcp",
-            "timeout": "2s"
-        },
-        "Fallback": "retrying"
-    }],
+            "Fallback": "gossip"
+            }, {
+            "Type": "multicast",
+            "Params": {
+                "mcType": "pers",
+                "timeout": "2s",
+                "retryingFallback": "fetch",
+                "retryingInterval": "0.2s"
+            },
+            "Fallback": "retrying"
+        }],
 
-	"Setup": "coin",
+        "Setup": "coin",
 
-	"SyncSetup": [],
+        "SyncSetup": [],
 
-	"Txpu": 1,
+		"Txpu": 1,
 
-	"LevelLimit": 50,
+		"LevelLimit": 50,
 
-	"VotingLevel": 3,
+		"LogLevel": 0,
 
-	"PiDeltaLevel": 12,
+		"LogBuffer": 100000,
 
-	"AddShares": 0,
+		"LogMemInterval": 10,
 
-	"LogLevel": 0,
+		"LogHuman": false,
 
-	"LogBuffer": 100000,
+	    "OrderStartLevel": 0,
 
-	"LogMemInterval": 10,
-
-	"LogHuman": false,
-
-    "OrderStartLevel": 0,
-
-	"CRPFixedPrefix": 5
+		"CRPFixedPrefix": 10
 }

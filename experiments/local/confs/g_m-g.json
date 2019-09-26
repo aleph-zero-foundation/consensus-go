@@ -5,7 +5,7 @@
 
         "CanSkipLevel": true,
 
-		"CreateDelay": 0.1,
+		"CreateDelay": 0.5,
 
 		"StepSize": 0.0,
 
@@ -31,12 +31,6 @@
 		"Txpu": 1,
 
 		"LevelLimit": 20,
-
-		"VotingLevel": 3,
-
-		"PiDeltaLevel": 12,
-
-		"AddShares": 0,
 
 		"LogLevel": 1,
 

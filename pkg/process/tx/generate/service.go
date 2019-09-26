@@ -15,6 +15,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
+const txSize = 100
+
 type service struct {
 	txpu     int
 	txChan   chan<- []byte
@@ -35,7 +37,7 @@ func NewService(config *process.TxGenerate, txChan chan<- []byte, log zerolog.Lo
 
 func (s *service) generateRandom() []byte {
 	txpu := s.txpu
-	size := 15*txpu + rand.Intn(txpu)
+	size := txpu * txSize
 	result := make([]byte, size)
 	rand.Read(result)
 	return result

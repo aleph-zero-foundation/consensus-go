@@ -79,7 +79,6 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 				return nil, nil, err
 			}
 			s.servers[c.Type], s.fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
-
 		case "fetch":
 			lg := log.With().Int(logging.Service, logging.FetchService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)

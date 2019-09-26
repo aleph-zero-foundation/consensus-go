@@ -39,12 +39,6 @@
 
 		"LevelLimit": 20,
 
-		"VotingLevel": 3,
-
-		"PiDeltaLevel": 12,
-
-		"AddShares": 0,
-
 		"LogLevel": 1,
 
 		"LogBuffer": 100000,

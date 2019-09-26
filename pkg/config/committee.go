@@ -3,7 +3,6 @@ package config
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -86,23 +85,23 @@ func parseCommitteeLine(line string) (string, string, []string, []string, error)
 		return "", "", nil, nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|setupAddresses|addresses")
 	}
 	pk, vk, setupAddrs, addrs := s[0], s[1], s[2], s[3]
-	var errStrings []string
 	if len(pk) == 0 {
-		errStrings = append(errStrings, "public key should be non-empty")
+		return "", "", nil, nil, errors.New(malformedData)
 	}
 	if len(vk) == 0 {
-		errStrings = append(errStrings, "verification key should be non-empty")
-	}
-	if len(setupAddrs) == 0 {
-		errStrings = append(errStrings, "setup addresses list should be non-empty")
+		return "", "", nil, nil, errors.New(malformedData)
 	}
 	if len(addrs) == 0 {
-		errStrings = append(errStrings, "addresses list should be non-empty")
+		return "", "", nil, nil, errors.New(malformedData)
 	}
-	if errStrings == nil {
-		return pk, vk, strings.Split(setupAddrs, " "), strings.Split(addrs, " "), nil
+	setupAddrsList, addrsList := []string{}, []string{}
+	if setupAddrs != "" {
+		setupAddrsList = strings.Split(setupAddrs, " ")
 	}
-	return "", "", nil, nil, fmt.Errorf(strings.Join(errStrings, "\n"))
+	if addrs != "" {
+		addrsList = strings.Split(addrs, " ")
+	}
+	return pk, vk, setupAddrsList, addrsList, nil
 }
 
 // LoadCommittee loads the data from the given reader and creates a committee.

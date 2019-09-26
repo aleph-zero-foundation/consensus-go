@@ -427,7 +427,7 @@ def wait_install(regions='badger regions'):
 #                               aggregates
 #======================================================================================
 
-def run_protocol(n_processes, regions, restricted, instance_type, profiler=False):
+def run_protocol(n_processes, regions, restricted, instance_type, profiler):
     '''Runs the protocol.'''
 
     start = time()
@@ -464,6 +464,7 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler=False
     call('zip -uq repo.zip ../../pkg/testdata/users.txt'.split())
     run_task('send-repo', regions, parallel)
 
+    color_print('installing bn256 curve')
     run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel) 
 
     color_print('send data: keys, addresses, parameters')
@@ -562,7 +563,7 @@ def memory_usage(regions):
 
     return np.min(mems), np.mean(mems), np.max(mems)
 
-def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
+def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_prof=False):
     '''Retrieves all logs from instances.'''
 
     if not os.path.exists('../results'):
@@ -579,6 +580,7 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
         for ip in instances_ip_in_region(rn):
             pid = ip2pid[ip]
             run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
+            run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
             if with_prof and int(pid) % 16 == 0:
                 run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
 
@@ -587,7 +589,6 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
                 collected += 1
                 if collected == logs_per_region:
                     break
-    run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
 
 
     color_print(f'{len(os.listdir("../results"))} files in ../results')
@@ -619,6 +620,11 @@ def get_logs(regions, ip2pid, name, logs_per_region=1, with_prof=False):
         shutil.copyfile('data/config.json', path)
         zf.write(path)
         os.remove(path)
+        path = os.path.join(result_path, 'pids')
+        with open(path, 'w') as f:
+            json.dump(pids, f)
+        zf.write(path)
+        os.remove(path)
 
     os.rmdir(result_path)
     color_print('done')
@@ -642,8 +648,8 @@ restricted = {'ap-south-1':     10,  # Mumbai
               'sa-east-1':      5}   # Sao Paolo
 badger_restricted = {'ap-southeast-2': 5, 'sa-east-1': 5}
 
-rs = lambda : run_protocol(8, badger_regions(), badger_restricted, 't2.micro')
-rf = lambda : run_protocol(128, badger_regions(), {}, 'm4.2xlarge')
+rs = lambda : run_protocol(8, badger_regions(), badger_restricted, 't2.micro', False)
+rf = lambda : run_protocol(128, badger_regions(), {}, 'm4.2xlarge', True)
 mu = lambda regions=badger_regions(): memory_usage(regions)
 
 #======================================================================================
