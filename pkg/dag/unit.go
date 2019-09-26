@@ -18,8 +18,8 @@ type freeUnit struct {
 	parents     []gomel.Unit
 	data        []byte
 	rsData      []byte
-	height      *int
-	level       *int
+	height      int
+	level       int
 	floor       [][]gomel.Unit
 }
 
@@ -33,6 +33,8 @@ func newUnit(pu gomel.Preunit, parents []gomel.Unit, nProc uint16) *freeUnit {
 		parents:     parents,
 		data:        pu.Data(),
 		rsData:      pu.RandomSourceData(),
+		height:      -1,
+		level:       -1,
 	}
 }
 
@@ -65,31 +67,29 @@ func (u *freeUnit) Parents() []gomel.Unit {
 }
 
 func (u *freeUnit) Height() int {
-	if u.height == nil {
+	if u.height == -1 {
 		u.computeHeight()
 	}
-	return *u.height
+	return u.height
 }
 
 func (u *freeUnit) computeHeight() {
-	u.height = new(int)
 	if gomel.Dealing(u) {
-		*u.height = 0
+		u.height = 0
 	} else {
-		*u.height = gomel.Predecessor(u).Height() + 1
+		u.height = gomel.Predecessor(u).Height() + 1
 	}
 }
 
 func (u *freeUnit) Level() int {
-	if u.level == nil {
+	if u.level == -1 {
 		u.computeLevel()
 	}
-	return *u.level
+	return u.level
 }
 
 func (u *freeUnit) computeLevel() {
-	u.level = new(int)
-	*u.level = gomel.LevelFromParents(u.parents)
+	u.level = gomel.LevelFromParents(u.parents)
 }
 
 func (u *freeUnit) Floor() [][]gomel.Unit {
