@@ -60,26 +60,6 @@ func hashes(units []gomel.Unit) []*gomel.Hash {
 	return result
 }
 
-func levelFromParents(dag gomel.Dag, parents []gomel.Unit) int {
-	level := 0
-	onLevel := uint16(0)
-	for i := uint16(0); i < dag.NProc(); i++ {
-		if parents[i] == nil {
-			continue
-		}
-		if parents[i].Level() == level {
-			onLevel++
-		} else if parents[i].Level() > level {
-			onLevel = 1
-			level = parents[i].Level()
-		}
-	}
-	if gomel.IsQuorum(dag.NProc(), onLevel) {
-		level++
-	}
-	return level
-}
-
 func pickParents(dag gomel.Dag, mu gomel.SlottedUnits, predecessor gomel.Unit, canSkipLevel bool) []gomel.Unit {
 	creator := predecessor.Creator()
 	parents := make([]gomel.Unit, dag.NProc())
@@ -116,7 +96,7 @@ func NewUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource, 
 	}
 
 	parents := pickParents(dag, mu, predecessor, canSkipLevel)
-	level := levelFromParents(dag, parents)
+	level := gomel.LevelFromParents(parents)
 	// We require each unit to be a prime unit.
 	if level == predecessor.Level() {
 		return nil, 0, &noAvailableParents{}

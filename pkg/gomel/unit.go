@@ -15,6 +15,28 @@ type Unit interface {
 	Floor() [][]Unit
 }
 
+// LevelFromParents calculates level of a unit having given set of parents.
+func LevelFromParents(parents []Unit) int {
+	nProc := uint16(len(parents))
+	level := 0
+	onLevel := uint16(0)
+	for i := uint16(0); i < nProc; i++ {
+		if parents[i] == nil {
+			continue
+		}
+		if parents[i].Level() == level {
+			onLevel++
+		} else if parents[i].Level() > level {
+			onLevel = 1
+			level = parents[i].Level()
+		}
+	}
+	if IsQuorum(nProc, onLevel) {
+		level++
+	}
+	return level
+}
+
 // CombineParentsFloorsPerProc combines floors of the provided parents just for a given creator.
 // The result will be appended to the 'out' parameter.
 func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {

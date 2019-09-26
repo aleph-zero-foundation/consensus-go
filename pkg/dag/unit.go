@@ -89,27 +89,7 @@ func (u *freeUnit) Level() int {
 
 func (u *freeUnit) computeLevel() {
 	u.level = new(int)
-	if gomel.Dealing(u) {
-		*u.level = 0
-		return
-	}
-	level := 0
-	onLevel := uint16(0)
-	for i := uint16(0); i < u.nProc; i++ {
-		if u.parents[i] == nil {
-			continue
-		}
-		if u.parents[i].Level() == level {
-			onLevel++
-		} else if u.parents[i].Level() > level {
-			onLevel = 1
-			level = u.parents[i].Level()
-		}
-	}
-	if gomel.IsQuorum(u.nProc, onLevel) {
-		level++
-	}
-	*u.level = level
+	*u.level = gomel.LevelFromParents(u.parents)
 }
 
 func (u *freeUnit) Floor() [][]gomel.Unit {

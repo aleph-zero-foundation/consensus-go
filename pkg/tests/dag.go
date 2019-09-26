@@ -221,26 +221,7 @@ func setFloor(u *unit, dag *Dag) {
 func setLevel(u *unit, dag *Dag) {
 	dag.RLock()
 	defer dag.RUnlock()
-	if u.Height() == 0 {
-		u.level = 0
-		return
-	}
-	u.level = 0
-	onLevel := uint16(0)
-	for i := uint16(0); i < dag.NProc(); i++ {
-		if u.Parents()[i] == nil {
-			continue
-		}
-		if u.Parents()[i].Level() == u.level {
-			onLevel++
-		} else if u.Parents()[i].Level() > u.level {
-			onLevel = 1
-			u.level = u.Parents()[i].Level()
-		}
-	}
-	if gomel.IsQuorum(dag.NProc(), onLevel) {
-		u.level++
-	}
+	u.level = gomel.LevelFromParents(u.parents)
 }
 
 func (dag *Dag) getPrimeUnitsOnLevel(level int) []gomel.Unit {
