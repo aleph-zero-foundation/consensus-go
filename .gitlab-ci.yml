@@ -60,4 +60,4 @@ gofmt:
 build:
   stage: build
   script:
-    - .gitlab/ci/make_build.sh ${PKG}
+    - .gitlab/ci/make_build.sh ${PKG} ${GOPATH}

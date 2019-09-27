@@ -2,6 +2,7 @@
 set -e
 
 PKG=$1
+GOPATH=$2
 
 go build ${PKG}/...
-find . -iname "*_test.go" -print0 | xargs -0 -n1 go test -c
+find ${GOPATH%/}/src/${PKG} -iname "*_test.go" -printf "%h\n" | sort -u | xargs -n1 go test -c
