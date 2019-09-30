@@ -1,3 +1,4 @@
+// Package p2p implements functions for generating symmetric keys for peer to peer communication.
 package p2p
 
 import (

@@ -1,3 +1,4 @@
+// Package encrypt is a wrapper around crypto/aes and crypto/rsa.
 package encrypt
 
 import "bytes"

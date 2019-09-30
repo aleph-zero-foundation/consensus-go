@@ -9,7 +9,7 @@ import (
 
 // SharedSecret is a secret shared between two peers.
 // It should be revealed, when proving that the other party
-// has sended non compliant messages.
+// has sent non compliant messages.
 type SharedSecret struct {
 	secret *bn256.G1
 }
