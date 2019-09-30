@@ -17,6 +17,8 @@
 
 # Steps to create a distributed version of a test using docker services.
 
+You can execute docker_init.sh or execute manually the following instructions. For your convenience we also included a script that tries to clean after a test.
+
 1. start docker in swarm mode: `docker swarm init`; and add workers: `docker swarm join --token SWMTKN-1-1rzjviab1f74lm8xdo3n0lg01g2q8tqa0xrn8hcg6yy2jqym3c-8nge5n7yru9avzwx7go4thyz1 192.168.5.173:2377` (change token); verify: `docker node ls`
 2. `docker network create -d overlay --attachable aleph_net`
 3. create folder `code` - its structure should be similar to your GOPATH, i.e. src/gitlab.com/alephledger/consensus-go - just our project
