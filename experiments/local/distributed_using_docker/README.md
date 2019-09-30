@@ -44,6 +44,11 @@ If you want to enforce a worker on which a service should be executed, modify sp
 Default names for nodes: node1, node2,... remember to generate keys and committee.ka using these names. Then you need to
 rebuild the docker image.
 
+After a service finishes, you can extract its logs using the provided script `extract_logs.sh`. It expects a list of container
+ids as its argument, e.g. ```docker ps -aq | xargs ./extract_logs.sh```.
+
+In order to attach to output of one of the started services, execte: ```docker service logs --raw <service_name, e.g. node1>```.
+
 ## Troubleshooting:
 - docker service ls
 - docker service ps node_1
