@@ -1,7 +1,9 @@
 #!/bin/bash
 
+NODES=$(expr ${1:-8})
 HOSTNAME=$(hostname -i)
-for i in {1..8}
+
+for i in $(seq 1 $NODES)
 do
     NODE_NAME="node${i}"
     docker service rm ${NODE_NAME}

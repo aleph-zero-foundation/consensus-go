@@ -5,7 +5,7 @@ RUN apt-get update && \
 COPY code code
 COPY keys keys
 COPY configs configs
-COPY container_scripts/make_dep.sh .
+COPY include/make_dep.sh .
 RUN /work/make_dep.sh gitlab.com/alephledger/consensus-go /work/code
-COPY container_scripts/run.sh .
+COPY include/run.sh .
 CMD /bin/bash
