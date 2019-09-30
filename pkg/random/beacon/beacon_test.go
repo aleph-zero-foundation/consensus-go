@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
+	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
@@ -48,6 +49,7 @@ var _ = Describe("Beacon", func() {
 			dag[pid] = rs[pid].Bind(dag[pid])
 		}
 	})
+
 	Describe("Adding units", func() {
 		BeforeEach(func() {
 			// Generating very regular dag
@@ -164,8 +166,6 @@ var _ = Describe("Beacon", func() {
 				_, err = gomel.AddUnit(dag[pid], pu)
 				Expect(err).NotTo(HaveOccurred())
 			}
-		})
-		It("Honest nodes should build the dags without errors", func() {
 			for level := 0; level < maxLevel; level++ {
 				for creator := uint16(0); creator < n; creator++ {
 					if creator == maliciousNode {
@@ -182,6 +182,35 @@ var _ = Describe("Beacon", func() {
 						Expect(err).NotTo(HaveOccurred())
 					}
 				}
+			}
+		})
+		It("Should produce a multicoin which is the sum of coins of honest nodes", func() {
+			head := uint16(1)
+			expectedShareProviders := map[uint16]bool{}
+			for pid := uint16(0); pid < n; pid++ {
+				if pid == maliciousNode {
+					continue
+				}
+				expectedShareProviders[pid] = true
+			}
+
+			for pid := uint16(0); pid < n; pid++ {
+				if pid == maliciousNode {
+					continue
+				}
+				obtainedCoin := rs[pid].(*Beacon).GetCoin(head)
+				subcoins := []*tcoin.ThresholdCoin{}
+				for i := uint16(0); i < n; i++ {
+					if i == maliciousNode {
+						continue
+					}
+					tc, _, _ := tcoin.Decode(dag[pid].PrimeUnits(0).Get(i)[0].RandomSourceData(), i, pid, p2pKeys[pid][i])
+					subcoins = append(subcoins, tc)
+				}
+				multicoin := tcoin.CreateMulticoin(subcoins)
+
+				expectedCoin := coin.New(n, pid, multicoin, expectedShareProviders)
+				Expect(expectedCoin).To(Equal(obtainedCoin))
 			}
 		})
 	})
