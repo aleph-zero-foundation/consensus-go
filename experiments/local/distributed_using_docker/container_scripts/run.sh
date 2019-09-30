@@ -14,4 +14,8 @@ cat "${CONFIGS_FOLDER}/${TYPE}.json"
 go build -gcflags='-N -l' ${GOPATH}/src/gitlab.com/alephledger/consensus-go/cmd/gomel/main.go
 ./main --pk ${KEYS_FOLDER}/${PID}.pk --keys_addrs ${KEYS_FOLDER}/committee.ka --log $PID.$TYPE.log --config "${CONFIGS_FOLDER}/${TYPE}.json"
 
-echo "exiting..."
+echo "copying logs to /extract"
+mkdir /extract
+cp *.log /extract
+
+echo "exiting"

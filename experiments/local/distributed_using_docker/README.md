@@ -36,6 +36,10 @@ Default names for nodes: node_1, node_2,... remember to generate keys and commit
 - docker service ls
 - docker service ps node_1
 - docker service rm node_1
+- copying logs from containers:
+  ```
+  docker cp <container_id>:/extract .
+  ```
 
 
 # How to spawn a distributed test capable of simulating network latency etc.?
