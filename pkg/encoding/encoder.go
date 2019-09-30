@@ -42,7 +42,7 @@ func (e *enc) encodeUnit(unit gomel.Unit) error {
 		if p != nil {
 			copy(data[s:s+32], p.Hash()[:])
 		} else {
-			copy(data[s:s+32], new(gomel.Hash)[:])
+			copy(data[s:s+32], gomel.ZeroHash[:])
 		}
 		s += 32
 	}

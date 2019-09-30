@@ -58,7 +58,7 @@ func (u *freeUnit) Below(v gomel.Unit) bool {
 	}
 	for _, w := range v.Floor()[u.creator] {
 
-		if ok := brutalBelowWithinProc(u, w); ok {
+		if brutalBelowWithinProc(u, w) {
 			return true
 		}
 	}

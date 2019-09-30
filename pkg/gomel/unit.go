@@ -20,15 +20,15 @@ func LevelFromParents(parents []Unit) int {
 	nProc := uint16(len(parents))
 	level := 0
 	onLevel := uint16(0)
-	for i := uint16(0); i < nProc; i++ {
-		if parents[i] == nil {
+	for _, p := range parents {
+		if p == nil {
 			continue
 		}
-		if parents[i].Level() == level {
+		if p.Level() == level {
 			onLevel++
-		} else if parents[i].Level() > level {
+		} else if p.Level() > level {
 			onLevel = 1
-			level = parents[i].Level()
+			level = p.Level()
 		}
 	}
 	if IsQuorum(nProc, onLevel) {
