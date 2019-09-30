@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 )
 
@@ -59,7 +59,7 @@ func unmarshallVotes(data []byte, nProc uint16) ([]*vote, error) {
 			if len(data) < int(proofLen) {
 				return nil, errors.New("votes wrongly encoded")
 			}
-			proof, err := new(bn256.SecretKey).Unmarshal(data[:proofLen])
+			proof, err := new(p2p.SharedSecret).Unmarshal(data[:proofLen])
 			data = data[proofLen:]
 			if err != nil {
 				return nil, err

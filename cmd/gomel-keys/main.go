@@ -9,7 +9,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -19,8 +19,8 @@ type proc struct {
 	privateKey      gomel.PrivateKey
 	sekKey          *bn256.SecretKey
 	verKey          *bn256.VerificationKey
-	encKey          encrypt.EncryptionKey
-	decKey          encrypt.DecryptionKey
+	p2pPubKey       *p2p.PublicKey
+	p2pSecKey       *p2p.SecretKey
 	localAddrs      []string
 	setupLocalAddrs []string
 }
@@ -28,15 +28,15 @@ type proc struct {
 func makeProcess(setupLocalAddrs []string, localAddrs []string) proc {
 	pubKey, privKey, _ := signing.GenerateKeys()
 	verKey, sekKey, _ := bn256.GenerateKeys()
-	encKey, decKey, _ := encrypt.GenerateKeys()
+	p2pPubKey, p2pSecKey, _ := p2p.GenerateKeys()
 
 	return proc{
 		publicKey:       pubKey,
 		privateKey:      privKey,
 		sekKey:          sekKey,
 		verKey:          verKey,
-		encKey:          encKey,
-		decKey:          decKey,
+		p2pPubKey:       p2pPubKey,
+		p2pSecKey:       p2pSecKey,
 		setupLocalAddrs: setupLocalAddrs,
 		localAddrs:      localAddrs,
 	}
@@ -106,7 +106,7 @@ func main() {
 	for _, p := range processes {
 		committee.PublicKeys = append(committee.PublicKeys, p.publicKey)
 		committee.RMCVerificationKeys = append(committee.RMCVerificationKeys, p.verKey)
-		committee.EKeys = append(committee.EKeys, p.encKey)
+		committee.P2PPublicKeys = append(committee.P2PPublicKeys, p.p2pPubKey)
 		for i, addr := range p.setupLocalAddrs {
 			committee.SetupAddresses[i] = append(committee.SetupAddresses[i], addr)
 		}
@@ -116,7 +116,7 @@ func main() {
 	}
 
 	for pid, p := range processes {
-		member := &config.Member{uint16(pid), p.privateKey, p.sekKey, p.decKey}
+		member := &config.Member{uint16(pid), p.privateKey, p.sekKey, p.p2pSecKey}
 		f, err := os.Create(strconv.Itoa(pid) + ".pk")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())

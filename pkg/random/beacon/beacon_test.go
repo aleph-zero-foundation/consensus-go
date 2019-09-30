@@ -3,13 +3,12 @@ package beacon_test
 import (
 	"bytes"
 	"encoding/binary"
-	"math/big"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -21,8 +20,9 @@ var _ = Describe("Beacon", func() {
 		maxLevel int
 		dag      []gomel.Dag
 		rs       []gomel.RandomSource
-		eKeys    []encrypt.EncryptionKey
-		dKeys    []encrypt.DecryptionKey
+		sKeys    []*p2p.SecretKey
+		pKeys    []*p2p.PublicKey
+		p2pKeys  [][]encrypt.SymmetricKey
 		err      error
 	)
 	BeforeEach(func() {
@@ -30,15 +30,20 @@ var _ = Describe("Beacon", func() {
 		maxLevel = 13
 		dag = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
-		eKeys = make([]encrypt.EncryptionKey, n)
-		dKeys = make([]encrypt.DecryptionKey, n)
-		for pid := uint16(0); pid < n; pid++ {
-			eKeys[pid], dKeys[pid], _ = encrypt.GenerateKeys()
+		sKeys = make([]*p2p.SecretKey, n)
+		pKeys = make([]*p2p.PublicKey, n)
+		p2pKeys = make([][]encrypt.SymmetricKey, n)
+		for i := uint16(0); i < n; i++ {
+			pKeys[i], sKeys[i], _ = p2p.GenerateKeys()
+		}
+		for i := uint16(0); i < n; i++ {
+			p2pKeys[i], _ = p2p.Keys(sKeys[i], pKeys, i)
 		}
 		for pid := uint16(0); pid < n; pid++ {
 			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
-			rs[pid] = New(pid, eKeys, dKeys[pid])
+			rs[pid], err = New(pid, pKeys, sKeys[pid])
+			Expect(err).NotTo(HaveOccurred())
 			dag[pid] = rs[pid].Bind(dag[pid])
 		}
 		// Generating very regular dag
@@ -90,7 +95,8 @@ var _ = Describe("Beacon", func() {
 					votes := u.RandomSourceData()
 					votes[dag[0].NProc()-1] = 2
 					// preparing fake proof
-					proof := bn256.NewSecretKey(big.NewInt(int64(20190718)))
+					pkFake, skFake, _ := p2p.GenerateKeys()
+					proof := p2p.NewSharedSecret(skFake, pkFake)
 					proofBytes := proof.Marshal()
 					var buf bytes.Buffer
 					binary.Write(&buf, binary.LittleEndian, uint16(len(proofBytes)))
@@ -104,6 +110,7 @@ var _ = Describe("Beacon", func() {
 				})
 			})
 		})
+
 		Context("that should contain shares", func() {
 			Context("Without random source data", func() {
 				It("Should return an error", func() {

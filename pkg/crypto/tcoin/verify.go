@@ -2,11 +2,9 @@ package tcoin
 
 import (
 	"crypto/subtle"
-	"encoding/binary"
 	"math/big"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 )
 
 // VerifyCoinShare verifies whether the given coin share is correct.
@@ -34,29 +32,4 @@ func (tc *ThresholdCoin) VerifySecretKey() *bn256.SecretKey {
 		return tc.sk
 	}
 	return nil
-}
-
-// VerifyWrongSecretKeyProof verifies the proof given by a process that
-// his secretKey is incorrect.
-// We check whether:
-// (1) Enc_prover(dealer, proof) = EncSK[prover]
-// (2) vk[prover] is not a verification key for the proof
-func (tc *ThresholdCoin) VerifyWrongSecretKeyProof(prover uint16, proof *bn256.SecretKey, encryptionKey encrypt.EncryptionKey) bool {
-
-	buf := make([]byte, 2)
-	binary.LittleEndian.PutUint16(buf, tc.dealer)
-	encSK, err := encryptionKey.Encrypt(append(buf, proof.Marshal()...))
-	if err != nil {
-		return false
-	}
-
-	if !encrypt.CTEq(tc.encSKs[prover], encSK) {
-		return false
-	}
-
-	vk := proof.VerificationKey()
-	if subtle.ConstantTimeCompare(vk.Marshal(), tc.vks[prover].Marshal()) != 1 {
-		return true
-	}
-	return false
 }

@@ -54,7 +54,10 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	txChan := (chan []byte)(nil)
 
 	dag := makeBeaconDag(conf.Dag)
-	rs := beacon.New(conf.Create.Pid, conf.EKeys, conf.DKey)
+	rs, err := beacon.New(conf.Create.Pid, conf.P2PPublicKeys, conf.P2PSecretKey)
+	if err != nil {
+		log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
+	}
 	// common with main:
 	dag = rs.Bind(dag)
 

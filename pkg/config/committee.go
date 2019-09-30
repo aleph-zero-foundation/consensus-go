@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -24,8 +25,8 @@ type Member struct {
 	// The secret key of this committee member use for RMC.
 	RMCSecretKey *bn256.SecretKey
 
-	// The decryption key for decrypting messages.
-	DKey *bn256.SecretKey
+	// The key for generating keys for p2p communication.
+	P2PSecretKey *p2p.SecretKey
 }
 
 // Committee represents the public data about the committee known before the algorithm starts.
@@ -36,8 +37,8 @@ type Committee struct {
 	// Verification keys of all committee members use for RMC, ordered according to process ids.
 	RMCVerificationKeys []*bn256.VerificationKey
 
-	// Encryption keys of all committee members use for encrypting messages, ordered according to process ids.
-	EKeys []*bn256.VerificationKey
+	// PublicKeys of all committee members use for generating keys for p2p communication. Ordered according to process ids.
+	P2PPublicKeys []*p2p.PublicKey
 
 	// Addresses use for the setup phase, ordered as above.
 	SetupAddresses [][]string
@@ -75,7 +76,7 @@ func LoadMember(r io.Reader) (*Member, error) {
 	if !scanner.Scan() {
 		return nil, errors.New(malformedData)
 	}
-	dKey, err := bn256.DecodeSecretKey(scanner.Text())
+	sKey, err := p2p.DecodeSecretKey(scanner.Text())
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func LoadMember(r io.Reader) (*Member, error) {
 		Pid:          uint16(pid),
 		RMCSecretKey: secretKey,
 		PrivateKey:   privateKey,
-		DKey:         dKey,
+		P2PSecretKey: sKey,
 	}, nil
 }
 
@@ -100,9 +101,9 @@ func parseCommitteeLine(line string) (string, string, string, []string, []string
 	s := strings.Split(line, "|")
 
 	if len(s) < 5 {
-		return "", "", "", nil, nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|encryptionKey|setupAddresses|addresses")
+		return "", "", "", nil, nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|p2pPublicKey|setupAddresses|addresses")
 	}
-	pk, vk, ek, setupAddrs, addrs := s[0], s[1], s[2], s[3], s[4]
+	pk, vk, p2pPK, setupAddrs, addrs := s[0], s[1], s[2], s[3], s[4]
 	var errStrings []string
 	if len(pk) == 0 {
 		return "", "", "", nil, nil, errors.New(malformedData)
@@ -110,8 +111,8 @@ func parseCommitteeLine(line string) (string, string, string, []string, []string
 	if len(vk) == 0 {
 		errStrings = append(errStrings, "verification key should be non-empty")
 	}
-	if len(ek) == 0 {
-		errStrings = append(errStrings, "encryption key should be non-empty")
+	if len(p2pPK) == 0 {
+		errStrings = append(errStrings, "p2p public key should be non-empty")
 	}
 	setupAddrsList, addrsList := []string{}, []string{}
 	if setupAddrs != "" {
@@ -121,7 +122,7 @@ func parseCommitteeLine(line string) (string, string, string, []string, []string
 		addrsList = strings.Split(addrs, " ")
 	}
 	if errStrings == nil {
-		return pk, vk, ek, setupAddrsList, addrsList, nil
+		return pk, vk, p2pPK, setupAddrsList, addrsList, nil
 	}
 	return "", "", "", nil, nil, fmt.Errorf(strings.Join(errStrings, "\n"))
 }
@@ -132,11 +133,11 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 
 	publicKeys := []gomel.PublicKey{}
 	verificationKeys := []*bn256.VerificationKey{}
-	encryptionKeys := []*bn256.VerificationKey{}
+	p2pPublicKeys := []*p2p.PublicKey{}
 	sRemoteAddresses := [][]string{}
 	remoteAddresses := [][]string{}
 	for scanner.Scan() {
-		pk, vk, ek, setupAddresses, addresses, err := parseCommitteeLine(scanner.Text())
+		pk, vk, p2pPK, setupAddresses, addresses, err := parseCommitteeLine(scanner.Text())
 		if err != nil {
 			return nil, err
 		}
@@ -151,14 +152,14 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 			return nil, err
 		}
 
-		encryptionKey, err := bn256.DecodeVerificationKey(ek)
+		p2pPublicKey, err := p2p.DecodePublicKey(p2pPK)
 		if err != nil {
 			return nil, err
 		}
 
 		publicKeys = append(publicKeys, publicKey)
 		verificationKeys = append(verificationKeys, verificationKey)
-		encryptionKeys = append(encryptionKeys, encryptionKey)
+		p2pPublicKeys = append(p2pPublicKeys, p2pPublicKey)
 		if len(remoteAddresses) == 0 {
 			sRemoteAddresses = make([][]string, len(setupAddresses))
 			remoteAddresses = make([][]string, len(addresses))
@@ -180,7 +181,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 	return &Committee{
 		PublicKeys:          publicKeys,
 		RMCVerificationKeys: verificationKeys,
-		EKeys:               encryptionKeys,
+		P2PPublicKeys:       p2pPublicKeys,
 		Addresses:           remoteAddresses,
 		SetupAddresses:      sRemoteAddresses,
 	}, nil
@@ -204,7 +205,7 @@ func StoreMember(w io.Writer, m *Member) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.WriteString(w, m.DKey.Encode())
+	_, err = io.WriteString(w, m.P2PSecretKey.Encode())
 	if err != nil {
 		return err
 	}
@@ -262,7 +263,7 @@ func StoreCommittee(w io.Writer, c *Committee) error {
 		if err != nil {
 			return err
 		}
-		_, err = io.WriteString(w, c.EKeys[i].Encode())
+		_, err = io.WriteString(w, c.P2PPublicKeys[i].Encode())
 		if err != nil {
 			return err
 		}

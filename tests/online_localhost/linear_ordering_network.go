@@ -11,7 +11,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -40,13 +40,13 @@ func generateRMCKeys(nProcesses uint16) (sekKeys []*bn256.SecretKey, verKeys []*
 	return
 }
 
-func generateEncKeys(nProcesses uint16) (encKeys []encrypt.EncryptionKey, decKeys []encrypt.DecryptionKey) {
-	encKeys = make([]encrypt.EncryptionKey, 0, nProcesses)
-	decKeys = make([]encrypt.DecryptionKey, 0, nProcesses)
+func generateP2PKeys(nProcesses uint16) (p2pPubKeys []*p2p.PublicKey, p2pSecKeys []*p2p.SecretKey) {
+	p2pPubKeys = make([]*p2p.PublicKey, 0, nProcesses)
+	p2pSecKeys = make([]*p2p.SecretKey, 0, nProcesses)
 	for i := uint16(0); i < nProcesses; i++ {
-		encKey, decKey, _ := encrypt.GenerateKeys()
-		encKeys = append(encKeys, encKey)
-		decKeys = append(decKeys, decKey)
+		pubKey, secKey, _ := p2p.GenerateKeys()
+		p2pPubKeys = append(p2pPubKeys, pubKey)
+		p2pSecKeys = append(p2pSecKeys, secKey)
 	}
 	return
 }
@@ -78,8 +78,8 @@ func createAndStartProcess(
 	privKey gomel.PrivateKey,
 	verificationKeys []*bn256.VerificationKey,
 	secretKey *bn256.SecretKey,
-	eKeys []encrypt.EncryptionKey,
-	dKey encrypt.DecryptionKey,
+	p2pPubKeys []*p2p.PublicKey,
+	p2pSecKey *p2p.SecretKey,
 	userDB string,
 	maxLevel int,
 	finished *sync.WaitGroup,
@@ -89,12 +89,12 @@ func createAndStartProcess(
 		Pid:          id,
 		PrivateKey:   privKey,
 		RMCSecretKey: secretKey,
-		DKey:         dKey,
+		P2PSecretKey: p2pSecKey,
 	}
 	committee := config.Committee{
 		PublicKeys:          pubKeys,
 		RMCVerificationKeys: verificationKeys,
-		EKeys:               eKeys,
+		P2PPublicKeys:       p2pPubKeys,
 		SetupAddresses:      [][]string{setupAddresses, setupMCAddresses},
 		Addresses:           [][]string{addresses, mcAddresses},
 	}
@@ -235,13 +235,13 @@ func main() {
 	addresses, setupAddresses, mcAddresses, setupMCAddresses := generateLocalhostAddresses("localhost", *testSize)
 	pubKeys, privKeys := generateKeys(uint16(*testSize))
 	sekKeys, verKeys := generateRMCKeys(uint16(*testSize))
-	eKeys, dKeys := generateEncKeys(uint16(*testSize))
+	p2pPubKeys, p2pSecKeys := generateP2PKeys(uint16(*testSize))
 	dags := make([]gomel.Dag, int(*testSize))
 
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], eKeys, dKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *userDB, *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}

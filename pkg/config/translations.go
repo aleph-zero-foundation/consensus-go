@@ -108,18 +108,18 @@ func generateTxGenerateConfig(conf *Configuration) *TxGenerate {
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 	return Config{
-		Dag:         generateDagConfig(c),
-		Sync:        generateSyncConfig(conf, m, c),
-		SyncSetup:   generateSyncSetupConfig(conf, m, c),
-		Create:      generateCreateConfig(conf, m, c),
-		CreateSetup: generateCreateSetupConfig(conf, m, c),
-		Order:       generateOrderConfig(conf, m, c),
-		OrderSetup:  generateOrderSetupConfig(conf, m, c),
-		TxValidate:  generateTxValidateConfig(),
-		TxGenerate:  generateTxGenerateConfig(conf),
-		MemLog:      conf.LogMemInterval,
-		Setup:       conf.Setup,
-		EKeys:       c.EKeys,
-		DKey:        m.DKey,
+		Dag:           generateDagConfig(c),
+		Sync:          generateSyncConfig(conf, m, c),
+		SyncSetup:     generateSyncSetupConfig(conf, m, c),
+		Create:        generateCreateConfig(conf, m, c),
+		CreateSetup:   generateCreateSetupConfig(conf, m, c),
+		Order:         generateOrderConfig(conf, m, c),
+		OrderSetup:    generateOrderSetupConfig(conf, m, c),
+		TxValidate:    generateTxValidateConfig(),
+		TxGenerate:    generateTxGenerateConfig(conf),
+		MemLog:        conf.LogMemInterval,
+		Setup:         conf.Setup,
+		P2PPublicKeys: c.P2PPublicKeys,
+		P2PSecretKey:  m.P2PSecretKey,
 	}
 }

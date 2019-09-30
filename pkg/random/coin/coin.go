@@ -11,7 +11,7 @@ import (
 	"math/rand"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
@@ -52,16 +52,18 @@ func NewFixedCoin(nProc, pid uint16, seed int, shareProviders map[uint16]bool) g
 		coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Order)
 	}
 
-	eKeys := make([]encrypt.EncryptionKey, nProc)
-	dKeys := make([]encrypt.DecryptionKey, nProc)
+	sKeys := make([]*p2p.SecretKey, nProc)
+	pKeys := make([]*p2p.PublicKey, nProc)
 	for i := uint16(0); i < nProc; i++ {
-		eKeys[i], dKeys[i], _ = encrypt.GenerateKeys()
+		pKeys[i], sKeys[i], _ = p2p.GenerateKeys()
 	}
-
 	dealer := uint16(0)
+
+	p2pKeys, _ := p2p.Keys(sKeys[dealer], pKeys, dealer)
+
 	gtc := tcoin.NewGlobal(nProc, coeffs)
-	tc, _ := gtc.Encrypt(dealer, eKeys)
-	myTC, _ := tcoin.Decode(tc.Encode(), dealer, pid, dKeys[pid])
+	tc, _ := gtc.Encrypt(dealer, p2pKeys)
+	myTC, _, _ := tcoin.Decode(tc.Encode(), dealer, pid, p2pKeys[pid])
 
 	return New(nProc, pid, myTC, shareProviders)
 }

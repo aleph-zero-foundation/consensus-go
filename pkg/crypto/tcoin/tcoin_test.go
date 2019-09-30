@@ -3,6 +3,7 @@ package tcoin_test
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	. "gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 
 	. "github.com/onsi/ginkgo"
@@ -15,25 +16,31 @@ var _ = Describe("Tcoin", func() {
 		nonce        int
 		tcs          []*ThresholdCoin
 		coinShares   []*CoinShare
-		eKeys        []encrypt.EncryptionKey
-		dKeys        []encrypt.DecryptionKey
+		sKeys        []*p2p.SecretKey
+		pKeys        []*p2p.PublicKey
+		p2pKeys      [][]encrypt.SymmetricKey
 	)
 	Context("Between small number of processes", func() {
 		Describe("Coin shares", func() {
 			BeforeEach(func() {
 				n, t, dealer = 10, 3, 5
+
 				gtc := NewRandomGlobal(n, t)
 				tcs = make([]*ThresholdCoin, n)
-				eKeys = make([]encrypt.EncryptionKey, n)
-				dKeys = make([]encrypt.DecryptionKey, n)
+				sKeys = make([]*p2p.SecretKey, n)
+				pKeys = make([]*p2p.PublicKey, n)
+				p2pKeys = make([][]encrypt.SymmetricKey, n)
 				for i := uint16(0); i < n; i++ {
-					eKeys[i], dKeys[i], _ = encrypt.GenerateKeys()
+					pKeys[i], sKeys[i], _ = p2p.GenerateKeys()
 				}
-				tc, err := gtc.Encrypt(dealer, eKeys)
+				for i := uint16(0); i < n; i++ {
+					p2pKeys[i], _ = p2p.Keys(sKeys[i], pKeys, i)
+				}
+				tc, err := gtc.Encrypt(dealer, p2pKeys[dealer])
 				Expect(err).NotTo(HaveOccurred())
 				tcEncoded := tc.Encode()
 				for i := uint16(0); i < n; i++ {
-					tcs[i], err = Decode(tcEncoded, dealer, i, dKeys[i])
+					tcs[i], _, err = Decode(tcEncoded, dealer, i, p2pKeys[i][dealer])
 					Expect(err).NotTo(HaveOccurred())
 				}
 				nonce = 123
@@ -124,22 +131,26 @@ var _ = Describe("Tcoin", func() {
 			tcs = make([]*ThresholdCoin, n)
 			tcs1 = make([]*ThresholdCoin, n)
 			tcs2 = make([]*ThresholdCoin, n)
-			eKeys = make([]encrypt.EncryptionKey, n)
-			dKeys = make([]encrypt.DecryptionKey, n)
+			sKeys = make([]*p2p.SecretKey, n)
+			pKeys = make([]*p2p.PublicKey, n)
+			p2pKeys = make([][]encrypt.SymmetricKey, n)
 			for i := uint16(0); i < n; i++ {
-				eKeys[i], dKeys[i], _ = encrypt.GenerateKeys()
+				pKeys[i], sKeys[i], _ = p2p.GenerateKeys()
+			}
+			for i := uint16(0); i < n; i++ {
+				p2pKeys[i], _ = p2p.Keys(sKeys[i], pKeys, i)
 			}
 
 			gtc1 := NewRandomGlobal(n, t)
-			tc1, _ := gtc1.Encrypt(0, eKeys)
+			tc1, _ := gtc1.Encrypt(0, p2pKeys[0])
 			gtc2 := NewRandomGlobal(n, t)
-			tc2, _ := gtc2.Encrypt(0, eKeys)
+			tc2, _ := gtc2.Encrypt(1, p2pKeys[1])
 
 			tc1Encoded := tc1.Encode()
 			tc2Encoded := tc2.Encode()
 			for i := uint16(0); i < n; i++ {
-				tcs1[i], _ = Decode(tc1Encoded, 0, i, dKeys[i])
-				tcs2[i], _ = Decode(tc2Encoded, 0, i, dKeys[i])
+				tcs1[i], _, _ = Decode(tc1Encoded, 0, i, p2pKeys[i][0])
+				tcs2[i], _, _ = Decode(tc2Encoded, 1, i, p2pKeys[i][1])
 				tcs[i] = CreateMulticoin([]*ThresholdCoin{tcs1[i], tcs2[i]})
 			}
 			nonce = 123

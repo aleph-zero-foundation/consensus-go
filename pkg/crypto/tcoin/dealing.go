@@ -58,12 +58,8 @@ func (gtc *GlobalThresholdCoin) Encrypt(dealer uint16, encryptionKeys []encrypt.
 	nProc := uint16(len(encryptionKeys))
 	encSKs := make([]encrypt.CipherText, nProc)
 
-	// We encrypt (dealer, secretKey) to avoid the copying attack.
-	buf := make([]byte, 2)
-	binary.LittleEndian.PutUint16(buf, dealer)
 	for i := uint16(0); i < nProc; i++ {
-		skMarshalled := gtc.sks[i].Marshal()
-		encSK, err := encryptionKeys[i].Encrypt(append(buf, skMarshalled...))
+		encSK, err := encryptionKeys[i].Encrypt(gtc.sks[i].Marshal())
 		if err != nil {
 			return nil, err
 		}
@@ -117,80 +113,71 @@ func (tc *ThresholdCoin) Encode() []byte {
 	return data
 }
 
-// Decode decodes encoded ThresholdCoin obtained from the sender using given decryptionKey.
-func Decode(data []byte, sender, owner uint16, decryptionKey encrypt.SymmetricKey) (*ThresholdCoin, error) {
+// Decode decodes encoded ThresholdCoin obtained from the dealer using given decryptionKey.
+// It returns
+// (1) decoded ThresholdCoin,
+// (2) whether the owner's secretKey is correctly encoded and matches corresponding verification key,
+// (3) an error in decoding (excluding errors obtained while decoding owners secret key),
+func Decode(data []byte, dealer, owner uint16, decryptionKey encrypt.SymmetricKey) (*ThresholdCoin, bool, error) {
 	ind := 0
 	dataTooShort := errors.New("Decoding tcoin failed. Given bytes slice is too short")
 	if len(data) < ind+2 {
-		return nil, dataTooShort
+		return nil, false, dataTooShort
 	}
 	threshold := binary.LittleEndian.Uint16(data[:(ind + 2)])
 	ind += 2
 
 	if len(data) < ind+4 {
-		return nil, dataTooShort
+		return nil, false, dataTooShort
 	}
 	gvkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 	ind += 4
 	if len(data) < ind+gvkLen {
-		return nil, dataTooShort
+		return nil, false, dataTooShort
 	}
 	globalVK, err := new(bn256.VerificationKey).Unmarshal(data[ind:(ind + gvkLen)])
 	if err != nil {
-		return nil, errors.New("unmarshal of globalVK failed")
+		return nil, false, errors.New("unmarshal of globalVK failed")
 	}
 	ind += gvkLen
 
 	if len(data) < ind+4 {
-		return nil, dataTooShort
+		return nil, false, dataTooShort
 	}
 	nProcesses := uint16(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 	ind += 4
 	vks := make([]*bn256.VerificationKey, nProcesses)
 	for i := range vks {
 		if len(data) < ind+4 {
-			return nil, dataTooShort
+			return nil, false, dataTooShort
 		}
 		vkLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 		ind += 4
 		if len(data) < ind+vkLen {
-			return nil, dataTooShort
+			return nil, false, dataTooShort
 		}
 		vks[i], err = new(bn256.VerificationKey).Unmarshal(data[ind:(ind + vkLen)])
 		if err != nil {
-			return nil, errors.New("unmarshal of vk failed")
+			return nil, false, errors.New("unmarshal of vk failed")
 		}
 		ind += vkLen
 	}
 	encSKs := make([]encrypt.CipherText, nProcesses)
 	for i := range encSKs {
 		if len(data) < ind+4 {
-			return nil, dataTooShort
+			return nil, false, dataTooShort
 		}
 		skLen := int(binary.LittleEndian.Uint32(data[ind:(ind + 4)]))
 		ind += 4
 		if len(data) < ind+skLen {
-			return nil, dataTooShort
+			return nil, false, dataTooShort
 		}
 		encSKs[i] = data[ind:(ind + skLen)]
 		ind += skLen
 	}
 
-	decrypted, err := decryptionKey.Decrypt(encSKs[owner])
-	if err != nil {
-		return nil, err
-	}
-	if len(decrypted) < 2 {
-		return nil, dataTooShort
-	}
-	dealer := binary.LittleEndian.Uint16(decrypted[:2])
-	if dealer != sender {
-		return nil, errors.New("sender doesn't match with the dealer")
-	}
-	sk, err := new(bn256.SecretKey).Unmarshal(decrypted[2:])
-	if err != nil {
-		return nil, err
-	}
+	sk, err := decryptSecretKey(encSKs[owner], vks[owner], decryptionKey)
+
 	return &ThresholdCoin{
 		dealer:    dealer,
 		owner:     owner,
@@ -199,5 +186,28 @@ func Decode(data []byte, sender, owner uint16, decryptionKey encrypt.SymmetricKe
 		vks:       vks,
 		encSKs:    encSKs,
 		sk:        sk,
-	}, nil
+	}, (err == nil), nil
+}
+
+func decryptSecretKey(data []byte, vk *bn256.VerificationKey, decryptionKey encrypt.SymmetricKey) (*bn256.SecretKey, error) {
+	decrypted, err := decryptionKey.Decrypt(data)
+	if err != nil {
+		return nil, err
+	}
+
+	sk, err := new(bn256.SecretKey).Unmarshal(decrypted)
+	if err != nil {
+		return nil, err
+	}
+
+	if !bn256.VerifyKeys(vk, sk) {
+		return nil, errors.New("secret key doesn't match with the verification key")
+	}
+	return sk, nil
+}
+
+// CheckSecretKey checks whether the secret key of the given pid is correct.
+func (tc *ThresholdCoin) CheckSecretKey(pid uint16, decryptionKey encrypt.SymmetricKey) bool {
+	_, err := decryptSecretKey(tc.encSKs[pid], tc.vks[pid], decryptionKey)
+	return err == nil
 }
