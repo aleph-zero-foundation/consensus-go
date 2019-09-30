@@ -36,7 +36,7 @@ var _ = Describe("Tcoin", func() {
 				for i := uint16(0); i < n; i++ {
 					p2pKeys[i], _ = p2p.Keys(sKeys[i], pKeys, i)
 				}
-				tc, err := gtc.Encrypt(dealer, p2pKeys[dealer])
+				tc, err := gtc.Encrypt(p2pKeys[dealer])
 				Expect(err).NotTo(HaveOccurred())
 				tcEncoded := tc.Encode()
 				for i := uint16(0); i < n; i++ {
@@ -142,9 +142,9 @@ var _ = Describe("Tcoin", func() {
 			}
 
 			gtc1 := NewRandomGlobal(n, t)
-			tc1, _ := gtc1.Encrypt(0, p2pKeys[0])
+			tc1, _ := gtc1.Encrypt(p2pKeys[0])
 			gtc2 := NewRandomGlobal(n, t)
-			tc2, _ := gtc2.Encrypt(1, p2pKeys[1])
+			tc2, _ := gtc2.Encrypt(p2pKeys[1])
 
 			tc1Encoded := tc1.Encode()
 			tc2Encoded := tc2.Encode()

@@ -54,7 +54,7 @@ func NewRandomGlobal(nProc, threshold uint16) *GlobalThresholdCoin {
 
 // Encrypt encrypts secretKeys of the given GlobalThresholdCoin
 // using given set of encryptionKeys and returns a (unowned)ThresholdCoin.
-func (gtc *GlobalThresholdCoin) Encrypt(dealer uint16, encryptionKeys []encrypt.SymmetricKey) (*ThresholdCoin, error) {
+func (gtc *GlobalThresholdCoin) Encrypt(encryptionKeys []encrypt.SymmetricKey) (*ThresholdCoin, error) {
 	nProc := uint16(len(encryptionKeys))
 	encSKs := make([]encrypt.CipherText, nProc)
 

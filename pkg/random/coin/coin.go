@@ -62,7 +62,7 @@ func NewFixedCoin(nProc, pid uint16, seed int, shareProviders map[uint16]bool) g
 	p2pKeys, _ := p2p.Keys(sKeys[dealer], pKeys, dealer)
 
 	gtc := tcoin.NewGlobal(nProc, coeffs)
-	tc, _ := gtc.Encrypt(dealer, p2pKeys)
+	tc, _ := gtc.Encrypt(p2pKeys)
 	myTC, _, _ := tcoin.Decode(tc.Encode(), dealer, pid, p2pKeys[pid])
 
 	return New(nProc, pid, myTC, shareProviders)

@@ -277,7 +277,7 @@ func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) 
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
 		gtc := tcoin.NewRandomGlobal(nProc, nProc/3+1)
-		tc, err := gtc.Encrypt(b.pid, b.p2pKeys)
+		tc, err := gtc.Encrypt(b.p2pKeys)
 		if err != nil {
 			return nil, err
 		}
