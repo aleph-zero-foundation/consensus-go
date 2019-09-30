@@ -9,6 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -46,19 +47,21 @@ var _ = Describe("Beacon", func() {
 			Expect(err).NotTo(HaveOccurred())
 			dag[pid] = rs[pid].Bind(dag[pid])
 		}
-		// Generating very regular dag
-		for level := 0; level < maxLevel; level++ {
-			for creator := uint16(0); creator < n; creator++ {
-				pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
-				Expect(err).NotTo(HaveOccurred())
-				for pid := uint16(0); pid < n; pid++ {
-					_, err = gomel.AddUnit(dag[pid], pu)
-					Expect(err).NotTo(HaveOccurred())
-				}
-			}
-		}
 	})
 	Describe("Adding units", func() {
+		BeforeEach(func() {
+			// Generating very regular dag
+			for level := 0; level < maxLevel; level++ {
+				for creator := uint16(0); creator < n; creator++ {
+					pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
+					Expect(err).NotTo(HaveOccurred())
+					for pid := uint16(0); pid < n; pid++ {
+						_, err = gomel.AddUnit(dag[pid], pu)
+						Expect(err).NotTo(HaveOccurred())
+					}
+				}
+			}
+		})
 		Context("that are dealing, but without a tcoin included", func() {
 			It("Should return an error", func() {
 				u := dag[0].PrimeUnits(0).Get(0)[0]
@@ -110,7 +113,6 @@ var _ = Describe("Beacon", func() {
 				})
 			})
 		})
-
 		Context("that should contain shares", func() {
 			Context("Without random source data", func() {
 				It("Should return an error", func() {
@@ -144,7 +146,71 @@ var _ = Describe("Beacon", func() {
 			})
 		})
 	})
+
+	Context("When a malicious process sends wrong tcoin to one of the processes", func() {
+		var maliciousNode uint16
+		BeforeEach(func() {
+			maliciousNode = uint16(2)
+			dag[maliciousNode], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+			Expect(err).NotTo(HaveOccurred())
+			rs[maliciousNode] = &maliciousDealerSource{p2pKeys[maliciousNode]}
+			dag[maliciousNode] = rs[maliciousNode].Bind(dag[maliciousNode])
+			pu, _, err := creating.NewUnit(dag[maliciousNode], maliciousNode, []byte{}, rs[maliciousNode], false)
+
+			for pid := uint16(0); pid < n; pid++ {
+				if pid == maliciousNode {
+					continue
+				}
+				_, err = gomel.AddUnit(dag[pid], pu)
+				Expect(err).NotTo(HaveOccurred())
+			}
+		})
+		It("Honest nodes should build the dags without errors", func() {
+			for level := 0; level < maxLevel; level++ {
+				for creator := uint16(0); creator < n; creator++ {
+					if creator == maliciousNode {
+						continue
+					}
+					pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
+					for pid := uint16(0); pid < n; pid++ {
+						if pid == maliciousNode {
+							continue
+						}
+						_, err = gomel.AddUnit(dag[pid], pu)
+						Expect(err).NotTo(HaveOccurred())
+					}
+				}
+			}
+		})
+	})
 })
+
+type maliciousDealerSource struct {
+	keys []encrypt.SymmetricKey
+}
+
+func (ms *maliciousDealerSource) Bind(dag gomel.Dag) gomel.Dag {
+	return dag
+}
+
+func (ms *maliciousDealerSource) RandomBytes(_ uint16, _ int) []byte {
+	return []byte{}
+}
+
+func (ms *maliciousDealerSource) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
+	if level == 0 {
+		nProc := uint16(len(ms.keys))
+		gtc := tcoin.NewRandomGlobal(nProc, nProc/3+1)
+		tc, _ := gtc.Encrypt(ms.keys)
+		encoded := tc.Encode()
+		// forging last byte
+		encoded[len(encoded)-1]++
+		return encoded, nil
+	}
+	return nil, nil
+}
 
 type unitMock struct {
 	u      gomel.Unit
