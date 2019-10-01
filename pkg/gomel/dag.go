@@ -18,6 +18,8 @@ type Dag interface {
 	Emplace(Unit) Unit
 	// PrimeUnits returns all prime units on a given level of the dag.
 	PrimeUnits(int) SlottedUnits
+	// UnitsOnHeight returns all units on a given height of the dag.
+	UnitsOnHeight(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
 	// Get returns the units associated with the given hashes, in the same order.

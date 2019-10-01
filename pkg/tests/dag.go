@@ -74,6 +74,16 @@ func (dag *Dag) PrimeUnits(level int) gomel.SlottedUnits {
 	return nil
 }
 
+// UnitsOnHeight returns the units on the given height.
+func (dag *Dag) UnitsOnHeight(height int) gomel.SlottedUnits {
+	dag.RLock()
+	defer dag.RUnlock()
+	if height < len(dag.unitsByHeight) {
+		return dag.unitsByHeight[height]
+	}
+	return nil
+}
+
 // MaximalUnitsPerProcess returns the maximal units for all processes.
 func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	dag.RLock()

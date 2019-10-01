@@ -24,6 +24,7 @@ func (dag *dag) Check(gomel.Unit) error {
 
 func (dag *dag) Emplace(u gomel.Unit) gomel.Unit {
 	result := emplaced(u, dag)
+	dag.updateUnitsOnHeight(u)
 	if gomel.Prime(result) {
 		dag.addPrime(result)
 	}
@@ -36,7 +37,7 @@ func (dag *dag) addPrime(u gomel.Unit) {
 	if u.Level() >= dag.primeUnits.Len() {
 		dag.primeUnits.extendBy(10)
 	}
-	su, _ := dag.primeUnits.getLevel(u.Level())
+	su, _ := dag.primeUnits.getFiber(u.Level())
 	creator := u.Creator()
 	oldPrimes := su.Get(creator)
 	primesByCreator := make([]gomel.Unit, len(oldPrimes), len(oldPrimes)+1)
@@ -57,4 +58,19 @@ func (dag *dag) updateMaximal(u gomel.Unit) {
 	}
 	newMaxByCreator = append(newMaxByCreator, u)
 	dag.maxUnits.Set(creator, newMaxByCreator)
+}
+
+func (dag *dag) updateUnitsOnHeight(u gomel.Unit) {
+	height := u.Height()
+	creator := u.Creator()
+	if height >= dag.heightUnits.Len() {
+		dag.heightUnits.extendBy(10)
+	}
+	su, _ := dag.heightUnits.getFiber(height)
+
+	oldUnitsOnHeightByCreator := su.Get(creator)
+	unitsOnHeightByCreator := make([]gomel.Unit, len(oldUnitsOnHeightByCreator), len(oldUnitsOnHeightByCreator)+1)
+	copy(unitsOnHeightByCreator, oldUnitsOnHeightByCreator)
+	unitsOnHeightByCreator = append(unitsOnHeightByCreator, u)
+	su.Set(creator, unitsOnHeightByCreator)
 }
