@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NODES=$(expr ${1:-8})
+NODES=$(expr ${1:-4})
 HOSTNAME=$(hostname -i)
 
 for i in $(seq 1 $NODES)

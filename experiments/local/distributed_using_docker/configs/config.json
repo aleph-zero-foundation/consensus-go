@@ -1,5 +1,5 @@
 {
-  "NParents": 8,
+  "NParents": 4,
   "PrimeOnly": true,
   "CanSkipLevel": true,
   "CreateDelay": 0.2,

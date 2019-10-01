@@ -1,5 +1,5 @@
 {
-  "NParents": 2,
+  "NParents": 4,
   "PrimeOnly": true,
   "CanSkipLevel": true,
   "CreateDelay": 0.1,
@@ -10,7 +10,7 @@
       "Params": {
         "nIn": "3",
         "nOut": "2",
-        "timeout": "2"
+        "timeout": "2s"
       },
       "Fallback": ""
     }
@@ -22,7 +22,7 @@
   "LogLevel": 1,
   "LogBuffer": 100000,
   "LogMemInterval": 10,
-  "LogHuman": true,
+  "LogHuman": false,
   "OrderStartLevel": 0,
   "CRPFixedPrefix": 5
 }
