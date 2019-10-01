@@ -14,7 +14,7 @@
         "retryingFallback": "fetch",
         "retryingInterval": "0.1"
       },
-      "Fallback": "retrying"
+      "Fallback": "fetch"
     },
     {
       "Type": "multicast",
@@ -22,7 +22,7 @@
         "mcType": "tcp",
         "timeout": "2s"
       },
-      "Fallback": "retrying"
+      "Fallback": "fetch"
     }
   ],
   "Setup": "coin",
