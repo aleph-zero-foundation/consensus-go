@@ -9,6 +9,18 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
+func isDealing(pu gomel.Preunit, nProc uint16) bool {
+	if len(pu.Parents()) != int(nProc) {
+		return false
+	}
+	for _, p := range pu.Parents() {
+		if p != nil {
+			return false
+		}
+	}
+	return true
+}
+
 var _ = Describe("Creating", func() {
 	Describe("in a small dag", func() {
 		var (
@@ -31,10 +43,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(uint16(len(pu.Parents()))).To(Equal(dag.NProc()))
-					for i := uint16(0); i < dag.NProc(); i++ {
-						Expect(pu.Parents()[i]).To(BeNil())
-					}
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 			})
 			Context("that contains a single dealing unit", func() {
@@ -47,10 +56,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(uint16(len(pu.Parents()))).To(Equal(dag.NProc()))
-					for i := uint16(0); i < dag.NProc(); i++ {
-						Expect(pu.Parents()[i]).To(BeNil())
-					}
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 				It("should fail due to not enough parents for the same creator", func() {
 					_, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
@@ -109,10 +115,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(uint16(len(pu.Parents()))).To(Equal(dag.NProc()))
-					for i := uint16(0); i < dag.NProc(); i++ {
-						Expect(pu.Parents()[i]).To(BeNil())
-					}
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 			})
 			Context("that contains a single dealing unit", func() {
@@ -125,10 +128,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(uint16(len(pu.Parents()))).To(Equal(dag.NProc()))
-					for i := uint16(0); i < dag.NProc(); i++ {
-						Expect(pu.Parents()[i]).To(BeNil())
-					}
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 				It("should fail due to not enough parents for the same creator", func() {
 					_, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)

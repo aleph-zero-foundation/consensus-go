@@ -18,7 +18,7 @@ func brutalBelowWithinProc(u, v gomel.Unit) bool {
 	if v == nil {
 		return false
 	}
-	return v == u
+	return *v.Hash() == *u.Hash()
 }
 
 func (u *unit) belowWithinProc(v gomel.Unit) (bool, error) {
