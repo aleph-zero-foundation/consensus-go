@@ -9,6 +9,18 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
+func isDealing(pu gomel.Preunit, nProc uint16) bool {
+	if len(pu.ParentsHeights()) != int(nProc) {
+		return false
+	}
+	for _, h := range pu.ParentsHeights() {
+		if p != -1 {
+			return false
+		}
+	}
+	return true
+}
+
 var _ = Describe("Creating", func() {
 	Describe("in a small dag", func() {
 		var (
@@ -31,7 +43,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(pu.ParentsHeights()).To(Equal(gomel.DealingHeights(10)))
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 			})
 			Context("that contains a single dealing unit", func() {
@@ -44,7 +56,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(pu.ParentsHeights()).To(Equal(gomel.DealingHeights(10)))
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 				It("should fail due to not enough parents for the same creator", func() {
 					_, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
@@ -109,7 +121,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(pu.ParentsHeights()).To(Equal(gomel.DealingHeights(10)))
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 			})
 			Context("that contains a single dealing unit", func() {
@@ -122,7 +134,7 @@ var _ = Describe("Creating", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(level).To(Equal(0))
 					Expect(pu.Creator()).To(Equal(uint16(3)))
-					Expect(pu.ParentsHeights()).To(Equal(gomel.DealingHeights(10)))
+					Expect(isDealing(pu, dag.NProc())).To(BeTrue())
 				})
 				It("should fail due to not enough parents for the same creator", func() {
 					_, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
