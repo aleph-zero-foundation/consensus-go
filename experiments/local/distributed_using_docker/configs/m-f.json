@@ -17,7 +17,7 @@
     {
       "Type": "multicast",
       "Params": {
-        "mcType": "tcp",
+        "network": "tcp",
         "timeout": "2s"
       },
       "Fallback": "fetch"

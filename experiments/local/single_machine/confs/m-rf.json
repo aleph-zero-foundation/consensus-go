@@ -11,15 +11,14 @@
         "nIn": "3",
         "nOut": "2",
         "timeout": "2s",
-        "retryingFallback": "fetch",
-        "retryingInterval": "0.1"
       },
-      "Fallback": "fetch"
+      "Fallback": "fetch",
+      "Retry": "0.1s"
     },
     {
       "Type": "multicast",
       "Params": {
-        "mcType": "tcp",
+        "network": "tcp",
         "timeout": "2s"
       },
       "Fallback": "fetch"

@@ -3,7 +3,7 @@
 
 		"PrimeOnly": true,
 
-        "CanSkipLevel": true, 
+        "CanSkipLevel": true,
 
 		"CreateDelay": 0.2,
 
@@ -29,10 +29,9 @@
             "Params": {
                 "mcType": "pers",
                 "timeout": "2s",
-                "retryingFallback": "fetch",
-                "retryingInterval": "0.2s"
             },
-            "Fallback": "retrying"
+            "Fallback": "fetch",
+            "Retry": "0.2s"
         }],
 
         "Setup": "coin",

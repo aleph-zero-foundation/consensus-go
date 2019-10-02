@@ -11,18 +11,17 @@
         "nIn": "3",
         "nOut": "2",
         "timeout": "2s",
-        "retryingFallback": "fetch",
-        "retryingInterval": "0.1"
       },
-      "Fallback": "retrying"
+      "Fallback": "fetch",
+      "Retry": "0.1s"
     },
     {
       "Type": "multicast",
       "Params": {
-        "mcType": "tcp",
+        "network": "tcp",
         "timeout": "2s"
       },
-      "Fallback": "retrying"
+      "Fallback": "fetch"
     }
   ],
   "Setup": "coin",

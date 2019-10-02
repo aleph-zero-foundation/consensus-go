@@ -26,12 +26,11 @@
     {
       "Type": "multicast",
       "Params": {
-        "mcType": "pers",
+        "network": "pers",
         "timeout": "2s",
-        "retryingFallback": "fetch",
-        "retryingInterval": "0.2s"
       },
-      "Fallback": "fetch"
+      "Fallback": "fetch",
+      "Retry": "0.2s"
     }
   ],
   "Setup": "coin",
