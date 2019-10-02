@@ -1,0 +1,15 @@
+version: '3'
+services:
+  node:
+    build: .
+    image: aleph:test
+    environment:
+      - GOPATH
+      - SLOT={{.Task.Slot}}
+    tty: true
+    cap_add:
+    - NET_ADMIN
+    deploy:
+      replicas: 4
+    command:
+      /work/run.sh /work/code /work/keys /work/configs g
