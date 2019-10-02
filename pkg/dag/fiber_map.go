@@ -39,27 +39,43 @@ func newFiberMap(width uint16, initialLen int) *fiberMap {
 	return newMap
 }
 
-func (lm *fiberMap) getFiber(value int) (gomel.SlottedUnits, error) {
-	lm.mx.RLock()
-	defer lm.mx.RUnlock()
-	result, ok := lm.content[value]
+func (fm *fiberMap) getFiber(value int) (gomel.SlottedUnits, error) {
+	fm.mx.RLock()
+	defer fm.mx.RUnlock()
+	result, ok := fm.content[value]
 	if !ok {
 		return nil, newNoSuchValueError(value)
 	}
 	return result, nil
 }
 
-func (lm *fiberMap) Len() int {
-	lm.mx.RLock()
-	defer lm.mx.RUnlock()
-	return lm.length
+func (fm *fiberMap) Len() int {
+	fm.mx.RLock()
+	defer fm.mx.RUnlock()
+	return fm.length
 }
 
-func (lm *fiberMap) extendBy(nValues int) {
-	lm.mx.Lock()
-	defer lm.mx.Unlock()
-	for i := lm.length; i < lm.length+nValues; i++ {
-		lm.content[i] = newSlottedUnits(lm.width)
+func (fm *fiberMap) extendBy(nValues int) {
+	fm.mx.Lock()
+	defer fm.mx.Unlock()
+	for i := fm.length; i < fm.length+nValues; i++ {
+		fm.content[i] = newSlottedUnits(fm.width)
 	}
-	lm.length += nValues
+	fm.length += nValues
+}
+
+func (fm *fiberMap) get(heights []int) [][]gomel.Unit {
+	fm.mx.RLock()
+	defer fm.mx.RUnlock()
+	nProc := len(heights)
+	result := make([][]gomel.Unit, nProc)
+	for pid, h := range heights {
+		if h == -1 {
+			continue
+		}
+		if su, ok := fm.content[h]; ok {
+			result[pid] = su.Get(uint16(pid))
+		}
+	}
+	return result
 }

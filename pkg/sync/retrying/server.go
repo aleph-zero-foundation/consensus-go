@@ -19,7 +19,6 @@ type server struct {
 	interval time.Duration
 	inner    gsync.Fallback
 	backlog  *backlog
-	deps     *dependencies
 	quit     int32
 	wg       sync.WaitGroup
 	log      zerolog.Logger
@@ -32,7 +31,6 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, inter
 		adder:   adder,
 		inner:   fallback,
 		backlog: newBacklog(),
-		deps:    newDeps(),
 		log:     log,
 	}
 	return s, s
@@ -57,25 +55,12 @@ func (f *server) Stop() {
 }
 
 func (f *server) addToBacklog(pu gomel.Preunit) bool {
-	hashes := pu.Parents()
-	parents := f.dag.Get(hashes)
-	missing := []*gomel.Hash{}
-	for i, h := range hashes {
-		if parents[i] == nil && hashes[i] != nil {
-			missing = append(missing, h)
-		}
-	}
-	if len(missing) == 0 {
+	if haveParents(pu, f.dag) {
 		// we got the parents in the meantime, all is fine
 		add.Unit(f.adder, pu, f.inner, "retrying.addToBacklog", f.log)
 		return false
 	}
-	// The code below has the invariant that if a unit is in dependencies, then it is also in the backlog.
-	if !f.backlog.add(pu) {
-		return false
-	}
-	f.deps.add(pu.Hash(), missing)
-	return true
+	return f.backlog.add(pu)
 }
 
 func (f *server) work() {
@@ -88,16 +73,27 @@ func (f *server) work() {
 }
 
 func (f *server) update() {
-	presentHashes := f.deps.scan(f.dag)
-	for len(presentHashes) != 0 {
-		addableHashes := f.deps.satisfy(presentHashes)
-		for _, h := range addableHashes {
-			// There is no need for nil checks, because of the invariant mentioned above.
-			pu := f.backlog.get(h)
+	toDelete := []*gomel.Hash{}
+	f.backlog.refallback(func(pu gomel.Preunit) {
+		if haveParents(pu, f.dag) {
 			add.Unit(f.adder, pu, f.inner, "retrying.update", f.log)
-			f.backlog.del(h)
-			f.log.Info().Str(logging.Hash, gomel.Nickname(pu)).Msg(logging.RemovedFromBacklog)
+			toDelete = append(toDelete, pu.Hash())
 		}
-		presentHashes = addableHashes
+	})
+	for _, h := range toDelete {
+		f.backlog.del(h)
 	}
+}
+
+func haveParents(pu gomel.Preunit, dag gomel.Dag) bool {
+	for i, h := range pu.ParentsHeights() {
+		if h == -1 {
+			continue
+		}
+
+		if dh := dag.UnitsOnHeight(h); dh == nil || dh.Get(uint16(i)) == nil {
+			return false
+		}
+	}
+	return true
 }

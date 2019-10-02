@@ -38,16 +38,15 @@ func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
 }
 
 func pre(u gomel.Unit) gomel.Preunit {
-	parents := u.Parents()
-	hashes := make([]*gomel.Hash, len(parents))
-	for i := 0; i < len(parents); i++ {
-		if parents[i] != nil {
-			hashes[i] = parents[i].Hash()
+	parentsHeights := make([]int, len(u.Parents()))
+	for i, p := range u.Parents() {
+		if p == nil {
+			parentsHeights[i] = -1
 		} else {
-			hashes[i] = nil
+			parentsHeights[i] = p.Height()
 		}
 	}
-	pu := creating.NewPreunit(u.Creator(), hashes, u.Data(), u.RandomSourceData())
+	pu := creating.NewPreunit(u.Creator(), u.ControlHash(), parentsHeights, u.Data(), u.RandomSourceData())
 	pu.SetSignature(u.Signature())
 	return pu
 }

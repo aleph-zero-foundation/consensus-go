@@ -1,6 +1,11 @@
 package gomel
 
-import "encoding/base64"
+import (
+	"bytes"
+	"encoding/base64"
+
+	"golang.org/x/crypto/sha3"
+)
 
 // Hash is a type storing hash values, usually used to identify units.
 type Hash [32]byte
@@ -41,3 +46,20 @@ func (h *Hash) XOREqual(k *Hash) {
 
 // ZeroHash is a hash containing zeros at all 32 positions.
 var ZeroHash Hash
+
+// CombineHashes computes hash from sequence of hashes.
+func CombineHashes(hashes []*Hash) *Hash {
+	var (
+		result Hash
+		data   bytes.Buffer
+	)
+	for _, h := range hashes {
+		if h != nil {
+			data.Write(h[:])
+		} else {
+			data.Write(ZeroHash[:])
+		}
+	}
+	sha3.ShakeSum128(result[:], data.Bytes())
+	return &result
+}

@@ -1,6 +1,8 @@
 package dag
 
 import (
+	"errors"
+
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -11,11 +13,56 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	if u := dag.Get([]*gomel.Hash{pu.Hash()}); u[0] != nil {
 		return nil, gomel.NewDuplicateUnit(u[0])
 	}
-	possibleParents, unknown := dag.units.get(pu.Parents())
-	if unknown > 0 {
+	possibleParents := dag.heightUnits.get(pu.ParentsHeights())
+	parents, err := filterByCommitment(possibleParents, pu.Creator())
+	if err != nil {
+		return nil, err
+	}
+
+	if unknown := countUnknown(parents, pu.ParentsHeights()); unknown > 0 {
 		return nil, gomel.NewUnknownParents(unknown)
 	}
-	return newUnit(pu, possibleParents, dag.nProcesses), nil
+
+	if *gomel.CombineHashes(toHashes(parents)) != *pu.ControlHash() {
+		return nil, errors.New("wrong control hash")
+	}
+
+	return newUnit(pu, parents, dag.nProcesses), nil
+}
+
+func toHashes(units []gomel.Unit) []*gomel.Hash {
+	result := make([]*gomel.Hash, len(units))
+	for i, u := range units {
+		if u != nil {
+			result[i] = u.Hash()
+		}
+	}
+	return result
+}
+
+func countUnknown(parents []gomel.Unit, heights []int) int {
+	unknown := 0
+	for i, h := range heights {
+		if h != -1 && parents[i] == nil {
+			unknown++
+		}
+	}
+	return unknown
+}
+
+func filterByCommitment(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
+	nProc := len(units)
+	result := make([]gomel.Unit, nProc)
+
+	for i, us := range units {
+		if us != nil {
+			result[i] = us[0]
+		}
+		if len(us) > 1 {
+			return nil, errors.New("ambiguous parents")
+		}
+	}
+	return result, nil
 }
 
 func (dag *dag) Check(gomel.Unit) error {
@@ -24,7 +71,7 @@ func (dag *dag) Check(gomel.Unit) error {
 
 func (dag *dag) Emplace(u gomel.Unit) gomel.Unit {
 	result := emplaced(u, dag)
-	dag.updateUnitsOnHeight(u)
+	dag.updateUnitsOnHeight(result)
 	if gomel.Prime(result) {
 		dag.addPrime(result)
 	}

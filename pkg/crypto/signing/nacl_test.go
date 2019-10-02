@@ -27,7 +27,8 @@ var _ = Describe("Signatures", func() {
 		Describe("Checking signatures of preunits", func() {
 
 			BeforeEach(func() {
-				pu = tests.NewPreunit(0, []*gomel.Hash{}, []byte{}, nil)
+				n := uint16(10)
+				pu = tests.NewPreunit(0, make([]*gomel.Hash, n), gomel.DealingHeights(n), []byte{}, nil)
 				sig = priv.Sign(pu)
 				pu.SetSignature(sig)
 			})

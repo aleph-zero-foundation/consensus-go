@@ -237,39 +237,6 @@ var _ = Describe("Protocol", func() {
 				}
 			})
 		})
-		Context("when trolled by a forker", func() {
-
-			BeforeEach(func() {
-				dags = []gomel.Dag{}
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view1.txt", tests.NewTestDagFactory())
-				dags = append(dags, tdag)
-				for i := 1; i < 4; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
-					dags = append(dags, tdag)
-				}
-			})
-
-			// This behaviour is expected by the current design of the protocol.
-			// However this gives an opportunity to a malicious node to enforce
-			// huge exchanges between honest nodes.
-			It("should add all units", func() {
-				time.Sleep(time.Millisecond * 200)
-				for i := 0; i < 4; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
-					servs[i].StopIn()
-				}
-				for i := 0; i < 4; i++ {
-					adders[i].removeDuplicates()
-				}
-				for i := 1; i < 4; i++ {
-					Expect(adders[i].attemptedAdd).To(HaveLen(3))
-				}
-			})
-		})
-
 	})
 
 })

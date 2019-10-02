@@ -5,6 +5,7 @@
 package tests
 
 import (
+	"errors"
 	"sort"
 	"sync"
 
@@ -122,24 +123,60 @@ func (dag *Dag) IsQuorum(number uint16) bool {
 	return 3*number >= 2*dag.nProcesses
 }
 
+func tryAllSubsets(units [][]gomel.Unit, pu gomel.Preunit) ([]gomel.Unit, error) {
+	nProc := len(units)
+	answer := make([]gomel.Unit, nProc)
+	hashes := make([]*gomel.Hash, nProc)
+	var rec func(int) bool
+	rec = func(ind int) bool {
+		if ind == nProc {
+			if *pu.ControlHash() == *gomel.CombineHashes(hashes) {
+				return true
+			}
+			return false
+		}
+		if pu.ParentsHeights()[ind] == -1 {
+			return rec(ind + 1)
+		}
+		for _, u := range units[ind] {
+			answer[ind] = u
+			hashes[ind] = u.Hash()
+			if rec(ind + 1) {
+				return true
+			}
+			hashes[ind] = nil
+		}
+		return false
+	}
+	if rec(0) {
+		return answer, nil
+	}
+	return nil, errors.New("wrong control hash")
+}
+
 func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
 	dag.RLock()
 	defer dag.RUnlock()
-	u.parents = make([]gomel.Unit, dag.NProc())
+	possibleParents := make([][]gomel.Unit, dag.NProc())
 	unknown := 0
-	for i, parentHash := range pu.Parents() {
-		if parentHash == nil {
+	for i, parentHeight := range pu.ParentsHeights() {
+		if parentHeight == -1 {
 			continue
 		}
-		if _, ok := dag.unitByHash[*parentHash]; !ok {
+		su := dag.unitsByHeight[parentHeight]
+		possibleParents[i] = su.Get(uint16(i))
+		if possibleParents[i] == nil {
 			unknown++
-		} else {
-			u.parents[i] = dag.unitByHash[*parentHash]
 		}
 	}
 	if unknown > 0 {
 		return gomel.NewUnknownParents(unknown)
 	}
+	parents, err := tryAllSubsets(possibleParents, pu)
+	if err != nil {
+		return err
+	}
+	u.parents = parents
 	return nil
 }
 

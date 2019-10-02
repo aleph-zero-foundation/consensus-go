@@ -59,7 +59,7 @@ func (u *freeUnit) Hash() *gomel.Hash {
 }
 
 func (u *freeUnit) ControlHash() *gomel.Hash {
-	return &u.hash
+	return &u.controlHash
 }
 
 func (u *freeUnit) Parents() []gomel.Unit {
@@ -204,7 +204,7 @@ func (u *unit) Hash() *gomel.Hash {
 }
 
 func (u *unit) ControlHash() *gomel.Hash {
-	return &u.hash
+	return &u.controlHash
 }
 
 func (u *unit) Parents() []gomel.Unit {
