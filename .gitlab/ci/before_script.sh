@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 GOPATH=$1
 MAIN_FOLDER=$2

@@ -43,7 +43,7 @@ func runOfflineTest() {
 		verifier,
 	)
 
-	if err := helpers.Test(pubKeys, privKeys, testingRoutine); err != nil {
+	if err := helpers.Test(pubKeys, privKeys, helpers.NewDefaultConfigurations(nProcesses), testingRoutine); err != nil {
 		fmt.Println("test failed")
 	}
 }

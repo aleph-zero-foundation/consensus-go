@@ -3,6 +3,7 @@
 # Code coverage generation
 #
 # parameters: <required pkg name> <required coverage output file> <optional html output file>
+set -e
 
 PKG=$1
 COV_FILE=$2

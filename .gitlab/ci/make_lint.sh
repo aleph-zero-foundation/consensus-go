@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # parameters: <required linter output file>
+set -e
 
 PKG=$1
 LINTER_OUTPUT=$2
