@@ -51,8 +51,8 @@ included a script that tries to clean after each test execution, that is `docker
    which you are going to build
 5. start image registry: `docker service create --name registry --publish published=5000,target=5000 registry:2`. Your docker
    image will be stored in it.
-6. build image: `docker build -t localhost:5000/aleph:test .`
-7. push your image to local registry: `docker push localhost:5000/aleph:test`
+6. build image: `docker build -t $(hostname -i | awk '{print $1}'):5000/aleph:test .`
+7. push your image to local registry: `docker push $(hostname -i | awk '{print $1}'):5000/aleph:test`
 8. you are ready to go: execute `./spawn.sh`. It starts all (8) services
 
 If you want to enforce a worker on which a service should be executed, modify `spawn.sh` or execute manually 

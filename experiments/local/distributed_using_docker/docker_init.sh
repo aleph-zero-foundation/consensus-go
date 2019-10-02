@@ -16,7 +16,7 @@ docker service create --name registry --publish published=5000,target=5000 regis
 set -e
 
 echo "building docker image"
-HOSTNAME=$(hostname -i)
+HOSTNAME=$(hostname -i | awk '{print $1}')
 docker build -t ${HOSTNAME}:5000/aleph:test .
 
 echo "pushing docker image into local repository"

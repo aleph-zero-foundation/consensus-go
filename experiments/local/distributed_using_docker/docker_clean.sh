@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NODES=$(expr ${1:-4})
-HOSTNAME=$(hostname -i)
+HOSTNAME=$(hostname -i | awk '{print $1}')
 
 for i in $(seq 1 $NODES)
 do
