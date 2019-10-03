@@ -7,6 +7,10 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
+import (
+	"errors"
+)
+
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
 	// Decode attempts to decode the given Preunit and return a Unit or an error, when that is impossible.
@@ -34,4 +38,60 @@ type Dag interface {
 // IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
 func IsQuorum(nProcesses, subsetSize uint16) bool {
 	return 3*subsetSize >= 2*nProcesses
+}
+
+// GetByControlHash searches the dag for a sequence of NProc units
+// created by different processes, such that their heights and a controlHash
+// matches with the given arguments.
+// If there is no valid sequence of units it returns an error.
+// This implementation checks among all the possibilities between the forks,
+// which might be a very expensive computation.
+func GetByControlHash(dag Dag, heights []int, controlHash *Hash) ([]Unit, error) {
+	possibleUnits := make([][]Unit, dag.NProc())
+	unknown := 0
+	for i, h := range heights {
+		if h == -1 {
+			continue
+		}
+		su := dag.UnitsOnHeight(h)
+		possibleUnits[i] = su.Get(uint16(i))
+		if possibleUnits[i] == nil {
+			unknown++
+		}
+	}
+	if unknown > 0 {
+		return nil, NewUnknownParents(unknown)
+	}
+	return getTraversal(possibleUnits, heights, controlHash)
+}
+
+func getTraversal(units [][]Unit, heights []int, hash *Hash) ([]Unit, error) {
+	nProc := len(units)
+	answer := make([]Unit, nProc)
+	hashes := make([]*Hash, nProc)
+	var rec func(int) bool
+	rec = func(ind int) bool {
+		if ind == nProc {
+			if *hash == *CombineHashes(hashes) {
+				return true
+			}
+			return false
+		}
+		if heights[ind] == -1 {
+			return rec(ind + 1)
+		}
+		for _, u := range units[ind] {
+			answer[ind] = u
+			hashes[ind] = u.Hash()
+			if rec(ind + 1) {
+				return true
+			}
+			hashes[ind] = nil
+		}
+		return false
+	}
+	if rec(0) {
+		return answer, nil
+	}
+	return nil, errors.New("wrong control hash")
 }

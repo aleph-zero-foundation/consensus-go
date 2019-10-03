@@ -14,7 +14,7 @@ func isDealing(pu gomel.Preunit, nProc uint16) bool {
 		return false
 	}
 	for _, h := range pu.ParentsHeights() {
-		if p != -1 {
+		if h != -1 {
 			return false
 		}
 	}
