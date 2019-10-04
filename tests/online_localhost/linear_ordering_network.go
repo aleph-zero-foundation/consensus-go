@@ -116,6 +116,9 @@ func collectUnits(dag gomel.Dag) map[gomel.Unit]bool {
 	dfs = func(u gomel.Unit) {
 		seenUnits[u] = true
 		for _, uParent := range u.Parents() {
+			if uParent == nil {
+				continue
+			}
 			if !seenUnits[uParent] {
 				dfs(uParent)
 			}

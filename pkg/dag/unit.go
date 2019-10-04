@@ -10,27 +10,31 @@ import (
 // It performs some of the necessary computations (floor, level and height)
 // lazily, on demand.
 type freeUnit struct {
-	nProc     uint16
-	creator   uint16
-	signature gomel.Signature
-	hash      gomel.Hash
-	parents   []gomel.Unit
-	data      []byte
-	rsData    []byte
-	height    *int
-	level     *int
-	floor     [][]gomel.Unit
+	nProc       uint16
+	creator     uint16
+	signature   gomel.Signature
+	hash        gomel.Hash
+	controlHash gomel.Hash
+	parents     []gomel.Unit
+	data        []byte
+	rsData      []byte
+	height      int
+	level       int
+	floor       [][]gomel.Unit
 }
 
 func newUnit(pu gomel.Preunit, parents []gomel.Unit, nProc uint16) *freeUnit {
 	return &freeUnit{
-		nProc:     nProc,
-		creator:   pu.Creator(),
-		signature: pu.Signature(),
-		hash:      *pu.Hash(),
-		parents:   parents,
-		data:      pu.Data(),
-		rsData:    pu.RandomSourceData(),
+		nProc:       nProc,
+		creator:     pu.Creator(),
+		signature:   pu.Signature(),
+		hash:        *pu.Hash(),
+		controlHash: *pu.ControlHash(),
+		parents:     parents,
+		data:        pu.Data(),
+		rsData:      pu.RandomSourceData(),
+		height:      -1,
+		level:       -1,
 	}
 }
 
@@ -54,76 +58,38 @@ func (u *freeUnit) Hash() *gomel.Hash {
 	return &u.hash
 }
 
+func (u *freeUnit) ControlHash() *gomel.Hash {
+	return &u.hash
+}
+
 func (u *freeUnit) Parents() []gomel.Unit {
 	return u.parents
 }
 
 func (u *freeUnit) Height() int {
-	if u.height == nil {
+	if u.height == -1 {
 		u.computeHeight()
 	}
-	return *u.height
+	return u.height
 }
 
 func (u *freeUnit) computeHeight() {
-	u.height = new(int)
 	if gomel.Dealing(u) {
-		*u.height = 0
+		u.height = 0
 	} else {
-		predecessor, _ := gomel.Predecessor(u)
-		*u.height = predecessor.Height() + 1
+		u.height = gomel.Predecessor(u).Height() + 1
 	}
 }
 
 func (u *freeUnit) Level() int {
-	if u.level == nil {
+	if u.level == -1 {
 		u.computeLevel()
 	}
-	return *u.level
+	return u.level
 }
 
 func (u *freeUnit) computeLevel() {
-	u.level = new(int)
-	if gomel.Dealing(u) {
-		*u.level = 0
-		return
-	}
-
-	// compliant unit have parents in ascending order of level
-	maxLevelParents := u.parents[len(u.parents)-1].Level()
-
-	level := maxLevelParents
-	nSeen := uint16(0)
-
-	// we should consider our self predecessor
-	// it assumes that this unit is not an evidence of self-forking
-	if pred, err := gomel.Predecessor(u); err == nil && pred.Level() == maxLevelParents {
-		nSeen++
-	}
-	creator := u.Creator()
-	hasQuorum := gomel.IsQuorum(u.nProc, nSeen)
-	for pid, vs := range u.Floor() {
-		pid := uint16(pid)
-		if pid == creator {
-			continue
-		}
-
-		for _, unit := range vs {
-			if unit.Level() == maxLevelParents {
-				nSeen++
-				if gomel.IsQuorum(u.nProc, nSeen) {
-					level = maxLevelParents + 1
-					hasQuorum = true
-				}
-				break
-			}
-		}
-
-		if hasQuorum || !gomel.IsQuorum(u.nProc, nSeen+(u.nProc-(pid+1))) {
-			break
-		}
-	}
-	*u.level = level
+	u.level = gomel.LevelFromParents(u.parents)
 }
 
 func (u *freeUnit) Floor() [][]gomel.Unit {
@@ -152,7 +118,7 @@ func (u *freeUnit) computeFloor() {
 
 	// pre-allocate memory for storing values for each process
 	u.floor = make([][]gomel.Unit, u.nProc)
-	if len(u.parents) == 0 {
+	if u.parents[u.creator] == nil {
 		u.floor[u.creator] = []gomel.Unit{u}
 		return
 	}
@@ -191,6 +157,7 @@ type unit struct {
 	level         int
 	signature     gomel.Signature
 	hash          gomel.Hash
+	controlHash   gomel.Hash
 	parents       []gomel.Unit
 	floor         [][]gomel.Unit
 	data          []byte
@@ -200,15 +167,16 @@ type unit struct {
 
 func emplaced(u gomel.Unit, dag *dag) *unit {
 	result := &unit{
-		creator:   u.Creator(),
-		height:    u.Height(),
-		level:     u.Level(),
-		signature: u.Signature(),
-		hash:      *u.Hash(),
-		parents:   u.Parents(),
-		floor:     u.Floor(),
-		data:      u.Data(),
-		rsData:    u.RandomSourceData(),
+		creator:     u.Creator(),
+		height:      u.Height(),
+		level:       u.Level(),
+		signature:   u.Signature(),
+		hash:        *u.Hash(),
+		controlHash: *u.ControlHash(),
+		parents:     u.Parents(),
+		floor:       u.Floor(),
+		data:        u.Data(),
+		rsData:      u.RandomSourceData(),
 	}
 	result.fixSelfFloor()
 	result.computeForkingHeight(dag)
@@ -232,6 +200,10 @@ func (u *unit) Signature() gomel.Signature {
 }
 
 func (u *unit) Hash() *gomel.Hash {
+	return &u.hash
+}
+
+func (u *unit) ControlHash() *gomel.Hash {
 	return &u.hash
 }
 
@@ -268,7 +240,7 @@ func (u *unit) computeForkingHeight(dag *dag) {
 		}
 		return
 	}
-	predTmp, _ := gomel.Predecessor(u)
+	predTmp := gomel.Predecessor(u)
 	predecessor := predTmp.(*unit)
 	found := false
 	for _, v := range dag.MaximalUnitsPerProcess().Get(u.creator) {

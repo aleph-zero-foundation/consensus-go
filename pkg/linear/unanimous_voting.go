@@ -144,9 +144,8 @@ func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u g
 			// find prime ancestor
 			for predecessor := v; predecessor.Level() >= u.Level()-1; {
 				v = predecessor
-				var err error
-				predecessor, err = gomel.Predecessor(v)
-				if err != nil {
+				predecessor = gomel.Predecessor(v)
+				if predecessor == nil {
 					break
 				}
 			}

@@ -137,7 +137,6 @@ var _ = Describe("Protocol", func() {
 				Expect(adders[0].attemptedAdd).To(BeEmpty())
 				for i := 1; i < 4; i++ {
 					Expect(adders[i].attemptedAdd).To(HaveLen(1))
-					Expect(adders[i].attemptedAdd[0].Parents()).To(HaveLen(0))
 					Expect(adders[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
 					Expect(adders[i].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 				}
@@ -172,7 +171,6 @@ var _ = Describe("Protocol", func() {
 					adders[i].removeDuplicates()
 				}
 				Expect(adders[0].attemptedAdd).To(HaveLen(1))
-				Expect(adders[0].attemptedAdd[0].Parents()).To(HaveLen(0))
 				Expect(adders[0].attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
 				for i := 1; i < 4; i++ {
 					Expect(adders[i].attemptedAdd).To(BeEmpty())
@@ -209,7 +207,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 		})
-		Context("when one copy has 60 units and others are empty", func() {
+		Context("when one copy is empty and the other has 44 units", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
@@ -235,7 +233,7 @@ var _ = Describe("Protocol", func() {
 				}
 				Expect(adders[0].attemptedAdd).To(BeEmpty())
 				for i := 1; i < 4; i++ {
-					Expect(adders[i].attemptedAdd).To(HaveLen(60))
+					Expect(adders[i].attemptedAdd).To(HaveLen(44))
 				}
 			})
 		})

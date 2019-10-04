@@ -100,6 +100,9 @@ func (o *ordering) getAntichainLayers(tu gomel.Unit) [][]gomel.Unit {
 		seenUnits[*u.Hash()] = true
 		minLayerBelow := -1
 		for _, uParent := range u.Parents() {
+			if uParent == nil {
+				continue
+			}
 			if _, ok := o.unitPositionInOrder[*uParent.Hash()]; ok {
 				// uParent was already ordered and doesn't belong to this timing round
 				continue

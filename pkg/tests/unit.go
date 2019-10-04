@@ -5,16 +5,17 @@ import (
 )
 
 type unit struct {
-	creator   uint16
-	height    int
-	level     int
-	version   int
-	hash      gomel.Hash
-	parents   []gomel.Unit
-	floor     [][]gomel.Unit
-	signature gomel.Signature
-	data      []byte
-	rsData    []byte
+	creator     uint16
+	height      int
+	level       int
+	version     int
+	hash        gomel.Hash
+	controlHash gomel.Hash
+	parents     []gomel.Unit
+	floor       [][]gomel.Unit
+	signature   gomel.Signature
+	data        []byte
+	rsData      []byte
 }
 
 func (u *unit) Floor() [][]gomel.Unit {
@@ -41,6 +42,10 @@ func (u *unit) Hash() *gomel.Hash {
 	return &u.hash
 }
 
+func (u *unit) ControlHash() *gomel.Hash {
+	return &u.controlHash
+}
+
 func (u *unit) Height() int {
 	return u.height
 }
@@ -54,6 +59,9 @@ func (u *unit) Level() int {
 }
 
 func (u *unit) Below(v gomel.Unit) bool {
+	if v == nil {
+		return false
+	}
 	// BFS from v
 	// If we need faster implementation we probably should use floors here
 	seenUnits := make(map[gomel.Hash]bool)
@@ -62,10 +70,13 @@ func (u *unit) Below(v gomel.Unit) bool {
 	for len(queue) > 0 {
 		w := queue[0]
 		queue = queue[1:]
-		if *w.Hash() == *u.Hash() {
+		if w == u {
 			return true
 		}
 		for _, wParent := range w.Parents() {
+			if wParent == nil {
+				continue
+			}
 			if _, exists := seenUnits[*wParent.Hash()]; !exists {
 				queue = append(queue, wParent)
 				seenUnits[*wParent.Hash()] = true

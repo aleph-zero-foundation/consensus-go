@@ -273,17 +273,6 @@ func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) 
 	return []byte{}, nil
 }
 
-func level(pu gomel.Preunit, dag gomel.Dag) (int, error) {
-	if len(pu.Parents()) == 0 {
-		return 0, nil
-	}
-	predecessor := dag.Get(pu.Parents()[:1])
-	if predecessor[0] == nil {
-		return 0, errors.New("predecessor doesn't exist in the dag")
-	}
-	return predecessor[0].Level() + 1, nil
-}
-
 // GetCoin returns a coin random source obtained by using this beacon.
 // Head should be the creator of a timing unit chosen on the 6th level.
 func (b *Beacon) GetCoin(head uint16) gomel.RandomSource {

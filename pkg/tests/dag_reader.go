@@ -35,7 +35,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 			continue
 		}
 		var puCreator, puHeight, puVersion int
-		parents := []*gomel.Hash{}
+		parents := make([]*gomel.Hash, n)
 		for i, t := range strings.Split(text, " ") {
 			var creator, height, version int
 
@@ -50,7 +50,10 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 				if _, ok := preunitHashes[[3]int{creator, height, version}]; !ok {
 					return nil, gomel.NewDataError("Trying to set parent to non-existing unit")
 				}
-				parents = append(parents, preunitHashes[[3]int{creator, height, version}])
+				if parents[creator] != nil {
+					return nil, gomel.NewDataError("Duplicate parent")
+				}
+				parents[creator] = preunitHashes[[3]int{creator, height, version}]
 			}
 		}
 		unitData := make([]byte, 4)

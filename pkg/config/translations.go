@@ -62,8 +62,6 @@ func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process
 func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
 	return &process.Create{
 		Pid:          m.Pid,
-		MaxParents:   conf.NParents,
-		PrimeOnly:    conf.PrimeOnly,
 		CanSkipLevel: false,
 		PrivateKey:   m.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
@@ -75,8 +73,6 @@ func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *pr
 func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
 	return &process.Create{
 		Pid:          m.Pid,
-		MaxParents:   conf.NParents,
-		PrimeOnly:    conf.PrimeOnly,
 		CanSkipLevel: conf.CanSkipLevel,
 		PrivateKey:   m.PrivateKey,
 		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),

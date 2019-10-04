@@ -27,10 +27,6 @@ var level stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit, _ int) int {
 	return u.Level()
 }
 
-var nParents stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit, _ int) int {
-	return len(u.Parents())
-}
-
 var popularAfter stat = func(dag gomel.Dag, u gomel.Unit, _ []gomel.Unit, maxLevel int) int {
 	level := u.Level()
 	for up := 0; up+level <= maxLevel; up++ {
@@ -74,7 +70,6 @@ func computeStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) *dagStats {
 		NProc:                  dag.NProc(),
 		NUnits:                 len(units),
 		Level:                  aggregate(level, dag, units, maxLevel),
-		NParents:               aggregate(nParents, dag, units, maxLevel),
 		PopularAfter:           aggregate(popularAfter, dag, units, maxLevel),
 		NParentsOnTheSameLevel: aggregate(nParentsOnTheSameLevel, dag, units, maxLevel),
 		IsPrime:                aggregate(isPrime, dag, units, maxLevel),
@@ -196,6 +191,9 @@ func collectUnits(dag gomel.Dag) []gomel.Unit {
 		units = append(units, u)
 		seenUnits[*u.Hash()] = true
 		for _, v := range u.Parents() {
+			if v == nil {
+				continue
+			}
 			if !seenUnits[*v.Hash()] {
 				dfs(v)
 			}

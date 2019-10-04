@@ -37,6 +37,9 @@ func toDagInfo(maxSnapshot [][]gomel.Unit) dagInfo {
 
 func fixMaximal(u gomel.Unit, maxes [][]gomel.Unit) [][]gomel.Unit {
 	for _, p := range u.Parents() {
+		if p == nil {
+			continue
+		}
 		creator := p.Creator()
 		if !gomel.BelowAny(p, maxes[creator]) {
 			newMaxes := []gomel.Unit{}
@@ -120,8 +123,8 @@ func unitsToSendByProcess(tops processInfo, maxes []gomel.Unit) []gomel.Unit {
 				break
 			}
 			possiblySend = append(possiblySend, u)
-			v, err := gomel.Predecessor(u)
-			if err != nil {
+			v := gomel.Predecessor(u)
+			if v == nil {
 				result = append(result, possiblySend...)
 				break
 			}
@@ -149,7 +152,7 @@ func dropToHeight(units map[gomel.Unit]bool, height int) map[gomel.Unit]bool {
 	}
 	for u := range units {
 		for u.Height() > height {
-			u, _ = gomel.Predecessor(u)
+			u = gomel.Predecessor(u)
 		}
 		result[u] = true
 	}
@@ -183,7 +186,7 @@ func requestedToSend(dag gomel.Dag, info processInfo, req processRequests) ([]go
 		for _, u := range consideredUnits {
 			if !knownRemotes[u] {
 				result = append(result, u)
-				if v, err := gomel.Predecessor(u); err == nil {
+				if v := gomel.Predecessor(u); v != nil {
 					units = append(units, v)
 				}
 			}

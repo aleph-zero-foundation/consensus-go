@@ -32,6 +32,9 @@ func collectUnits(dag gomel.Dag) map[uint16]map[int][]gomel.Unit {
 		}
 		result[u.Creator()][u.Height()] = append(result[u.Creator()][u.Height()], u)
 		for _, uParent := range u.Parents() {
+			if uParent == nil {
+				continue
+			}
 			if !seenUnits[*uParent.Hash()] {
 				dfs(uParent)
 			}
@@ -145,7 +148,7 @@ var _ = Describe("Units", func() {
 						for pid2, myFloor := range floor {
 							if uint16(pid2) == pid {
 								Expect(len(myFloor)).To(Equal(1))
-								Expect(myFloor[0].Hash()).To(Equal(units[pid][0][0].Hash()))
+								Expect(myFloor[0]).To(Equal(units[pid][0][0]))
 							} else {
 								Expect(len(myFloor)).To(Equal(0))
 							}
@@ -161,9 +164,9 @@ var _ = Describe("Units", func() {
 				It("Should contain correct floor", func() {
 					floor := units[0][1][0].Floor()
 					Expect(len(floor[0])).To(Equal(1))
-					Expect(floor[0][0].Hash()).To(Equal(units[0][1][0].Hash()))
+					Expect(floor[0][0]).To(Equal(units[0][1][0]))
 					Expect(len(floor[1])).To(Equal(1))
-					Expect(floor[1][0].Hash()).To(Equal(units[1][0][0].Hash()))
+					Expect(floor[1][0]).To(Equal(units[1][0][0]))
 				})
 			})
 			Describe("When seeing a fork", func() {
@@ -177,7 +180,7 @@ var _ = Describe("Units", func() {
 					for version := 0; version < 2; version++ {
 						inside := false
 						for _, u := range floor[0] {
-							if *u.Hash() == *units[0][0][version].Hash() {
+							if u == units[0][0][version] {
 								inside = true
 							}
 						}
@@ -193,10 +196,10 @@ var _ = Describe("Units", func() {
 				It("Should contain all dealing units in floor", func() {
 					floor := units[0][9][0].Floor()
 					Expect(len(floor[0])).To(Equal(1))
-					Expect(floor[0][0].Hash()).To(Equal(units[0][9][0].Hash()))
+					Expect(floor[0][0]).To(Equal(units[0][9][0]))
 					for pid := uint16(1); pid < 10; pid++ {
 						Expect(len(floor[pid])).To(Equal(1))
-						Expect(floor[pid][0].Hash()).To(Equal(units[pid][0][0].Hash()))
+						Expect(floor[pid][0]).To(Equal(units[pid][0][0]))
 					}
 				})
 			})

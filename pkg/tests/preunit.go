@@ -9,12 +9,13 @@ import (
 )
 
 type preunit struct {
-	creator   uint16
-	parents   []*gomel.Hash
-	signature gomel.Signature
-	hash      gomel.Hash
-	data      []byte
-	rsData    []byte
+	creator     uint16
+	parents     []*gomel.Hash
+	signature   gomel.Signature
+	hash        gomel.Hash
+	controlHash gomel.Hash
+	data        []byte
+	rsData      []byte
 }
 
 // NewPreunit creates a preunit.
@@ -55,6 +56,11 @@ func (pu *preunit) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
+// ControlHash of the preunit.
+func (pu *preunit) ControlHash() *gomel.Hash {
+	return &pu.controlHash
+}
+
 // Parents returns hashes of the preunit's parents.
 func (pu *preunit) Parents() []*gomel.Hash {
 	return pu.parents
@@ -65,16 +71,23 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-// computeHash computes the preunit's hash value and puts it in the corresponding field.
+// computeHash computes the preunit's hash value and saves it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
-	creatorBytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(creatorBytes, uint16(pu.creator))
-	data.Write(creatorBytes)
 	for _, p := range pu.parents {
-		data.Write(p[:])
+		if p != nil {
+			data.Write(p[:])
+		} else {
+			data.Write(gomel.ZeroHash[:])
+		}
 	}
-	data.Write(pu.Data())
-	data.Write(pu.RandomSourceData())
+	sha3.ShakeSum128(pu.controlHash[:], data.Bytes())
+
+	creatorBytes := make([]byte, 2)
+	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
+	data.Write(creatorBytes)
+	data.Write(pu.data)
+	data.Write(pu.rsData)
+	data.Write(pu.controlHash[:])
 	sha3.ShakeSum128(pu.hash[:], data.Bytes())
 }

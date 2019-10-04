@@ -33,11 +33,15 @@ func WriteDag(writer io.Writer, dag gomel.Dag) error {
 				unitCreatorHeightToNForks[[2]int{int(u.Creator()), u.Height()}]++
 			}
 			for _, v := range u.Parents() {
-				dfs(v)
+				if v != nil {
+					dfs(v)
+				}
 			}
 			fmt.Fprintf(writer, "%d-%d-%d", u.Creator(), u.Height(), unitToVersion[*u.Hash()])
 			for _, v := range u.Parents() {
-				fmt.Fprintf(writer, " %d-%d-%d", v.Creator(), v.Height(), unitToVersion[*v.Hash()])
+				if v != nil {
+					fmt.Fprintf(writer, " %d-%d-%d", v.Creator(), v.Height(), unitToVersion[*v.Hash()])
+				}
 			}
 			fmt.Fprintf(writer, "\n")
 		}

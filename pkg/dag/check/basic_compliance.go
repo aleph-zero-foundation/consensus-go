@@ -5,26 +5,34 @@ import (
 )
 
 // BasicCompliance returns a version of the dag that will check the following notion of correctness:
-//  1. If a unit has 0 parents and is a dealing unit it is correct, otherwise
-//  2. A unit has to have at least two parents.
-//  3. A unit has to have a predecessor with the same creator.
+//  1. If a unit has nProc parents such that the i-th parent is created by the i-th process.
+//  2. A unit has to have a predecessor or have all parents nil.
+//  3. A unit is a prime unit.
 func BasicCompliance(dag gomel.Dag) gomel.Dag {
-	return Units(dag, checkBasicCorrectness)
+	return Units(dag, func(u gomel.Unit) error {
+		return checkBasicCorrectness(u, dag.NProc())
+	})
 }
 
-func checkBasicCorrectness(u gomel.Unit) error {
-	if len(u.Parents()) == 0 && gomel.Dealing(u) {
-		return nil
+func checkBasicCorrectness(u gomel.Unit, nProc uint16) error {
+	if len(u.Parents()) != int(nProc) {
+		return gomel.NewComplianceError("Wrong number of parents")
 	}
-	if len(u.Parents()) < 2 {
-		return gomel.NewComplianceError("Not enough parents")
+	nonNilParents := uint16(0)
+	for i := uint16(0); i < nProc; i++ {
+		if u.Parents()[i] == nil {
+			continue
+		}
+		nonNilParents++
+		if u.Parents()[i].Creator() != i {
+			return gomel.NewComplianceError("i-th parent not created by i-th process")
+		}
 	}
-	selfPredecessor, err := gomel.Predecessor(u)
-	if err != nil {
-		return gomel.NewComplianceError("Can not retrieve unit's self-predecessor")
+	if gomel.Predecessor(u) == nil && nonNilParents > 0 {
+		return gomel.NewComplianceError("unit without a predecessor but with other parents")
 	}
-	if selfPredecessor.Creator() != u.Creator() {
-		return gomel.NewComplianceError("Not descendant of predecessor")
+	if gomel.Predecessor(u) != nil && gomel.Predecessor(u).Level() >= u.Level() {
+		return gomel.NewComplianceError("non-prime unit")
 	}
 	return nil
 }

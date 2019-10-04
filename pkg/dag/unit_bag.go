@@ -27,6 +27,9 @@ func (units *unitBag) get(hashes []*gomel.Hash) ([]gomel.Unit, int) {
 	result := make([]gomel.Unit, len(hashes))
 	unknown := 0
 	for i, h := range hashes {
+		if h == nil {
+			continue
+		}
 		if u, ok := units.contents[*h]; ok {
 			result[i] = u
 		} else {

@@ -4,31 +4,22 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-func checkExpandPrimes(dag *Dag, pu gomel.Preunit) bool {
+func checkParentsConsistency(dag *Dag, pu gomel.Preunit) bool {
 	parents := dag.Get(pu.Parents())
-	lastLevel := -1
-	var primesSeen map[gomel.Hash]bool
-	for _, u := range parents {
-		if u.Level() < lastLevel {
-			return false
-		} else if u.Level() == lastLevel {
-			ok := false
-			for _, prime := range dag.getPrimeUnitsOnLevel(lastLevel) {
-				if !primesSeen[*prime.Hash()] && prime.Below(u) {
-					ok = true
-					primesSeen[*prime.Hash()] = true
-				}
+	for i := uint16(0); i < dag.NProc(); i++ {
+		for j := uint16(0); j < dag.NProc(); j++ {
+			if parents[j] == nil {
+				continue
 			}
-			if !ok {
+			u := parents[j].Parents()[i]
+			if parents[i] == nil {
+				if u != nil {
+					return false
+				}
+				continue
+			}
+			if parents[i].Below(u) && *u.Hash() != *parents[i].Hash() {
 				return false
-			}
-		} else {
-			lastLevel = u.Level()
-			primesSeen = make(map[gomel.Hash]bool)
-			for _, prime := range dag.getPrimeUnitsOnLevel(lastLevel) {
-				if prime.Below(u) {
-					primesSeen[*prime.Hash()] = true
-				}
 			}
 		}
 	}

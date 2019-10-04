@@ -55,6 +55,10 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		if err != nil {
 			return nil, err
 		}
+		// nil parents are encoded as ZeroHash
+		if *parents[i] == gomel.ZeroHash {
+			parents[i] = nil
+		}
 	}
 	_, err = io.ReadFull(d, uint32Buf)
 	if err != nil {

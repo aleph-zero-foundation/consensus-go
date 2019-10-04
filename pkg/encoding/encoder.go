@@ -39,7 +39,11 @@ func (e *enc) encodeUnit(unit gomel.Unit) error {
 	binary.LittleEndian.PutUint16(data[s:s+2], nParents)
 	s += 2
 	for _, p := range unit.Parents() {
-		copy(data[s:s+32], p.Hash()[:])
+		if p != nil {
+			copy(data[s:s+32], p.Hash()[:])
+		} else {
+			copy(data[s:s+32], gomel.ZeroHash[:])
+		}
 		s += 32
 	}
 

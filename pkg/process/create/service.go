@@ -141,10 +141,10 @@ func (s *service) createUnit() bool {
 		err     error
 	)
 	if !s.canSkipLevel {
-		created, level, err = creating.NewNonSkippingUnit(s.dag, s.pid, s.getData(), s.randomSource)
+		created, level, err = creating.NewUnit(s.dag, s.pid, s.getData(), s.randomSource, false)
 		isPrime = true
 	} else {
-		created, level, isPrime, err = creating.NewUnit(s.dag, s.pid, s.maxParents, s.getData(), s.randomSource, s.primeOnly)
+		created, level, err = creating.NewUnit(s.dag, s.pid, s.getData(), s.randomSource, true)
 	}
 	if err != nil {
 		s.slower()

@@ -41,10 +41,9 @@ func makeStandardDag(conf *gomel.DagConfig) gomel.Dag {
 	dag := dagutils.New(nProc)
 	dag, _ = check.Signatures(dag, conf.Keys)
 	dag = check.BasicCompliance(dag)
-	dag = check.ParentDiversity(dag)
+	dag = check.ParentConsistency(dag)
 	dag = check.NoSelfForkingEvidence(dag)
 	dag = check.ForkerMuting(dag)
-	dag = check.ExpandPrimes(dag)
 	return dag
 }
 
