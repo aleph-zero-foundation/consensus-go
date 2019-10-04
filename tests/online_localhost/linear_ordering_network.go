@@ -19,34 +19,28 @@ import (
 )
 
 func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
-	pubKeys = make([]gomel.PublicKey, 0, nProcesses)
-	privKeys = make([]gomel.PrivateKey, 0, nProcesses)
+	pubKeys = make([]gomel.PublicKey, nProcesses)
+	privKeys = make([]gomel.PrivateKey, nProcesses)
 	for i := uint16(0); i < nProcesses; i++ {
-		pubKey, privKey, _ := signing.GenerateKeys()
-		pubKeys = append(pubKeys, pubKey)
-		privKeys = append(privKeys, privKey)
+		pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 	}
 	return pubKeys, privKeys
 }
 
 func generateRMCKeys(nProcesses uint16) (sekKeys []*bn256.SecretKey, verKeys []*bn256.VerificationKey) {
-	sekKeys = make([]*bn256.SecretKey, 0, nProcesses)
-	verKeys = make([]*bn256.VerificationKey, 0, nProcesses)
+	sekKeys = make([]*bn256.SecretKey, nProcesses)
+	verKeys = make([]*bn256.VerificationKey, nProcesses)
 	for i := uint16(0); i < nProcesses; i++ {
-		verKey, sekKey, _ := bn256.GenerateKeys()
-		sekKeys = append(sekKeys, sekKey)
-		verKeys = append(verKeys, verKey)
+		verKeys[i], sekKeys[i], _ = bn256.GenerateKeys()
 	}
 	return
 }
 
 func generateP2PKeys(nProcesses uint16) (p2pPubKeys []*p2p.PublicKey, p2pSecKeys []*p2p.SecretKey) {
-	p2pPubKeys = make([]*p2p.PublicKey, 0, nProcesses)
-	p2pSecKeys = make([]*p2p.SecretKey, 0, nProcesses)
+	p2pPubKeys = make([]*p2p.PublicKey, nProcesses)
+	p2pSecKeys = make([]*p2p.SecretKey, nProcesses)
 	for i := uint16(0); i < nProcesses; i++ {
-		pubKey, secKey, _ := p2p.GenerateKeys()
-		p2pPubKeys = append(p2pPubKeys, pubKey)
-		p2pSecKeys = append(p2pSecKeys, secKey)
+		p2pPubKeys[i], p2pSecKeys[i], _ = p2p.GenerateKeys()
 	}
 	return
 }
@@ -55,15 +49,15 @@ func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]stri
 	const (
 		magicPort = 21037
 	)
-	result := make([]string, 0, nProcesses)
-	resultMC := make([]string, 0, nProcesses)
-	setupResult := make([]string, 0, nProcesses)
-	setupMCResult := make([]string, 0, nProcesses)
+	result := make([]string, nProcesses)
+	resultMC := make([]string, nProcesses)
+	setupResult := make([]string, nProcesses)
+	setupMCResult := make([]string, nProcesses)
 	for id := 0; id < nProcesses; id++ {
-		result = append(result, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id))
-		resultMC = append(resultMC, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+1))
-		setupResult = append(setupResult, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+2))
-		setupMCResult = append(setupMCResult, fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+3))
+		result[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id)
+		resultMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+1)
+		setupResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+2)
+		setupMCResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+3)
 	}
 	return result, setupResult, resultMC, setupMCResult
 }
