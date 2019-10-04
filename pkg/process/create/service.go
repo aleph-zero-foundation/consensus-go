@@ -7,10 +7,10 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 const (
@@ -48,21 +48,21 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close the dagFinished channel when it stops.
-func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, dataSource <-chan []byte, log zerolog.Logger) gomel.Service {
+func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource <-chan []byte, log zerolog.Logger) gomel.Service {
 	return &service{
 		dag:             dag,
 		adder:           adder,
 		randomSource:    randomSource,
-		pid:             config.Pid,
-		maxParents:      config.MaxParents,
-		primeOnly:       config.PrimeOnly,
-		canSkipLevel:    config.CanSkipLevel,
-		maxLevel:        config.MaxLevel,
-		privKey:         config.PrivateKey,
-		adjustFactor:    config.AdjustFactor,
+		pid:             conf.Pid,
+		maxParents:      conf.MaxParents,
+		primeOnly:       conf.PrimeOnly,
+		canSkipLevel:    conf.CanSkipLevel,
+		maxLevel:        conf.MaxLevel,
+		privKey:         conf.PrivateKey,
+		adjustFactor:    conf.AdjustFactor,
 		previousSuccess: false,
-		delay:           config.InitialDelay,
-		ticker:          time.NewTicker(config.InitialDelay),
+		delay:           conf.InitialDelay,
+		ticker:          time.NewTicker(conf.InitialDelay),
 		dataSource:      dataSource,
 		dagFinished:     dagFinished,
 		done:            make(chan struct{}),

@@ -6,12 +6,12 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/parallel"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/process/create"
 	"gitlab.com/alephledger/consensus-go/pkg/process/order"
 	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
@@ -36,7 +36,7 @@ func start(services ...gomel.Service) error {
 	return nil
 }
 
-func makeStandardDag(conf *gomel.DagConfig) gomel.Dag {
+func makeStandardDag(conf *config.Dag) gomel.Dag {
 	nProc := uint16(len(conf.Keys))
 	dag := dagutils.New(nProc)
 	dag, _ = check.Signatures(dag, conf.Keys)
@@ -48,24 +48,24 @@ func makeStandardDag(conf *gomel.DagConfig) gomel.Dag {
 }
 
 // Process starts the main and setup processes.
-func Process(config process.Config, setupLog zerolog.Logger, log zerolog.Logger) (gomel.Dag, error) {
+func Process(conf config.Config, setupLog zerolog.Logger, log zerolog.Logger) (gomel.Dag, error) {
 	// rsCh is a channel shared between setup process and the main process.
 	// The setup process should create a random source and push it to the channel.
 	// The main process waits on the channel.
 	rsCh := make(chan gomel.RandomSource)
 
-	if config.Setup == "coin" {
-		go coinSetup(config, rsCh, setupLog)
+	if conf.Setup == "coin" {
+		go coinSetup(conf, rsCh, setupLog)
 	}
-	if config.Setup == "beacon" {
-		go beaconSetup(config, rsCh, setupLog)
+	if conf.Setup == "beacon" {
+		go beaconSetup(conf, rsCh, setupLog)
 	}
-	return main(config, rsCh, log)
+	return main(conf, rsCh, log)
 }
 
 // main runs all the services with the configuration provided.
 // It blocks until all of them are done.
-func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Logger) (gomel.Dag, error) {
+func main(conf config.Config, rsCh <-chan gomel.RandomSource, log zerolog.Logger) (gomel.Dag, error) {
 	dagFinished := make(chan struct{})
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
@@ -73,7 +73,7 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	// txChan is a channel shared between tx_generator and creator
 	txChan := make(chan []byte, 10)
 
-	dag := makeStandardDag(config.Dag)
+	dag := makeStandardDag(conf.Dag)
 
 	rs, ok := <-rsCh
 	if !ok {
@@ -84,26 +84,26 @@ func main(config process.Config, rsCh <-chan gomel.RandomSource, log zerolog.Log
 	// common with setup:
 	dag = rs.Bind(dag)
 
-	orderService, orderIfPrime := order.NewService(dag, rs, config.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	orderService, orderIfPrime := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	dag = dagutils.AfterEmplace(dag, orderIfPrime)
 
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
 
-	syncService, multicastUnit, err := sync.NewService(dag, adder, config.Sync, log)
+	syncService, multicastUnit, err := sync.NewService(dag, adder, conf.Sync, log)
 	if err != nil {
 		return nil, err
 	}
 	dagMC := dagutils.AfterEmplace(dag, multicastUnit)
 	adderMC := adderService.Register(dagMC)
 
-	createService := create.NewService(dagMC, adderMC, rs, config.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService := create.NewService(dagMC, adderMC, rs, conf.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 
-	memlogService := logging.NewService(config.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 	// end common
 
-	validateService := validate.NewService(config.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
-	generateService := generate.NewService(config.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
+	validateService := validate.NewService(conf.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
+	generateService := generate.NewService(conf.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
 
 	err = start(adderService, createService, orderService, generateService, validateService, memlogService, syncService)
 	if err != nil {

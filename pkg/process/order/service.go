@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 type service struct {
@@ -27,16 +27,16 @@ type service struct {
 // This service sorts units in linear order.
 // orderedUnits is an output channel where it writes these units in order.
 // Ordering is attempted when the returned function is called on a prime unit.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (gomel.Service, func(gomel.Unit)) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, conf *config.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (gomel.Service, func(gomel.Unit)) {
 	primeAlert := make(chan struct{}, 1)
 	return &service{
-			pid:                 config.Pid,
-			linearOrdering:      linear.NewOrdering(dag, randomSource, config.OrderStartLevel, config.CRPFixedPrefix, log),
+			pid:                 conf.Pid,
+			linearOrdering:      linear.NewOrdering(dag, randomSource, conf.OrderStartLevel, conf.CRPFixedPrefix, log),
 			orderedUnits:        orderedUnits,
 			extendOrderRequests: make(chan int, 10),
 			primeAlert:          primeAlert,
 			exitChan:            make(chan struct{}),
-			currentRound:        config.OrderStartLevel,
+			currentRound:        conf.OrderStartLevel,
 			log:                 log,
 		}, func(u gomel.Unit) {
 			if gomel.Prime(u) {

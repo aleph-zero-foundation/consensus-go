@@ -1,4 +1,4 @@
-package process
+package config
 
 import (
 	"time"
@@ -9,7 +9,7 @@ import (
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	Dag         *gomel.DagConfig
+	Dag         *Dag
 	Sync        []*Sync
 	SyncSetup   []*Sync
 	Create      *Create
@@ -20,6 +20,16 @@ type Config struct {
 	TxGenerate  *TxGenerate
 	MemLog      int
 	Setup       string
+}
+
+// Dag contains configuration required to create a dag.
+type Dag struct {
+	Keys []gomel.PublicKey
+}
+
+// NProc returns the number of processes in a given dag configuration.
+func (dc Dag) NProc() uint16 {
+	return uint16(len(dc.Keys))
 }
 
 // Sync represents a complete configuration needed for a syncing service to start.

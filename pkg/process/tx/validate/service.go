@@ -9,9 +9,9 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 type service struct {
@@ -22,7 +22,7 @@ type service struct {
 }
 
 // NewService creates a new transaction validation service for the given dag, with the given configuration.
-func NewService(config *process.TxValidate, unitSource <-chan []gomel.Unit, log zerolog.Logger) gomel.Service {
+func NewService(_ *config.TxValidate, unitSource <-chan []gomel.Unit, log zerolog.Logger) gomel.Service {
 	return &service{
 		unitSource: unitSource,
 		exitChan:   make(chan struct{}),
