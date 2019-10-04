@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"gitlab.com/alephledger/consensus-go/pkg/process"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type service struct {
@@ -18,7 +18,7 @@ type service struct {
 }
 
 // NewService constructs a new service that logs current total memory consumption every n seconds.
-func NewService(n int, log zerolog.Logger) process.Service {
+func NewService(n int, log zerolog.Logger) gomel.Service {
 	var ticker <-chan time.Time
 	if n == 0 {
 		ticker = make(<-chan time.Time)

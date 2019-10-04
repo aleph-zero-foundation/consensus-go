@@ -27,7 +27,7 @@ type service struct {
 // This service sorts units in linear order.
 // orderedUnits is an output channel where it writes these units in order.
 // Ordering is attempted when the returned function is called on a prime unit.
-func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (process.Service, func(gomel.Unit)) {
+func NewService(dag gomel.Dag, randomSource gomel.RandomSource, config *process.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) (gomel.Service, func(gomel.Unit)) {
 	primeAlert := make(chan struct{}, 1)
 	return &service{
 			pid:                 config.Pid,

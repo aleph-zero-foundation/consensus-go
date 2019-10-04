@@ -19,13 +19,13 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
 )
 
-func stop(services ...process.Service) {
+func stop(services ...gomel.Service) {
 	for _, s := range services {
 		s.Stop()
 	}
 }
 
-func start(services ...process.Service) error {
+func start(services ...gomel.Service) error {
 	for i, s := range services {
 		err := s.Start()
 		if err != nil {

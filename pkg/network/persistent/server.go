@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 type server struct {
@@ -26,9 +26,9 @@ type server struct {
 }
 
 // NewServer initializes network setup for the given local address and the set of remote addresses.
-// Returns an object that implements BOTH network.Server and process.Service interfaces.
+// Returns an object that implements BOTH network.Server and gomel.Service interfaces.
 // It needs to be started as a service to activate listening for incoming TCP connections.
-func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Server, process.Service, error) {
+func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger) (network.Server, gomel.Service, error) {
 	nProc := len(remoteAddresses)
 	s := &server{
 		localAddr:   localAddress,

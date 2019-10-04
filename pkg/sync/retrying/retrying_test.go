@@ -62,7 +62,7 @@ var _ = Describe("Protocol", func() {
 		fallbacks   []sync.Fallback
 		netservs    []network.Server
 		retr        sync.Fallback
-		retrService process.Service
+		retrService gomel.Service
 		unit        gomel.Unit
 		pu          gomel.Preunit
 	)

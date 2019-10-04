@@ -48,7 +48,7 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close the dagFinished channel when it stops.
-func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, dataSource <-chan []byte, log zerolog.Logger) process.Service {
+func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, config *process.Create, dagFinished chan<- struct{}, dataSource <-chan []byte, log zerolog.Logger) gomel.Service {
 	return &service{
 		dag:             dag,
 		adder:           adder,
