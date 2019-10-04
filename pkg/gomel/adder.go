@@ -5,7 +5,7 @@ type Adder interface {
 	// AddUnit to the underlying dag. Waits until the adding finishes and returns an error if applicable.
 	AddUnit(Preunit) error
 	// AddAntichain to the underlying dag. Waits until the adding of all units finishes and
-	// returns the AggregateError with errors corresponding to the respecitive preunits.
+	// returns the AggregateError with errors corresponding to the respective preunits.
 	AddAntichain([]Preunit) *AggregateError
 }
 

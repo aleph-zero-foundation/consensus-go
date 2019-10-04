@@ -11,7 +11,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/retrying"
@@ -62,7 +61,7 @@ var _ = Describe("Protocol", func() {
 		fallbacks   []sync.Fallback
 		netservs    []network.Server
 		retr        sync.Fallback
-		retrService process.Service
+		retrService gomel.Service
 		unit        gomel.Unit
 		pu          gomel.Preunit
 	)

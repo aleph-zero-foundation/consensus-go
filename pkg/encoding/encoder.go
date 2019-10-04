@@ -11,7 +11,7 @@ type enc struct {
 	io.Writer
 }
 
-// newEncoder creates a new encoding.Encoder that is threadsafe.
+// newEncoder creates a new encoding.Encoder that is thread-safe.
 // It encodes units in the following format:
 //  1. Creator id, 2 bytes.
 //  2. Signature, 64 bytes.

@@ -2,9 +2,6 @@ package config
 
 import (
 	"time"
-
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 )
 
 func parseDuration(s string) time.Duration {
@@ -15,17 +12,17 @@ func parseDuration(s string) time.Duration {
 	return ret
 }
 
-func generateDagConfig(c *Committee) *gomel.DagConfig {
-	return &gomel.DagConfig{
+func generateDagConfig(c *Committee) *Dag {
+	return &Dag{
 		Keys: c.PublicKeys,
 	}
 }
 
-func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*process.Sync {
+func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*Sync {
 	nTypes := len(conf.SyncSetup)
-	syncConfs := make([]*process.Sync, nTypes)
+	syncConfs := make([]*Sync, nTypes)
 	for i := range syncConfs {
-		syncConfs[i] = &process.Sync{
+		syncConfs[i] = &Sync{
 			Type:            conf.SyncSetup[i].Type,
 			Pid:             m.Pid,
 			LocalAddress:    c.SetupAddresses[i][m.Pid],
@@ -40,11 +37,11 @@ func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*pr
 	return syncConfs
 }
 
-func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process.Sync {
+func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*Sync {
 	nTypes := len(conf.Sync)
-	syncConfs := make([]*process.Sync, nTypes)
+	syncConfs := make([]*Sync, nTypes)
 	for i := range syncConfs {
-		syncConfs[i] = &process.Sync{
+		syncConfs[i] = &Sync{
 			Type:            conf.Sync[i].Type,
 			Pid:             m.Pid,
 			LocalAddress:    c.Addresses[i][m.Pid],
@@ -59,8 +56,8 @@ func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*process
 	return syncConfs
 }
 
-func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
-	return &process.Create{
+func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *Create {
+	return &Create{
 		Pid:          m.Pid,
 		CanSkipLevel: false,
 		PrivateKey:   m.PrivateKey,
@@ -70,8 +67,8 @@ func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *pr
 	}
 }
 
-func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *process.Create {
-	return &process.Create{
+func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *Create {
+	return &Create{
 		Pid:          m.Pid,
 		CanSkipLevel: conf.CanSkipLevel,
 		PrivateKey:   m.PrivateKey,
@@ -81,36 +78,36 @@ func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *process
 	}
 }
 
-func generateOrderSetupConfig(conf *Configuration, m *Member, c *Committee) *process.Order {
-	return &process.Order{
+func generateOrderSetupConfig(conf *Configuration, m *Member, c *Committee) *Order {
+	return &Order{
 		Pid:             m.Pid,
 		OrderStartLevel: 6,
 		CRPFixedPrefix:  conf.CRPFixedPrefix,
 	}
 }
 
-func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *process.Order {
-	return &process.Order{
+func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *Order {
+	return &Order{
 		Pid:             m.Pid,
 		OrderStartLevel: conf.OrderStartLevel,
 		CRPFixedPrefix:  conf.CRPFixedPrefix,
 	}
 }
 
-func generateTxValidateConfig() *process.TxValidate {
-	return &process.TxValidate{}
+func generateTxValidateConfig() *TxValidate {
+	return &TxValidate{}
 }
 
-func generateTxGenerateConfig(conf *Configuration) *process.TxGenerate {
-	return &process.TxGenerate{
+func generateTxGenerateConfig(conf *Configuration) *TxGenerate {
+	return &TxGenerate{
 		CompressionLevel: 5,
 		Txpu:             conf.Txpu,
 	}
 }
 
 // GenerateConfig translates the configuration and committee information into a process config.
-func (conf *Configuration) GenerateConfig(m *Member, c *Committee) process.Config {
-	return process.Config{
+func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
+	return Config{
 		Dag:         generateDagConfig(c),
 		Sync:        generateSyncConfig(conf, m, c),
 		SyncSetup:   generateSyncSetupConfig(conf, m, c),

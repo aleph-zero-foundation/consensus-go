@@ -10,7 +10,7 @@ import (
 )
 
 // This could be encoded in a more optimal way.
-// For exmaple we could use a bitset.
+// For example we could use a bitset.
 // We start with very simple but inefficient implementation.
 //
 // Votes are encoded one by one. The byte representation of a vote is

@@ -14,7 +14,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/process/run"
+	"gitlab.com/alephledger/consensus-go/pkg/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 

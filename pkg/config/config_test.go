@@ -22,7 +22,7 @@ var _ = Describe("Configuration", func() {
 				config.LevelLimit = 10000
 				configCopy := config
 
-				// store configuation using a buffer
+				// store configuration using a buffer
 				var buf bytes.Buffer
 				err := NewJSONConfigWriter().StoreConfiguration(&buf, &config)
 				Expect(err).NotTo(HaveOccurred())

@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
@@ -55,14 +56,14 @@ func (pu *preunitMock) Parents() []*gomel.Hash {
 
 type defaultChecksFactory struct{}
 
-func (defaultChecksFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
+func (defaultChecksFactory) CreateDag(dc config.Dag) gomel.Dag {
 	dag, _ := check.Signatures(New(uint16(len(dc.Keys))), dc.Keys)
 	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(dag))))
 }
 
 type noSelfForkingEvidenceFactory struct{}
 
-func (noSelfForkingEvidenceFactory) CreateDag(dc gomel.DagConfig) gomel.Dag {
+func (noSelfForkingEvidenceFactory) CreateDag(dc config.Dag) gomel.Dag {
 	return check.NoSelfForkingEvidence(New(uint16(len(dc.Keys))))
 }
 
@@ -101,7 +102,7 @@ var _ = Describe("Dag", func() {
 			for i := uint16(0); i < nProcesses; i++ {
 				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			}
-			dag = defaultChecksFactory{}.CreateDag(gomel.DagConfig{Keys: pubKeys})
+			dag = defaultChecksFactory{}.CreateDag(config.Dag{Keys: pubKeys})
 		})
 
 		Describe("HasForkingEvidence works properly in case of forks even when combined floors is not an evidence of forking", func() {

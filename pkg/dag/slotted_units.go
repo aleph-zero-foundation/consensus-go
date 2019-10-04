@@ -40,7 +40,7 @@ func (su *slottedUnits) Set(id uint16, units []gomel.Unit) {
 	su.contents[id] = units
 }
 
-// Iterate runs work on its contents cosecutively, until it returns false or the contents run out.
+// Iterate runs work on its contents consecutively, until it returns false or the contents run out.
 func (su *slottedUnits) Iterate(work func(units []gomel.Unit) bool) {
 	for id := range su.mxs {
 		if !work(su.Get(uint16(id))) {

@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
@@ -27,7 +26,7 @@ type server struct {
 }
 
 // NewService creates a service that continuously tries to add problematic units using provided Fallback.
-func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, interval time.Duration, log zerolog.Logger) (process.Service, gsync.Fallback) {
+func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, interval time.Duration, log zerolog.Logger) (gomel.Service, gsync.Fallback) {
 	s := &server{
 		dag:     dag,
 		adder:   adder,

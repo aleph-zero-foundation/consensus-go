@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/network/persistent"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/network/udp"
-	"gitlab.com/alephledger/consensus-go/pkg/process"
 	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
@@ -26,14 +26,14 @@ type service struct {
 	fallbacks   map[string]sync.Fallback
 	servers     map[string]sync.Server
 	mcServer    sync.MulticastServer
-	subservices []process.Service
+	subservices []gomel.Service
 	log         zerolog.Logger
 }
 
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log zerolog.Logger) (process.Service, func(gomel.Unit), error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log zerolog.Logger) (gomel.Service, func(gomel.Unit), error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
@@ -98,7 +98,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*process.Sync, log z
 	}
 
 	for _, c := range configs {
-		var service process.Service
+		var service gomel.Service
 		if c.Fallback != "" {
 			fallback := s.fallbacks[c.Fallback]
 			if c.Retry > 0 {
@@ -148,7 +148,7 @@ func (s *service) Stop() {
 // Checks if the list of configs is valid that is:
 // a) every server defined as fallback is present
 // b) there is only one multicasting server
-func valid(configs []*process.Sync) error {
+func valid(configs []*config.Sync) error {
 	if len(configs) == 0 {
 		return gomel.NewConfigError("empty sync configuration")
 	}
@@ -177,7 +177,7 @@ func valid(configs []*process.Sync) error {
 }
 
 // Return network.Server of the type indicated by "net". If needed, append a corresponding service to the given slice. Defaults to "tcp".
-func getNetServ(net string, localAddress string, remoteAddresses []string, services []process.Service, log zerolog.Logger) (network.Server, []process.Service, error) {
+func getNetServ(net string, localAddress string, remoteAddresses []string, services []gomel.Service, log zerolog.Logger) (network.Server, []gomel.Service, error) {
 	switch net {
 	case "udp":
 		netserv, err := udp.NewServer(localAddress, remoteAddresses, log)

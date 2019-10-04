@@ -8,11 +8,12 @@ import (
 	"os"
 	"strings"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // ReadDag reads a dag description from the given reader and builds the dag using the given dag factory.
-func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
+func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	text := scanner.Text()
@@ -23,7 +24,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 		return nil, err
 	}
 
-	dag := df.CreateDag(gomel.DagConfig{Keys: make([]gomel.PublicKey, n)})
+	dag := df.CreateDag(config.Dag{Keys: make([]gomel.PublicKey, n)})
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID int
@@ -70,7 +71,7 @@ func ReadDag(reader io.Reader, df gomel.DagFactory) (gomel.Dag, error) {
 }
 
 // CreateDagFromTestFile reads a dag description from the given test file and uses the factory to build the dag.
-func CreateDagFromTestFile(filename string, df gomel.DagFactory) (gomel.Dag, error) {
+func CreateDagFromTestFile(filename string, df DagFactory) (gomel.Dag, error) {
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
