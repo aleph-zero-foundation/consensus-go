@@ -101,14 +101,14 @@ func (u *freeUnit) Floor() [][]gomel.Unit {
 
 func (u *freeUnit) computeFloor() {
 	// This version of the algorithm tries to minimize the number of heap allocations. It achieves this goal by means of
-	// pre-allocating a continuous region of memory which is then used for storing all values of the computed floor (instead of
+	// preallocating a continuous region of memory which is then used for storing all values of the computed floor (instead of
 	// storing values of floor in separate slices for each process). At each index of the computed slice-of-slices we store a
 	// slice that was created using a slice-expression pointing to that continuous storage. This way, assuming there are no
 	// forks, it should only make two heap allocations in total, i.e. one for u.floor and one for storage variable floors.
 	// Please notice that it uses the fact that the zero value for any slice, which is denoted by `nil`, is in fact a struct
-	// containing a nil pointer and so the instruction `make([][]gomel.Unit, nProcesses)` pre-allocates memory for storing these
+	// containing a nil pointer and so the instruction `make([][]gomel.Unit, nProcesses)` preallocates memory for storing these
 	// structs. Further assignment of values to each of floor's indexes simply copies values of structs pointing to our
-	// pre-allocated storage. Previous version of this algorithm was allocating new heap objects for each index of floor. In
+	// preallocated storage. Previous version of this algorithm was allocating new heap objects for each index of floor. In
 	// case of forks this version requires at worst O(lg(S/N)) allocations, where S is the total size of the computed floor
 	// value and N is the number of processes.
 
@@ -116,13 +116,13 @@ func (u *freeUnit) computeFloor() {
 	// This is due to the technique we used here - at each index of floor we store a slice pointing to some bigger storage, so
 	// appending to such slice may overwrite values at indexes that follow the one we modified.
 
-	// pre-allocate memory for storing values for each process
+	// preallocate memory for storing values for each process
 	u.floor = make([][]gomel.Unit, u.nProc)
 	if u.parents[u.creator] == nil {
 		u.floor[u.creator] = []gomel.Unit{u}
 		return
 	}
-	// pre-allocate memory for all values for all processes - 0 `len` allows us to use append for sake of simplicity
+	// preallocate memory for all values for all processes - 0 `len` allows us to use append for sake of simplicity
 	floors := make([]gomel.Unit, 0, u.nProc)
 
 	for pid := uint16(0); pid < u.nProc; pid++ {

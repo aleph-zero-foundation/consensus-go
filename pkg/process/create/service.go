@@ -132,7 +132,7 @@ func (s *service) getData() []byte {
 }
 
 // createUnit creates a unit and adds it to the dag
-// It returns boolean value: wheather we can create more units or not.
+// It returns boolean value: whether we can create more units or not.
 func (s *service) createUnit() bool {
 	var (
 		created gomel.Preunit

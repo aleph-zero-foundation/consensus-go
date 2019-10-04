@@ -7,9 +7,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// Parallel is a service for adding units to the dag parallelly.
+// Parallel is a service for adding units to the dag in parallel.
 // Units created by the same process will be added consecutively, even between different dags.
-// The idea is to have multiple wrapers around a single base dag, and while the wrappers can be used by separate
+// The idea is to have multiple wrappers around a single base dag, and while the wrappers can be used by separate
 // routines, they should still use one parallelization.
 type Parallel struct {
 	reqChans []chan addRequest

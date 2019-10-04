@@ -10,7 +10,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// SyncCSMap is a threadsafe implementation of the map
+// SyncCSMap is a thread-safe implementation of the map
 // unit's hash => coinShare included in the unit.
 type SyncCSMap struct {
 	sync.RWMutex
@@ -36,7 +36,7 @@ func (sm *SyncCSMap) Get(h *gomel.Hash) *tcoin.CoinShare {
 	return sm.contents[*h]
 }
 
-// SyncTCMap is a threadsafe implementation of the map
+// SyncTCMap is a thread-safe implementation of the map
 // unit's hash => thresholdCoin contained in it.
 type SyncTCMap struct {
 	sync.RWMutex
@@ -62,7 +62,7 @@ func (sm *SyncTCMap) Get(h *gomel.Hash) *tcoin.ThresholdCoin {
 	return sm.contents[*h]
 }
 
-// SyncBytesSlice is a threadsafe implementation of a slice of bytes slices.
+// SyncBytesSlice is a thread-safe implementation of a slice of bytes slices.
 type SyncBytesSlice struct {
 	sync.RWMutex
 	contents [][]byte
@@ -76,7 +76,7 @@ func NewSyncBytesSlice() *SyncBytesSlice {
 }
 
 // AppendOrIgnore appends the given data at the end of the slice if the current
-// legnth of the slice is equal to the given length, otherwise it does nothing.
+// length of the slice is equal to the given length, otherwise it does nothing.
 func (s *SyncBytesSlice) AppendOrIgnore(length int, data []byte) {
 	s.Lock()
 	defer s.Unlock()
