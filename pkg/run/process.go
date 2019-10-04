@@ -12,11 +12,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/parallel"
-	"gitlab.com/alephledger/consensus-go/pkg/process/create"
-	"gitlab.com/alephledger/consensus-go/pkg/process/order"
-	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
-	"gitlab.com/alephledger/consensus-go/pkg/process/tx/generate"
-	"gitlab.com/alephledger/consensus-go/pkg/process/tx/validate"
+	"gitlab.com/alephledger/consensus-go/pkg/services/create"
+	"gitlab.com/alephledger/consensus-go/pkg/services/order"
+	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/services/tx/generate"
+	"gitlab.com/alephledger/consensus-go/pkg/services/tx/validate"
 )
 
 func stop(services ...gomel.Service) {

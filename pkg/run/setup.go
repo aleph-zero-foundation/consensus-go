@@ -11,11 +11,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/parallel"
-	"gitlab.com/alephledger/consensus-go/pkg/process/create"
-	"gitlab.com/alephledger/consensus-go/pkg/process/order"
-	"gitlab.com/alephledger/consensus-go/pkg/process/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
+	"gitlab.com/alephledger/consensus-go/pkg/services/create"
+	"gitlab.com/alephledger/consensus-go/pkg/services/order"
+	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
 )
 
 // coinSetup deals a coin. Running a process with this setup
