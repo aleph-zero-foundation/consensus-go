@@ -1,6 +1,7 @@
 package bn256
 
 import (
+	"crypto/subtle"
 	"math/big"
 
 	"github.com/cloudflare/bn256"
@@ -52,4 +53,10 @@ func MulSignature(sgn *Signature, n *big.Int) *Signature {
 	return &Signature{
 		*result,
 	}
+}
+
+// VerifyKeys checks whether given secretKey and verificationKey forms a vaild pair.
+func VerifyKeys(vk *VerificationKey, sk *SecretKey) bool {
+	vk2 := sk.VerificationKey()
+	return subtle.ConstantTimeCompare(vk.Marshal(), vk2.Marshal()) == 1
 }

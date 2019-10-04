@@ -11,6 +11,8 @@ import (
 	"errors"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
@@ -45,13 +47,16 @@ type Beacon struct {
 	// hash of a unit => the share for the i-th tcoin contained in the unit
 	shares       []*random.SyncCSMap
 	polyVerifier bn256.PolyVerifier
+	pKeys        []*p2p.PublicKey
+	sKey         *p2p.SecretKey
+	p2pKeys      []encrypt.SymmetricKey
 }
 
 // vote is a vote for a tcoin
 // proof = nil means that the tcoin is correct
 // proof != nil means gives proof that the tcoin is incorrect
 type vote struct {
-	proof *bn256.SecretKey
+	proof *p2p.SharedSecret
 }
 
 func (v *vote) isCorrect() bool {
@@ -59,8 +64,18 @@ func (v *vote) isCorrect() bool {
 }
 
 // New returns a RandomSource using a beacon.
-func New(pid uint16) *Beacon {
-	return &Beacon{pid: pid}
+func New(pid uint16, pKeys []*p2p.PublicKey, sKey *p2p.SecretKey) (*Beacon, error) {
+	p2pKeys, err := p2p.Keys(sKey, pKeys, pid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Beacon{
+		pid:     pid,
+		pKeys:   pKeys,
+		sKey:    sKey,
+		p2pKeys: p2pKeys,
+	}, nil
 }
 
 // Bind the beacon with the given dag.
@@ -121,7 +136,7 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 func (b *Beacon) checkCompliance(u gomel.Unit) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
-		tc, err := tcoin.Decode(tcEncoded, b.pid)
+		tc, _, err := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
 		if err != nil {
 			return err
 		}
@@ -165,7 +180,15 @@ func (b *Beacon) checkCompliance(u gomel.Unit) error {
 func (b *Beacon) update(u gomel.Unit) {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
-		tc, _ := tcoin.Decode(tcEncoded, b.pid)
+		tc, okSecretKey, _ := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
+		if !okSecretKey {
+			secret := p2p.NewSharedSecret(b.sKey, b.pKeys[u.Creator()])
+			b.votes[b.pid][u.Creator()] = &vote{
+				proof: &secret,
+			}
+		} else {
+			b.votes[b.pid][u.Creator()] = &vote{}
+		}
 		b.tcoins[u.Creator()] = tc
 	}
 	if u.Level() == votingLevel {
@@ -223,8 +246,7 @@ func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 			return errors.New("vote on dealing unit not below the unit")
 		}
 		if shouldVote && !votes[v.Creator()].isCorrect() {
-			proof := votes[v.Creator()].proof
-			if !b.tcoins[v.Creator()].VerifyWrongSecretKeyProof(u.Creator(), proof) {
+			if !verifyWrongSecretKeyProof(b, u.Creator(), v.Creator(), *votes[v.Creator()].proof) {
 				return errors.New("the provided proof is incorrect")
 			}
 		}
@@ -238,10 +260,15 @@ func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 	return nil
 }
 
-func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
-	return &vote{
-		proof: tc.VerifySecretKey(),
+func verifyWrongSecretKeyProof(b *Beacon, prover, suspect uint16, proof p2p.SharedSecret) bool {
+	if !p2p.VerifySharedSecret(b.pKeys[prover], b.pKeys[suspect], proof) {
+		return false
 	}
+	key, err := p2p.Key(proof)
+	if err != nil {
+		return false
+	}
+	return !b.tcoins[suspect].CheckSecretKey(prover, key)
 }
 
 // DataToInclude returns data which should be included in a unit
@@ -249,17 +276,15 @@ func verifyTCoin(tc *tcoin.ThresholdCoin) *vote {
 func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
-		return tcoin.Deal(nProc, nProc/3+1), nil
+		gtc := tcoin.NewRandomGlobal(nProc, nProc/3+1)
+		tc, err := gtc.Encrypt(b.p2pKeys)
+		if err != nil {
+			return nil, err
+		}
+		return tc.Encode(), nil
 	}
 	if level == votingLevel {
-		votes := make([]*vote, b.dag.NProc())
-		dealingUnits := unitsOnLevel(b.dag, dealingLevel)
-		for _, u := range dealingUnits {
-			if gomel.BelowAny(u, parents) {
-				votes[u.Creator()] = verifyTCoin(b.tcoins[u.Creator()])
-			}
-		}
-		return marshallVotes(votes), nil
+		return marshallVotes(b.votes[b.pid]), nil
 	}
 	if level >= sharesLevel {
 		cses := make([]*tcoin.CoinShare, b.dag.NProc())

@@ -585,7 +585,11 @@ func Test(
 	testingRoutine *TestingRoutine,
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
-		rs := coin.NewFixedCoin(dag.NProc(), pid, 0)
+		shareProviders := make(map[uint16]bool)
+		for i := uint16(0); i < dag.NProc(); i++ {
+			shareProviders[i] = true
+		}
+		rs := coin.NewFixedCoin(dag.NProc(), pid, 0, shareProviders)
 		dag = rs.Bind(dag)
 		return rs, dag
 	}

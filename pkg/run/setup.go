@@ -23,7 +23,13 @@ import (
 func coinSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	pid := conf.Create.Pid
 	nProc := uint16(len(conf.Dag.Keys))
-	rsCh <- coin.NewFixedCoin(nProc, pid, 1234)
+
+	shareProviders := make(map[uint16]bool)
+	for i := uint16(0); i < nProc; i++ {
+		shareProviders[i] = true
+	}
+
+	rsCh <- coin.NewFixedCoin(nProc, pid, 1234, shareProviders)
 	close(rsCh)
 }
 
@@ -48,8 +54,10 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	txChan := (chan []byte)(nil)
 
 	dag := makeBeaconDag(conf.Dag)
-	rs := beacon.New(conf.Create.Pid)
-
+	rs, err := beacon.New(conf.Create.Pid, conf.P2PPublicKeys, conf.P2PSecretKey)
+	if err != nil {
+		log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
+	}
 	// common with main:
 	dag = rs.Bind(dag)
 

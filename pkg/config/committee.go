@@ -3,11 +3,13 @@ package config
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -22,6 +24,9 @@ type Member struct {
 
 	// The secret key of this committee member use for RMC.
 	RMCSecretKey *bn256.SecretKey
+
+	// The key for generating keys for p2p communication.
+	P2PSecretKey *p2p.SecretKey
 }
 
 // Committee represents the public data about the committee known before the algorithm starts.
@@ -31,6 +36,9 @@ type Committee struct {
 
 	// Verification keys of all committee members use for RMC, ordered according to process ids.
 	RMCVerificationKeys []*bn256.VerificationKey
+
+	// PublicKeys of all committee members use for generating keys for p2p communication. Ordered according to process ids.
+	P2PPublicKeys []*p2p.PublicKey
 
 	// Addresses use for the setup phase, ordered as above.
 	SetupAddresses [][]string
@@ -47,8 +55,8 @@ func LoadMember(r io.Reader) (*Member, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanWords)
 
-	// read private key, secret key and pid. Assumes one line of the form
-	// "key secret_key pid"
+	// read private key, secret key, decryption key and pid. Assumes one line of the form
+	// "key secret_key decryption_key pid"
 	if !scanner.Scan() {
 		return nil, errors.New(malformedData)
 	}
@@ -56,6 +64,7 @@ func LoadMember(r io.Reader) (*Member, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if !scanner.Scan() {
 		return nil, errors.New(malformedData)
 	}
@@ -63,6 +72,15 @@ func LoadMember(r io.Reader) (*Member, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if !scanner.Scan() {
+		return nil, errors.New(malformedData)
+	}
+	sKey, err := p2p.DecodeSecretKey(scanner.Text())
+	if err != nil {
+		return nil, err
+	}
+
 	if !scanner.Scan() {
 		return nil, errors.New(malformedData)
 	}
@@ -75,24 +93,26 @@ func LoadMember(r io.Reader) (*Member, error) {
 		Pid:          uint16(pid),
 		RMCSecretKey: secretKey,
 		PrivateKey:   privateKey,
+		P2PSecretKey: sKey,
 	}, nil
 }
 
-func parseCommitteeLine(line string) (string, string, []string, []string, error) {
+func parseCommitteeLine(line string) (string, string, string, []string, []string, error) {
 	s := strings.Split(line, "|")
 
-	if len(s) < 4 {
-		return "", "", nil, nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|setupAddresses|addresses")
+	if len(s) < 5 {
+		return "", "", "", nil, nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|p2pPublicKey|setupAddresses|addresses")
 	}
-	pk, vk, setupAddrs, addrs := s[0], s[1], s[2], s[3]
+	pk, vk, p2pPK, setupAddrs, addrs := s[0], s[1], s[2], s[3], s[4]
+	var errStrings []string
 	if len(pk) == 0 {
-		return "", "", nil, nil, errors.New(malformedData)
+		return "", "", "", nil, nil, errors.New(malformedData)
 	}
 	if len(vk) == 0 {
-		return "", "", nil, nil, errors.New(malformedData)
+		errStrings = append(errStrings, "verification key should be non-empty")
 	}
-	if len(addrs) == 0 {
-		return "", "", nil, nil, errors.New(malformedData)
+	if len(p2pPK) == 0 {
+		errStrings = append(errStrings, "p2p public key should be non-empty")
 	}
 	setupAddrsList, addrsList := []string{}, []string{}
 	if setupAddrs != "" {
@@ -101,7 +121,10 @@ func parseCommitteeLine(line string) (string, string, []string, []string, error)
 	if addrs != "" {
 		addrsList = strings.Split(addrs, " ")
 	}
-	return pk, vk, setupAddrsList, addrsList, nil
+	if errStrings == nil {
+		return pk, vk, p2pPK, setupAddrsList, addrsList, nil
+	}
+	return "", "", "", nil, nil, fmt.Errorf(strings.Join(errStrings, "\n"))
 }
 
 // LoadCommittee loads the data from the given reader and creates a committee.
@@ -110,10 +133,11 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 
 	publicKeys := []gomel.PublicKey{}
 	verificationKeys := []*bn256.VerificationKey{}
+	p2pPublicKeys := []*p2p.PublicKey{}
 	sRemoteAddresses := [][]string{}
 	remoteAddresses := [][]string{}
 	for scanner.Scan() {
-		pk, vk, setupAddresses, addresses, err := parseCommitteeLine(scanner.Text())
+		pk, vk, p2pPK, setupAddresses, addresses, err := parseCommitteeLine(scanner.Text())
 		if err != nil {
 			return nil, err
 		}
@@ -128,8 +152,14 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 			return nil, err
 		}
 
+		p2pPublicKey, err := p2p.DecodePublicKey(p2pPK)
+		if err != nil {
+			return nil, err
+		}
+
 		publicKeys = append(publicKeys, publicKey)
 		verificationKeys = append(verificationKeys, verificationKey)
+		p2pPublicKeys = append(p2pPublicKeys, p2pPublicKey)
 		if len(remoteAddresses) == 0 {
 			sRemoteAddresses = make([][]string, len(setupAddresses))
 			remoteAddresses = make([][]string, len(addresses))
@@ -151,6 +181,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 	return &Committee{
 		PublicKeys:          publicKeys,
 		RMCVerificationKeys: verificationKeys,
+		P2PPublicKeys:       p2pPublicKeys,
 		Addresses:           remoteAddresses,
 		SetupAddresses:      sRemoteAddresses,
 	}, nil
@@ -167,6 +198,14 @@ func StoreMember(w io.Writer, m *Member) error {
 		return err
 	}
 	_, err = io.WriteString(w, m.RMCSecretKey.Encode())
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(w, " ")
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(w, m.P2PSecretKey.Encode())
 	if err != nil {
 		return err
 	}
@@ -217,6 +256,14 @@ func StoreCommittee(w io.Writer, c *Committee) error {
 			return err
 		}
 		_, err = io.WriteString(w, c.RMCVerificationKeys[i].Encode())
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, "|")
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, c.P2PPublicKeys[i].Encode())
 		if err != nil {
 			return err
 		}

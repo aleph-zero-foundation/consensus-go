@@ -4,22 +4,25 @@ import (
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	Dag         *Dag
-	Sync        []*Sync
-	SyncSetup   []*Sync
-	Create      *Create
-	CreateSetup *Create
-	Order       *Order
-	OrderSetup  *Order
-	TxValidate  *TxValidate
-	TxGenerate  *TxGenerate
-	MemLog      int
-	Setup       string
+	Dag           *Dag
+	Sync          []*Sync
+	SyncSetup     []*Sync
+	Create        *Create
+	CreateSetup   *Create
+	Order         *Order
+	OrderSetup    *Order
+	TxValidate    *TxValidate
+	TxGenerate    *TxGenerate
+	MemLog        int
+	Setup         string
+	P2PPublicKeys []*p2p.PublicKey
+	P2PSecretKey  *p2p.SecretKey
 }
 
 // Dag contains configuration required to create a dag.

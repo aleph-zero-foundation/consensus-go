@@ -1,10 +1,9 @@
 package tcoin_test
 
 import (
-	"math/big"
-	"math/rand"
-
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	. "gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 
 	. "github.com/onsi/ginkgo"
@@ -12,51 +11,37 @@ import (
 )
 
 var _ = Describe("Tcoin", func() {
-	var n, t uint16
-	var nonce int
-	var tcs []*ThresholdCoin
-	var coinShares []*CoinShare
-	var coeffs []*big.Int
-	var tcs1, tcs2 []*ThresholdCoin
-
-	Context("Based on random polynomial", func() {
-		BeforeEach(func() {
-			n, t = 10, 4
-			coeffs = make([]*big.Int, t)
-			tcs = make([]*ThresholdCoin, n)
-			rnd := rand.New(rand.NewSource(123))
-			for i := uint16(0); i < t; i++ {
-				coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Order)
-			}
-			for i := uint16(0); i < n; i++ {
-				tcs[i] = New(n, i, coeffs)
-			}
-			nonce = 123
-			coinShares = make([]*CoinShare, n)
-			for i := uint16(0); i < n; i++ {
-				coinShares[i] = tcs[i].CreateCoinShare(nonce)
-			}
-		})
-		It("Should be verified by a poly verifier", func() {
-			pv := bn256.NewPolyVerifier(int(n), int(t))
-			for i := uint16(0); i < n; i++ {
-				Expect(tcs[i].PolyVerify(pv)).To(BeTrue())
-			}
-		})
-		It("Should have correct secret key", func() {
-			Expect(tcs[0].VerifySecretKey()).To(BeNil())
-		})
-	})
+	var (
+		n, t, dealer uint16
+		nonce        int
+		tcs          []*ThresholdCoin
+		coinShares   []*CoinShare
+		sKeys        []*p2p.SecretKey
+		pKeys        []*p2p.PublicKey
+		p2pKeys      [][]encrypt.SymmetricKey
+	)
 	Context("Between small number of processes", func() {
 		Describe("Coin shares", func() {
 			BeforeEach(func() {
-				n, t = 10, 4
-				dealt := Deal(n, t)
+				n, t, dealer = 10, 3, 5
+
+				gtc := NewRandomGlobal(n, t)
 				tcs = make([]*ThresholdCoin, n)
+				sKeys = make([]*p2p.SecretKey, n)
+				pKeys = make([]*p2p.PublicKey, n)
+				p2pKeys = make([][]encrypt.SymmetricKey, n)
 				for i := uint16(0); i < n; i++ {
-					tc, err := Decode(dealt, i)
+					pKeys[i], sKeys[i], _ = p2p.GenerateKeys()
+				}
+				for i := uint16(0); i < n; i++ {
+					p2pKeys[i], _ = p2p.Keys(sKeys[i], pKeys, i)
+				}
+				tc, err := gtc.Encrypt(p2pKeys[dealer])
+				Expect(err).NotTo(HaveOccurred())
+				tcEncoded := tc.Encode()
+				for i := uint16(0); i < n; i++ {
+					tcs[i], _, err = Decode(tcEncoded, dealer, i, p2pKeys[i][dealer])
 					Expect(err).NotTo(HaveOccurred())
-					tcs[i] = tc
 				}
 				nonce = 123
 				coinShares = make([]*CoinShare, n)
@@ -136,21 +121,36 @@ var _ = Describe("Tcoin", func() {
 	})
 
 	Context("Multicoin", func() {
+		var (
+			tcs1 []*ThresholdCoin
+			tcs2 []*ThresholdCoin
+		)
 		BeforeEach(func() {
 			n, t = 10, 4
-			dealt1 := Deal(n, t)
-			dealt2 := Deal(n, t)
+
 			tcs = make([]*ThresholdCoin, n)
 			tcs1 = make([]*ThresholdCoin, n)
 			tcs2 = make([]*ThresholdCoin, n)
-
+			sKeys = make([]*p2p.SecretKey, n)
+			pKeys = make([]*p2p.PublicKey, n)
+			p2pKeys = make([][]encrypt.SymmetricKey, n)
 			for i := uint16(0); i < n; i++ {
-				tc, err := Decode(dealt1, i)
-				Expect(err).NotTo(HaveOccurred())
-				tcs1[i] = tc
-				tc, err = Decode(dealt2, i)
-				Expect(err).NotTo(HaveOccurred())
-				tcs2[i] = tc
+				pKeys[i], sKeys[i], _ = p2p.GenerateKeys()
+			}
+			for i := uint16(0); i < n; i++ {
+				p2pKeys[i], _ = p2p.Keys(sKeys[i], pKeys, i)
+			}
+
+			gtc1 := NewRandomGlobal(n, t)
+			tc1, _ := gtc1.Encrypt(p2pKeys[0])
+			gtc2 := NewRandomGlobal(n, t)
+			tc2, _ := gtc2.Encrypt(p2pKeys[1])
+
+			tc1Encoded := tc1.Encode()
+			tc2Encoded := tc2.Encode()
+			for i := uint16(0); i < n; i++ {
+				tcs1[i], _, _ = Decode(tc1Encoded, 0, i, p2pKeys[i][0])
+				tcs2[i], _, _ = Decode(tc2Encoded, 1, i, p2pKeys[i][1])
 				tcs[i] = CreateMulticoin([]*ThresholdCoin{tcs1[i], tcs2[i]})
 			}
 			nonce = 123
