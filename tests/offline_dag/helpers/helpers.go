@@ -584,7 +584,7 @@ func Test(
 	configurations []config.Configuration,
 	testingRoutine *TestingRoutine,
 ) error {
-	rssProvider := func(pid uint16, dag gomel.Dag) gomel.RandomSource {
+	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
 		shareProviders := make(map[uint16]bool)
 		for i := uint16(0); i < dag.NProc(); i++ {
 			shareProviders[i] = true
