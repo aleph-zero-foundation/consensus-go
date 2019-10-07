@@ -11,23 +11,23 @@ import (
 
 type dec struct {
 	io.Reader
+	nProc uint16
 }
 
 // newDecoder creates a new encoding.Decoder that is threadsafe.
 // It assumes the data encodes units in the following format:
 //  1. Creator id, 2 bytes.
 //  2. Signature, 64 bytes.
-//  3. Number of parents, 2 bytes.
-//  4. Parent heights, as many as declared in 3., 4 bytes each.
-//  5. Control hash 32 bytes.
-//  6. Size of the unit data in bytes, 4 bytes.
-//  7. The unit data, as much as declared in 5.
-//  8. Size of the random source data in bytes, 4 bytes.
-//  9. The random source data, as much as declared in 7.
+//  3. Parent heights, 4 bytes each.
+//  4. Control hash 32 bytes.
+//  5. Size of the unit data in bytes, 4 bytes.
+//  6. The unit data, as much as declared in 5.
+//  7. Size of the random source data in bytes, 4 bytes.
+//  8. The random source data, as much as declared in 7.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
 // It is guaranteed to read only as much data as needed.
-func newDecoder(r io.Reader) decoder {
-	return &dec{r}
+func newDecoder(r io.Reader, nProc uint16) decoder {
+	return &dec{r, nProc}
 }
 
 // decodePreunit reads encoded data from the io.Reader and tries to decode it
@@ -45,12 +45,7 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = io.ReadFull(d, uint16Buf)
-	if err != nil {
-		return nil, err
-	}
-	nParents := binary.LittleEndian.Uint16(uint16Buf)
-	parentsHeights := make([]int, nParents)
+	parentsHeights := make([]int, d.nProc)
 	for i := range parentsHeights {
 		_, err = io.ReadFull(d, uint32Buf)
 		if err != nil {

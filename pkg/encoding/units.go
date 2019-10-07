@@ -19,8 +19,8 @@ func EncodeUnit(unit gomel.Unit) ([]byte, error) {
 }
 
 // DecodePreunit checks decodes the given data into preunit. Complementary to EncodeUnit.
-func DecodePreunit(data []byte) (gomel.Preunit, error) {
-	decoder := newDecoder(bytes.NewReader(data))
+func DecodePreunit(data []byte, nProc uint16) (gomel.Preunit, error) {
+	decoder := newDecoder(bytes.NewReader(data), nProc)
 	return decoder.decodePreunit()
 }
 
@@ -30,8 +30,8 @@ func SendUnit(unit gomel.Unit, w io.Writer) error {
 }
 
 // ReceivePreunit decodes a preunit from reader.
-func ReceivePreunit(r io.Reader) (gomel.Preunit, error) {
-	return newDecoder(r).decodePreunit()
+func ReceivePreunit(r io.Reader, nProc uint16) (gomel.Preunit, error) {
+	return newDecoder(r, nProc).decodePreunit()
 }
 
 // SendChunk encodes units and writes them to writer.
@@ -40,8 +40,8 @@ func SendChunk(units []gomel.Unit, w io.Writer) error {
 }
 
 // ReceiveChunk decodes slice of preunit antichains from reader.
-func ReceiveChunk(r io.Reader) ([][]gomel.Preunit, int, error) {
-	return newDecoder(r).decodeChunk()
+func ReceiveChunk(r io.Reader, nProc uint16) ([][]gomel.Preunit, int, error) {
+	return newDecoder(r, nProc).decodeChunk()
 }
 
 func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {

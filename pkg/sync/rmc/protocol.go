@@ -36,7 +36,7 @@ func (p *server) in() {
 			log.Error().Str("where", "rmc.in.AcceptData").Msg(err.Error())
 			return
 		}
-		pu, err := encoding.DecodePreunit(data)
+		pu, err := encoding.DecodePreunit(data, p.dag.NProc())
 		if err != nil {
 			log.Error().Str("where", "rmc.in.DecodePreunit").Msg(err.Error())
 			return
@@ -63,7 +63,7 @@ func (p *server) in() {
 			log.Error().Str("where", "rmc.in.AcceptFinished2").Msg(err.Error())
 			return
 		}
-		pu, err := encoding.DecodePreunit(p.state.Data(id))
+		pu, err := encoding.DecodePreunit(p.state.Data(id), p.dag.NProc())
 		if err != nil {
 			log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 			return
