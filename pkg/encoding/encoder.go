@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -111,6 +112,10 @@ func (e *enc) encodeAntichain(units []gomel.Unit) error {
 
 func (e *enc) encodeChunk(units []gomel.Unit) error {
 	layers := toLayers(units)
+	// Bounding the number of antichains to send.
+	if len(layers) > config.MaxAntichainsInChunk {
+		layers = layers[:config.MaxAntichainsInChunk]
+	}
 	err := e.encodeUint32(uint32(len(layers)))
 	if err != nil {
 		return err
