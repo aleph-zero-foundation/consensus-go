@@ -121,9 +121,7 @@ func (d *dec) decodeAntichain() ([]gomel.Preunit, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The maximal possible antichain size is bounded by nProc^2
-	// becuase each process may create only up to nProc forks.
-	if k > uint32(d.nProc)*uint32(d.nProc) {
+	if k > config.MaxUnitsInAntichain {
 		return nil, errors.New("antichain length too long")
 	}
 	result := make([]gomel.Preunit, k)

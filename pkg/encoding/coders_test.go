@@ -63,26 +63,74 @@ var _ = Describe("Encoding/Decoding", func() {
 			}
 		})
 	})
+	Context("Sending/Receving chunks", func() {
+		Context("when an antichain of dealing units is being sent", func() {
+			It("should receive a slice containing a single slice of dealing preunits", func() {
+				toSend := []gomel.Unit{}
+				dag.PrimeUnits(0).Iterate(func(units []gomel.Unit) bool {
+					toSend = append(toSend, units[0])
+					return true
+				})
+				// sending to a buffer
+				var buf bytes.Buffer
+				err := SendChunk(toSend, &buf)
+				Expect(err).NotTo(HaveOccurred())
+				// receiving
+				pus, nPus, err := ReceiveChunk(&buf)
+				//checks
+				Expect(nPus).To(Equal(len(toSend)))
+				Expect(len(pus)).To(Equal(1))
+				Expect(len(pus[0])).To(Equal(len(toSend)))
+				for _, pu := range pus[0] {
+					Expect(pu.Hash()).To(Equal(dag.PrimeUnits(0).Get(pu.Creator())[0].Hash()))
+				}
+			})
+		})
+		Context("when units created by a single process are being sent", func() {
+			It("should receive a slice containing slices of single preunits", func() {
+				// Collecting units created by 0.
+				mu := dag.MaximalUnitsPerProcess().Get(0)[0]
+				toSend := []gomel.Unit{}
+				for mu != nil {
+					toSend = append(toSend, mu)
+					mu = gomel.Predecessor(mu)
+				}
+				// sending to a buffer
+				var buf bytes.Buffer
+				err := SendChunk(toSend, &buf)
+				Expect(err).NotTo(HaveOccurred())
+				// receving
+				pus, nPus, err := ReceiveChunk(&buf)
+				// checks
+				Expect(nPus).To(Equal(len(toSend)))
+				Expect(len(pus)).To(Equal(len(toSend)))
+				for h, pu := range pus {
+					Expect(len(pu)).To(Equal(1))
+					Expect(pu[0].Hash()).To(Equal(toSend[len(pus)-1-h].Hash()))
+				}
+			})
+		})
+	})
 	Context("Decoding", func() {
 		Context("on a unit with too much data", func() {
 			It("should return an error", func() {
-				nProc := uint16(4)
-				// creator, signature, parentsHeights, controlHash, data length
-				encoded := make([]byte, 2+64+4*nProc+32+4)
-				dataLenStartOffset := 2 + 64 + 4*nProc + 32
+				nProc := 0
+				// creator, signature, nParents, parentsHeights, controlHash, data length
+				encoded := make([]byte, 2+64+(2+4*nProc+32)+4)
+				dataLenStartOffset := 2 + 64 + (2 + 4*nProc + 32)
 				binary.LittleEndian.PutUint32(encoded[dataLenStartOffset:], config.MaxDataBytesPerUnit+1)
-				_, err := DecodePreunit(encoded, nProc)
+				_, err := DecodePreunit(encoded)
 				Expect(err).To(MatchError("maximal allowed data size in a preunit exceeded"))
 			})
 		})
 		Context("on a unit with to long random source data", func() {
 			It("should return an error", func() {
-				nProc := uint16(4)
-				// creator, signature, parentsHeights, controlHash, data length, random source data length
-				encoded := make([]byte, 2+64+4*nProc+32+4+4)
-				rsDataLenStartOffset := 2 + 64 + 4*nProc + 32 + 4
+				nProc := 0
+				// creator, signature, nParents, parentsHeights, controlHash, data length, random source data length
+				encoded := make([]byte, 2+64+2+4*nProc+32+4+4)
+				rsDataLenStartOffset := 2 + 64 + 2 + 4*nProc + 32 + 4
 				binary.LittleEndian.PutUint32(encoded[rsDataLenStartOffset:], config.MaxRandomSourceDataBytesPerUnit+1)
-				_, err := DecodePreunit(encoded, nProc)
+				_, err := DecodePreunit(encoded)
 				Expect(err).To(MatchError("maximal allowed random source data size in a preunit exceeded"))
 			})
 		})
@@ -90,21 +138,19 @@ var _ = Describe("Encoding/Decoding", func() {
 	Context("ReceiveChunk", func() {
 		Context("On a chunk with too many antichains", func() {
 			It("should return an error", func() {
-				nProc := uint16(4)
 				encoded := make([]byte, 4)
 				binary.LittleEndian.PutUint32(encoded[:], config.MaxAntichainsInChunk+1)
-				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded), nProc)
+				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded))
 				Expect(err).To(MatchError("chunk contains too many antichains"))
 			})
 		})
 		Context("On a chunk with one antichain containing too many units", func() {
 			It("should return an error", func() {
-				nProc := uint16(4)
 				// nAntichains, antichain size
 				encoded := make([]byte, 4+4)
 				binary.LittleEndian.PutUint32(encoded[0:4], 1)
-				binary.LittleEndian.PutUint32(encoded[4:8], uint32(nProc)*uint32(nProc)+1)
-				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded), nProc)
+				binary.LittleEndian.PutUint32(encoded[4:8], config.MaxUnitsInAntichain+1)
+				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded))
 				Expect(err).To(MatchError("antichain length too long"))
 			})
 		})

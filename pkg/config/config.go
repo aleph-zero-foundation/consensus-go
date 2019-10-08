@@ -10,6 +10,8 @@ const (
 	MaxRandomSourceDataBytesPerUnit = 1e6
 	// MaxAntichainsInChunk is the maximal number of antichains in a chunk.
 	MaxAntichainsInChunk = 255
+	// MaxUnitsInAntichain is the maximal allowed number of units in an antichain.
+	MaxUnitsInAntichain = 1e6
 )
 
 // SyncConfiguration represents parameters for a synchronization service.
