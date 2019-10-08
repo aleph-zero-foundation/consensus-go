@@ -2,9 +2,11 @@ package encoding_test
 
 import (
 	"bytes"
+	"encoding/binary"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	. "gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -61,5 +63,50 @@ var _ = Describe("Encoding/Decoding", func() {
 			}
 		})
 	})
-
+	Context("Decoding", func() {
+		Context("on a unit with too much data", func() {
+			It("should return an error", func() {
+				nProc := uint16(4)
+				// creator, signature, parentsHeights, controlHash, data length
+				encoded := make([]byte, 2+64+4*nProc+32+4)
+				dataLenStartOffset := 2 + 64 + 4*nProc + 32
+				binary.LittleEndian.PutUint32(encoded[dataLenStartOffset:], config.MaxDataBytesPerUnit+1)
+				_, err := DecodePreunit(encoded, nProc)
+				Expect(err).To(MatchError("maximal allowed data size in a preunit exceeded"))
+			})
+		})
+		Context("on a unit with to long random source data", func() {
+			It("should return an error", func() {
+				nProc := uint16(4)
+				// creator, signature, parentsHeights, controlHash, data length, random source data length
+				encoded := make([]byte, 2+64+4*nProc+32+4+4)
+				rsDataLenStartOffset := 2 + 64 + 4*nProc + 32 + 4
+				binary.LittleEndian.PutUint32(encoded[rsDataLenStartOffset:], config.MaxRandomSourceDataBytesPerUnit+1)
+				_, err := DecodePreunit(encoded, nProc)
+				Expect(err).To(MatchError("maximal allowed random source data size in a preunit exceeded"))
+			})
+		})
+	})
+	Context("ReceiveChunk", func() {
+		Context("On a chunk with too many antichains", func() {
+			It("should return an error", func() {
+				nProc := uint16(4)
+				encoded := make([]byte, 4)
+				binary.LittleEndian.PutUint32(encoded[:], config.MaxAntichainsInChunk+1)
+				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded), nProc)
+				Expect(err).To(MatchError("chunk contains too many antichains"))
+			})
+		})
+		Context("On a chunk with one antichain containing too many units", func() {
+			It("should return an error", func() {
+				nProc := uint16(4)
+				// nAntichains, antichain size
+				encoded := make([]byte, 4+4)
+				binary.LittleEndian.PutUint32(encoded[0:4], 1)
+				binary.LittleEndian.PutUint32(encoded[4:8], uint32(nProc)*uint32(nProc)+1)
+				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded), nProc)
+				Expect(err).To(MatchError("antichain length too long"))
+			})
+		})
+	})
 })
