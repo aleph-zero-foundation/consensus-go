@@ -64,17 +64,17 @@ var _ = Describe("Units", func() {
 		JustBeforeEach(func() {
 			units = collectUnits(dag)
 		})
-		Describe("Checking reflexivity of Below", func() {
+		Describe("Checking reflexivity of Above", func() {
 			BeforeEach(func() {
 				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/one_unit.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should return true", func() {
 				u := units[0][0][0]
-				Expect(u.Below(u)).To(BeTrue())
+				Expect(u.Above(u)).To(BeTrue())
 			})
 		})
-		Describe("Checking lack of symmetry of Below", func() {
+		Describe("Checking lack of symmetry of Above", func() {
 			BeforeEach(func() {
 				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/single_unit_with_two_parents.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
@@ -83,13 +83,13 @@ var _ = Describe("Units", func() {
 				u0 := units[0][0][0]
 				u1 := units[1][0][0]
 				u01 := units[0][1][0]
-				Expect(u0.Below(u01)).To(BeTrue())
-				Expect(u1.Below(u01)).To(BeTrue())
-				Expect(u01.Below(u0)).To(BeFalse())
-				Expect(u01.Below(u1)).To(BeFalse())
+				Expect(u01.Above(u0)).To(BeTrue())
+				Expect(u01.Above(u1)).To(BeTrue())
+				Expect(u0.Above(u01)).To(BeFalse())
+				Expect(u1.Above(u01)).To(BeFalse())
 			})
 		})
-		Describe("Checking transitivity of Below", func() {
+		Describe("Checking transitivity of Above", func() {
 			BeforeEach(func() {
 				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/six_units.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
@@ -100,14 +100,14 @@ var _ = Describe("Units", func() {
 				u02 := units[0][2][0]
 				u21 := units[2][1][0]
 
-				Expect(u0.Below(u01)).To(BeTrue())
-				Expect(u01.Below(u02)).To(BeTrue())
-				Expect(u0.Below(u02)).To(BeTrue())
-				Expect(u01.Below(u21)).To(BeTrue())
-				Expect(u0.Below(u21)).To(BeTrue())
+				Expect(u01.Above(u0)).To(BeTrue())
+				Expect(u02.Above(u01)).To(BeTrue())
+				Expect(u02.Above(u0)).To(BeTrue())
+				Expect(u21.Above(u01)).To(BeTrue())
+				Expect(u21.Above(u0)).To(BeTrue())
 			})
 		})
-		Describe("Checking Below works properly for forked dealing units.", func() {
+		Describe("Checking Above works properly for forked dealing units.", func() {
 			BeforeEach(func() {
 				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/forked_dealing.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
@@ -115,11 +115,11 @@ var _ = Describe("Units", func() {
 			It("Should return false for both below queries.", func() {
 				u0 := units[0][0][0]
 				u1 := units[0][0][1]
-				Expect(u0.Below(u1)).To(BeFalse())
-				Expect(u1.Below(u0)).To(BeFalse())
+				Expect(u0.Above(u1)).To(BeFalse())
+				Expect(u1.Above(u0)).To(BeFalse())
 			})
 		})
-		Describe("Checking Below works properly for two forks going out of one unit.", func() {
+		Describe("Checking Above works properly for two forks going out of one unit.", func() {
 			BeforeEach(func() {
 				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_4u.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
@@ -129,12 +129,12 @@ var _ = Describe("Units", func() {
 				u1 := units[0][1][0]
 				u2 := units[0][1][1]
 
-				Expect(uBase.Below(u1)).To(BeTrue())
-				Expect(uBase.Below(u2)).To(BeTrue())
-				Expect(u1.Below(uBase)).To(BeFalse())
-				Expect(u2.Below(uBase)).To(BeFalse())
-				Expect(u1.Below(u2)).To(BeFalse())
-				Expect(u2.Below(u1)).To(BeFalse())
+				Expect(u1.Above(uBase)).To(BeTrue())
+				Expect(u2.Above(uBase)).To(BeTrue())
+				Expect(uBase.Above(u1)).To(BeFalse())
+				Expect(uBase.Above(u2)).To(BeFalse())
+				Expect(u1.Above(u2)).To(BeFalse())
+				Expect(u2.Above(u1)).To(BeFalse())
 			})
 		})
 		Describe("Checking floors", func() {

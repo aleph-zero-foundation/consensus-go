@@ -58,19 +58,19 @@ func (u *unit) Level() int {
 	return u.level
 }
 
-func (u *unit) Below(v gomel.Unit) bool {
-	if v == nil {
+func (u *unit) Above(v gomel.Unit) bool {
+	if u == nil || v == nil {
 		return false
 	}
-	// BFS from v
+	// BFS from u
 	// If we need faster implementation we probably should use floors here
 	seenUnits := make(map[gomel.Hash]bool)
-	seenUnits[*v.Hash()] = true
-	queue := []gomel.Unit{v}
+	seenUnits[*u.Hash()] = true
+	queue := []gomel.Unit{u}
 	for len(queue) > 0 {
 		w := queue[0]
 		queue = queue[1:]
-		if w == u {
+		if w == v {
 			return true
 		}
 		for _, wParent := range w.Parents() {

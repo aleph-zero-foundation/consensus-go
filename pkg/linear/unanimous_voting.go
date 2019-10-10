@@ -90,7 +90,7 @@ func (uv *unanimousVoter) lazyCommonVote(uc gomel.Unit, level int) func() vote {
 }
 
 func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
-	if uc.Below(u) {
+	if u.Above(uc) {
 		return popular
 	}
 	return unpopular

@@ -7,8 +7,8 @@ type Unit interface {
 	Parents() []Unit
 	// Level of this unit in the dag, as defined in the Aleph protocol whitepaper.
 	Level() int
-	// Below checks if this unit is below the given unit.
-	Below(Unit) bool
+	// Above checks if this unit is above the given unit.
+	Above(Unit) bool
 	// Floor returns a collection of units containing, for each process, all maximal units created by that process below the unit.
 	Floor() [][]Unit
 }
@@ -49,7 +49,7 @@ func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {
 			found, ri := false, -1
 			for ix, v := range (*out)[startIx:] {
 
-				if v.Below(w) {
+				if w.Above(v) {
 					found = true
 					ri = ix
 					// we can now break out of the loop since if we would find any other index for storing `w` it would be a
@@ -57,7 +57,7 @@ func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {
 					break
 				}
 
-				if w.Below(v) {
+				if v.Above(w) {
 					found = true
 					// we can now break out of the loop since if `w` would be above some other index it would contradicts
 					// the assumption that elements of `floors` (narrowed to some index) are not comparable
@@ -123,7 +123,7 @@ func Dealing(u Unit) bool {
 // BelowAny checks whether u is below any of the units in us.
 func BelowAny(u Unit, us []Unit) bool {
 	for _, v := range us {
-		if v != nil && u.Below(v) {
+		if v != nil && v.Above(u) {
 			return true
 		}
 	}
