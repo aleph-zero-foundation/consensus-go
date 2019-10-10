@@ -114,9 +114,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Wrong number of setup addresses. Needs %d, got %d", len(conf.SyncSetup), len(committee.SetupAddresses))
 		return
 	}
-	if len(conf.Sync) != len(committee.Addresses) {
+	// The additional address is for alerts.
+	if len(conf.Sync)+1 != len(committee.Addresses) {
 		fmt.Println(committee.Addresses)
-		fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync), len(committee.Addresses))
+		fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync)+1, len(committee.Addresses))
 		return
 	}
 

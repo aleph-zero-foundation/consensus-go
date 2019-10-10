@@ -14,24 +14,26 @@ import (
 )
 
 type server struct {
-	dag      gomel.Dag
-	adder    gomel.Adder
-	interval time.Duration
-	inner    gsync.Fallback
-	backlog  *backlog
-	quit     int32
-	wg       sync.WaitGroup
-	log      zerolog.Logger
+	dag       gomel.Dag
+	adder     gomel.Adder
+	interval  time.Duration
+	inner     gsync.Fallback
+	fetchData func(*gomel.Hash, uint16) error
+	backlog   *backlog
+	quit      int32
+	wg        sync.WaitGroup
+	log       zerolog.Logger
 }
 
 // NewService creates a service that continuously tries to add problematic units using provided Fallback.
-func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, interval time.Duration, log zerolog.Logger) (gomel.Service, gsync.Fallback) {
+func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, fetchData func(*gomel.Hash, uint16) error, interval time.Duration, log zerolog.Logger) (gomel.Service, gsync.Fallback) {
 	s := &server{
-		dag:     dag,
-		adder:   adder,
-		inner:   fallback,
-		backlog: newBacklog(),
-		log:     log,
+		dag:       dag,
+		adder:     adder,
+		inner:     fallback,
+		fetchData: fetchData,
+		backlog:   newBacklog(),
+		log:       log,
 	}
 	return s, s
 }
@@ -57,7 +59,7 @@ func (f *server) Stop() {
 func (f *server) addToBacklog(pu gomel.Preunit) bool {
 	if haveParents(pu, f.dag) {
 		// we got the parents in the meantime, all is fine
-		add.Unit(f.adder, pu, f.inner, "retrying.addToBacklog", f.log)
+		add.Unit(f.adder, pu, f.inner, f.fetchData, pu.Creator(), "retrying.addToBacklog", f.log)
 		return false
 	}
 	return f.backlog.add(pu)
@@ -76,7 +78,7 @@ func (f *server) update() {
 	toDelete := []*gomel.Hash{}
 	f.backlog.refallback(func(pu gomel.Preunit) {
 		if haveParents(pu, f.dag) {
-			if add.Unit(f.adder, pu, f.inner, "retrying.update", f.log) {
+			if add.Unit(f.adder, pu, f.inner, f.fetchData, pu.Creator(), "retrying.update", f.log) {
 				toDelete = append(toDelete, pu.Hash())
 			}
 		}

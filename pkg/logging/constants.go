@@ -40,6 +40,7 @@ const (
 	RemovedFromBacklog    = "i"
 	GotRandomSource       = "j"
 	FallbackUsed          = "k"
+	MissingDataError      = "l"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -80,6 +81,7 @@ var eventTypeDict = map[string]string{
 	RemovedFromBacklog:    "removed unit from retrying backlog",
 	GotRandomSource:       "received randomness source",
 	FallbackUsed:          "server used fallback due to missing parents",
+	MissingDataError:      "received unit without associated necessary data",
 }
 
 // Field names.
@@ -141,6 +143,7 @@ const (
 	MCService
 	RetryingService
 	RMCService
+	AlertService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
@@ -156,6 +159,7 @@ var serviceTypeDict = map[int]string{
 	MCService:       "MCAST",
 	RetryingService: "RETRY",
 	RMCService:      "RMC",
+	AlertService:    "ALERT",
 }
 
 // Genesis was better with Phil Collins.

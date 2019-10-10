@@ -18,6 +18,20 @@ func generateDagConfig(c *Committee) *Dag {
 	}
 }
 
+func generateAlertConfig(conf *Configuration, m *Member, c *Committee) *Alert {
+	addresses := c.Addresses[len(c.Addresses)-1]
+	timeout, _ := time.ParseDuration("2s")
+	return &Alert{
+		Pid:             m.Pid,
+		PublicKeys:      c.PublicKeys,
+		Pubs:            c.RMCVerificationKeys,
+		Priv:            m.RMCSecretKey,
+		LocalAddress:    addresses[m.Pid],
+		RemoteAddresses: addresses,
+		Timeout:         timeout,
+	}
+}
+
 func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*Sync {
 	nTypes := len(conf.SyncSetup)
 	syncConfs := make([]*Sync, nTypes)
@@ -109,6 +123,7 @@ func generateTxGenerateConfig(conf *Configuration) *TxGenerate {
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 	return Config{
 		Dag:           generateDagConfig(c),
+		Alert:         generateAlertConfig(conf, m, c),
 		Sync:          generateSyncConfig(conf, m, c),
 		SyncSetup:     generateSyncSetupConfig(conf, m, c),
 		Create:        generateCreateConfig(conf, m, c),

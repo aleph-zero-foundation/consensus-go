@@ -76,10 +76,10 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		for i := 0; i < 4; i++ {
 			adders[i] = &adder{tests.NewAdder(dags[i]), snc.Mutex{}, nil}
-			fetches[i], fallbacks[i] = fetch.NewServer(0, dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
+			fetches[i], fallbacks[i] = fetch.NewServer(0, dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			fetches[i].Start()
 		}
-		retrService, retr = NewService(dags[0], adders[0], fallbacks[0], time.Millisecond, zerolog.Nop())
+		retrService, retr = NewService(dags[0], adders[0], fallbacks[0], nil, time.Millisecond, zerolog.Nop())
 		fetches[0].SetFallback(retr)
 		retrService.Start()
 	})

@@ -45,7 +45,7 @@ func generateP2PKeys(nProcesses uint16) (p2pPubKeys []*p2p.PublicKey, p2pSecKeys
 	return
 }
 
-func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]string, []string, []string, []string) {
+func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]string, []string, []string, []string, []string) {
 	const (
 		magicPort = 21037
 	)
@@ -53,13 +53,15 @@ func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]stri
 	resultMC := make([]string, nProcesses)
 	setupResult := make([]string, nProcesses)
 	setupMCResult := make([]string, nProcesses)
+	alertResult := make([]string, nProcesses)
 	for id := 0; id < nProcesses; id++ {
-		result[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id)
-		resultMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+1)
-		setupResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+2)
-		setupMCResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+4*id+3)
+		result[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id)
+		resultMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+1)
+		setupResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+2)
+		setupMCResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+3)
+		alertResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+4)
 	}
-	return result, setupResult, resultMC, setupMCResult
+	return result, setupResult, resultMC, setupMCResult, alertResult
 }
 
 func createAndStartProcess(
@@ -68,6 +70,7 @@ func createAndStartProcess(
 	setupAddresses []string,
 	mcAddresses []string,
 	setupMCAddresses []string,
+	alertAddresses []string,
 	pubKeys []gomel.PublicKey,
 	privKey gomel.PrivateKey,
 	verificationKeys []*bn256.VerificationKey,
@@ -226,7 +229,7 @@ func main() {
 	maxLevel := flag.Int("max_level", 12, "number of levels after which a process should finish; default is 12")
 	flag.Parse()
 
-	addresses, setupAddresses, mcAddresses, setupMCAddresses := generateLocalhostAddresses("localhost", *testSize)
+	addresses, setupAddresses, mcAddresses, setupMCAddresses, alertAddresses := generateLocalhostAddresses("localhost", *testSize)
 	pubKeys, privKeys := generateKeys(uint16(*testSize))
 	sekKeys, verKeys := generateRMCKeys(uint16(*testSize))
 	p2pPubKeys, p2pSecKeys := generateP2PKeys(uint16(*testSize))
@@ -235,7 +238,7 @@ func main() {
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *userDB, *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}

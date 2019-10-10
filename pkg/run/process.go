@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/parallel"
+	"gitlab.com/alephledger/consensus-go/pkg/services/alert"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
 	"gitlab.com/alephledger/consensus-go/pkg/services/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
@@ -81,8 +82,12 @@ func main(conf config.Config, rsCh <-chan gomel.RandomSource, log zerolog.Logger
 	}
 	log.Info().Msg(logging.GotRandomSource)
 
-	// common with setup:
 	dag = rs.Bind(dag)
+
+	dag, alertService, fetchData, err := alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
+	if err != nil {
+		return nil, err
+	}
 
 	orderService, orderIfPrime := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	dag = dagutils.AfterEmplace(dag, orderIfPrime)
@@ -90,7 +95,7 @@ func main(conf config.Config, rsCh <-chan gomel.RandomSource, log zerolog.Logger
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
 
-	syncService, multicastUnit, err := sync.NewService(dag, adder, conf.Sync, log)
+	syncService, multicastUnit, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
 	if err != nil {
 		return nil, err
 	}
@@ -100,16 +105,15 @@ func main(conf config.Config, rsCh <-chan gomel.RandomSource, log zerolog.Logger
 	createService := create.NewService(dagMC, adderMC, rs, conf.Create, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-	// end common
 
 	validateService := validate.NewService(conf.TxValidate, orderedUnits, log.With().Int(logging.Service, logging.ValidateService).Logger())
 	generateService := generate.NewService(conf.TxGenerate, txChan, log.With().Int(logging.Service, logging.GenerateService).Logger())
 
-	err = start(adderService, createService, orderService, generateService, validateService, memlogService, syncService)
+	err = start(alertService, adderService, createService, orderService, generateService, validateService, memlogService, syncService)
 	if err != nil {
 		return nil, err
 	}
 	<-dagFinished
-	stop(createService, orderService, generateService, validateService, memlogService, syncService, adderService)
+	stop(createService, orderService, generateService, validateService, memlogService, syncService, adderService, alertService)
 	return dag, nil
 }

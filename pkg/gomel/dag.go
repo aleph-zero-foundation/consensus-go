@@ -15,7 +15,7 @@ type Dag interface {
 	// Check if the Unit satisfies the assumptions of the dag. Should be called before Emplace.
 	Check(Unit) error
 	// Emplace attempts to add the given Unit to the dag. It returns the unit that is included in the dag.
-	Emplace(Unit) Unit
+	Emplace(Unit) (Unit, error)
 	// PrimeUnits returns all prime units on a given level of the dag.
 	PrimeUnits(int) SlottedUnits
 	// UnitsOnHeight returns all units on a given height of the dag.

@@ -14,10 +14,13 @@ func AfterEmplace(dag gomel.Dag, handle func(gomel.Unit)) gomel.Dag {
 	return &afterEmplace{dag, handle}
 }
 
-func (ae *afterEmplace) Emplace(u gomel.Unit) gomel.Unit {
-	result := ae.Dag.Emplace(u)
+func (ae *afterEmplace) Emplace(u gomel.Unit) (gomel.Unit, error) {
+	result, err := ae.Dag.Emplace(u)
+	if err != nil {
+		return result, err
+	}
 	ae.handle(result)
-	return result
+	return result, nil
 }
 
 type beforeEmplace struct {
@@ -30,7 +33,7 @@ func BeforeEmplace(dag gomel.Dag, handle func(gomel.Unit)) gomel.Dag {
 	return &beforeEmplace{dag, handle}
 }
 
-func (be *beforeEmplace) Emplace(u gomel.Unit) gomel.Unit {
+func (be *beforeEmplace) Emplace(u gomel.Unit) (gomel.Unit, error) {
 	be.handle(u)
 	return be.Dag.Emplace(u)
 }

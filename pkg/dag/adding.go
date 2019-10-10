@@ -67,7 +67,7 @@ func (dag *dag) Check(gomel.Unit) error {
 	return nil
 }
 
-func (dag *dag) Emplace(u gomel.Unit) gomel.Unit {
+func (dag *dag) Emplace(u gomel.Unit) (gomel.Unit, error) {
 	result := emplaced(u, dag)
 	dag.updateUnitsOnHeight(result)
 	if gomel.Prime(result) {
@@ -75,7 +75,7 @@ func (dag *dag) Emplace(u gomel.Unit) gomel.Unit {
 	}
 	dag.units.add(result)
 	dag.updateMaximal(result)
-	return result
+	return result, nil
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {

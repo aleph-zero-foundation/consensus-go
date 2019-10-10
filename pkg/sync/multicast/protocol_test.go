@@ -51,7 +51,7 @@ var _ = Describe("Protocol", func() {
 			adders = append(adders, &adder{tests.NewAdder(dag), nil})
 		}
 		for i := 0; i < 4; i++ {
-			serv = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop())
+			serv = NewServer(uint16(i), dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop())
 			servs = append(servs, serv)
 			serv.Start()
 		}
