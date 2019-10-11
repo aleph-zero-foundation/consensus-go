@@ -7,6 +7,7 @@ import (
 	"github.com/klauspost/reedsolomon"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 var _ = Describe("ReedSolomon", func() {
@@ -20,7 +21,7 @@ var _ = Describe("ReedSolomon", func() {
 	Measure("encoding/decoding", func(b Benchmarker) {
 		for _, n := range nTests {
 			for _, s := range szs {
-				f = n/3 + 1
+				f = gomel.MinimalTrusted(n)
 				size := (s*1024 + f - 1) / f
 				data = make([][]byte, n)
 				cp = make([][]byte, n)

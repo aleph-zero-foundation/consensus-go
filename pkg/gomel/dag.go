@@ -36,6 +36,17 @@ func IsQuorum(nProcesses, subsetSize uint16) bool {
 	return 3*subsetSize >= 2*nProcesses
 }
 
+// MinimalQuorum is the minimal possible size of a subset forming a quorum within nProcesses.
+func MinimalQuorum(nProcesses uint16) uint16 {
+	return nProcesses - nProcesses/3
+}
+
+// MinimalTrusted is the minimal size of a subset of nProcesses, that guarantees
+// that the subset contains at least one honest process.
+func MinimalTrusted(nProcesses uint16) uint16 {
+	return nProcesses/3 + 1
+}
+
 // GetByCrown searches the dag for a sequence of NProc units
 // created by different processes, such that their heights and a controlHash
 // matches with the given arguments.

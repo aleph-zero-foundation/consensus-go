@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/multi"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type instance struct {
@@ -84,7 +85,8 @@ func (in *incoming) acceptData(r io.Reader) ([]byte, error) {
 	if !in.keys.Verify(in.pid, signedData) {
 		return nil, errors.New("wrong data signature")
 	}
-	proof := multi.NewSignature(uint16(in.keys.Length()-in.keys.Length()/3), signedData)
+	nProc := uint16(in.keys.Length())
+	proof := multi.NewSignature(gomel.MinimalQuorum(nProc), signedData)
 	in.Lock()
 	defer in.Unlock()
 	in.signedData = signedData
@@ -149,7 +151,8 @@ func newOutgoing(id uint64, data []byte, keys *multi.Keychain) *outgoing {
 	binary.LittleEndian.PutUint64(buf, id)
 	buf = append(buf[:8], data...)
 	signedData := append(buf, keys.Sign(buf)...)
-	proof := multi.NewSignature(keys.Length()-keys.Length()/3, signedData)
+	nProc := uint16(keys.Length())
+	proof := multi.NewSignature(gomel.MinimalQuorum(nProc), signedData)
 	proof.Aggregate(keys.Pid(), keys.Sign(signedData))
 	return &outgoing{
 		instance{
