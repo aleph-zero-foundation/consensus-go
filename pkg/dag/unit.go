@@ -10,31 +10,31 @@ import (
 // It performs some of the necessary computations (floor, level and height)
 // lazily, on demand.
 type freeUnit struct {
-	nProc       uint16
-	creator     uint16
-	signature   gomel.Signature
-	hash        gomel.Hash
-	controlHash gomel.Hash
-	parents     []gomel.Unit
-	data        []byte
-	rsData      []byte
-	height      int
-	level       int
-	floor       [][]gomel.Unit
+	nProc     uint16
+	creator   uint16
+	signature gomel.Signature
+	hash      gomel.Hash
+	parents   []gomel.Unit
+	crown     gomel.Crown
+	data      []byte
+	rsData    []byte
+	height    int
+	level     int
+	floor     [][]gomel.Unit
 }
 
 func newUnit(pu gomel.Preunit, parents []gomel.Unit, nProc uint16) *freeUnit {
 	return &freeUnit{
-		nProc:       nProc,
-		creator:     pu.Creator(),
-		signature:   pu.Signature(),
-		hash:        *pu.Hash(),
-		controlHash: *pu.ControlHash(),
-		parents:     parents,
-		data:        pu.Data(),
-		rsData:      pu.RandomSourceData(),
-		height:      -1,
-		level:       -1,
+		nProc:     nProc,
+		creator:   pu.Creator(),
+		signature: pu.Signature(),
+		crown:     *pu.View(),
+		hash:      *pu.Hash(),
+		parents:   parents,
+		data:      pu.Data(),
+		rsData:    pu.RandomSourceData(),
+		height:    -1,
+		level:     -1,
 	}
 }
 
@@ -58,8 +58,8 @@ func (u *freeUnit) Hash() *gomel.Hash {
 	return &u.hash
 }
 
-func (u *freeUnit) ControlHash() *gomel.Hash {
-	return &u.controlHash
+func (u *freeUnit) View() *gomel.Crown {
+	return &u.crown
 }
 
 func (u *freeUnit) Parents() []gomel.Unit {
@@ -157,7 +157,7 @@ type unit struct {
 	level         int
 	signature     gomel.Signature
 	hash          gomel.Hash
-	controlHash   gomel.Hash
+	crown         gomel.Crown
 	parents       []gomel.Unit
 	floor         [][]gomel.Unit
 	data          []byte
@@ -167,16 +167,16 @@ type unit struct {
 
 func emplaced(u gomel.Unit, dag *dag) *unit {
 	result := &unit{
-		creator:     u.Creator(),
-		height:      u.Height(),
-		level:       u.Level(),
-		signature:   u.Signature(),
-		hash:        *u.Hash(),
-		controlHash: *u.ControlHash(),
-		parents:     u.Parents(),
-		floor:       u.Floor(),
-		data:        u.Data(),
-		rsData:      u.RandomSourceData(),
+		creator:   u.Creator(),
+		height:    u.Height(),
+		level:     u.Level(),
+		signature: u.Signature(),
+		hash:      *u.Hash(),
+		parents:   u.Parents(),
+		crown:     *u.View(),
+		floor:     u.Floor(),
+		data:      u.Data(),
+		rsData:    u.RandomSourceData(),
 	}
 	result.fixSelfFloor()
 	result.computeForkingHeight(dag)
@@ -203,8 +203,8 @@ func (u *unit) Hash() *gomel.Hash {
 	return &u.hash
 }
 
-func (u *unit) ControlHash() *gomel.Hash {
-	return &u.controlHash
+func (u *unit) View() *gomel.Crown {
+	return &u.crown
 }
 
 func (u *unit) Parents() []gomel.Unit {

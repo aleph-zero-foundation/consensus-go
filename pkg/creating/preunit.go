@@ -3,29 +3,28 @@ package creating
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"golang.org/x/crypto/sha3"
 )
 
 type preunit struct {
-	creator        uint16
-	signature      gomel.Signature
-	hash           gomel.Hash
-	controlHash    gomel.Hash
-	parentsHeights []int
-	data           []byte
-	rsData         []byte
+	creator   uint16
+	signature gomel.Signature
+	hash      gomel.Hash
+	crown     gomel.Crown
+	data      []byte
+	rsData    []byte
 }
 
 // NewPreunit constructs a a new preunit with given parents and creator id.
-func NewPreunit(creator uint16, controlHash *gomel.Hash, parentsHeights []int, data []byte, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, crown *gomel.Crown, data []byte, rsData []byte) gomel.Preunit {
 	pu := &preunit{
-		creator:        creator,
-		parentsHeights: parentsHeights,
-		controlHash:    *controlHash,
-		data:           data,
-		rsData:         rsData,
+		creator: creator,
+		crown:   *crown,
+		data:    data,
+		rsData:  rsData,
 	}
 	pu.computeHash()
 	return pu
@@ -56,14 +55,9 @@ func (pu *preunit) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
-// ParentsHeights is the sequence of heights of parents.
-func (pu *preunit) ParentsHeights() []int {
-	return pu.parentsHeights
-}
-
-// ControlHash of the preunit.
-func (pu *preunit) ControlHash() *gomel.Hash {
-	return &pu.controlHash
+// View returns crown consisting all the parents of the unit.
+func (pu *preunit) View() *gomel.Crown {
+	return &pu.crown
 }
 
 // SetSignature sets the signature of the preunit.
@@ -79,6 +73,15 @@ func (pu *preunit) computeHash() {
 	data.Write(creatorBytes)
 	data.Write(pu.data)
 	data.Write(pu.rsData)
-	data.Write(pu.controlHash[:])
+	heightBytes := make([]byte, 4)
+	for _, h := range pu.crown.Heights {
+		if h == -1 {
+			binary.LittleEndian.PutUint32(heightBytes, math.MaxUint32)
+		} else {
+			binary.LittleEndian.PutUint32(heightBytes, uint32(h))
+		}
+		data.Write(heightBytes)
+	}
+	data.Write(pu.crown.ControlHash[:])
 	sha3.ShakeSum128(pu.hash[:], data.Bytes())
 }

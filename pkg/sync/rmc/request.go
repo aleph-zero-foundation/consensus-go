@@ -34,5 +34,5 @@ func decodeUnitID(id uint64, nProc uint16) (uint16, int) {
 }
 
 func preunitID(pu gomel.Preunit, nProc uint16) uint64 {
-	return uint64(pu.Creator()) + uint64(nProc)*uint64(pu.ParentsHeights()[pu.Creator()]+1)
+	return uint64(pu.Creator()) + uint64(nProc)*uint64(pu.View().Heights[pu.Creator()]+1)
 }

@@ -85,7 +85,7 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 
-	result := creating.NewPreunit(creator, controlHash, parentsHeights, unitData, rsData)
+	result := creating.NewPreunit(creator, gomel.NewCrown(parentsHeights, controlHash), unitData, rsData)
 	result.SetSignature(signature)
 	return result, nil
 }

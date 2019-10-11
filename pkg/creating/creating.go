@@ -26,7 +26,7 @@ func getPredecessor(mu gomel.SlottedUnits, creator uint16) gomel.Unit {
 // newDealingUnit creates a new preunit with the given creator and no parents.
 func newDealingUnit(creator, NProc uint16, data []byte, rs gomel.RandomSource) gomel.Preunit {
 	rsData, _ := rs.DataToInclude(creator, make([]gomel.Unit, NProc), 0)
-	return NewPreunit(creator, gomel.CombineHashes(make([]*gomel.Hash, NProc)), gomel.DealingHeights(NProc), data, rsData)
+	return NewPreunit(creator, gomel.EmptyCrown(NProc), data, rsData)
 }
 
 func makeConsistent(parents []gomel.Unit) {
@@ -48,30 +48,6 @@ func ancestorBelowLevel(u gomel.Unit, level int) gomel.Unit {
 		u = gomel.Predecessor(u)
 	}
 	return u
-}
-
-func hashes(units []gomel.Unit) []*gomel.Hash {
-	result := make([]*gomel.Hash, len(units))
-	for i, u := range units {
-		if u == nil {
-			result[i] = nil
-		} else {
-			result[i] = u.Hash()
-		}
-	}
-	return result
-}
-
-func heights(units []gomel.Unit) []int {
-	result := make([]int, len(units))
-	for i, u := range units {
-		if u == nil {
-			result[i] = -1
-		} else {
-			result[i] = u.Height()
-		}
-	}
-	return result
 }
 
 func pickParents(dag gomel.Dag, mu gomel.SlottedUnits, predecessor gomel.Unit, canSkipLevel bool) []gomel.Unit {
@@ -128,5 +104,5 @@ func NewUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource, 
 	if err != nil {
 		return nil, 0, err
 	}
-	return NewPreunit(creator, gomel.CombineHashes(hashes(parents)), heights(parents), data, rsData), level, nil
+	return NewPreunit(creator, gomel.CrownFromParents(parents), data, rsData), level, nil
 }

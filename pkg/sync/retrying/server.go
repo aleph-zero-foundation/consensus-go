@@ -86,7 +86,7 @@ func (f *server) update() {
 }
 
 func haveParents(pu gomel.Preunit, dag gomel.Dag) bool {
-	for i, h := range pu.ParentsHeights() {
+	for i, h := range pu.View().Heights {
 		if h == -1 {
 			continue
 		}

@@ -3,8 +3,6 @@ package gomel
 // Preunit represents a unit which does not (yet) belong to a dag, so either just created or transferred through the network.
 type Preunit interface {
 	BaseUnit
-	// ParentsHeights of a preunit is the sequence of heights of the parents.
-	ParentsHeights() []int
 	// SetSignature sets a signature of this preunit.
 	SetSignature(Signature)
 }

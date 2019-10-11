@@ -125,7 +125,7 @@ func (dag *Dag) IsQuorum(number uint16) bool {
 func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
 	dag.RLock()
 	defer dag.RUnlock()
-	parents, err := gomel.GetByControlHash(dag, pu.ParentsHeights(), pu.ControlHash())
+	parents, err := gomel.GetByControlHash(dag, pu.View())
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func setBasicInfo(u *unit, dag *Dag, pu gomel.Preunit) {
 	}
 	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
-	u.controlHash = *pu.ControlHash()
+	u.crown = *pu.View()
 	u.data = pu.Data()
 	u.rsData = pu.RandomSourceData()
 	if len(dag.unitsByHeight) <= u.height {

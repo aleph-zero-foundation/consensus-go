@@ -31,8 +31,8 @@ var _ = Describe("Encoding/Decoding", func() {
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
 			Expect(pu.Hash()).To(Equal(u.Hash()))
-			Expect(pu.ControlHash()).To(Equal(u.ControlHash()))
-			for i, h := range pu.ParentsHeights() {
+			Expect(pu.View().ControlHash).To(Equal(u.View().ControlHash))
+			for i, h := range pu.View().Heights {
 				if h == -1 {
 					Expect(u.Parents()[i]).To(BeNil())
 				} else {
@@ -51,8 +51,8 @@ var _ = Describe("Encoding/Decoding", func() {
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
 			Expect(pu.Hash()).To(Equal(u.Hash()))
-			Expect(pu.ControlHash()).To(Equal(u.ControlHash()))
-			for i, h := range pu.ParentsHeights() {
+			Expect(pu.View().ControlHash).To(Equal(u.View().ControlHash))
+			for i, h := range pu.View().Heights {
 				if h == -1 {
 					Expect(u.Parents()[i]).To(BeNil())
 				} else {

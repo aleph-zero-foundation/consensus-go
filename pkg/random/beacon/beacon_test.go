@@ -265,8 +265,8 @@ func (um *unitMock) Hash() *gomel.Hash {
 	return um.u.Hash()
 }
 
-func (um *unitMock) ControlHash() *gomel.Hash {
-	return um.u.ControlHash()
+func (um *unitMock) View() *gomel.Crown {
+	return um.u.View()
 }
 
 func (um *unitMock) Data() []byte {

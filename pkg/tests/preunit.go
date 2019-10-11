@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"golang.org/x/crypto/sha3"
@@ -12,21 +13,20 @@ type preunit struct {
 	creator        uint16
 	parentsHeights []int
 	signature      gomel.Signature
+	crown          gomel.Crown
 	hash           gomel.Hash
-	controlHash    gomel.Hash
 	data           []byte
 	rsData         []byte
 }
 
 // NewPreunit creates a preunit.
-func NewPreunit(creator uint16, parents []*gomel.Hash, parentsHeights []int, data []byte, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, crown *gomel.Crown, data []byte, rsData []byte) gomel.Preunit {
 	pu := &preunit{
-		creator:        creator,
-		parentsHeights: parentsHeights,
-		controlHash:    *gomel.CombineHashes(parents),
-		data:           data,
-		signature:      make([]byte, 64),
-		rsData:         rsData,
+		creator:   creator,
+		crown:     *crown,
+		data:      data,
+		signature: make([]byte, 64),
+		rsData:    rsData,
 	}
 	pu.computeHash()
 
@@ -36,11 +36,6 @@ func NewPreunit(creator uint16, parents []*gomel.Hash, parentsHeights []int, dat
 // RandomSourceData is the random source data embedded in this preunit.
 func (pu *preunit) RandomSourceData() []byte {
 	return pu.rsData
-}
-
-// ParentsHeights is the sequence of heights of parents.
-func (pu *preunit) ParentsHeights() []int {
-	return pu.parentsHeights
 }
 
 // Data returns data embedded in this preunit.
@@ -58,14 +53,14 @@ func (pu *preunit) Signature() gomel.Signature {
 	return pu.signature
 }
 
+// View returns crown consisting all the parents of the unit.
+func (pu *preunit) View() *gomel.Crown {
+	return &pu.crown
+}
+
 // Hash of the preunit.
 func (pu *preunit) Hash() *gomel.Hash {
 	return &pu.hash
-}
-
-// ControlHash of the preunit.
-func (pu *preunit) ControlHash() *gomel.Hash {
-	return &pu.controlHash
 }
 
 // SetSignature sets the signature of the preunit.
@@ -81,6 +76,15 @@ func (pu *preunit) computeHash() {
 	data.Write(creatorBytes)
 	data.Write(pu.data)
 	data.Write(pu.rsData)
-	data.Write(pu.controlHash[:])
+	heightBytes := make([]byte, 4)
+	for _, h := range pu.crown.Heights {
+		if h == -1 {
+			binary.LittleEndian.PutUint32(heightBytes, math.MaxUint32)
+		} else {
+			binary.LittleEndian.PutUint32(heightBytes, uint32(h))
+		}
+		data.Write(heightBytes)
+	}
+	data.Write(pu.crown.ControlHash[:])
 	sha3.ShakeSum128(pu.hash[:], data.Bytes())
 }

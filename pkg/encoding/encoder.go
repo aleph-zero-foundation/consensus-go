@@ -45,7 +45,7 @@ func (e *enc) encodeUnit(unit gomel.Unit) error {
 		}
 		s += 4
 	}
-	copy(data[s:s+32], unit.ControlHash()[:])
+	copy(data[s:s+32], unit.View().ControlHash[:])
 	s += 32
 
 	unitDataLen := uint32(len(unit.Data()))

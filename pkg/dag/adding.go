@@ -13,17 +13,17 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	if u := dag.Get([]*gomel.Hash{pu.Hash()}); u[0] != nil {
 		return nil, gomel.NewDuplicateUnit(u[0])
 	}
-	possibleParents := dag.heightUnits.get(pu.ParentsHeights())
+	possibleParents := dag.heightUnits.get(pu.View().Heights)
 	parents, err := filterByCommitment(possibleParents, pu.Creator())
 	if err != nil {
 		return nil, err
 	}
 
-	if unknown := countUnknown(parents, pu.ParentsHeights()); unknown > 0 {
+	if unknown := countUnknown(parents, pu.View().Heights); unknown > 0 {
 		return nil, gomel.NewUnknownParents(unknown)
 	}
 
-	if *gomel.CombineHashes(toHashes(parents)) != *pu.ControlHash() {
+	if *gomel.CombineHashes(toHashes(parents)) != pu.View().ControlHash {
 		return nil, errors.New("wrong control hash")
 	}
 

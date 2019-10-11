@@ -10,10 +10,10 @@ import (
 )
 
 func isDealing(pu gomel.Preunit, nProc uint16) bool {
-	if len(pu.ParentsHeights()) != int(nProc) {
+	if len(pu.View().Heights) != int(nProc) {
 		return false
 	}
-	for _, h := range pu.ParentsHeights() {
+	for _, h := range pu.View().Heights {
 		if h != -1 {
 			return false
 		}
@@ -85,10 +85,10 @@ var _ = Describe("Creating", func() {
 					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(0).Get(i)[0]
-						Expect(pu.ParentsHeights()[i]).To(Equal(u.Height()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes = append(hashes, u.Hash())
 					}
-					Expect(pu.ControlHash()).To(Equal(gomel.CombineHashes(hashes)))
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 			Context("that contains two levels without one unit", func() {
@@ -103,10 +103,10 @@ var _ = Describe("Creating", func() {
 					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(0).Get(i)[0]
-						Expect(pu.ParentsHeights()[i]).To(Equal(u.Height()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes = append(hashes, u.Hash())
 					}
-					Expect(pu.ControlHash()).To(Equal(gomel.CombineHashes(hashes)))
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 		})
@@ -163,10 +163,10 @@ var _ = Describe("Creating", func() {
 					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(0).Get(i)[0]
-						Expect(pu.ParentsHeights()[i]).To(Equal(u.Height()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes = append(hashes, u.Hash())
 					}
-					Expect(pu.ControlHash()).To(Equal(gomel.CombineHashes(hashes)))
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 			Context("that contains two levels without one unit", func() {
@@ -181,12 +181,12 @@ var _ = Describe("Creating", func() {
 					hashes := make([]*gomel.Hash, dag.NProc())
 					for i := uint16(1); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(1).Get(i)[0]
-						Expect(pu.ParentsHeights()[i]).To(Equal(u.Height()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes[i] = u.Hash()
 					}
-					Expect(pu.ParentsHeights()[0]).To(Equal(dag.PrimeUnits(0).Get(0)[0].Height()))
+					Expect(pu.View().Heights[0]).To(Equal(dag.PrimeUnits(0).Get(0)[0].Height()))
 					hashes[0] = dag.PrimeUnits(0).Get(0)[0].Hash()
-					Expect(pu.ControlHash()).To(Equal(gomel.CombineHashes(hashes)))
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 		})

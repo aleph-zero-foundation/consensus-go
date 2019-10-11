@@ -46,10 +46,10 @@ func IsQuorum(nProcesses, subsetSize uint16) bool {
 // If there is no valid sequence of units it returns an error.
 // This implementation checks among all the possibilities between the forks,
 // which might be a very expensive computation.
-func GetByControlHash(dag Dag, heights []int, controlHash *Hash) ([]Unit, error) {
+func GetByControlHash(dag Dag, crown *Crown) ([]Unit, error) {
 	possibleUnits := make([][]Unit, dag.NProc())
 	unknown := 0
-	for i, h := range heights {
+	for i, h := range crown.Heights {
 		if h == -1 {
 			continue
 		}
@@ -62,7 +62,7 @@ func GetByControlHash(dag Dag, heights []int, controlHash *Hash) ([]Unit, error)
 	if unknown > 0 {
 		return nil, NewUnknownParents(unknown)
 	}
-	return getTraversal(possibleUnits, heights, controlHash)
+	return getTraversal(possibleUnits, crown.Heights, &crown.ControlHash)
 }
 
 func getTraversal(units [][]Unit, heights []int, hash *Hash) ([]Unit, error) {

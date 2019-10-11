@@ -18,7 +18,7 @@ func CreateRandomNonForking(nProcesses, nUnits int) gomel.Dag {
 	for created < nUnits {
 		pid := uint16(r.Intn(nProcesses))
 		if dag.maximalHeight[pid] == -1 {
-			pu := NewPreunit(pid, make([]*gomel.Hash, nProcesses), gomel.DealingHeights(uint16(nProcesses)), []byte{}, nil)
+			pu := NewPreunit(pid, gomel.EmptyCrown(uint16(nProcesses)), []byte{}, nil)
 			_, err := gomel.AddUnit(dag, pu)
 			if err == nil {
 				created++
@@ -35,7 +35,7 @@ func CreateRandomNonForking(nProcesses, nUnits int) gomel.Dag {
 				}
 				parentsHeights[i] = h
 			}
-			pu := NewPreunit(pid, parents, parentsHeights, []byte{}, nil)
+			pu := NewPreunit(pid, gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), []byte{}, nil)
 			_, err := gomel.AddUnit(dag, pu)
 			if err == nil {
 				created++

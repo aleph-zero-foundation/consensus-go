@@ -61,7 +61,7 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 		}
 		unitData := make([]byte, 4)
 		binary.LittleEndian.PutUint32(unitData, uint32(txID))
-		pu := NewPreunit(uint16(puCreator), parents, parentsHeights, unitData, nil)
+		pu := NewPreunit(uint16(puCreator), gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), unitData, nil)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
 		_, err := gomel.AddUnit(dag, pu)

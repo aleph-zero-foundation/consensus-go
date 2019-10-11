@@ -13,13 +13,12 @@ import (
 )
 
 type preunitMock struct {
-	creator        uint16
-	signature      gomel.Signature
-	hash           gomel.Hash
-	controlHash    *gomel.Hash
-	parentsHeights []int
-	data           []byte
-	rsData         []byte
+	creator   uint16
+	signature gomel.Signature
+	hash      gomel.Hash
+	crown     gomel.Crown
+	data      []byte
+	rsData    []byte
 }
 
 func (pu *preunitMock) RandomSourceData() []byte {
@@ -42,23 +41,18 @@ func (pu *preunitMock) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
-func (pu *preunitMock) ControlHash() *gomel.Hash {
-	return pu.controlHash
+func (pu *preunitMock) View() *gomel.Crown {
+	return &pu.crown
 }
 
 func (pu *preunitMock) SetSignature(sig gomel.Signature) {
 	pu.signature = sig
 }
 
-func (pu *preunitMock) ParentsHeights() []int {
-	return pu.parentsHeights
-}
-
 func newPreunitMock(creator uint16, parentsHeights []int, parentsHashes []*gomel.Hash) *preunitMock {
 	return &preunitMock{
-		creator:        creator,
-		controlHash:    gomel.CombineHashes(parentsHashes),
-		parentsHeights: parentsHeights,
+		creator: creator,
+		crown:   *gomel.NewCrown(parentsHeights, gomel.CombineHashes(parentsHashes)),
 	}
 }
 

@@ -169,7 +169,7 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 				fmt.Println("error while adding a unit (error was ignored):", err.Error())
 				fmt.Printf("%+v\n", unit)
 				for _, dag := range dags {
-					parentsHeights := unit.ParentsHeights()
+					parentsHeights := unit.View().Heights
 					failed := false
 					for ix, h := range parentsHeights {
 						if hu := dag.UnitsOnHeight(h); hu == nil || hu.Get(uint16(ix)) == nil {

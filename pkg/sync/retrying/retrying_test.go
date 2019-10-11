@@ -46,7 +46,7 @@ func pre(u gomel.Unit) gomel.Preunit {
 			parentsHeights[i] = p.Height()
 		}
 	}
-	pu := creating.NewPreunit(u.Creator(), u.ControlHash(), parentsHeights, u.Data(), u.RandomSourceData())
+	pu := creating.NewPreunit(u.Creator(), gomel.NewCrown(parentsHeights, &u.View().ControlHash), u.Data(), u.RandomSourceData())
 	pu.SetSignature(u.Signature())
 	return pu
 }

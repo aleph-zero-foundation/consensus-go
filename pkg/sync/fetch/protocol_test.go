@@ -80,7 +80,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				pu = creating.NewPreunit(0, &gomel.Hash{}, gomel.DealingHeights(10), nil, nil)
+				pu = creating.NewPreunit(0, gomel.EmptyCrown(10), nil, nil)
 				fbk1.Resolve(pu) // this is just a roundabout way to send a request to serv1
 
 				time.Sleep(time.Millisecond * 500)
@@ -101,7 +101,7 @@ var _ = Describe("Protocol", func() {
 				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
 				maxes := dag2.MaximalUnitsPerProcess()
 				unit = maxes.Get(0)[0]
-				pu = creating.NewPreunit(1, gomel.CombineHashes(make([]*gomel.Hash, 10)), gomel.DealingHeights(10), nil, nil)
+				pu = creating.NewPreunit(1, gomel.EmptyCrown(10), nil, nil)
 
 			})
 
@@ -138,7 +138,7 @@ var _ = Describe("Protocol", func() {
 					}
 					return true
 				})
-				pu = creating.NewPreunit(1, gomel.CombineHashes(make([]*gomel.Hash, 10)), gomel.DealingHeights(10), nil, nil)
+				pu = creating.NewPreunit(1, gomel.EmptyCrown(10), nil, nil)
 			})
 
 			It("should add all missing units", func() {

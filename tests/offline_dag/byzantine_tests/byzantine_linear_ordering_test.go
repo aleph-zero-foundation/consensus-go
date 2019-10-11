@@ -39,8 +39,7 @@ func newForkWithDifferentData(preunit gomel.Preunit) gomel.Preunit {
 	data := generateFreshData(preunit.Data())
 	return creating.NewPreunit(
 		preunit.Creator(),
-		preunit.ControlHash(),
-		preunit.ParentsHeights(),
+		preunit.View(),
 		data,
 		preunit.RandomSourceData(),
 	)
@@ -60,11 +59,11 @@ func createForkUsingNewUnit() forker {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
 
-		preunitParents, err := gomel.GetByControlHash(dag, preunit.ParentsHeights(), preunit.ControlHash())
+		preunitParents, err := gomel.GetByControlHash(dag, preunit.View())
 		if err != nil {
 			return nil, err
 		}
-		puParents, err := gomel.GetByControlHash(dag, pu.ParentsHeights(), pu.ControlHash())
+		puParents, err := gomel.GetByControlHash(dag, pu.View())
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +98,7 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		preunitParents, err := gomel.GetByControlHash(dag, preunit.ParentsHeights(), preunit.ControlHash())
+		preunitParents, err := gomel.GetByControlHash(dag, preunit.View())
 		if err != nil {
 			return nil, err
 		}
@@ -1052,7 +1051,7 @@ func preunitFromParents(creator uint16, parents []gomel.Unit, data []byte, rsDat
 			hashes[i] = p.Hash()
 		}
 	}
-	return creating.NewPreunit(creator, gomel.CombineHashes(hashes), heights, data, rsData)
+	return creating.NewPreunit(creator, gomel.NewCrown(heights, gomel.CombineHashes(hashes)), data, rsData)
 }
 
 func unitToPreunit(unit gomel.Unit) gomel.Preunit {
