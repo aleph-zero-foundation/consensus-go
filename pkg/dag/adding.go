@@ -1,8 +1,6 @@
 package dag
 
 import (
-	"errors"
-
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -14,7 +12,7 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 		return nil, gomel.NewDuplicateUnit(u[0])
 	}
 	possibleParents := dag.heightUnits.get(pu.View().Heights)
-	parents, err := filterByCommitment(possibleParents, pu.Creator())
+	parents, err := getParents(possibleParents, pu.Creator())
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +22,7 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	}
 
 	if *gomel.CombineHashes(toHashes(parents)) != pu.View().ControlHash {
-		return nil, errors.New("wrong control hash")
+		return nil, gomel.NewDataError("wrong control hash")
 	}
 
 	return newUnit(pu, parents, dag.nProcesses), nil
@@ -50,7 +48,7 @@ func countUnknown(parents []gomel.Unit, heights []int) int {
 	return unknown
 }
 
-func filterByCommitment(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
+func getParents(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
 	nProc := len(units)
 	result := make([]gomel.Unit, nProc)
 
@@ -59,7 +57,7 @@ func filterByCommitment(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) 
 			result[i] = us[0]
 		}
 		if len(us) > 1 {
-			return nil, errors.New("ambiguous parents")
+			return nil, gomel.NewAmbiguousParents(uint16(i))
 		}
 	}
 	return result, nil

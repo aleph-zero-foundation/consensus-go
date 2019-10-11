@@ -174,7 +174,7 @@ var _ = Describe("Units", func() {
 				It("Should return an error ambigous parents", func() {
 					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
 					Expect(readingErr).To(HaveOccurred())
-					Expect(readingErr).To(MatchError("ambiguous parents"))
+					Expect(readingErr).To(MatchError(gomel.NewAmbiguousParents(0)))
 				})
 			})
 			Describe("On a chain with 9 consecutive dealing units as the other parent ", func() {

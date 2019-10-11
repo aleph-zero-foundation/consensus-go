@@ -103,3 +103,17 @@ func (ae *AggregateError) Error() string {
 func (ae *AggregateError) Errors() []error {
 	return ae.errs
 }
+
+// AmbiguousParents is an error-like object used when trying to add a unit whose parents cannot be determined by pid and height.
+type AmbiguousParents struct {
+	pid uint16
+}
+
+func (e *AmbiguousParents) Error() string {
+	return "ambigous parents"
+}
+
+// NewAmbiguousParents constructs an AmbigousParents error for a given process.
+func NewAmbiguousParents(pid uint16) *AmbiguousParents {
+	return &AmbiguousParents{pid}
+}

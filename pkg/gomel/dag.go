@@ -7,10 +7,6 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
-import (
-	"errors"
-)
-
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
 	// Decode attempts to decode the given Preunit and return a Unit or an error, when that is impossible.
@@ -93,5 +89,5 @@ func getTraversal(units [][]Unit, heights []int, hash *Hash) ([]Unit, error) {
 	if rec(0) {
 		return answer, nil
 	}
-	return nil, errors.New("wrong control hash")
+	return nil, NewDataError("wrong control hash")
 }

@@ -99,7 +99,6 @@ const (
 	Recv      = "V"
 	FreshRecv = "G"
 	Creator   = "C"
-	NParents  = "A"
 	Memory    = "M"
 	ID        = "D"
 	Hash      = "#"
@@ -123,7 +122,6 @@ var fieldNameDict = map[string]string{
 	Recv:      "received",
 	FreshRecv: "fresh r",
 	Creator:   "creator",
-	NParents:  "parents",
 	Memory:    "bytes",
 	ID:        "ID",
 	Hash:      "hash",

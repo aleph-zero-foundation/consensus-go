@@ -14,15 +14,15 @@ type fiberMap struct {
 	mx      sync.RWMutex
 }
 
-type noSuchValueError struct {
+type noSuchFiberError struct {
 	value int
 }
 
-func newNoSuchValueError(value int) *noSuchValueError {
-	return &noSuchValueError{value}
+func newNoSuchFiberError(value int) *noSuchFiberError {
+	return &noSuchFiberError{value}
 }
 
-func (e *noSuchValueError) Error() string {
+func (e *noSuchFiberError) Error() string {
 	return fmt.Sprintf("value %v does not exist", e.value)
 }
 
@@ -31,7 +31,6 @@ func newFiberMap(width uint16, initialLen int) *fiberMap {
 		content: make(map[int]gomel.SlottedUnits),
 		width:   width,
 		length:  initialLen,
-		mx:      sync.RWMutex{},
 	}
 	for i := 0; i < initialLen; i++ {
 		newMap.content[i] = newSlottedUnits(width)
@@ -44,7 +43,7 @@ func (fm *fiberMap) getFiber(value int) (gomel.SlottedUnits, error) {
 	defer fm.mx.RUnlock()
 	result, ok := fm.content[value]
 	if !ok {
-		return nil, newNoSuchValueError(value)
+		return nil, newNoSuchFiberError(value)
 	}
 	return result, nil
 }
