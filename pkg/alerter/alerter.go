@@ -1,3 +1,4 @@
+// Package alerter provides services and DAG wrappers that handle alerts raised when forks are encountered.
 package alerter
 
 import (

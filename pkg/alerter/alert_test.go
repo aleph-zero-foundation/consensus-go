@@ -59,8 +59,12 @@ var _ = Describe("Alert", func() {
 
 	AcceptSomething := func(pid uint16, wg *sync.WaitGroup) {
 		defer GinkgoRecover()
-		conn, err := netservs[pid].Listen(30 * time.Second)
-		Expect(err).NotTo(HaveOccurred())
+		conn, err := netservs[pid].Listen(4 * time.Second)
+		if err != nil {
+			// Might happen, the only guarantee is 2/3 of the processes get it.
+			wg.Done()
+			return
+		}
 		alerters[pid].HandleIncoming(conn, wg)
 	}
 
@@ -135,10 +139,14 @@ var _ = Describe("Alert", func() {
 				// It occuring depends on whether 2 finishes its alert before 1 tries checking for the commitment.
 				wg.Wait()
 				// We have to start at 3 here,because we don't know whether adding 2 succeeded, see above.
+				failed := 0
 				for i := uint16(3); i < nProc; i++ {
 					_, err = gomel.AddUnit(dags[1], pus[i])
-					Expect(err).NotTo(HaveOccurred())
+					if err != nil {
+						failed++
+					}
 				}
+				Expect(failed).To(BeNumerically("<", 2))
 			})
 		})
 	})
