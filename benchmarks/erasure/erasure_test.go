@@ -21,7 +21,7 @@ var _ = Describe("ReedSolomon", func() {
 	Measure("encoding/decoding", func(b Benchmarker) {
 		for _, n := range nTests {
 			for _, s := range szs {
-				f = gomel.MinimalTrusted(n)
+				f = int(gomel.MinimalTrusted(uint16(n)))
 				size := (s*1024 + f - 1) / f
 				data = make([][]byte, n)
 				cp = make([][]byte, n)
