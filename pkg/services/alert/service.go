@@ -15,6 +15,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/rmc"
+	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 type service struct {
@@ -27,7 +28,7 @@ type service struct {
 }
 
 // NewService constructs a alerting service for the given dag with the given configuration.
-func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Dag, gomel.Service, func(*gomel.Hash, uint16) error, error) {
+func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Dag, gomel.Service, gsync.FetchData, error) {
 	rmc := rmc.New(conf.Pubs, conf.Priv)
 	netserv, err := tcp.NewServer(conf.LocalAddress, conf.RemoteAddresses, log)
 	if err != nil {

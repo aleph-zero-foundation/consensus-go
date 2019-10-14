@@ -26,7 +26,7 @@ type server struct {
 	adder               gomel.Adder
 	netserv             network.Server
 	fallback            gsync.Fallback
-	fetchData           func(*gomel.Hash, uint16) error
+	fetchData           gsync.FetchData
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
 	inPool              gsync.WorkerPool
@@ -36,7 +36,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData func(*gomel.Hash, uint16) error, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData gsync.FetchData, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.MulticastServer {
 	nProc := int(dag.NProc())
 	s := &server{
 		pid:       pid,

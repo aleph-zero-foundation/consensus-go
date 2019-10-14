@@ -18,7 +18,7 @@ type server struct {
 	adder     gomel.Adder
 	interval  time.Duration
 	inner     gsync.Fallback
-	fetchData func(*gomel.Hash, uint16) error
+	fetchData gsync.FetchData
 	backlog   *backlog
 	quit      int32
 	wg        sync.WaitGroup
@@ -26,7 +26,7 @@ type server struct {
 }
 
 // NewService creates a service that continuously tries to add problematic units using provided Fallback.
-func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, fetchData func(*gomel.Hash, uint16) error, interval time.Duration, log zerolog.Logger) (gomel.Service, gsync.Fallback) {
+func NewService(dag gomel.Dag, adder gomel.Adder, fallback gsync.Fallback, fetchData gsync.FetchData, interval time.Duration, log zerolog.Logger) (gomel.Service, gsync.Fallback) {
 	s := &server{
 		dag:       dag,
 		adder:     adder,

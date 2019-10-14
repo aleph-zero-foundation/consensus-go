@@ -33,7 +33,7 @@ type server struct {
 	adder     gomel.Adder
 	netserv   network.Server
 	fallback  sync.Fallback
-	fetchData func(*gomel.Hash, uint16) error
+	fetchData sync.FetchData
 	requests  []chan request
 	outPool   sync.WorkerPool
 	inPool    sync.WorkerPool
@@ -42,7 +42,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs the multicast protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData func(*gomel.Hash, uint16) error, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
 	nProc := int(dag.NProc())
 	requests := make([]chan request, nProc)
 	for i := 0; i < nProc; i++ {

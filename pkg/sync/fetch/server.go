@@ -19,7 +19,7 @@ type server struct {
 	adder     gomel.Adder
 	netserv   network.Server
 	fallback  sync.Fallback
-	fetchData func(*gomel.Hash, uint16) error
+	fetchData sync.FetchData
 	requests  chan request
 	syncIds   []uint32
 	outPool   sync.WorkerPool
@@ -29,7 +29,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData func(*gomel.Hash, uint16) error, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
 	nProc := int(dag.NProc())
 	requests := make(chan request, nProc)
 	s := &server{
