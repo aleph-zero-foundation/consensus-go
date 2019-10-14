@@ -59,11 +59,11 @@ func createForkUsingNewUnit() forker {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
 
-		preunitParents, err := gomel.GetByControlHash(dag, preunit.View())
+		preunitParents, err := gomel.GetByCrown(dag, preunit.View())
 		if err != nil {
 			return nil, err
 		}
-		puParents, err := gomel.GetByControlHash(dag, pu.View())
+		puParents, err := gomel.GetByCrown(dag, pu.View())
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		preunitParents, err := gomel.GetByControlHash(dag, preunit.View())
+		preunitParents, err := gomel.GetByCrown(dag, preunit.View())
 		if err != nil {
 			return nil, err
 		}

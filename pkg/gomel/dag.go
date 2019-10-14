@@ -36,13 +36,13 @@ func IsQuorum(nProcesses, subsetSize uint16) bool {
 	return 3*subsetSize >= 2*nProcesses
 }
 
-// GetByControlHash searches the dag for a sequence of NProc units
+// GetByCrown searches the dag for a sequence of NProc units
 // created by different processes, such that their heights and a controlHash
 // matches with the given arguments.
 // If there is no valid sequence of units it returns an error.
 // This implementation checks among all the possibilities between the forks,
 // which might be a very expensive computation.
-func GetByControlHash(dag Dag, crown *Crown) ([]Unit, error) {
+func GetByCrown(dag Dag, crown *Crown) ([]Unit, error) {
 	possibleUnits := make([][]Unit, dag.NProc())
 	unknown := 0
 	for i, h := range crown.Heights {
@@ -58,10 +58,10 @@ func GetByControlHash(dag Dag, crown *Crown) ([]Unit, error) {
 	if unknown > 0 {
 		return nil, NewUnknownParents(unknown)
 	}
-	return getTraversal(possibleUnits, crown.Heights, &crown.ControlHash)
+	return getTransversal(possibleUnits, crown.Heights, &crown.ControlHash)
 }
 
-func getTraversal(units [][]Unit, heights []int, hash *Hash) ([]Unit, error) {
+func getTransversal(units [][]Unit, heights []int, hash *Hash) ([]Unit, error) {
 	nProc := len(units)
 	answer := make([]Unit, nProc)
 	hashes := make([]*Hash, nProc)

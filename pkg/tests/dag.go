@@ -125,7 +125,7 @@ func (dag *Dag) IsQuorum(number uint16) bool {
 func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
 	dag.RLock()
 	defer dag.RUnlock()
-	parents, err := gomel.GetByControlHash(dag, pu.View())
+	parents, err := gomel.GetByCrown(dag, pu.View())
 	if err != nil {
 		return err
 	}

@@ -48,6 +48,11 @@ func (pu *preunit) Creator() uint16 {
 	return pu.creator
 }
 
+// Height of the preunit.
+func (pu *preunit) Height() int {
+	return pu.crown.Heights[pu.creator] + 1
+}
+
 // Signature of the preunit.
 func (pu *preunit) Signature() gomel.Signature {
 	return pu.signature

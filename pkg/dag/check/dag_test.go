@@ -33,6 +33,10 @@ func (pu *preunitMock) Creator() uint16 {
 	return pu.creator
 }
 
+func (pu *preunitMock) Height() int {
+	return pu.crown.Heights[pu.creator] + 1
+}
+
 func (pu *preunitMock) Signature() gomel.Signature {
 	return pu.signature
 }
