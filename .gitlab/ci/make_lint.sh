@@ -13,7 +13,7 @@ stat=${PIPESTATUS[0]}
 if [ $stat -ne 0 ]; then
  exit $stat
 fi
-git grep -i "todo" -- :^.gitlab/ci/make_lint.sh | tee -a ${LINTER_OUTPUT}
+git grep -i "todo" -- ":/" ":!.gitlab/ci/make_lint.sh" | tee -a ${LINTER_OUTPUT}
 stat=${PIPESTATUS[0]}
 if [ $stat -eq 0 ]; then
 	echo "There should not be any TODOs in the code."
