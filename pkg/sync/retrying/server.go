@@ -76,8 +76,9 @@ func (f *server) update() {
 	toDelete := []*gomel.Hash{}
 	f.backlog.refallback(func(pu gomel.Preunit) {
 		if haveParents(pu, f.dag) {
-			add.Unit(f.adder, pu, f.inner, "retrying.update", f.log)
-			toDelete = append(toDelete, pu.Hash())
+			if add.Unit(f.adder, pu, f.inner, "retrying.update", f.log) {
+				toDelete = append(toDelete, pu.Hash())
+			}
 		}
 	})
 	for _, h := range toDelete {

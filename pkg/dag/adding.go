@@ -57,7 +57,7 @@ func getParents(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
 			result[i] = us[0]
 		}
 		if len(us) > 1 {
-			return nil, gomel.NewAmbiguousParents(uint16(i))
+			return nil, gomel.NewAmbiguousParents(units)
 		}
 	}
 	return result, nil
