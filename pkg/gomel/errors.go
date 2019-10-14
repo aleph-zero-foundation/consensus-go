@@ -108,7 +108,7 @@ func (ae *AggregateError) Errors() []error {
 // a unit whose parents cannot be determined by pid and height.
 // It contains all possible parents sliced by creator.
 type AmbiguousParents struct {
-	units [][]Unit
+	Units [][]Unit
 }
 
 func (e *AmbiguousParents) Error() string {
