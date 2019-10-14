@@ -30,6 +30,30 @@ func newDecoder(r io.Reader, nProc uint16) decoder {
 	return &dec{r, nProc}
 }
 
+// decodeCrown reads encoded data from the io.Reader and tries to decode it as a crown.
+func (d *dec) decodeCrown() (*gomel.Crown, error) {
+	uint32Buf := make([]byte, 4)
+	heights := make([]int, d.nProc)
+	for i := range heights {
+		_, err := io.ReadFull(d, uint32Buf)
+		if err != nil {
+			return nil, err
+		}
+		h := uint32(binary.LittleEndian.Uint32(uint32Buf))
+		if h == math.MaxUint32 {
+			heights[i] = -1
+		} else {
+			heights[i] = int(h)
+		}
+	}
+	controlHash := &gomel.Hash{}
+	_, err := io.ReadFull(d, controlHash[:])
+	if err != nil {
+		return nil, err
+	}
+	return gomel.NewCrown(heights, controlHash), nil
+}
+
 // decodePreunit reads encoded data from the io.Reader and tries to decode it
 // as a preunit.
 func (d *dec) decodePreunit() (gomel.Preunit, error) {
@@ -45,21 +69,7 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 	if err != nil {
 		return nil, err
 	}
-	parentsHeights := make([]int, d.nProc)
-	for i := range parentsHeights {
-		_, err = io.ReadFull(d, uint32Buf)
-		if err != nil {
-			return nil, err
-		}
-		h := uint32(binary.LittleEndian.Uint32(uint32Buf))
-		if h == math.MaxUint32 {
-			parentsHeights[i] = -1
-		} else {
-			parentsHeights[i] = int(h)
-		}
-	}
-	controlHash := &gomel.Hash{}
-	_, err = io.ReadFull(d, controlHash[:])
+	crown, err := d.decodeCrown()
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +95,7 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 
-	result := creating.NewPreunit(creator, gomel.NewCrown(parentsHeights, controlHash), unitData, rsData)
+	result := creating.NewPreunit(creator, crown, unitData, rsData)
 	result.SetSignature(signature)
 	return result, nil
 }

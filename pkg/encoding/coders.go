@@ -8,13 +8,16 @@
 package encoding
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"io"
+
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 // Encoder extends io.Writer with ability to encode units.
 type encoder interface {
 	io.Writer
+	// encodeCrown encodes a crown.
+	encodeCrown(*gomel.Crown) error
 	// encodeUnit encodes a single unit.
 	encodeUnit(gomel.Unit) error
 	// encodeAntichain encodes a single antichain of units.
@@ -26,6 +29,8 @@ type encoder interface {
 // Decoder extends io.Reader with ability to encode units.
 type decoder interface {
 	io.Reader
+	// decodeCrown tries to decode crown from incoming data.
+	decodeCrown() (*gomel.Crown, error)
 	// decodePreunit tries to decode preunit from incoming data.
 	decodePreunit() (gomel.Preunit, error)
 	// decodeAntichain tries to decode an antichain of preunits from incoming data.

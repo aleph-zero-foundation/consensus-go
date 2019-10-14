@@ -27,31 +27,46 @@ func newEncoder(w io.Writer) encoder {
 	return &enc{w}
 }
 
+// encodeCrown encodes a crown and writes the encoded data to the io.Writer.
+func (e *enc) encodeCrown(crown *gomel.Crown) error {
+	nParents := uint16(len(crown.Heights))
+	data := make([]byte, nParents*4+32)
+	s := 0
+	for _, h := range crown.Heights {
+		if h == -1 {
+			binary.LittleEndian.PutUint32(data[s:s+4], math.MaxUint32)
+		} else {
+			binary.LittleEndian.PutUint32(data[s:s+4], uint32(h))
+		}
+		s += 4
+	}
+	copy(data[s:s+32], crown.ControlHash[:])
+
+	_, err := e.Write(data)
+	return err
+}
+
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
 func (e *enc) encodeUnit(unit gomel.Unit) error {
-	nParents := uint16(len(unit.Parents()))
-	data := make([]byte, 2+64+nParents*4+32+4)
+	data := make([]byte, 2+64)
 	s := 0
 	creator := uint16(unit.Creator())
 	binary.LittleEndian.PutUint16(data[s:s+2], creator)
 	s += 2
 	copy(data[s:s+64], unit.Signature())
-	s += 64
-	for _, p := range unit.Parents() {
-		if p != nil {
-			binary.LittleEndian.PutUint32(data[s:s+4], uint32(p.Height()))
-		} else {
-			binary.LittleEndian.PutUint32(data[s:s+4], math.MaxUint32)
-		}
-		s += 4
+	_, err := e.Write(data)
+	if err != nil {
+		return err
 	}
-	copy(data[s:s+32], unit.View().ControlHash[:])
-	s += 32
+
+	err = e.encodeCrown(unit.View())
+	if err != nil {
+		return err
+	}
 
 	unitDataLen := uint32(len(unit.Data()))
-	binary.LittleEndian.PutUint32(data[s:s+4], unitDataLen)
-	s += 4
-	_, err := e.Write(data)
+	binary.LittleEndian.PutUint32(data[:4], unitDataLen)
+	_, err = e.Write(data[:4])
 	if err != nil {
 		return err
 	}
