@@ -23,3 +23,7 @@ func (a *adder) AddAntichain(pus []gomel.Preunit) *gomel.AggregateError {
 	}
 	return gomel.NewAggregateError(result)
 }
+
+func (a *adder) Register(dag gomel.Dag) {
+	a.dag = dag
+}

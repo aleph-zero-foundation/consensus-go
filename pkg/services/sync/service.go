@@ -106,7 +106,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 	}
 
 	return s, func(unit gomel.Unit) {
-		if s.mcServer != nil {
+		if s.mcServer != nil && unit.Creator() == pid {
 			s.mcServer.Send(unit)
 		}
 	}, nil

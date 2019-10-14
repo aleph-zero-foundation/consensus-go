@@ -7,6 +7,8 @@ type Adder interface {
 	// AddAntichain to the underlying dag. Waits until the adding of all units finishes and
 	// returns the AggregateError with errors corresponding to the respective preunits.
 	AddAntichain([]Preunit) *AggregateError
+	// Register a dag for the adder. After a series of calls only the last dag is registered.
+	Register(Dag)
 }
 
 // AddUnit to the specified dag.
