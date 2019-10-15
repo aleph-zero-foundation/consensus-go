@@ -29,7 +29,7 @@ var _ = Describe("Diode performance", func() {
 	}
 
 	BeforeEach(func() {
-		//use integer time in milliseconds
+		// use integer time in milliseconds
 		zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 		genesis := time.Now()
 		zerolog.TimestampFunc = func() time.Time {

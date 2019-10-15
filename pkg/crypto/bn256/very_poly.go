@@ -89,7 +89,7 @@ func NewPolyVerifier(n, f int) PolyVerifier {
 		coeff[i] = make([]*big.Int, n)
 		coeff[i][0] = big.NewInt(int64(1))
 		for j := 1; j <= n-1; j++ {
-			//coeff[i][j] = sym[n][j] - i*coeff[i][j-1]
+			// coeff[i][j] = sym[n][j] - i*coeff[i][j-1]
 			coeff[i][j] = big.NewInt(int64(-i))
 			coeff[i][j] = coeff[i][j].Mul(coeff[i][j], coeff[i][j-1])
 			coeff[i][j] = coeff[i][j].Add(coeff[i][j], sym[n][j])

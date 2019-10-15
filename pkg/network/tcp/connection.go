@@ -24,7 +24,7 @@ type conn struct {
 	log    zerolog.Logger
 }
 
-//newConn creates a Connection object wrapping a particular tcp connection link
+// newConn creates a Connection object wrapping a particular tcp connection link
 func newConn(link net.Conn, log zerolog.Logger) network.Connection {
 	return &conn{
 		link:   link,

@@ -16,7 +16,7 @@ type connIn struct {
 	log    zerolog.Logger
 }
 
-//newConnIn initializes an incoming UDP "connection" -- wrapping the content of the incoming packet
+// newConnIn initializes an incoming UDP "connection" -- wrapping the content of the incoming packet
 func newConnIn(packet []byte, log zerolog.Logger) network.Connection {
 	return &connIn{
 		reader: bytes.NewReader(packet),

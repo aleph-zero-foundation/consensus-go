@@ -27,7 +27,7 @@ func Chunk(adder gomel.Adder, antichains [][]gomel.Preunit, fallback sync.Fallba
 	return success
 }
 
-//handleError abstracts error processing for both above function. Returns false on serious errors.
+// handleError abstracts error processing for both above function. Returns false on serious errors.
 func handleError(err error, pu gomel.Preunit, fallback sync.Fallback, where string, log zerolog.Logger) bool {
 	if err != nil {
 		switch e := err.(type) {

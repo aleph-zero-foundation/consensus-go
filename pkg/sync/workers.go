@@ -19,7 +19,7 @@ type pool struct {
 	quit int32
 }
 
-//NewPool creates a pool of workers with the given size, all doing the same work.
+// NewPool creates a pool of workers with the given size, all doing the same work.
 func NewPool(size int, work func()) WorkerPool {
 	return &pool{
 		size: size,
@@ -57,7 +57,7 @@ type perPidPool struct {
 	quit     int32
 }
 
-//NewPerPidPool creates a pool of workers doing per-pid work for the given nProc.
+// NewPerPidPool creates a pool of workers doing per-pid work for the given nProc.
 func NewPerPidPool(nProc uint16, multiple int, work func(pid uint16)) WorkerPool {
 	return &perPidPool{
 		nProc:    nProc,

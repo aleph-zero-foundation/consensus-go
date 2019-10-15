@@ -62,7 +62,7 @@ type conn struct {
 	log    zerolog.Logger
 }
 
-//newConn creates a Connection with given id that wraps a tcp connection link
+// newConn creates a Connection with given id that wraps a tcp connection link
 func newConn(id uint64, link net.Conn, log zerolog.Logger) *conn {
 	frame := make([]byte, headerSize+bufSize)
 	binary.LittleEndian.PutUint64(frame, id)

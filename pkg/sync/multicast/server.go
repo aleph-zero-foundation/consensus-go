@@ -21,7 +21,7 @@ const (
 	inPoolSize  = 2
 )
 
-//request represents a request to send the encoded unit to the committee member indicated by pid.
+// request represents a request to send the encoded unit to the committee member indicated by pid.
 type request struct {
 	encUnit []byte
 	height  int

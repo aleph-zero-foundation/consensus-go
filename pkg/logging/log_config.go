@@ -59,7 +59,7 @@ func NewLogger(path string, level, diodeBuf int, humanReadable bool) (zerolog.Lo
 		}
 	}
 
-	//enable decoder
+	// enable decoder
 	if humanReadable {
 		output = NewDecoder(output)
 	}

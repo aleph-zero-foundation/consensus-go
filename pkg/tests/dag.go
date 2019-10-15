@@ -1,7 +1,7 @@
 // Package tests implements a very simple and unoptimized version of the dag.
 //
 // It also contains mocks of various other structures that are useful for tests.
-//Additionally, there is a mechanism for saving and loading dags from files.
+// Additionally, there is a mechanism for saving and loading dags from files.
 package tests
 
 import (

@@ -57,7 +57,7 @@ var _ = Describe("Different time formats", func() {
 
 	Describe("Custom integer (milliseconds)", func() {
 		BeforeEach(func() {
-			//use integer time in milliseconds
+			// use integer time in milliseconds
 			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 			genesis := time.Now()
 			zerolog.TimestampFunc = func() time.Time {

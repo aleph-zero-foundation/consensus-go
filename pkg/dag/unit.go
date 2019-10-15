@@ -233,7 +233,7 @@ func (u *unit) computeForkingHeight(dag *dag) {
 	// as long as units created by one process are added atomically
 	if gomel.Dealing(u) {
 		if len(dag.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
-			//this is a forking dealing unit
+			// this is a forking dealing unit
 			u.forkingHeight = -1
 		} else {
 			u.forkingHeight = math.MaxInt32

@@ -7,7 +7,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-//EncodeUnit encodes a unit to a slice of bytes.
+// EncodeUnit encodes a unit to a slice of bytes.
 func EncodeUnit(unit gomel.Unit) ([]byte, error) {
 	var buf bytes.Buffer
 	encoder := newEncoder(&buf)
@@ -24,22 +24,22 @@ func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	return decoder.decodePreunit()
 }
 
-//SendUnit writes encoded unit to writer.
+// SendUnit writes encoded unit to writer.
 func SendUnit(unit gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeUnit(unit)
 }
 
-//ReceivePreunit decodes a preunit from reader.
+// ReceivePreunit decodes a preunit from reader.
 func ReceivePreunit(r io.Reader) (gomel.Preunit, error) {
 	return newDecoder(r).decodePreunit()
 }
 
-//SendChunk encodes units and writes them to writer.
+// SendChunk encodes units and writes them to writer.
 func SendChunk(units []gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeChunk(units)
 }
 
-//ReceiveChunk decodes slice of preunit antichains from reader.
+// ReceiveChunk decodes slice of preunit antichains from reader.
 func ReceiveChunk(r io.Reader) ([][]gomel.Preunit, int, error) {
 	return newDecoder(r).decodeChunk()
 }
