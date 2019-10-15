@@ -16,12 +16,13 @@ type enc struct {
 // It encodes units in the following format:
 //  1. Creator id, 2 bytes.
 //  2. Signature, 64 bytes.
-//  3. Parent heights, 4 bytes each.
-//  4. Control hash 32 bytes.
-//  5. Size of the unit data in bytes, 4 bytes.
-//  6. The unit data, as much as declared in 5.
-//  7. Size of the random source data in bytes, 4 bytes.
-//  8. The random source data, as much as declared in 7.
+//  3. Number of parents, 2 bytes.
+//  4. Parent heights, 4 bytes each.
+//  5. Control hash 32 bytes.
+//  6. Size of the unit data in bytes, 4 bytes.
+//  7. The unit data, as much as declared in 6.
+//  8. Size of the random source data in bytes, 4 bytes.
+//  9. The random source data, as much as declared in 8.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
 func newEncoder(w io.Writer) encoder {
 	return &enc{w}
@@ -30,8 +31,9 @@ func newEncoder(w io.Writer) encoder {
 // encodeCrown encodes a crown and writes the encoded data to the io.Writer.
 func (e *enc) encodeCrown(crown *gomel.Crown) error {
 	nParents := uint16(len(crown.Heights))
-	data := make([]byte, nParents*4+32)
-	s := 0
+	data := make([]byte, 2+nParents*4+32)
+	binary.LittleEndian.PutUint16(data[:2], nParents)
+	s := 2
 	for _, h := range crown.Heights {
 		if h == -1 {
 			binary.LittleEndian.PutUint32(data[s:s+4], math.MaxUint32)
