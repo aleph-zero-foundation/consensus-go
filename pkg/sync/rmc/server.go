@@ -88,6 +88,9 @@ func (s *server) StopOut() {
 	s.wg.Wait()
 }
 
+// The fallback has to check that all the units are multisigned as well.
+// RMC guarantees that a process can create only one unit per height.
+// There is no guarantee that there are no forks among parents of a signed unit.
 func (s *server) SetFallback(fbk gsync.Fallback) {
 	s.fallback = fbk
 }
