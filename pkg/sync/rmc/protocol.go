@@ -61,9 +61,9 @@ func (p *server) gatherSignatures(data []byte, id uint64) []bool {
 			continue
 		}
 		gathering.Add(1)
-		go func() {
+		go func(pid uint16) {
 			signedBy[pid] = p.sendData(data, id, pid, gathering)
-		}()
+		}(pid)
 	}
 	gathering.Wait()
 	return signedBy
