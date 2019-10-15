@@ -59,7 +59,7 @@ type Server struct {
 func (s *Server) Dial(k uint16, timeout time.Duration) (network.Connection, error) {
 	out, in := NewConnection()
 	if int(k) >= len(s.dialChans) {
-		return nil, errors.New("Dial timeout")
+		return nil, errors.New("unknown host")
 	}
 	select {
 	case s.dialChans[k] <- in:
