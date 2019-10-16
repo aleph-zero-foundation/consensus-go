@@ -3,31 +3,30 @@ package creating
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"golang.org/x/crypto/sha3"
 )
 
 type preunit struct {
-	creator     uint16
-	parents     []*gomel.Hash
-	signature   gomel.Signature
-	hash        gomel.Hash
-	controlHash gomel.Hash
-	data        []byte
-	rsData      []byte
+	creator   uint16
+	signature gomel.Signature
+	hash      gomel.Hash
+	crown     gomel.Crown
+	data      []byte
+	rsData    []byte
 }
 
 // NewPreunit constructs a a new preunit with given parents and creator id.
-func NewPreunit(creator uint16, parents []*gomel.Hash, data []byte, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, crown *gomel.Crown, data []byte, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
-		parents: parents,
+		crown:   *crown,
 		data:    data,
 		rsData:  rsData,
 	}
 	pu.computeHash()
-
 	return pu
 }
 
@@ -46,6 +45,11 @@ func (pu *preunit) Creator() uint16 {
 	return pu.creator
 }
 
+// Height of the preunit.
+func (pu *preunit) Height() int {
+	return pu.crown.Heights[pu.creator] + 1
+}
+
 // Signature of the preunit.
 func (pu *preunit) Signature() gomel.Signature {
 	return pu.signature
@@ -56,14 +60,9 @@ func (pu *preunit) Hash() *gomel.Hash {
 	return &pu.hash
 }
 
-// ControlHash of the preunit.
-func (pu *preunit) ControlHash() *gomel.Hash {
-	return &pu.controlHash
-}
-
-// Parents returns hashes of the preunit's parents.
-func (pu *preunit) Parents() []*gomel.Hash {
-	return pu.parents
+// View returns crown consisting all the parents of the unit.
+func (pu *preunit) View() *gomel.Crown {
+	return &pu.crown
 }
 
 // SetSignature sets the signature of the preunit.
@@ -74,20 +73,20 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 // computeHash computes the preunit's hash value and saves it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
-	for _, p := range pu.parents {
-		if p != nil {
-			data.Write(p[:])
-		} else {
-			data.Write(gomel.ZeroHash[:])
-		}
-	}
-	sha3.ShakeSum128(pu.controlHash[:], data.Bytes())
-
 	creatorBytes := make([]byte, 2)
 	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
 	data.Write(creatorBytes)
 	data.Write(pu.data)
 	data.Write(pu.rsData)
-	data.Write(pu.controlHash[:])
+	heightBytes := make([]byte, 4)
+	for _, h := range pu.crown.Heights {
+		if h == -1 {
+			binary.LittleEndian.PutUint32(heightBytes, math.MaxUint32)
+		} else {
+			binary.LittleEndian.PutUint32(heightBytes, uint32(h))
+		}
+		data.Write(heightBytes)
+	}
+	data.Write(pu.crown.ControlHash[:])
 	sha3.ShakeSum128(pu.hash[:], data.Bytes())
 }

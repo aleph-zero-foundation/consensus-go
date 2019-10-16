@@ -6,19 +6,21 @@ import (
 )
 
 type dag struct {
-	nProcesses uint16
-	units      *unitBag
-	primeUnits *levelMap
-	maxUnits   gomel.SlottedUnits
+	nProcesses  uint16
+	units       *unitBag
+	primeUnits  *fiberMap
+	heightUnits *fiberMap
+	maxUnits    gomel.SlottedUnits
 }
 
 // New constructs a dag for a given number of processes.
 func New(n uint16) gomel.Dag {
 	return &dag{
-		nProcesses: n,
-		units:      newUnitBag(),
-		primeUnits: newLevelMap(n, 10),
-		maxUnits:   newSlottedUnits(n),
+		nProcesses:  n,
+		units:       newUnitBag(),
+		primeUnits:  newFiberMap(n, 10),
+		heightUnits: newFiberMap(n, 10),
+		maxUnits:    newSlottedUnits(n),
 	}
 }
 
@@ -34,7 +36,16 @@ func (dag *dag) NProc() uint16 {
 
 // PrimeUnits returns the prime units at the requested level, indexed by their creator ids.
 func (dag *dag) PrimeUnits(level int) gomel.SlottedUnits {
-	res, err := dag.primeUnits.getLevel(level)
+	res, err := dag.primeUnits.getFiber(level)
+	if err != nil {
+		return newSlottedUnits(dag.nProcesses)
+	}
+	return res
+}
+
+// UnitsOnHeight returns the units at the requested height, indexed by their creator ids.
+func (dag *dag) UnitsOnHeight(height int) gomel.SlottedUnits {
+	res, err := dag.heightUnits.getFiber(height)
 	if err != nil {
 		return newSlottedUnits(dag.nProcesses)
 	}

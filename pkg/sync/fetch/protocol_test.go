@@ -80,7 +80,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				pu = creating.NewPreunit(0, nil, nil, nil)
+				pu = creating.NewPreunit(0, gomel.EmptyCrown(10), nil, nil)
 				fbk1.Resolve(pu) // this is just a roundabout way to send a request to serv1
 
 				time.Sleep(time.Millisecond * 500)
@@ -101,7 +101,7 @@ var _ = Describe("Protocol", func() {
 				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
 				maxes := dag2.MaximalUnitsPerProcess()
 				unit = maxes.Get(0)[0]
-				pu = creating.NewPreunit(1, []*gomel.Hash{unit.Hash()}, nil, nil)
+				pu = creating.NewPreunit(1, gomel.EmptyCrown(10), nil, nil)
 
 			})
 
@@ -138,10 +138,10 @@ var _ = Describe("Protocol", func() {
 					}
 					return true
 				})
-				pu = creating.NewPreunit(1, []*gomel.Hash{unit.Hash()}, nil, nil)
+				pu = creating.NewPreunit(1, gomel.EmptyCrown(10), nil, nil)
 			})
 
-			It("should fall back", func() {
+			It("should add all missing units", func() {
 				fbk1.Resolve(pu)
 
 				time.Sleep(time.Millisecond * 500)
@@ -149,15 +149,9 @@ var _ = Describe("Protocol", func() {
 				tests.CloseNetwork(netservs)
 				serv2.StopIn()
 
-				Expect(adder1.attemptedAdd).To(HaveLen(1))
-				Expect(adder1.attemptedAdd[0].Creator()).To(Equal(unit.Creator()))
-				Expect(adder1.attemptedAdd[0].Signature()).To(Equal(unit.Signature()))
-				Expect(adder1.attemptedAdd[0].Data()).To(Equal(unit.Data()))
-				Expect(adder1.attemptedAdd[0].RandomSourceData()).To(Equal(unit.RandomSourceData()))
-				Expect(adder1.attemptedAdd[0].Hash()).To(Equal(unit.Hash()))
-				Expect(fb.happened).To(BeTrue())
+				Expect(adder1.attemptedAdd).To(HaveLen(100))
+				Expect(fb.happened).To(BeFalse())
 			})
-
 		})
 
 	})

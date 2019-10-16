@@ -3,8 +3,6 @@ package gomel
 // Unit that belongs to the dag.
 type Unit interface {
 	BaseUnit
-	// Height of a unit is the length of the path between this unit and a dealing unit in the (induced) sub-dag containing all units produced by the same creator.
-	Height() int
 	// Parents of this unit.
 	Parents() []Unit
 	// Level of this unit in the dag, as defined in the Aleph protocol whitepaper.

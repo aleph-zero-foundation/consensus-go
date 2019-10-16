@@ -37,6 +37,7 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 		}
 		var puCreator, puHeight, puVersion int
 		parents := make([]*gomel.Hash, n)
+		parentsHeights := gomel.DealingHeights(n)
 		for i, t := range strings.Split(text, " ") {
 			var creator, height, version int
 
@@ -55,11 +56,12 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 					return nil, gomel.NewDataError("Duplicate parent")
 				}
 				parents[creator] = preunitHashes[[3]int{creator, height, version}]
+				parentsHeights[creator] = height
 			}
 		}
 		unitData := make([]byte, 4)
 		binary.LittleEndian.PutUint32(unitData, uint32(txID))
-		pu := NewPreunit(uint16(puCreator), parents, unitData, nil)
+		pu := NewPreunit(uint16(puCreator), gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), unitData, nil)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
 		_, err := gomel.AddUnit(dag, pu)

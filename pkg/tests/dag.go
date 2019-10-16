@@ -74,6 +74,16 @@ func (dag *Dag) PrimeUnits(level int) gomel.SlottedUnits {
 	return nil
 }
 
+// UnitsOnHeight returns the units on the given height.
+func (dag *Dag) UnitsOnHeight(height int) gomel.SlottedUnits {
+	dag.RLock()
+	defer dag.RUnlock()
+	if height < len(dag.unitsByHeight) {
+		return dag.unitsByHeight[height]
+	}
+	return nil
+}
+
 // MaximalUnitsPerProcess returns the maximal units for all processes.
 func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	dag.RLock()
@@ -115,21 +125,11 @@ func (dag *Dag) IsQuorum(number uint16) bool {
 func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
 	dag.RLock()
 	defer dag.RUnlock()
-	u.parents = make([]gomel.Unit, dag.NProc())
-	unknown := 0
-	for i, parentHash := range pu.Parents() {
-		if parentHash == nil {
-			continue
-		}
-		if _, ok := dag.unitByHash[*parentHash]; !ok {
-			unknown++
-		} else {
-			u.parents[i] = dag.unitByHash[*parentHash]
-		}
+	parents, err := gomel.GetByCrown(dag, pu.View())
+	if err != nil {
+		return err
 	}
-	if unknown > 0 {
-		return gomel.NewUnknownParents(unknown)
-	}
+	u.parents = parents
 	return nil
 }
 
@@ -144,7 +144,7 @@ func setBasicInfo(u *unit, dag *Dag, pu gomel.Preunit) {
 	}
 	u.signature = pu.Signature()
 	u.hash = *pu.Hash()
-	u.controlHash = *pu.ControlHash()
+	u.crown = *pu.View()
 	u.data = pu.Data()
 	u.rsData = pu.RandomSourceData()
 	if len(dag.unitsByHeight) <= u.height {

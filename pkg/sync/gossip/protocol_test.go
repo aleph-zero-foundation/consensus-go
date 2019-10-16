@@ -59,7 +59,7 @@ var _ = Describe("Protocol", func() {
 	BeforeEach(func() {
 		// Length 2 because the tests below only check communication between the first two processes.
 		// The protocol chooses who to synchronise with at random, so this is the only way to be sure.
-		netservs = tests.NewNetwork(4)
+		netservs = tests.NewNetwork(2)
 	})
 
 	JustBeforeEach(func() {
@@ -67,8 +67,8 @@ var _ = Describe("Protocol", func() {
 		for _, dag := range dags {
 			adders = append(adders, &adder{tests.NewAdder(dag), snc.Mutex{}, nil})
 		}
-		servs = make([]sync.Server, 4)
-		for i := 0; i < 4; i++ {
+		servs = make([]sync.Server, 2)
+		for i := 0; i < 2; i++ {
 			servs[i], _ = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			servs[i].Start()
 		}
@@ -81,7 +81,7 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 					dags = append(dags, tdag)
 				}
@@ -89,17 +89,17 @@ var _ = Describe("Protocol", func() {
 
 			It("should not add anything", func() {
 				time.Sleep(time.Millisecond * 200)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
 				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopIn()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					Expect(adders[i].attemptedAdd).To(BeEmpty())
 				}
 			})
@@ -116,30 +116,26 @@ var _ = Describe("Protocol", func() {
 				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/one_unit.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
 				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
-				for i := 1; i < 4; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
-					dags = append(dags, tdag)
-				}
+				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				dags = append(dags, tdag)
 			})
 
 			It("should add the unit to the second copy", func() {
 				time.Sleep(time.Millisecond * 200)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
 				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopIn()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
 				Expect(adders[0].attemptedAdd).To(BeEmpty())
-				for i := 1; i < 4; i++ {
-					Expect(adders[i].attemptedAdd).To(HaveLen(1))
-					Expect(adders[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-					Expect(adders[i].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
-				}
+				Expect(adders[1].attemptedAdd).To(HaveLen(1))
+				Expect(adders[1].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
+				Expect(adders[1].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
 			})
 
 		})
@@ -152,29 +148,23 @@ var _ = Describe("Protocol", func() {
 				dags = append(dags, tdag)
 				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/other_unit.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
-				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/other_unit.txt", tests.NewTestDagFactory())
-				dags = append(dags, tdag)
-				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/other_unit.txt", tests.NewTestDagFactory())
-				dags = append(dags, tdag)
 			})
 
 			It("should add the unit to the first copy", func() {
 				time.Sleep(time.Millisecond * 200)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
 				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopIn()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
 				Expect(adders[0].attemptedAdd).To(HaveLen(1))
 				Expect(adders[0].attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
-				for i := 1; i < 4; i++ {
-					Expect(adders[i].attemptedAdd).To(BeEmpty())
-				}
+				Expect(adders[1].attemptedAdd).To(BeEmpty())
 			})
 
 		})
@@ -183,7 +173,7 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/only_dealing.txt", tests.NewTestDagFactory())
 					dags = append(dags, tdag)
 				}
@@ -191,17 +181,17 @@ var _ = Describe("Protocol", func() {
 
 			It("should not add anything", func() {
 				time.Sleep(time.Millisecond * 200)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
 				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopIn()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					Expect(adders[i].attemptedAdd).To(BeEmpty())
 				}
 			})
@@ -213,28 +203,24 @@ var _ = Describe("Protocol", func() {
 				dags = []gomel.Dag{}
 				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
-				for i := 1; i < 4; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
-					dags = append(dags, tdag)
-				}
+				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				dags = append(dags, tdag)
 			})
 
 			It("should add everything", func() {
 				time.Sleep(time.Millisecond * 200)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
 				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopIn()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
 				Expect(adders[0].attemptedAdd).To(BeEmpty())
-				for i := 1; i < 4; i++ {
-					Expect(adders[i].attemptedAdd).To(HaveLen(44))
-				}
+				Expect(adders[1].attemptedAdd).To(HaveLen(44))
 			})
 		})
 		Context("when trolled by a forker", func() {
@@ -243,33 +229,27 @@ var _ = Describe("Protocol", func() {
 				dags = []gomel.Dag{}
 				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view1.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
-				for i := 1; i < 4; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
-					dags = append(dags, tdag)
-				}
+				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
+				dags = append(dags, tdag)
 			})
 
-			// This behaviour is expected by the current design of the protocol.
-			// However this gives an opportunity to a malicious node to enforce
-			// huge exchanges between honest nodes.
 			It("should add all units", func() {
 				time.Sleep(time.Millisecond * 200)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
 				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					servs[i].StopIn()
 				}
-				for i := 0; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
-				for i := 1; i < 4; i++ {
+				for i := 0; i < 2; i++ {
 					Expect(adders[i].attemptedAdd).To(HaveLen(3))
 				}
 			})
 		})
-
 	})
 
 })

@@ -27,12 +27,12 @@ func (p *server) in() {
 	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
 	log.Debug().Msg(logging.GetRequests)
-	hashes, err := receiveRequests(conn)
+	heights, err := receiveRequests(conn)
 	if err != nil {
 		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
 		return
 	}
-	units, err := getUnits(p.dag, hashes)
+	units, err := getUnits(p.dag, heights)
 	if err != nil {
 		log.Error().Str("where", "fetch.in.getUnits").Msg(err.Error())
 		return
@@ -70,7 +70,7 @@ func (p *server) out() {
 	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(conn, r.hashes)
+	err = sendRequests(conn, r.heights)
 	if err != nil {
 		log.Error().Str("where", "fetch.out.sendRequests").Msg(err.Error())
 		return

@@ -171,22 +171,10 @@ var _ = Describe("Units", func() {
 				})
 			})
 			Describe("When seeing a fork", func() {
-				BeforeEach(func() {
+				It("Should return an error ambigous parents", func() {
 					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
-					Expect(readingErr).NotTo(HaveOccurred())
-				})
-				It("Should contain both versions", func() {
-					floor := units[3][1][0].Floor()
-					Expect(len(floor[0])).To(Equal(2))
-					for version := 0; version < 2; version++ {
-						inside := false
-						for _, u := range floor[0] {
-							if u == units[0][0][version] {
-								inside = true
-							}
-						}
-						Expect(inside).To(BeTrue())
-					}
+					Expect(readingErr).To(HaveOccurred())
+					Expect(readingErr).To(MatchError("ambiguous parents"))
 				})
 			})
 			Describe("On a chain with 9 consecutive dealing units as the other parent ", func() {

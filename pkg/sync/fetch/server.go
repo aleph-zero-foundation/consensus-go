@@ -66,21 +66,18 @@ func (s *server) SetFallback(qs sync.Fallback) {
 
 // Resolve builds a fetch request containing all the unknown parents of a problematic preunit.
 func (s *server) Resolve(preunit gomel.Preunit) {
-	hashes := preunit.Parents()
-	parents := s.dag.Get(hashes)
-	toRequest := []*gomel.Hash{}
-	for i, h := range hashes {
-		if parents[i] == nil && hashes[i] != nil {
-			toRequest = append(toRequest, h)
+	topHeights := gomel.DealingHeights(s.dag.NProc())
+	s.dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+		for _, u := range units {
+			if u.Height() > topHeights[u.Creator()] {
+				topHeights[u.Creator()] = u.Height()
+			}
 		}
-	}
-	if len(toRequest) > 0 {
-		select {
-		case s.requests <- request{
-			pid:    preunit.Creator(),
-			hashes: toRequest,
-		}:
-		default:
-		}
+		return true
+	})
+
+	s.requests <- request{
+		pid:     preunit.Creator(),
+		heights: topHeights,
 	}
 }

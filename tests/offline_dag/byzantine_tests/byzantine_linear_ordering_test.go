@@ -39,7 +39,7 @@ func newForkWithDifferentData(preunit gomel.Preunit) gomel.Preunit {
 	data := generateFreshData(preunit.Data())
 	return creating.NewPreunit(
 		preunit.Creator(),
-		preunit.Parents(),
+		preunit.View(),
 		data,
 		preunit.RandomSourceData(),
 	)
@@ -51,7 +51,7 @@ func newForkerUsingDifferentDataStrategy() forker {
 	}
 }
 
-func createForkUsingNewUnit(parentsCount uint16) forker {
+func createForkUsingNewUnit() forker {
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
 		pu, _, err := creating.NewUnit(dag, preunit.Creator(), helpers.NewDefaultDataContent(), rs, true)
@@ -59,16 +59,24 @@ func createForkUsingNewUnit(parentsCount uint16) forker {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
 
-		parents := pu.Parents()
-		parents[pu.Creator()] = preunit.Parents()[pu.Creator()]
-		freshData := generateFreshData(preunit.Data())
-		parentUnits := dag.Get(parents)
-		level := helpers.ComputeLevel(dag, parentUnits)
-		rsData, err := rs.DataToInclude(pu.Creator(), parentUnits, level)
+		preunitParents, err := gomel.GetByCrown(dag, preunit.View())
 		if err != nil {
 			return nil, err
 		}
-		return creating.NewPreunit(pu.Creator(), parents, freshData, rsData), nil
+		puParents, err := gomel.GetByCrown(dag, pu.View())
+		if err != nil {
+			return nil, err
+		}
+
+		puParents[pu.Creator()] = preunitParents[pu.Creator()]
+		freshData := generateFreshData(preunit.Data())
+		level := helpers.ComputeLevel(dag, puParents)
+		rsData, err := rs.DataToInclude(pu.Creator(), puParents, level)
+		if err != nil {
+			return nil, err
+		}
+
+		return preunitFromParents(pu.Creator(), puParents, freshData, rsData), nil
 	}
 }
 
@@ -90,9 +98,14 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		parents := make([]*gomel.Hash, 0, parentsCount)
-		parentUnits := make([]gomel.Unit, 0, parentsCount)
-		selfPredecessor := dag.Get([]*gomel.Hash{preunit.Parents()[preunit.Creator()]})[0]
+		preunitParents, err := gomel.GetByCrown(dag, preunit.View())
+		if err != nil {
+			return nil, err
+		}
+		parents := []*gomel.Hash{}
+		parentUnits := []gomel.Unit{}
+
+		selfPredecessor := preunitParents[preunit.Creator()]
 		parents = append(parents, selfPredecessor.Hash())
 		parentUnits = append(parentUnits, selfPredecessor)
 
@@ -130,13 +143,19 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 		if len(parents) < 2 {
 			return nil, errors.New("unable to collect enough parents")
 		}
+
+		sortedParents := make([]gomel.Unit, dag.NProc())
+		for _, p := range parentUnits {
+			sortedParents[p.Creator()] = p
+		}
+
 		freshData := generateFreshData(preunit.Data())
-		level := helpers.ComputeLevel(dag, parentUnits)
-		rsData, err := rs.DataToInclude(preunit.Creator(), parentUnits, level)
+		level := helpers.ComputeLevel(dag, sortedParents)
+		rsData, err := rs.DataToInclude(preunit.Creator(), sortedParents, level)
 		if err != nil {
 			return nil, err
 		}
-		return creating.NewPreunit(preunit.Creator(), parents, freshData, rsData), nil
+		return preunitFromParents(preunit.Creator(), sortedParents, freshData, rsData), nil
 	}
 }
 
@@ -1019,12 +1038,24 @@ func subsetSizesOfLowerLevelBasedOnCommonVote(vote bool, nProc uint16) (ones, ze
 	return nonByzantineProcesses, maxNumberOfByzantineProcesses
 }
 
-func unitToPreunit(unit gomel.Unit) gomel.Preunit {
-	hashParents := make([]*gomel.Hash, 0, len(unit.Parents()))
-	for _, parent := range unit.Parents() {
-		hashParents = append(hashParents, parent.Hash())
+func preunitFromParents(creator uint16, parents []gomel.Unit, data []byte, rsData []byte) gomel.Preunit {
+	nProc := len(parents)
+	heights := make([]int, nProc)
+	hashes := make([]*gomel.Hash, nProc)
+	for i, p := range parents {
+		if p == nil {
+			heights[i] = -1
+			hashes[i] = &gomel.ZeroHash
+		} else {
+			heights[i] = p.Height()
+			hashes[i] = p.Hash()
+		}
 	}
-	return creating.NewPreunit(unit.Creator(), hashParents, unit.Data(), unit.RandomSourceData())
+	return creating.NewPreunit(creator, gomel.NewCrown(heights, gomel.CombineHashes(hashes)), data, rsData)
+}
+
+func unitToPreunit(unit gomel.Unit) gomel.Preunit {
+	return preunitFromParents(unit.Creator(), unit.Parents(), unit.Data(), unit.RandomSourceData())
 }
 
 // this function assumes that it is possible to create a new level, i.e. there are enough candidates on lower level
@@ -1245,8 +1276,7 @@ var _ = Describe("Byzantine Dag Test", func() {
 	Describe("fork with different parents", func() {
 		Context("by calling creating on a bigger dag", func() {
 			It("should finish without errors", func() {
-				const parentsInForkingUnits = 2
-				err := testForkingChangingParents(createForkUsingNewUnit(parentsInForkingUnits))
+				err := testForkingChangingParents(createForkUsingNewUnit())
 				Expect(err).Should(HaveOccurred())
 			})
 		})

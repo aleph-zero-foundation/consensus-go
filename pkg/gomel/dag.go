@@ -18,6 +18,8 @@ type Dag interface {
 	Emplace(Unit) Unit
 	// PrimeUnits returns all prime units on a given level of the dag.
 	PrimeUnits(int) SlottedUnits
+	// UnitsOnHeight returns all units on a given height of the dag.
+	UnitsOnHeight(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
 	// Get returns the units associated with the given hashes, in the same order.
@@ -32,4 +34,60 @@ type Dag interface {
 // IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
 func IsQuorum(nProcesses, subsetSize uint16) bool {
 	return 3*subsetSize >= 2*nProcesses
+}
+
+// GetByCrown searches the dag for a sequence of NProc units
+// created by different processes, such that their heights and a controlHash
+// matches with the given arguments.
+// If there is no valid sequence of units it returns an error.
+// This implementation checks among all the possibilities between the forks,
+// which might be a very expensive computation.
+func GetByCrown(dag Dag, crown *Crown) ([]Unit, error) {
+	possibleUnits := make([][]Unit, dag.NProc())
+	unknown := 0
+	for i, h := range crown.Heights {
+		if h == -1 {
+			continue
+		}
+		su := dag.UnitsOnHeight(h)
+		possibleUnits[i] = su.Get(uint16(i))
+		if possibleUnits[i] == nil {
+			unknown++
+		}
+	}
+	if unknown > 0 {
+		return nil, NewUnknownParents(unknown)
+	}
+	return getTransversal(possibleUnits, crown.Heights, &crown.ControlHash)
+}
+
+func getTransversal(units [][]Unit, heights []int, hash *Hash) ([]Unit, error) {
+	nProc := len(units)
+	answer := make([]Unit, nProc)
+	hashes := make([]*Hash, nProc)
+	var rec func(int) bool
+	rec = func(ind int) bool {
+		if ind == nProc {
+			if *hash == *CombineHashes(hashes) {
+				return true
+			}
+			return false
+		}
+		if heights[ind] == -1 {
+			return rec(ind + 1)
+		}
+		for _, u := range units[ind] {
+			answer[ind] = u
+			hashes[ind] = u.Hash()
+			if rec(ind + 1) {
+				return true
+			}
+			hashes[ind] = nil
+		}
+		return false
+	}
+	if rec(0) {
+		return answer, nil
+	}
+	return nil, NewDataError("wrong control hash")
 }

@@ -5,17 +5,17 @@ import (
 )
 
 type unit struct {
-	creator     uint16
-	height      int
-	level       int
-	version     int
-	hash        gomel.Hash
-	controlHash gomel.Hash
-	parents     []gomel.Unit
-	floor       [][]gomel.Unit
-	signature   gomel.Signature
-	data        []byte
-	rsData      []byte
+	creator   uint16
+	height    int
+	level     int
+	version   int
+	hash      gomel.Hash
+	crown     gomel.Crown
+	parents   []gomel.Unit
+	floor     [][]gomel.Unit
+	signature gomel.Signature
+	data      []byte
+	rsData    []byte
 }
 
 func (u *unit) Floor() [][]gomel.Unit {
@@ -42,8 +42,8 @@ func (u *unit) Hash() *gomel.Hash {
 	return &u.hash
 }
 
-func (u *unit) ControlHash() *gomel.Hash {
-	return &u.controlHash
+func (u *unit) View() *gomel.Crown {
+	return &u.crown
 }
 
 func (u *unit) Height() int {

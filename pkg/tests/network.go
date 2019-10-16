@@ -58,6 +58,9 @@ type Server struct {
 // Dial creates a new connection, pushes one end to the associated dial channel and return the other.
 func (s *Server) Dial(k uint16, timeout time.Duration) (network.Connection, error) {
 	out, in := NewConnection()
+	if int(k) >= len(s.dialChans) {
+		return nil, errors.New("unknown host")
+	}
 	select {
 	case s.dialChans[k] <- in:
 	case <-time.After(timeout):

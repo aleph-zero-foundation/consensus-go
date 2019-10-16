@@ -24,6 +24,23 @@ func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	return decoder.decodePreunit()
 }
 
+// EncodeCrown encodes a crown to a slice of bytes.
+func EncodeCrown(crown *gomel.Crown) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := newEncoder(&buf)
+	err := encoder.encodeCrown(crown)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// DecodeCrown checks decodes the given data into crown. Complementary to EncodeCrown.
+func DecodeCrown(data []byte) (*gomel.Crown, error) {
+	decoder := newDecoder(bytes.NewReader(data))
+	return decoder.decodeCrown()
+}
+
 // SendUnit writes encoded unit to writer.
 func SendUnit(unit gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeUnit(unit)

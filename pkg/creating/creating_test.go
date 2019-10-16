@@ -10,11 +10,11 @@ import (
 )
 
 func isDealing(pu gomel.Preunit, nProc uint16) bool {
-	if len(pu.Parents()) != int(nProc) {
+	if len(pu.View().Heights) != int(nProc) {
 		return false
 	}
-	for _, p := range pu.Parents() {
-		if p != nil {
+	for _, h := range pu.View().Heights {
+		if h != -1 {
 			return false
 		}
 	}
@@ -82,10 +82,13 @@ var _ = Describe("Creating", func() {
 					pu, _, err := NewUnit(dag, 7, []byte{}, rs, canSkipLevel)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(pu.Creator()).To(Equal(uint16(7)))
+					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(0).Get(i)[0]
-						Expect(pu.Parents()[i]).To(Equal(u.Hash()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
+						hashes = append(hashes, u.Hash())
 					}
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 			Context("that contains two levels without one unit", func() {
@@ -97,10 +100,13 @@ var _ = Describe("Creating", func() {
 					pu, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(pu.Creator()).To(Equal(uint16(0)))
+					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(0).Get(i)[0]
-						Expect(pu.Parents()[i]).To(Equal(u.Hash()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
+						hashes = append(hashes, u.Hash())
 					}
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 		})
@@ -154,10 +160,13 @@ var _ = Describe("Creating", func() {
 					pu, _, err := NewUnit(dag, 7, []byte{}, rs, canSkipLevel)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(pu.Creator()).To(Equal(uint16(7)))
+					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(0).Get(i)[0]
-						Expect(pu.Parents()[i]).To(Equal(u.Hash()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
+						hashes = append(hashes, u.Hash())
 					}
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 			Context("that contains two levels without one unit", func() {
@@ -169,11 +178,15 @@ var _ = Describe("Creating", func() {
 					pu, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(pu.Creator()).To(Equal(uint16(0)))
+					hashes := make([]*gomel.Hash, dag.NProc())
 					for i := uint16(1); i < dag.NProc(); i++ {
 						u := dag.PrimeUnits(1).Get(i)[0]
-						Expect(pu.Parents()[i]).To(Equal(u.Hash()))
+						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
+						hashes[i] = u.Hash()
 					}
-					Expect(pu.Parents()[0]).To(Equal(dag.PrimeUnits(0).Get(0)[0].Hash()))
+					Expect(pu.View().Heights[0]).To(Equal(dag.PrimeUnits(0).Get(0)[0].Height()))
+					hashes[0] = dag.PrimeUnits(0).Get(0)[0].Hash()
+					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})
 		})

@@ -169,14 +169,10 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 				fmt.Println("error while adding a unit (error was ignored):", err.Error())
 				fmt.Printf("%+v\n", unit)
 				for _, dag := range dags {
-					parents := dag.Get(unit.Parents())
-					if parents == nil {
-						fmt.Println("missing parents")
-						continue
-					}
+					parentsHeights := unit.View().Heights
 					failed := false
-					for ix, parent := range parents {
-						if parent == nil {
+					for ix, h := range parentsHeights {
+						if hu := dag.UnitsOnHeight(h); hu == nil || hu.Get(uint16(ix)) == nil {
 							fmt.Println("missing parent:", ix)
 							failed = true
 							break
@@ -184,10 +180,6 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 					}
 					if failed {
 						continue
-					}
-					fmt.Println("parents:")
-					for _, parent := range parents {
-						fmt.Printf("%+v\n", parent)
 					}
 				}
 			}

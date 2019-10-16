@@ -33,6 +33,6 @@ func decodeUnitID(id uint64, nProc uint16) (uint16, int) {
 	return uint16(id % uint64(nProc)), int(id / uint64(nProc))
 }
 
-func predecessorID(id uint64, nProc uint16) uint64 {
-	return id - uint64(nProc)
+func preunitID(pu gomel.Preunit, nProc uint16) uint64 {
+	return uint64(pu.Creator()) + uint64(nProc)*uint64(pu.View().Heights[pu.Creator()]+1)
 }

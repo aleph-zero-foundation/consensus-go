@@ -8,8 +8,10 @@ type BaseUnit interface {
 	Signature() Signature
 	// Hash value of this unit.
 	Hash() *Hash
-	// ControlHash value of this unit.
-	ControlHash() *Hash
+	// Height of a unit is the length of the path between this unit and a dealing unit in the (induced) sub-dag containing all units produced by the same creator.
+	Height() int
+	// View returns the crown of the dag below the unit.
+	View() *Crown
 	// Data is the slice of data contained in the unit.
 	Data() []byte
 	// RandomSourceData is data contained in the unit needed to maintain
