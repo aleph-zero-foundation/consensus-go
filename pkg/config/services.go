@@ -36,7 +36,7 @@ func (dc Dag) NProc() uint16 {
 	return uint16(len(dc.Keys))
 }
 
-// Alert represents a complete configuration needed for a alert system to start.
+// Alert represents a complete configuration needed for an alert system to start.
 type Alert struct {
 	Pid             uint16
 	PublicKeys      []gomel.PublicKey

@@ -1,4 +1,4 @@
-package alerter
+package forking
 
 import (
 	gdag "gitlab.com/alephledger/consensus-go/pkg/dag"
@@ -7,7 +7,7 @@ import (
 
 type alertDag struct {
 	gomel.Dag
-	alert *Alerter
+	alert *Alert
 }
 
 func (dag *alertDag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
@@ -40,7 +40,7 @@ func (dag *alertDag) Check(u gomel.Unit) error {
 	}
 	dag.alert.Lock(u.Creator())
 	defer dag.alert.Unlock(u.Creator())
-	if dag.isForkerUnit(u) {
+	if dag.handleForkerUnit(u) {
 		if !dag.alert.CommitmentTo(u) {
 			return missingCommitmentToForkError
 		}
@@ -59,7 +59,7 @@ func (dag *alertDag) Emplace(u gomel.Unit) (gomel.Unit, error) {
 	return dag.Dag.Emplace(u)
 }
 
-func (dag *alertDag) isForkerUnit(u gomel.Unit) bool {
+func (dag *alertDag) handleForkerUnit(u gomel.Unit) bool {
 	creator := u.Creator()
 	if dag.alert.IsForker(creator) {
 		return true
@@ -82,6 +82,6 @@ func (dag *alertDag) isForkerUnit(u gomel.Unit) bool {
 }
 
 // Wrap the dag to support alerts when forks are encountered. The returned service handles raising and accepting alerts.
-func Wrap(dag gomel.Dag, alerter *Alerter) gomel.Dag {
+func Wrap(dag gomel.Dag, alerter *Alert) gomel.Dag {
 	return &alertDag{dag, alerter}
 }

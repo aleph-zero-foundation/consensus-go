@@ -1,4 +1,4 @@
-package alerter_test
+package forking_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestAlerter(t *testing.T) {
+func TestForking(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Alerter Suite")
+	RunSpecs(t, "Forking Suite")
 }

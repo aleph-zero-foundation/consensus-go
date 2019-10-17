@@ -1,4 +1,4 @@
-package alerter
+package forking
 
 import (
 	"bytes"

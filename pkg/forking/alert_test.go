@@ -1,4 +1,4 @@
-package alerter_test
+package forking_test
 
 import (
 	"sync"
@@ -8,11 +8,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 
-	. "gitlab.com/alephledger/consensus-go/pkg/alerter"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
+	. "gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/rmc"
@@ -23,7 +23,7 @@ var _ = Describe("Alert", func() {
 
 	var (
 		nProc    uint16
-		alerters []*Alerter
+		alerters []*Alert
 		dags     []gomel.Dag
 		rss      []gomel.RandomSource
 		netservs []network.Server
@@ -43,7 +43,7 @@ var _ = Describe("Alert", func() {
 			pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			verKeys[i], secrKeys[i], _ = bn256.GenerateKeys()
 		}
-		alerters = make([]*Alerter, nProc)
+		alerters = make([]*Alert, nProc)
 		dags = make([]gomel.Dag, nProc)
 		rss = make([]gomel.RandomSource, nProc)
 		netservs = tests.NewNetwork(int(nProc))
@@ -52,7 +52,7 @@ var _ = Describe("Alert", func() {
 			rss[i] = tests.NewTestRandomSource()
 			dag = rss[i].Bind(dag)
 			rmc := rmc.New(verKeys, secrKeys[i])
-			alerters[i] = New(uint16(i), dag, pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
+			alerters[i] = NewAlert(uint16(i), dag, pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
 			dags[i] = Wrap(dag, alerters[i])
 		}
 	})
