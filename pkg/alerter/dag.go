@@ -1,12 +1,37 @@
 package alerter
 
 import (
+	gdag "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
 type alertDag struct {
 	gomel.Dag
 	alert *Alerter
+}
+
+func (dag *alertDag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
+	u, err := dag.Dag.Decode(pu)
+	if err == nil {
+		return u, nil
+	}
+	switch e := err.(type) {
+	case *gomel.AmbiguousParents:
+		parents := make([]gomel.Unit, 0, len(e.Units))
+		for _, us := range e.Units {
+			p, err := dag.alert.Disambiguate(us, pu)
+			if err != nil {
+				return nil, err
+			}
+			parents = append(parents, p)
+		}
+		if *gomel.CombineHashes(gomel.ToHashes(parents)) != pu.View().ControlHash {
+			return nil, gomel.NewDataError("wrong control hash")
+		}
+		return gdag.NewUnit(pu, parents), nil
+	default:
+		return u, err
+	}
 }
 
 func (dag *alertDag) Check(u gomel.Unit) error {
@@ -17,7 +42,7 @@ func (dag *alertDag) Check(u gomel.Unit) error {
 	defer dag.alert.Unlock(u.Creator())
 	if dag.isForkerUnit(u) {
 		if !dag.alert.CommitmentTo(u) {
-			return gomel.NewMissingDataError("commitment to fork")
+			return missingCommitmentToForkError
 		}
 	}
 	return nil

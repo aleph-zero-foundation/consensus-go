@@ -2,7 +2,6 @@ package alerter
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
@@ -10,7 +9,6 @@ import (
 )
 
 type forkingProof struct {
-	u, v, commit    gomel.Unit
 	pu, pv, pcommit gomel.Preunit
 	encoded         []byte
 }
@@ -20,32 +18,26 @@ func newForkingProof(u, max gomel.Unit) *forkingProof {
 	for v.Height() > u.Height() {
 		v = gomel.Predecessor(v)
 	}
-	uPred := gomel.Predecessor(u)
-	vPred := gomel.Predecessor(v)
-	for uPred != vPred {
-		u = uPred
-		v = vPred
-		uPred = gomel.Predecessor(u)
-		vPred = gomel.Predecessor(v)
-	}
 	if *u.Hash() == *v.Hash() {
 		return nil
 	}
+	ue, _ := encoding.EncodeUnit(u)
+	ve, _ := encoding.EncodeUnit(v)
+	comme, _ := encoding.EncodeUnit(max)
+	encoded := append(ue, ve...)
+	encoded = append(encoded, comme...)
+	pu, _ := encoding.DecodePreunit(ue)
+	pv, _ := encoding.DecodePreunit(ve)
+	pcommit, _ := encoding.DecodePreunit(comme)
 	return &forkingProof{
-		u:      u,
-		v:      v,
-		commit: max,
+		pu:      pu,
+		pv:      pv,
+		pcommit: pcommit,
+		encoded: encoded,
 	}
 }
 
 func (fp *forkingProof) Marshal() []byte {
-	if fp.encoded == nil {
-		ue, _ := encoding.EncodeUnit(fp.u)
-		ve, _ := encoding.EncodeUnit(fp.v)
-		comme, _ := encoding.EncodeUnit(fp.commit)
-		fp.encoded = append(ue, ve...)
-		fp.encoded = append(fp.encoded, comme...)
-	}
 	return fp.encoded
 }
 
@@ -69,9 +61,6 @@ func (fp *forkingProof) Unmarshal(data []byte) (*forkingProof, error) {
 }
 
 func (fp *forkingProof) forkerID() uint16 {
-	if fp.u != nil {
-		return fp.u.Creator()
-	}
 	return fp.pu.Creator()
 }
 
@@ -87,15 +76,11 @@ func (fp *forkingProof) splitEncoding() ([]byte, []byte) {
 }
 
 func (fp *forkingProof) replaceCommit(commit gomel.Unit) {
-	fp.commit = commit
-	fp.pcommit = nil
-	if fp.encoded == nil {
-		return
-	}
 	proofOnly, _ := fp.splitEncoding()
-	comme, _ := encoding.EncodeUnit(fp.commit)
+	comme, _ := encoding.EncodeUnit(commit)
 	fp.encoded = append([]byte{}, proofOnly...)
 	fp.encoded = append(fp.encoded, comme...)
+	fp.pcommit, _ = encoding.DecodePreunit(comme)
 }
 
 func (fp *forkingProof) checkCorrectness(expectedPid uint16, key gomel.PublicKey) error {
@@ -108,11 +93,8 @@ func (fp *forkingProof) checkCorrectness(expectedPid uint16, key gomel.PublicKey
 	if !key.Verify(fp.pu) || !key.Verify(fp.pv) || (fp.pcommit != nil && !key.Verify(fp.pcommit)) {
 		return errors.New("improper signature")
 	}
-	if (fp.pu.Parents() == nil && fp.pv.Parents() != nil) || (fp.pv.Parents() == nil && fp.pu.Parents() != nil) {
-		return errors.New("only one of the units has a predecessor")
-	}
-	if fp.pu.Parents() != nil && fp.pv.Parents() != nil && fp.pu.Parents()[expectedPid] != fp.pv.Parents()[expectedPid] {
-		return errors.New("the units have different predecessors")
+	if fp.pu.Height() != fp.pv.Height() {
+		return errors.New("two units on different heights do not prove a fork")
 	}
 	if *fp.pu.Hash() == *fp.pv.Hash() {
 		return errors.New("two copies of a unit are not a fork")
@@ -121,20 +103,6 @@ func (fp *forkingProof) checkCorrectness(expectedPid uint16, key gomel.PublicKey
 }
 
 func (fp *forkingProof) extractCommitment(rmcID uint64) commitment {
-	if fp.u != nil {
-		return &baseCommitment{
-			id:   rmcID,
-			unit: fp.commit,
-			pu:   fp.pcommit,
-		}
-	}
-	encoded := make([]byte, 8)
-	binary.LittleEndian.PutUint64(encoded, rmcID)
 	_, commitOnly := fp.splitEncoding()
-	return &baseCommitment{
-		id:      rmcID,
-		pu:      fp.pcommit,
-		unit:    fp.commit,
-		encoded: append(encoded, commitOnly...),
-	}
+	return newBaseCommitment(fp.pcommit, commitOnly, rmcID)
 }

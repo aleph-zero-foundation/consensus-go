@@ -6,9 +6,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// freeUnit is a unit that is not yet included in the dag.
-// It performs some of the necessary computations (floor, level and height)
-// lazily, on demand.
 type freeUnit struct {
 	nProc     uint16
 	creator   uint16
@@ -23,9 +20,12 @@ type freeUnit struct {
 	floor     [][]gomel.Unit
 }
 
-func newUnit(pu gomel.Preunit, parents []gomel.Unit, nProc uint16) *freeUnit {
+// NewUnit that is not yet included in the dag.
+// It performs some of the necessary computations (floor, level and height)
+// lazily, on demand.
+func NewUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 	return &freeUnit{
-		nProc:     nProc,
+		nProc:     uint16(len(parents)),
 		creator:   pu.Creator(),
 		signature: pu.Signature(),
 		crown:     *pu.View(),

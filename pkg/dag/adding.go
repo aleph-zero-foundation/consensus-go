@@ -21,21 +21,11 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 		return nil, gomel.NewUnknownParents(unknown)
 	}
 
-	if *gomel.CombineHashes(toHashes(parents)) != pu.View().ControlHash {
+	if *gomel.CombineHashes(gomel.ToHashes(parents)) != pu.View().ControlHash {
 		return nil, gomel.NewDataError("wrong control hash")
 	}
 
-	return newUnit(pu, parents, dag.nProcesses), nil
-}
-
-func toHashes(units []gomel.Unit) []*gomel.Hash {
-	result := make([]*gomel.Hash, len(units))
-	for i, u := range units {
-		if u != nil {
-			result[i] = u.Hash()
-		}
-	}
-	return result
+	return NewUnit(pu, parents), nil
 }
 
 func countUnknown(parents []gomel.Unit, heights []int) int {

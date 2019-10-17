@@ -21,6 +21,8 @@ const (
 	request
 )
 
+var missingCommitmentToForkError = gomel.NewMissingDataError("commitment to fork")
+
 // Alerter allows to raise alerts and handle commitments to units.
 type Alerter struct {
 	myPid       uint16
@@ -80,9 +82,13 @@ func (a *Alerter) produceCommitmentFor(unit gomel.Unit) (commitment, error) {
 	if comm == nil {
 		return nil, errors.New("we are not aware of any forks here")
 	}
-	commUnit := comm.getUnit()
-	if commUnit == nil {
+	pu := comm.getUnit()
+	if pu == nil {
 		return nil, errors.New("we did not commit to anything")
+	}
+	commUnit := a.dag.Get([]*gomel.Hash{pu.Hash()})[0]
+	if commUnit == nil {
+		return nil, errors.New("we do not have the unit we committed to")
 	}
 	pred := gomel.Predecessor(commUnit)
 	for pred != nil && a.CommitmentTo(pred) {
@@ -93,21 +99,21 @@ func (a *Alerter) produceCommitmentFor(unit gomel.Unit) (commitment, error) {
 		// Apparently we added the commitment in the meantime.
 		comm = a.commitments.getByHash(unit.Hash())
 		if comm == nil {
-			return nil, errors.New("something went very wrong")
+			return nil, errors.New("we are actually not committed to this unit")
 		}
 	} else {
+		var err error
 		comm = a.commitments.getByHash(commUnit.Hash())
 		for commUnit.Height() > unit.Height() {
-			comm = comm.commitmentForParent(pred)
-			if comm == nil {
-				return nil, errors.New("failed to produce commitment for predecessor")
+			comm, err = commitmentForParent(comm, commUnit)
+			if err != nil {
+				return nil, err
 			}
-			a.commitments.add(comm, a.myPid, pred.Creator())
-			commUnit = pred
-			pred = gomel.Predecessor(commUnit)
+			a.commitments.add(comm, a.myPid, commUnit.Creator())
+			commUnit = gomel.Predecessor(commUnit)
 		}
-		if *comm.getHash() != *unit.Hash() {
-			return nil, errors.New("somehow produced commitment for wrong unit")
+		if cu := comm.getUnit(); cu == nil || *cu.Hash() != *unit.Hash() {
+			return nil, errors.New("produced commitment for wrong unit")
 		}
 	}
 	return comm, nil
@@ -124,6 +130,10 @@ func (a *Alerter) handleCommitmentRequest(conn network.Connection, log zerolog.L
 	if unit == nil {
 		log.Error().Str("where", "Alerter.handleCommitmentRequest.Get").Msg("no commitment for unit not in dag")
 		return
+	}
+	// We always want to send one commitment more if we can, so that we send the parents' hashes to add unit.
+	if pred := gomel.Predecessor(unit); pred != nil {
+		unit = pred
 	}
 	comm := a.commitments.getByHash(&requested)
 	if comm == nil {
@@ -377,13 +387,66 @@ func (a *Alerter) attemptProve(conn network.Connection, id uint64) error {
 	return nil
 }
 
+const noncommittedParent = "unit built on noncommitted parent"
+
+func (a *Alerter) disambiguateForker(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
+	comm := a.commitments.getByHash(pu.Hash())
+	if comm == nil {
+		return nil, missingCommitmentToForkError
+	}
+	h := comm.getParentHash(pu.Creator())
+	if h == nil {
+		return nil, errors.New("too shallow commitment")
+	}
+	for _, u := range possibleParents {
+		if *h == *u.Hash() {
+			return u, nil
+		}
+	}
+	return nil, gomel.NewUnknownParents(1)
+}
+
+// Disambiguate which of the possibleParents is the actual parent of a unit created by pid.
+func (a *Alerter) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
+	if len(possibleParents) == 0 {
+		return nil, nil
+	}
+	if len(possibleParents) == 1 {
+		return possibleParents[0], nil
+	}
+	pid := pu.Creator()
+	forker := possibleParents[0].Creator()
+	if pid == forker {
+		return a.disambiguateForker(possibleParents, pu)
+	}
+	height := possibleParents[0].Height()
+	comm := a.commitments.getByParties(pid, forker)
+	if comm == nil {
+		return nil, gomel.NewMissingDataError("no commitment by this pid")
+	}
+	cu := comm.getUnit()
+	if cu == nil {
+		return nil, gomel.NewComplianceError(noncommittedParent)
+	}
+	u := a.dag.Get([]*gomel.Hash{cu.Hash()})[0]
+	if u == nil {
+		return nil, gomel.NewMissingDataError("no committed unit needed for disambiguation")
+	}
+	if u.Height() < height {
+		return nil, gomel.NewComplianceError(noncommittedParent)
+	}
+	for u.Height() > height {
+		u = gomel.Predecessor(u)
+	}
+	return u, nil
+}
+
 // CommitmentTo checks whether we are committed to the provided unit.
 func (a *Alerter) CommitmentTo(u gomel.Unit) bool {
 	comm := a.commitments.getByHash(u.Hash())
 	if comm == nil {
 		return false
 	}
-	comm.setUnit(u)
 	return true
 }
 

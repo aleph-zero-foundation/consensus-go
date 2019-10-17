@@ -205,16 +205,39 @@ var _ = Describe("Alert", func() {
 				childFork2.SetSignature(privKeys[forker].Sign(childFork2))
 				_, err = gomel.AddUnit(forkHelpDag, childFork2)
 				Expect(err).NotTo(HaveOccurred())
-			})
-
-			It("Adds forks only after acquiring commitments explicitly", func() {
-				_, err := gomel.AddUnit(dags[1], dealingFork1)
+				_, err = gomel.AddUnit(dags[1], dealingFork1)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = gomel.AddUnit(dags[1], childFork1)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = gomel.AddUnit(dags[2], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = gomel.AddUnit(dags[2], childFork2)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("Adds forks only after acquiring commitments explicitly", func() {
+				wg := &sync.WaitGroup{}
+				for j := uint16(1); j < nProc; j++ {
+					go AcceptAlert(j, wg)
+				}
+				_, err := gomel.AddUnit(dags[1], dealingFork2)
+				Expect(err).To(MatchError("MissingDataError: commitment to fork"))
+				wg.Wait()
+				wg.Add(1)
+				go AcceptSomething(2, wg)
+				alerters[1].RequestCommitment(dealingFork2.Hash(), 2)
+				wg.Wait()
+				_, err = gomel.AddUnit(dags[1], dealingFork2)
+				Expect(err).NotTo(HaveOccurred())
+				_, err = gomel.AddUnit(dags[1], childFork2)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("Adds a unit built on forks only after acquiring commitments explicitly", func() {
+				unit2, _, err := creating.NewUnit(dags[2], 2, []byte{}, rss[2], true)
+				Expect(err).NotTo(HaveOccurred())
+				unit2.SetSignature(privKeys[2].Sign(unit2))
+				_, err = gomel.AddUnit(dags[2], unit2)
 				Expect(err).NotTo(HaveOccurred())
 				wg := &sync.WaitGroup{}
 				for j := uint16(1); j < nProc; j++ {
@@ -230,6 +253,8 @@ var _ = Describe("Alert", func() {
 				_, err = gomel.AddUnit(dags[1], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = gomel.AddUnit(dags[1], childFork2)
+				Expect(err).NotTo(HaveOccurred())
+				_, err = gomel.AddUnit(dags[1], unit2)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})

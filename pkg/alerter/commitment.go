@@ -11,31 +11,34 @@ import (
 )
 
 type commitment interface {
-	setUnit(u gomel.Unit)
-	getUnit() gomel.Unit
-	getHash() *gomel.Hash
-	commitmentForParent(u gomel.Unit) commitment
-	commitmentForPreparent(pu gomel.Preunit, encoded []byte) commitment
+	getUnit() gomel.Preunit
 	checkProof(fp *forkingProof) error
 	rmcID() uint64
+	setParentHashes(ph []byte)
+	getParentHash(pid uint16) *gomel.Hash
 	Marshal() []byte
 }
 
 type baseCommitment struct {
 	sync.RWMutex
-	unit    gomel.Unit
-	id      uint64
-	pu      gomel.Preunit
-	encoded []byte
+	pu           gomel.Preunit
+	id           uint64
+	encoded      []byte
+	parentHashes []byte
+}
+
+func newBaseCommitment(pu gomel.Preunit, puEncoded []byte, rmcID uint64) commitment {
+	comm := &baseCommitment{
+		id: rmcID,
+	}
+	comm.encoded = make([]byte, 8)
+	binary.LittleEndian.PutUint64(comm.encoded, comm.id)
+	comm.encoded = append(comm.encoded, puEncoded...)
+	comm.pu = pu
+	return comm
 }
 
 func (comm *baseCommitment) Marshal() []byte {
-	if comm.encoded == nil {
-		comm.encoded = make([]byte, 8)
-		binary.LittleEndian.PutUint64(comm.encoded, comm.id)
-		unitEncoded, _ := encoding.EncodeUnit(comm.unit)
-		comm.encoded = append(comm.encoded, unitEncoded...)
-	}
 	return comm.encoded
 }
 
@@ -43,33 +46,13 @@ func (comm *baseCommitment) rmcID() uint64 {
 	return comm.id
 }
 
-func (comm *baseCommitment) setUnit(u gomel.Unit) {
-	comm.Lock()
-	defer comm.Unlock()
-	if comm.unit == nil {
-		comm.unit = u
-	}
-}
-
-func (comm *baseCommitment) getUnit() gomel.Unit {
-	comm.RLock()
-	defer comm.RUnlock()
-	return comm.unit
-}
-
-func (comm *baseCommitment) getHash() *gomel.Hash {
-	if comm.pu != nil {
-		return comm.pu.Hash()
-	}
-	if u := comm.getUnit(); u != nil {
-		return u.Hash()
-	}
-	return nil
+func (comm *baseCommitment) getUnit() gomel.Preunit {
+	return comm.pu
 }
 
 func (comm *baseCommitment) checkProof(fp *forkingProof) error {
-	if h := comm.getHash(); h != nil {
-		if *h != *fp.pcommit.Hash() {
+	if cu := comm.getUnit(); cu != nil {
+		if *cu.Hash() != *fp.pcommit.Hash() {
 			return errors.New("wrong proof for commit")
 		}
 		return nil
@@ -77,50 +60,33 @@ func (comm *baseCommitment) checkProof(fp *forkingProof) error {
 	return errors.New("unitless commitment")
 }
 
-func (comm *baseCommitment) commitmentForParent(u gomel.Unit) commitment {
-	comm.RLock()
-	defer comm.RUnlock()
-	if comm.unit == nil {
-		// Cannot create commitments for parents of units we don't yet have.
-		return nil
-	}
-	if predecessor := gomel.Predecessor(comm.unit); predecessor == nil || *u.Hash() != *predecessor.Hash() {
-		return nil
-	}
-	return &inferredCommitment{
-		unit:            u,
-		childCommitment: comm,
-	}
+func (comm *baseCommitment) setParentHashes(ph []byte) {
+	comm.Lock()
+	defer comm.Unlock()
+	comm.parentHashes = ph
 }
 
-func (comm *baseCommitment) commitmentForPreparent(pu gomel.Preunit, encoded []byte) commitment {
-	if comm.pu == nil {
+func (comm *baseCommitment) getParentHash(pid uint16) *gomel.Hash {
+	comm.RLock()
+	defer comm.RUnlock()
+	result := &gomel.Hash{}
+	i := int(pid) * len(result)
+	if i >= len(comm.parentHashes) {
 		return nil
 	}
-	parents := comm.pu.Parents()
-	if len(parents) < 1 || *pu.Hash() != *parents[0] {
-		return nil
-	}
-	return &inferredCommitment{
-		pu:              pu,
-		childCommitment: comm,
-		encoded:         encoded,
-	}
+	copy(result[:], comm.parentHashes[i:])
+	return result
 }
 
 type inferredCommitment struct {
-	unit            gomel.Unit
-	childCommitment commitment
+	sync.RWMutex
 	pu              gomel.Preunit
+	childCommitment commitment
 	encoded         []byte
+	parentHashes    []byte
 }
 
 func (comm *inferredCommitment) Marshal() []byte {
-	if comm.encoded == nil {
-		comm.encoded = comm.childCommitment.Marshal()
-		unitEncoded, _ := encoding.EncodeUnit(comm.unit)
-		comm.encoded = append(comm.encoded, unitEncoded...)
-	}
 	return comm.encoded
 }
 
@@ -128,52 +94,91 @@ func (comm *inferredCommitment) rmcID() uint64 {
 	return comm.childCommitment.rmcID()
 }
 
-func (comm *inferredCommitment) setUnit(gomel.Unit) {}
-
-func (comm *inferredCommitment) getUnit() gomel.Unit {
-	return comm.unit
-}
-
-func (comm *inferredCommitment) getHash() *gomel.Hash {
-	if comm.pu != nil {
-		return comm.pu.Hash()
-	}
-	if u := comm.getUnit(); u != nil {
-		return u.Hash()
-	}
-	return nil
+func (comm *inferredCommitment) getUnit() gomel.Preunit {
+	return comm.pu
 }
 
 func (comm *inferredCommitment) checkProof(fp *forkingProof) error {
 	return comm.childCommitment.checkProof(fp)
 }
 
-func (comm *inferredCommitment) commitmentForParent(u gomel.Unit) commitment {
-	if comm.unit == nil {
-		return nil
-	}
-	if predecessor := gomel.Predecessor(comm.unit); predecessor == nil || *u.Hash() != *predecessor.Hash() {
-		return nil
-	}
-	return &inferredCommitment{
-		unit:            u,
-		childCommitment: comm,
-	}
+func (comm *inferredCommitment) setParentHashes(ph []byte) {
+	comm.Lock()
+	defer comm.Unlock()
+	comm.parentHashes = ph
 }
 
-func (comm *inferredCommitment) commitmentForPreparent(pu gomel.Preunit, encoded []byte) commitment {
-	if comm.pu == nil {
+func (comm *inferredCommitment) getParentHash(pid uint16) *gomel.Hash {
+	comm.RLock()
+	defer comm.RUnlock()
+	result := &gomel.Hash{}
+	i := int(pid) * len(result)
+	if i >= len(comm.parentHashes) {
 		return nil
 	}
-	parents := comm.pu.Parents()
-	if len(parents) < 1 || *pu.Hash() != *parents[0] {
-		return nil
+	copy(result[:], comm.parentHashes[i:])
+	return result
+}
+
+func commitmentForPreparent(comm commitment, pu gomel.Preunit, hashes []*gomel.Hash, encoded []byte) (commitment, error) {
+	cu := comm.getUnit()
+	if cu == nil {
+		return nil, errors.New("empty commitment cannot justify parents")
 	}
+	pid := cu.Creator()
+	if pid != pu.Creator() {
+		return nil, errors.New("cannot justify unit created by a different process")
+	}
+	if *hashes[pid] != *pu.Hash() {
+		return nil, errors.New("cannot justify unit with a mismatched hash")
+	}
+	if cu.View().ControlHash != *gomel.CombineHashes(hashes) {
+		return nil, errors.New("control hash does not match hashes of parents")
+	}
+	parEncoded := []byte{}
+	for _, h := range hashes {
+		if h != nil {
+			parEncoded = append(parEncoded, h[:]...)
+		} else {
+			parEncoded = append(parEncoded, gomel.ZeroHash[:]...)
+		}
+	}
+	comm.setParentHashes(parEncoded)
 	return &inferredCommitment{
 		pu:              pu,
 		childCommitment: comm,
 		encoded:         encoded,
+	}, nil
+}
+
+func commitmentForParent(comm commitment, u gomel.Unit) (commitment, error) {
+	cu := comm.getUnit()
+	if cu == nil {
+		return nil, errors.New("empty commitment cannot justify parents")
 	}
+	if u == nil || *cu.Hash() != *u.Hash() {
+		return nil, errors.New("incorrect commitment unit supplied")
+	}
+	pred := gomel.Predecessor(u)
+	encoded := comm.Marshal()
+	predEncoded, _ := encoding.EncodeUnit(pred)
+	encoded = append(encoded, predEncoded...)
+	parEncoded := []byte{}
+	for _, par := range u.Parents() {
+		if par != nil {
+			parEncoded = append(parEncoded, par.Hash()[:]...)
+		} else {
+			parEncoded = append(parEncoded, gomel.ZeroHash[:]...)
+		}
+	}
+	encoded = append(encoded, parEncoded...)
+	pu, _ := encoding.DecodePreunit(predEncoded)
+	comm.setParentHashes(parEncoded)
+	return &inferredCommitment{
+		pu:              pu,
+		childCommitment: comm,
+		encoded:         encoded,
+	}, nil
 }
 
 type commitBase struct {
@@ -190,11 +195,12 @@ func newCommitBase() *commitBase {
 }
 
 func (cb *commitBase) add(c commitment, commiter, forker uint16) {
-	h := c.getHash()
+	cu := c.getUnit()
 	cb.Lock()
 	defer cb.Unlock()
-	if h != nil {
-		if cb.toUnit[*h] == nil {
+	if cu != nil {
+		h := cu.Hash()
+		if cb.toUnit[*h] == nil || cb.toUnit[*h].getParentHash(0) == nil {
 			cb.toUnit[*h] = c
 		}
 	}
@@ -277,7 +283,19 @@ func acquireCommitments(r io.Reader) ([]commitment, error) {
 		return nil, err
 	}
 	for pu != nil {
-		comm = comm.commitmentForPreparent(pu, mr.getMemory())
+		hashes := []*gomel.Hash{}
+		for range pu.View().Heights {
+			h := &gomel.Hash{}
+			_, err := io.ReadFull(mr, h[:])
+			if err != nil {
+				return nil, err
+			}
+			hashes = append(hashes, h)
+		}
+		comm, err = commitmentForPreparent(comm, pu, hashes, mr.getMemory())
+		if err != nil {
+			return nil, err
+		}
 		result = append(result, comm)
 		pu, err = encoding.ReceivePreunit(mr)
 		if err != nil {

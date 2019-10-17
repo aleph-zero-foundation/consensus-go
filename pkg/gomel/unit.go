@@ -129,3 +129,14 @@ func BelowAny(u Unit, us []Unit) bool {
 	}
 	return false
 }
+
+// ToHashes converts a list of units to a list of hashes.
+func ToHashes(units []Unit) []*Hash {
+	result := make([]*Hash, len(units))
+	for i, u := range units {
+		if u != nil {
+			result[i] = u.Hash()
+		}
+	}
+	return result
+}
