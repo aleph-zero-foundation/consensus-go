@@ -150,7 +150,7 @@ func (u *freeUnit) computeFloor() {
 }
 
 // unit is a unit that is already inside the dag, and has all its properties precomputed and cached.
-// It uses forking heights to optimize Below calls.
+// It uses forking heights to optimize Above calls.
 type unit struct {
 	creator       uint16
 	height        int

@@ -88,7 +88,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				time.Sleep(time.Millisecond * 200)
+				time.Sleep(time.Millisecond * 1000)
 				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
@@ -121,7 +121,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to the second copy", func() {
-				time.Sleep(time.Millisecond * 200)
+				time.Sleep(time.Millisecond * 1000)
 				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
@@ -151,7 +151,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to the first copy", func() {
-				time.Sleep(time.Millisecond * 200)
+				time.Sleep(time.Millisecond * 1000)
 				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
@@ -180,7 +180,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				time.Sleep(time.Millisecond * 200)
+				time.Sleep(time.Millisecond * 1000)
 				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
@@ -208,7 +208,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add everything", func() {
-				time.Sleep(time.Millisecond * 200)
+				time.Sleep(time.Millisecond * 1000)
 				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}
@@ -234,7 +234,7 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add all units", func() {
-				time.Sleep(time.Millisecond * 200)
+				time.Sleep(time.Millisecond * 1000)
 				for i := 0; i < 2; i++ {
 					servs[i].StopOut()
 				}

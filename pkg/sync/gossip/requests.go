@@ -44,7 +44,7 @@ func fixMaximal(u gomel.Unit, maxes [][]gomel.Unit) [][]gomel.Unit {
 		if !gomel.BelowAny(p, maxes[creator]) {
 			newMaxes := []gomel.Unit{}
 			for _, m := range maxes[creator] {
-				if !m.Below(p) {
+				if !p.Above(m) {
 					newMaxes = append(newMaxes, m)
 				}
 			}

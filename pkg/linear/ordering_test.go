@@ -100,7 +100,7 @@ var _ = Describe("Ordering", func() {
 				}
 				for i := 0; i < len(orderedUnits); i++ {
 					for j := i + 1; j < len(orderedUnits); j++ {
-						Expect(orderedUnits[j].Below(orderedUnits[i])).To(BeFalse())
+						Expect(orderedUnits[i].Above(orderedUnits[j])).To(BeFalse())
 					}
 				}
 			})
@@ -110,9 +110,9 @@ var _ = Describe("Ordering", func() {
 					tu := timingRounds[level][len(timingRounds[level])-1]
 					for _, u := range timingRounds[level] {
 						for _, ptu := range timingUnits {
-							Expect(u.Below(ptu)).To(BeFalse())
+							Expect(ptu.Above(u)).To(BeFalse())
 						}
-						Expect(u.Below(tu)).To(BeTrue())
+						Expect(tu.Above(u)).To(BeTrue())
 					}
 					timingUnits = append(timingUnits, tu)
 				}

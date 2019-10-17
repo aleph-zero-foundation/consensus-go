@@ -150,6 +150,7 @@ func (b *Beacon) checkCompliance(u gomel.Unit) error {
 		if err != nil {
 			return err
 		}
+
 		err = validateVotes(b, u, votes)
 		if err != nil {
 			return err
@@ -204,7 +205,7 @@ func (b *Beacon) update(u gomel.Unit) {
 		votingUnits := unitsOnLevel(b.dag, votingLevel)
 
 		for _, v := range votingUnits {
-			if v.Below(u) {
+			if u.Above(v) {
 				providers[v.Creator()] = true
 				nBelowUOnVotingLevel++
 				for pid := uint16(0); pid < b.dag.NProc(); pid++ {
@@ -238,7 +239,7 @@ func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 	dealingUnits := unitsOnLevel(b.dag, dealingLevel)
 	createdDealing := make([]bool, b.dag.NProc())
 	for _, v := range dealingUnits {
-		shouldVote := v.Below(u)
+		shouldVote := u.Above(v)
 		if shouldVote && votes[v.Creator()] == nil {
 			return errors.New("missing vote")
 		}
