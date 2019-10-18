@@ -72,8 +72,9 @@ func (p *server) gatherSignatures(data []byte, id uint64) []bool {
 }
 
 func (p *server) sendData(data []byte, id uint64, receipient uint16, gathering *sync.WaitGroup) bool {
+	defer gathering.Done()
 	log := p.log.With().Uint16(logging.PID, receipient).Uint64(logging.OSID, id).Logger()
-	for p.state.Status(id) != rmcbox.Finished {
+	for p.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&p.quit) == 0 {
 		conn, err := p.netserv.Dial(receipient, p.timeout)
 		if err != nil {
 			log.Error().Str("where", "sync.rmc.sendData.Dial").Msg(err.Error())
@@ -85,16 +86,10 @@ func (p *server) sendData(data []byte, id uint64, receipient uint16, gathering *
 		err = p.attemptGather(conn, data, id, receipient)
 		if err == nil {
 			log.Info().Msg(logging.SyncCompleted)
-			gathering.Done()
 			return true
 		}
 		log.Error().Str("where", "sync.rmc.attemptGather").Msg(err.Error())
-		if atomic.LoadInt64(&p.quit) == 1 {
-			gathering.Done()
-			return false
-		}
 	}
-	gathering.Done()
 	return false
 }
 
