@@ -2,9 +2,11 @@ package encoding
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"math"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -96,6 +98,9 @@ func (e *enc) encodeUnit(unit gomel.Unit) error {
 }
 
 func (e *enc) encodeAntichain(units []gomel.Unit) error {
+	if len(units) > config.MaxUnitsInAntichain {
+		errors.New("antichain length too long")
+	}
 	err := e.encodeUint32(uint32(len(units)))
 	if err != nil {
 		return err
@@ -111,6 +116,9 @@ func (e *enc) encodeAntichain(units []gomel.Unit) error {
 
 func (e *enc) encodeChunk(units []gomel.Unit) error {
 	layers := toLayers(units)
+	if len(layers) > config.MaxAntichainsInChunk {
+		errors.New("chunk contains too many antichains")
+	}
 	err := e.encodeUint32(uint32(len(layers)))
 	if err != nil {
 		return err

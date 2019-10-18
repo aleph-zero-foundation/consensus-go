@@ -2,9 +2,11 @@ package encoding
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"math"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -87,6 +89,9 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 	unitDataLen := binary.LittleEndian.Uint32(uint32Buf)
+	if unitDataLen > config.MaxDataBytesPerUnit {
+		return nil, errors.New("maximal allowed data size in a preunit exceeded")
+	}
 	unitData := make([]byte, unitDataLen)
 	_, err = io.ReadFull(d, unitData)
 	if err != nil {
@@ -97,6 +102,9 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 	rsDataLen := binary.LittleEndian.Uint32(uint32Buf)
+	if rsDataLen > config.MaxRandomSourceDataBytesPerUnit {
+		return nil, errors.New("maximal allowed random source data size in a preunit exceeded")
+	}
 	rsData := make([]byte, rsDataLen)
 	_, err = io.ReadFull(d, rsData)
 	if err != nil {
@@ -113,6 +121,9 @@ func (d *dec) decodeAntichain() ([]gomel.Preunit, error) {
 	if err != nil {
 		return nil, err
 	}
+	if k > config.MaxUnitsInAntichain {
+		return nil, errors.New("antichain length too long")
+	}
 	result := make([]gomel.Preunit, k)
 	for i := range result {
 		result[i], err = d.decodePreunit()
@@ -127,6 +138,9 @@ func (d *dec) decodeChunk() ([][]gomel.Preunit, int, error) {
 	k, err := d.decodeUint32()
 	if err != nil {
 		return nil, 0, err
+	}
+	if k > config.MaxAntichainsInChunk {
+		return nil, 0, errors.New("chunk contains too many antichains")
 	}
 	result := make([][]gomel.Preunit, k)
 	nUnits := 0

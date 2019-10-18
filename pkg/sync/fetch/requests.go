@@ -16,11 +16,6 @@ type request struct {
 
 func sendRequests(conn network.Connection, heights []int) error {
 	buf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(buf, uint32(len(heights)))
-	_, err := conn.Write(buf)
-	if err != nil {
-		return err
-	}
 	for _, h := range heights {
 		if h == -1 {
 			binary.LittleEndian.PutUint32(buf, math.MaxUint32)
@@ -35,13 +30,9 @@ func sendRequests(conn network.Connection, heights []int) error {
 	return conn.Flush()
 }
 
-func receiveRequests(conn network.Connection) ([]int, error) {
+func receiveRequests(conn network.Connection, nProc uint16) ([]int, error) {
+	result := make([]int, nProc)
 	buf := make([]byte, 4)
-	_, err := io.ReadFull(conn, buf)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]int, binary.LittleEndian.Uint32(buf))
 	for i := range result {
 		_, err := io.ReadFull(conn, buf)
 		if err != nil {

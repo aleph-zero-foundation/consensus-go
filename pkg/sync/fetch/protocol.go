@@ -27,7 +27,7 @@ func (p *server) in() {
 	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
 	log.Debug().Msg(logging.GetRequests)
-	heights, err := receiveRequests(conn)
+	heights, err := receiveRequests(conn, p.dag.NProc())
 	if err != nil {
 		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
 		return
