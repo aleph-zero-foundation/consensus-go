@@ -16,9 +16,7 @@ import (
 )
 
 const (
-	requestSize = 10
-	outPoolSize = 4
-	inPoolSize  = 2
+	inPoolSize = 2
 )
 
 // server is a multicast server
