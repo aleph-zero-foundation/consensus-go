@@ -21,7 +21,7 @@ func (p *server) multicast(unit gomel.Unit) {
 		return
 	}
 	p.multicastInProgress.Lock()
-	signedBy := p.gatherSignatures(data, id)
+	signedBy := p.getCommitteeSignatures(data, id)
 	p.multicastInProgress.Unlock()
 	for pid, isSigned := range signedBy {
 		if isSigned {
@@ -55,7 +55,12 @@ func (p *server) sendProof(receipient uint16, id uint64) error {
 	return nil
 }
 
-func (p *server) gatherSignatures(data []byte, id uint64) []bool {
+// getCommiteeSignatures collects singatures of all other committee members
+// on given data with given rmc id.
+// It blocks until it gathers at least quorum signatures.
+// It returns nProc boolean values in a slice, i-th value indicates
+// weather the i-th process signed the data or not.
+func (p *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 	signedBy := make([]bool, p.dag.NProc())
 	gathering := &sync.WaitGroup{}
 	for pid := uint16(0); pid < p.dag.NProc(); pid++ {
@@ -64,14 +69,18 @@ func (p *server) gatherSignatures(data []byte, id uint64) []bool {
 		}
 		gathering.Add(1)
 		go func(pid uint16) {
-			signedBy[pid] = p.sendData(data, id, pid, gathering)
+			signedBy[pid] = p.getMemberSignature(data, id, pid, gathering)
 		}(pid)
 	}
 	gathering.Wait()
 	return signedBy
 }
 
-func (p *server) sendData(data []byte, id uint64, receipient uint16, gathering *sync.WaitGroup) bool {
+// getMemeberSignature tries to get a signature from the given receipient on a given data with given rmc id.
+// It retries until it gets a signature, or there are at least quorum signatures for this rmc-id
+// gathered from different receipients.
+// It returns whether it got a signature or not.
+func (p *server) getMemberSignature(data []byte, id uint64, receipient uint16, gathering *sync.WaitGroup) bool {
 	defer gathering.Done()
 	log := p.log.With().Uint16(logging.PID, receipient).Uint64(logging.OSID, id).Logger()
 	for p.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&p.quit) == 0 {
