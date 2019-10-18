@@ -10,14 +10,11 @@ type Adder interface {
 }
 
 // AddUnit to the specified dag.
-func AddUnit(dag Dag, pu Preunit) (Unit, error) {
-	result, err := dag.Decode(pu)
+func AddUnit(dag Dag, unit Unit) error {
+	result, err := dag.Prepare(unit)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	err = dag.Check(result)
-	if err != nil {
-		return nil, err
-	}
-	return dag.Emplace(result)
+	dag.Insert(result)
+	return nil
 }

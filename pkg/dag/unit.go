@@ -149,90 +149,31 @@ func (u *freeUnit) computeFloor() {
 	}
 }
 
-// unit is a unit that is already inside the dag, and has all its properties precomputed and cached.
+// unitInDag is a unit that is already inside the dag, and has all its properties precomputed and cached.
 // It uses forking heights to optimize Above calls.
-type unit struct {
-	creator       uint16
-	height        int
-	level         int
-	signature     gomel.Signature
-	hash          gomel.Hash
-	crown         gomel.Crown
-	parents       []gomel.Unit
-	floor         [][]gomel.Unit
-	data          gomel.Data
-	rsData        []byte
+type unitInDag struct {
+	gomel.Unit
 	forkingHeight int
 }
 
-func emplaced(u gomel.Unit, dag *dag) *unit {
-	result := &unit{
-		creator:   u.Creator(),
-		height:    u.Height(),
-		level:     u.Level(),
-		signature: u.Signature(),
-		hash:      *u.Hash(),
-		parents:   u.Parents(),
-		crown:     *u.View(),
-		floor:     u.Floor(),
-		data:      u.Data(),
-		rsData:    u.RandomSourceData(),
-	}
+func prepared(u gomel.Unit, dag *dag) *unitInDag {
+	result := &unitInDag{u, 0}
 	result.fixSelfFloor()
 	result.computeForkingHeight(dag)
 	return result
 }
 
-func (u *unit) RandomSourceData() []byte {
-	return u.rsData
-}
-
-func (u *unit) Data() gomel.Data {
-	return u.data
-}
-
-func (u *unit) Creator() uint16 {
-	return u.creator
-}
-
-func (u *unit) Signature() gomel.Signature {
-	return u.signature
-}
-
-func (u *unit) Hash() *gomel.Hash {
-	return &u.hash
-}
-
-func (u *unit) View() *gomel.Crown {
-	return &u.crown
-}
-
-func (u *unit) Parents() []gomel.Unit {
-	return u.parents
-}
-
-func (u *unit) Height() int {
-	return u.height
-}
-
-func (u *unit) Floor() [][]gomel.Unit {
-	return u.floor
-}
-
-func (u *unit) Level() int {
-	return u.level
-}
-
 // fixSelfFloor replaces the self-reference in the floor with the correct one
-func (u *unit) fixSelfFloor() {
-	u.floor[u.Creator()] = []gomel.Unit{u}
+func (u *unitInDag) fixSelfFloor() {
+	//floor := u.Floor() TODO!! CHECK THIS
+	u.Floor()[u.Creator()] = []gomel.Unit{u}
 }
 
-func (u *unit) computeForkingHeight(dag *dag) {
+func (u *unitInDag) computeForkingHeight(dag *dag) {
 	// this implementation works as long as there is no race for writing/reading to dag.maxUnits, i.e.
 	// as long as units created by one process are added atomically
 	if gomel.Dealing(u) {
-		if len(dag.MaximalUnitsPerProcess().Get(u.creator)) > 0 {
+		if len(dag.MaximalUnitsPerProcess().Get(u.Creator())) > 0 {
 			// this is a forking dealing unit
 			u.forkingHeight = -1
 		} else {
@@ -241,9 +182,9 @@ func (u *unit) computeForkingHeight(dag *dag) {
 		return
 	}
 	predTmp := gomel.Predecessor(u)
-	predecessor := predTmp.(*unit)
+	predecessor := predTmp.(*unitInDag)
 	found := false
-	for _, v := range dag.MaximalUnitsPerProcess().Get(u.creator) {
+	for _, v := range dag.MaximalUnitsPerProcess().Get(u.Creator()) {
 		if v == predecessor {
 			found = true
 			break
@@ -253,10 +194,10 @@ func (u *unit) computeForkingHeight(dag *dag) {
 		u.forkingHeight = predecessor.forkingHeight
 	} else {
 		// there is already a unit that has 'predecessor' as a predecessor, hence u is a fork
-		if predecessor.forkingHeight < predecessor.height {
+		if predecessor.forkingHeight < predecessor.Height() {
 			u.forkingHeight = predecessor.forkingHeight
 		} else {
-			u.forkingHeight = predecessor.height
+			u.forkingHeight = predecessor.Height()
 		}
 	}
 }

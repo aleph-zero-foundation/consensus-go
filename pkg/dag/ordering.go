@@ -4,7 +4,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-func commonForkingHeight(u, v *unit) int {
+func commonForkingHeight(u, v *unitInDag) int {
 	if u.forkingHeight < v.forkingHeight {
 		return u.forkingHeight
 	}
@@ -21,32 +21,31 @@ func brutalAboveWithinProc(u, v gomel.Unit) bool {
 	return *u.Hash() == *v.Hash()
 }
 
-func aboveWithinProc(u, v gomel.Unit) (bool, error) {
+func aboveWithinProc(u, v gomel.Unit) bool {
 	if u.Creator() != v.Creator() {
-		return false, gomel.NewDataError("Different creators")
+		panic("aboveWithinProc: Different creators")
 	}
 	if u.Height() < v.Height() {
-		return false, nil
+		return false
 	}
 
-	uWithForkingHeight, uKnowsForkingHeight := u.(*unit)
-	vWithForkingHeight, vKnowsForkingHeight := v.(*unit)
+	uWithForkingHeight, uKnowsForkingHeight := u.(*unitInDag)
+	vWithForkingHeight, vKnowsForkingHeight := v.(*unitInDag)
 
-	if uKnowsForkingHeight && vKnowsForkingHeight && vWithForkingHeight.height <= commonForkingHeight(uWithForkingHeight, vWithForkingHeight) {
-		return true, nil
+	if uKnowsForkingHeight && vKnowsForkingHeight && v.Height() <= commonForkingHeight(uWithForkingHeight, vWithForkingHeight) {
+		return true
 	}
 
 	// Either we have a fork or a different type of unit, either way no optimization is possible.
-	return brutalAboveWithinProc(u, v), nil
+	return brutalAboveWithinProc(u, v)
 }
 
-func (u *unit) Above(v gomel.Unit) bool {
+func (u *unitInDag) Above(v gomel.Unit) bool {
 	if v == nil || u == nil {
 		return false
 	}
-	for _, w := range u.floor[v.Creator()] {
-
-		if ok, _ := aboveWithinProc(w, v); ok {
+	for _, w := range u.Floor()[v.Creator()] {
+		if aboveWithinProc(w, v) {
 			return true
 		}
 	}

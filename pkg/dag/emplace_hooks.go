@@ -4,36 +4,32 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type afterEmplace struct {
+type afterInsert struct {
 	gomel.Dag
 	handle func(gomel.Unit)
 }
 
-// AfterEmplace wraps the dag to call handle on the result of every Emplace.
-func AfterEmplace(dag gomel.Dag, handle func(gomel.Unit)) gomel.Dag {
-	return &afterEmplace{dag, handle}
+// AfterInsert wraps the dag to call handle on the result of every Insert.
+func AfterInsert(dag gomel.Dag, handle func(gomel.Unit)) gomel.Dag {
+	return &afterInsert{dag, handle}
 }
 
-func (ae *afterEmplace) Emplace(u gomel.Unit) (gomel.Unit, error) {
-	result, err := ae.Dag.Emplace(u)
-	if err != nil {
-		return result, err
-	}
-	ae.handle(result)
-	return result, nil
+func (ae *afterInsert) Insert(u gomel.Unit) {
+	ae.Dag.Insert(u)
+	ae.handle(u)
 }
 
-type beforeEmplace struct {
+type beforeInsert struct {
 	gomel.Dag
 	handle func(gomel.Unit)
 }
 
-// BeforeEmplace wraps the dag to call handle on the result of every Emplace.
-func BeforeEmplace(dag gomel.Dag, handle func(gomel.Unit)) gomel.Dag {
-	return &beforeEmplace{dag, handle}
+// BeforeInsert wraps the dag to call handle on the result of every Insert.
+func BeforeInsert(dag gomel.Dag, handle func(gomel.Unit)) gomel.Dag {
+	return &beforeInsert{dag, handle}
 }
 
-func (be *beforeEmplace) Emplace(u gomel.Unit) (gomel.Unit, error) {
+func (be *beforeInsert) Insert(u gomel.Unit) {
 	be.handle(u)
-	return be.Dag.Emplace(u)
+	be.Dag.Insert(u)
 }

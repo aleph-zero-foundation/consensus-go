@@ -5,19 +5,37 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type unitChecker struct {
-	gomel.Dag
-	check func(gomel.Unit) error
+type check func(gomel.Unit) error
+
+type transform func(gomel.Unit) gomel.Unit
+
+func identity() transform {
+	return func(u gomel.Unit) gomel.Unit { return u }
 }
 
-func (dag *unitChecker) Check(u gomel.Unit) error {
-	if err := dag.Dag.Check(u); err != nil {
-		return err
+type wrapper struct {
+	gomel.Dag
+	ch check
+	tr transform
+}
+
+func (dag *wrapper) Prepare(u gomel.Unit) (gomel.Unit, error) {
+	if err := dag.ch(u); err != nil {
+		return nil, err
 	}
-	return dag.check(u)
+	prep, err := dag.Dag.Prepare(u)
+	if err != nil {
+		return nil, err
+	}
+	return dag.tr(prep), nil
 }
 
 // Units wraps the dag so that it performs the provided check on the units.
-func Units(dag gomel.Dag, check func(gomel.Unit) error) gomel.Dag {
-	return &unitChecker{dag, check}
+func Units(dag gomel.Dag, ch check) gomel.Dag {
+	return &wrapper{dag, ch, identity()}
+}
+
+// AndTransform wraps the dag so that it performs the provided check and transform on the units.
+func AndTransform(dag gomel.Dag, ch check, tr transform) gomel.Dag {
+	return &wrapper{dag, ch, tr}
 }

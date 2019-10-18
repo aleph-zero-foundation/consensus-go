@@ -95,7 +95,7 @@ func (b *Beacon) Bind(dag gomel.Dag) gomel.Dag {
 		b.shares[i] = random.NewSyncCSMap()
 		b.subcoins[i] = make(map[uint16]bool)
 	}
-	return chdag.BeforeEmplace(check.Units(dag, b.checkCompliance), b.update)
+	return chdag.BeforeInsert(check.Units(dag, b.checkCompliance), b.update)
 }
 
 // RandomBytes returns a sequence of random bits for a given unit.

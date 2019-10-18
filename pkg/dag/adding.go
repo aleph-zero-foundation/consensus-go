@@ -8,8 +8,8 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	if pu.Creator() < 0 || pu.Creator() >= dag.nProcesses {
 		return nil, gomel.NewDataError("invalid creator")
 	}
-	if u := dag.Get([]*gomel.Hash{pu.Hash()}); u[0] != nil {
-		return nil, gomel.NewDuplicateUnit(u[0])
+	if u := dag.GetUnit(pu.Hash()); u != nil {
+		return nil, gomel.NewDuplicateUnit(u)
 	}
 	possibleParents := dag.heightUnits.get(pu.View().Heights)
 	parents, err := getParents(possibleParents, pu.Creator())
@@ -53,19 +53,17 @@ func getParents(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
 	return result, nil
 }
 
-func (dag *dag) Check(gomel.Unit) error {
-	return nil
+func (dag *dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
+	return prepared(u, dag), nil
 }
 
-func (dag *dag) Emplace(u gomel.Unit) (gomel.Unit, error) {
-	result := emplaced(u, dag)
-	dag.updateUnitsOnHeight(result)
-	if gomel.Prime(result) {
-		dag.addPrime(result)
+func (dag *dag) Insert(u gomel.Unit) {
+	dag.updateUnitsOnHeight(u)
+	if gomel.Prime(u) {
+		dag.addPrime(u)
 	}
-	dag.units.add(result)
-	dag.updateMaximal(result)
-	return result, nil
+	dag.units.add(u)
+	dag.updateMaximal(u)
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {

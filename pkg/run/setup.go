@@ -60,7 +60,7 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	dag = rs.Bind(dag)
 
 	orderService, orderIfPrime := order.NewService(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
-	dag = dagutils.AfterEmplace(dag, orderIfPrime)
+	dag = dagutils.AfterInsert(dag, orderIfPrime)
 
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
@@ -70,7 +70,7 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 		log.Error().Str("where", "setup.sync").Msg(err.Error())
 		return
 	}
-	dagMC := dagutils.AfterEmplace(dag, multicastUnit)
+	dagMC := dagutils.AfterInsert(dag, multicastUnit)
 	adderMC := adderService.Register(dagMC)
 
 	createService := create.NewService(dagMC, adderMC, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())

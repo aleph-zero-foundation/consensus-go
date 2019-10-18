@@ -71,7 +71,7 @@ func NewFixedCoin(nProc, pid uint16, seed int, shareProviders map[uint16]bool) g
 // Bind the coin with the dag.
 func (c *coin) Bind(dag gomel.Dag) gomel.Dag {
 	c.dag = dag
-	return chdag.BeforeEmplace(check.Units(dag, c.checkCompliance), c.update)
+	return chdag.BeforeInsert(check.Units(dag, c.checkCompliance), c.update)
 }
 
 // RandomBytes returns a sequence of random bits for a given level.

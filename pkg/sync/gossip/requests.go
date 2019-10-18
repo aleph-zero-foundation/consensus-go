@@ -135,7 +135,7 @@ func unitsToSendByProcess(tops processInfo, maxes []gomel.Unit) []gomel.Unit {
 }
 
 func knownUnits(dag gomel.Dag, info processInfo) map[gomel.Unit]bool {
-	allUnits := dag.Get(hashesFromInfo(info))
+	allUnits, _ := dag.GetUnits(hashesFromInfo(info))
 	result := map[gomel.Unit]bool{}
 	for _, u := range allUnits {
 		if u != nil {
@@ -176,7 +176,7 @@ func requestedToSend(dag gomel.Dag, info processInfo, req processRequests) ([]go
 	if len(req) == 0 {
 		return result, nil
 	}
-	units := dag.Get(req)
+	units, _ := dag.GetUnits(req)
 	operationHeight := maximalHeight(units)
 	knownRemotes := knownUnits(dag, info)
 	knownRemotes = dropToHeight(knownRemotes, operationHeight)
@@ -230,7 +230,7 @@ func unitsToSend(dag gomel.Dag, maxSnapshot [][]gomel.Unit, info dagInfo, req re
 
 func unknownHashes(dag gomel.Dag, info processInfo, alsoKnown staticHashSet) processRequests {
 	result := processRequests{}
-	units := dag.Get(hashesFromInfo(info))
+	units, _ := dag.GetUnits(hashesFromInfo(info))
 	for i, u := range units {
 		if u == nil {
 			if !alsoKnown.contains(info[i].hash) {
