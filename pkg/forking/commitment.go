@@ -16,7 +16,7 @@ type commitment interface {
 	rmcID() uint64
 	setParentHashes(ph []byte)
 	getParentHash(pid uint16) *gomel.Hash
-	Marshal() []byte
+	marshal() []byte
 }
 
 type baseCommitment struct {
@@ -38,7 +38,7 @@ func newBaseCommitment(pu gomel.Preunit, puEncoded []byte, rmcID uint64) commitm
 	return comm
 }
 
-func (comm *baseCommitment) Marshal() []byte {
+func (comm *baseCommitment) marshal() []byte {
 	return comm.encoded
 }
 
@@ -86,7 +86,7 @@ type inferredCommitment struct {
 	parentHashes    []byte
 }
 
-func (comm *inferredCommitment) Marshal() []byte {
+func (comm *inferredCommitment) marshal() []byte {
 	return comm.encoded
 }
 
@@ -160,7 +160,7 @@ func commitmentForParent(comm commitment, u gomel.Unit) (commitment, error) {
 		return nil, errors.New("incorrect commitment unit supplied")
 	}
 	pred := gomel.Predecessor(u)
-	encoded := comm.Marshal()
+	encoded := comm.marshal()
 	predEncoded, _ := encoding.EncodeUnit(pred)
 	encoded = append(encoded, predEncoded...)
 	parEncoded := []byte{}
@@ -272,6 +272,9 @@ func acquireCommitments(r io.Reader) ([]commitment, error) {
 	}
 	rmcID := binary.LittleEndian.Uint64(buf)
 	pu, err := encoding.ReceivePreunit(mr)
+	if err != nil {
+		return nil, err
+	}
 	var comm commitment = &baseCommitment{
 		id:      rmcID,
 		pu:      pu,

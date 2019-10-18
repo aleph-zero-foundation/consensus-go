@@ -143,7 +143,7 @@ func (a *Alert) handleCommitmentRequest(conn network.Connection, log zerolog.Log
 			return
 		}
 	}
-	_, err = conn.Write(comm.Marshal())
+	_, err = conn.Write(comm.marshal())
 	if err != nil {
 		log.Error().Str("where", "Alert.handleCommitmentRequest.Write").Msg(err.Error())
 		return
