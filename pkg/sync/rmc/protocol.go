@@ -177,7 +177,7 @@ func (p *server) in() {
 func (p *server) acceptProof(id uint64, conn network.Connection, log zerolog.Logger) bool {
 	err := p.state.AcceptProof(id, conn)
 	if err != nil {
-		log.Error().Str("where", "Alerter.acceptProof.AcceptProof").Msg(err.Error())
+		log.Error().Str("where", "rmc.acceptProof.AcceptProof").Msg(err.Error())
 		return false
 	}
 	return true
@@ -205,7 +205,7 @@ func (p *server) acceptData(id uint64, sender uint16, conn network.Connection, l
 	}
 	err = conn.Flush()
 	if err != nil {
-		log.Error().Str("where", "rmc.in.Flush3").Msg(err.Error())
+		log.Error().Str("where", "rmc.in.Flush").Msg(err.Error())
 		return
 	}
 }
