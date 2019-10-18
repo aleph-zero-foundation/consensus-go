@@ -25,10 +25,12 @@ func (p *server) multicast(unit gomel.Unit) {
 	p.multicastInProgress.Unlock()
 	for pid, isSigned := range signedBy {
 		if isSigned {
-			err := p.sendProof(uint16(pid), id)
-			if err != nil {
-				p.log.Error().Str("where", "rmcServer.SendProof").Msg(err.Error())
-			}
+			go func(pid uint16) {
+				err := p.sendProof(pid, id)
+				if err != nil {
+					p.log.Error().Str("where", "rmcServer.SendProof").Msg(err.Error())
+				}
+			}(uint16(pid))
 		}
 	}
 }
