@@ -18,6 +18,7 @@ import (
 const (
 	sending byte = iota
 	proving
+	finished
 	request
 )
 
@@ -72,8 +73,68 @@ func (a *Alert) HandleIncoming(conn network.Connection, wg *sync.WaitGroup) {
 		a.acceptAlert(id, pid, conn, log)
 	case proving:
 		a.acceptProof(id, conn, log)
+	case finished:
+		a.acceptFinished(id, pid, conn, log)
 	case request:
 		a.handleCommitmentRequest(conn, log)
+	}
+}
+
+func (a *Alert) acceptFinished(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
+	forker, _, err := a.decodeAlertID(id, pid)
+	if err != nil {
+		log.Error().Str("where", "Alert.acceptFinished.decodeAlertID").Msg(err.Error())
+		return
+	}
+	data, err := a.rmc.AcceptFinished(id, pid, conn)
+	if err != nil {
+		log.Error().Str("where", "Alert.acceptFinished.AcceptData").Msg(err.Error())
+		return
+	}
+	proof, err := (&forkingProof{}).Unmarshal(data)
+	if err != nil {
+		log.Error().Str("where", "Alert.acceptFinished.Unmarshal").Msg(err.Error())
+		return
+	}
+	comm := proof.extractCommitment(id)
+	a.commitments.add(comm, pid, forker)
+	a.Lock(forker)
+	defer a.Unlock(forker)
+	if a.commitments.getByParties(a.myPid, pid) == nil {
+		maxes := a.dag.MaximalUnitsPerProcess().Get(forker)
+		if len(maxes) == 0 {
+			proof.replaceCommit(nil)
+		} else {
+			proof.replaceCommit(maxes[0])
+		}
+		a.Raise(proof)
+	}
+}
+
+func (a *Alert) sendFinished(id uint64, pid uint16) {
+	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
+	conn, err := a.netserv.Dial(pid, a.timeout)
+	if err != nil {
+		log.Error().Str("where", "Alert.sendFinished.Dial").Msg(err.Error())
+		return
+	}
+	defer conn.Close()
+	conn.TimeoutAfter(a.timeout)
+	conn.SetLogger(log)
+	log.Info().Msg(logging.SyncStarted)
+	err = rmc.Greet(conn, a.myPid, id, finished)
+	if err != nil {
+		log.Error().Str("where", "Alert.sendFinished.Greet").Msg(err.Error())
+		return
+	}
+	err = a.rmc.SendFinished(id, conn)
+	if err != nil {
+		log.Error().Str("where", "Alert.sendFinished.SendFinished").Msg(err.Error())
+		return
+	}
+	err = conn.Flush()
+	if err != nil {
+		log.Error().Str("where", "Alert.sendFinished.Flush").Msg(err.Error())
 	}
 }
 
@@ -137,6 +198,24 @@ func (a *Alert) handleCommitmentRequest(conn network.Connection, log zerolog.Log
 	}
 	comm := a.commitments.getByHash(&requested)
 	if comm == nil {
+		if !a.IsForker(unit.Creator()) {
+			log.Error().Str("where", "Alert.handleCommitmentRequest.getByHash").Msg("we were not aware there was a fork")
+			_, err = conn.Write([]byte{1})
+			if err != nil {
+				log.Error().Str("where", "Alert.handleCommitmentRequest.Write").Msg(err.Error())
+				return
+			}
+			err = conn.Flush()
+			if err != nil {
+				log.Error().Str("where", "Alert.handleCommitmentRequest.Flush").Msg(err.Error())
+			}
+			return
+		}
+		_, err = conn.Write([]byte{0})
+		if err != nil {
+			log.Error().Str("where", "Alert.handleCommitmentRequest.Write").Msg(err.Error())
+			return
+		}
 		comm, err = a.produceCommitmentFor(unit)
 		if err != nil {
 			log.Error().Str("where", "Alert.handleCommitmentRequest.produceCommitmentFor").Msg(err.Error())
@@ -198,12 +277,21 @@ func (a *Alert) RequestCommitment(hash *gomel.Hash, pid uint16) error {
 		log.Error().Str("where", "Alert.RequestCommitment.Flush").Msg(err.Error())
 		return err
 	}
+	buf := make([]byte, 1)
+	_, err = io.ReadFull(conn, buf)
+	if err != nil {
+		log.Error().Str("where", "Alert.RequestCommitment.ReadFull").Msg(err.Error())
+		return err
+	}
+	if buf[0] == 1 {
+		return errors.New("peer was unaware of forker")
+	}
 	comms, err := acquireCommitments(conn)
 	if err != nil {
 		log.Error().Str("where", "Alert.RequestCommitment.acquireCommitments").Msg(err.Error())
 		return err
 	}
-	_, raiser := a.decodeAlertID(comms[0].rmcID())
+	_, raiser, _ := a.decodeAlertID(comms[0].rmcID(), 0)
 	data, err := a.rmc.AcceptFinished(comms[0].rmcID(), raiser, conn)
 	if err != nil {
 		log.Error().Str("where", "Alert.RequestCommitment.AcceptFinished").Msg(err.Error())
@@ -220,13 +308,9 @@ func (a *Alert) RequestCommitment(hash *gomel.Hash, pid uint16) error {
 }
 
 func (a *Alert) acceptAlert(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
-	forker, raiser := a.decodeAlertID(id)
-	if raiser != pid {
-		log.Error().Str("where", "Alert.acceptAlert.decodeAlertID").Msg("decoded id does not match provided id")
-		return
-	}
-	if raiser == forker {
-		log.Error().Str("where", "Alert.acceptAlert.decodeAlertID").Msg("cannot commit to own fork")
+	forker, _, err := a.decodeAlertID(id, pid)
+	if err != nil {
+		log.Error().Str("where", "Alert.acceptAlert.decodeAlertID").Msg(err.Error())
 		return
 	}
 	data, err := a.rmc.AcceptData(id, pid, conn)
@@ -308,8 +392,15 @@ func (a *Alert) alertID(forker uint16) uint64 {
 	return uint64(forker) + uint64(a.myPid)*uint64(a.nProc)
 }
 
-func (a *Alert) decodeAlertID(id uint64) (uint16, uint16) {
-	return uint16(id % uint64(a.nProc)), uint16(id / uint64(a.nProc))
+func (a *Alert) decodeAlertID(id uint64, pid uint16) (uint16, uint16, error) {
+	forker, raiser := uint16(id%uint64(a.nProc)), uint16(id/uint64(a.nProc))
+	if raiser != pid {
+		return forker, raiser, errors.New("decoded id does not match provided id")
+	}
+	if raiser == forker {
+		return forker, raiser, errors.New("cannot commit to own fork")
+	}
+	return forker, raiser, nil
 }
 
 func (a *Alert) sendAlert(data []byte, id uint64, pid uint16, gathering, wg *sync.WaitGroup) {
