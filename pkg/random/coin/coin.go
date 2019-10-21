@@ -45,7 +45,7 @@ func New(nProc, pid uint16, tcoin *tcoin.ThresholdCoin, shareProvider map[uint16
 // because all the secrets could be revealed knowing the seed.
 func NewFixedCoin(nProc, pid uint16, seed int, shareProviders map[uint16]bool) gomel.RandomSource {
 	rnd := rand.New(rand.NewSource(int64(seed)))
-	threshold := nProc/3 + 1
+	threshold := gomel.MinimalTrusted(nProc)
 
 	coeffs := make([]*big.Int, threshold)
 	for i := uint16(0); i < threshold; i++ {

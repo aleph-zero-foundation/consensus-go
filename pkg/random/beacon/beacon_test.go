@@ -231,7 +231,7 @@ func (ms *maliciousDealerSource) RandomBytes(_ uint16, _ int) []byte {
 func (ms *maliciousDealerSource) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
 	if level == 0 {
 		nProc := uint16(len(ms.keys))
-		gtc := tcoin.NewRandomGlobal(nProc, nProc/3+1)
+		gtc := tcoin.NewRandomGlobal(nProc, gomel.MinimalTrusted(nProc))
 		tc, _ := gtc.Encrypt(ms.keys)
 		encoded := tc.Encode()
 		// forging last byte

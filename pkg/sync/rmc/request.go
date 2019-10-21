@@ -6,7 +6,7 @@ import (
 
 const (
 	sendData byte = iota
-	sendFinished
+	sendProof
 )
 
 // request represents a request to a multicast server
@@ -27,10 +27,6 @@ func newRequest(id uint64, data []byte, msgType byte) *request {
 
 func unitID(u gomel.Unit, nProc uint16) uint64 {
 	return uint64(u.Creator()) + uint64(nProc)*uint64(u.Height())
-}
-
-func decodeUnitID(id uint64, nProc uint16) (uint16, int) {
-	return uint16(id % uint64(nProc)), int(id / uint64(nProc))
 }
 
 func preunitID(pu gomel.Preunit, nProc uint16) uint64 {

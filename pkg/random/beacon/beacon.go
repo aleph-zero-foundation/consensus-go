@@ -88,7 +88,7 @@ func (b *Beacon) Bind(dag gomel.Dag) gomel.Dag {
 	b.subcoins = make([]map[uint16]bool, n)
 	b.tcoins = make([]*tcoin.ThresholdCoin, n)
 	b.shares = make([]*random.SyncCSMap, n)
-	b.polyVerifier = bn256.NewPolyVerifier(int(n), int(n/3+1))
+	b.polyVerifier = bn256.NewPolyVerifier(int(n), int(gomel.MinimalTrusted(n)))
 
 	for i := uint16(0); i < dag.NProc(); i++ {
 		b.votes[i] = make([]*vote, dag.NProc())
@@ -277,7 +277,7 @@ func verifyWrongSecretKeyProof(b *Beacon, prover, suspect uint16, proof p2p.Shar
 func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
 	if level == dealingLevel {
 		nProc := b.dag.NProc()
-		gtc := tcoin.NewRandomGlobal(nProc, nProc/3+1)
+		gtc := tcoin.NewRandomGlobal(nProc, gomel.MinimalTrusted(nProc))
 		tc, err := gtc.Encrypt(b.p2pKeys)
 		if err != nil {
 			return nil, err

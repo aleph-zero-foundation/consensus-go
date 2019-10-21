@@ -27,7 +27,7 @@ var _ = Describe("Coin", func() {
 		rs = make([]gomel.RandomSource, n)
 
 		shareProviders = make(map[uint16]bool)
-		for i := uint16(0); i < n-n/3; i++ {
+		for i := uint16(0); i < gomel.MinimalQuorum(n); i++ {
 			shareProviders[i] = true
 		}
 
