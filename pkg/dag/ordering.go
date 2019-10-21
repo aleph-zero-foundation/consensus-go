@@ -11,45 +11,14 @@ func commonForkingHeight(u, v *unitInDag) int {
 	return v.forkingHeight
 }
 
-func brutalAboveWithinProc(u, v gomel.Unit) bool {
-	for u != nil && u.Height() > v.Height() {
-		u = gomel.Predecessor(u)
+func (u *freeUnit) AboveWithinProc(v gomel.Unit) bool {
+	var w gomel.Unit
+	for w = u; w != nil && w.Height() > v.Height(); w = gomel.Predecessor(w) {
 	}
-	if u == nil {
+	if w == nil {
 		return false
 	}
-	return *u.Hash() == *v.Hash()
-}
-
-func aboveWithinProc(u, v gomel.Unit) bool {
-	if u.Creator() != v.Creator() {
-		panic("aboveWithinProc: Different creators")
-	}
-	if u.Height() < v.Height() {
-		return false
-	}
-
-	uWithForkingHeight, uKnowsForkingHeight := u.(*unitInDag)
-	vWithForkingHeight, vKnowsForkingHeight := v.(*unitInDag)
-
-	if uKnowsForkingHeight && vKnowsForkingHeight && v.Height() <= commonForkingHeight(uWithForkingHeight, vWithForkingHeight) {
-		return true
-	}
-
-	// Either we have a fork or a different type of unit, either way no optimization is possible.
-	return brutalAboveWithinProc(u, v)
-}
-
-func (u *unitInDag) Above(v gomel.Unit) bool {
-	if v == nil || u == nil {
-		return false
-	}
-	for _, w := range u.Floor()[v.Creator()] {
-		if aboveWithinProc(w, v) {
-			return true
-		}
-	}
-	return false
+	return *w.Hash() == *v.Hash()
 }
 
 func (u *freeUnit) Above(v gomel.Unit) bool {
@@ -57,9 +26,24 @@ func (u *freeUnit) Above(v gomel.Unit) bool {
 		return false
 	}
 	for _, w := range u.Floor()[v.Creator()] {
-		if brutalAboveWithinProc(w, v) {
+		// This check is probably redundant, but for now let's keep it just in case.
+		if w.Creator() != v.Creator() {
+			panic("AboveWithinProc: Different creators")
+		}
+		if w.AboveWithinProc(v) {
 			return true
 		}
 	}
 	return false
+}
+
+func (u *unitInDag) AboveWithinProc(v gomel.Unit) bool {
+	if u.Height() < v.Height() {
+		return false
+	}
+	if vInDag, ok := v.(*unitInDag); ok && v.Height() <= commonForkingHeight(u, vInDag) {
+		return true
+	}
+	// Either we have a fork or a different type of unit, either way no optimization is possible.
+	return u.Unit.AboveWithinProc(v)
 }

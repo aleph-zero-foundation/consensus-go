@@ -19,9 +19,24 @@ func checkPrimeOnlyNoSkipping(u gomel.Unit) error {
 	return nil
 }
 
+type noForkUnit struct {
+	gomel.Unit
+}
+
+// This works under the assumption that any unit we are compared with was decoded by the dag.
+// Because of that all its parents are in the dag, so at most it is on a forking branch of length 1.
+// Hence the height comparison plus checking for equality suffice.
+func (u *noForkUnit) AboveWithinProc(v gomel.Unit) bool {
+	return u.Height() >= v.Height()
+}
+
 // NoForks returns a dag that will error on adding a fork.
 func NoForks(dag gomel.Dag) gomel.Dag {
-	return Units(dag, func(u gomel.Unit) error { return checkNoForks(dag, u) })
+	return AndTransform(dag, func(u gomel.Unit) error {
+		return checkNoForks(dag, u)
+	}, func(u gomel.Unit) gomel.Unit {
+		return &noForkUnit{u}
+	})
 }
 
 func checkNoForks(dag gomel.Dag, u gomel.Unit) error {
