@@ -152,7 +152,7 @@ func (a *Alert) produceCommitmentFor(unit gomel.Unit) (commitment, error) {
 		return nil, errors.New("we do not have the unit we committed to")
 	}
 	pred := gomel.Predecessor(commUnit)
-	for pred != nil && a.CommitmentTo(pred) {
+	for pred != nil && a.HasCommitmentTo(pred) {
 		commUnit = pred
 		pred = gomel.Predecessor(commUnit)
 	}

@@ -41,7 +41,7 @@ func (dag *alertDag) Check(u gomel.Unit) error {
 	dag.alert.Lock(u.Creator())
 	defer dag.alert.Unlock(u.Creator())
 	if dag.handleForkerUnit(u) {
-		if !dag.alert.CommitmentTo(u) {
+		if !dag.alert.HasCommitmentTo(u) {
 			return missingCommitmentToForkError
 		}
 	}
@@ -52,7 +52,7 @@ func (dag *alertDag) Emplace(u gomel.Unit) (gomel.Unit, error) {
 	dag.alert.Lock(u.Creator())
 	defer dag.alert.Unlock(u.Creator())
 	if dag.alert.IsForker(u.Creator()) {
-		if !dag.alert.CommitmentTo(u) {
+		if !dag.alert.HasCommitmentTo(u) {
 			return nil, gomel.NewMissingDataError("commitment to fork")
 		}
 	}
