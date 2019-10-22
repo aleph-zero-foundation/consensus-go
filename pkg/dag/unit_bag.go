@@ -24,10 +24,7 @@ func (units *unitBag) add(u gomel.Unit) {
 func (units *unitBag) getOne(hash *gomel.Hash) gomel.Unit {
 	units.RLock()
 	defer units.RUnlock()
-	if u, ok := units.contents[*hash]; ok {
-		return u
-	}
-	return nil
+	return units.contents[*hash]
 }
 
 func (units *unitBag) getMany(hashes []*gomel.Hash) ([]gomel.Unit, int) {
