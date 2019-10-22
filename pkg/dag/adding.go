@@ -1,6 +1,7 @@
 package dag
 
 import (
+	"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -25,7 +26,17 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 		return nil, gomel.NewDataError("wrong control hash")
 	}
 
-	return NewUnit(pu, parents), nil
+	return unit.New(pu, parents), nil
+}
+
+func toHashes(units []gomel.Unit) []*gomel.Hash {
+	result := make([]*gomel.Hash, len(units))
+	for i, u := range units {
+		if u != nil {
+			result[i] = u.Hash()
+		}
+	}
+	return result
 }
 
 func countUnknown(parents []gomel.Unit, heights []int) int {
@@ -54,7 +65,7 @@ func getParents(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
 }
 
 func (dag *dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
-	return prepared(u, dag), nil
+	return unit.Prepared(u, dag), nil
 }
 
 func (dag *dag) Insert(u gomel.Unit) {

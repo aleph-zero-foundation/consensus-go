@@ -1,4 +1,4 @@
-package dag
+package unit
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
