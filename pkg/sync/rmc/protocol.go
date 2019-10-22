@@ -168,7 +168,7 @@ func (p *server) in() {
 				log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 				return
 			}
-			add.Unit(p.adder, pu, p.fallback, p.fetchData, toAdd.Creator(), "rmc.in", log)
+			add.Unit(p.adder, pu, p.fallback, p.fetchData, pu.Creator(), "rmc.in", log)
 		}
 	}
 	log.Info().Msg(logging.SyncCompleted)

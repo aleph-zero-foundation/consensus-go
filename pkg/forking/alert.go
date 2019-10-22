@@ -532,8 +532,8 @@ func (a *Alert) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preunit) (go
 	return u, nil
 }
 
-// CommitmentTo checks whether we are committed to the provided unit.
-func (a *Alert) CommitmentTo(u gomel.Unit) bool {
+// HasCommitmentTo checks whether we have a proof that someone committed to the provided unit.
+func (a *Alert) HasCommitmentTo(u gomel.Unit) bool {
 	comm := a.commitments.getByHash(u.Hash())
 	if comm == nil {
 		return false
