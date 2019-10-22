@@ -6,12 +6,12 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/parallel"
 	"gitlab.com/alephledger/consensus-go/pkg/services/alert"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
 	"gitlab.com/alephledger/consensus-go/pkg/services/order"
@@ -35,10 +35,8 @@ func start(services ...gomel.Service) error {
 	return nil
 }
 
-func makeStandardDag(conf *config.Dag) gomel.Dag {
-	nProc := uint16(len(conf.Keys))
+func makeStandardDag(nProc uint16) gomel.Dag {
 	dag := dagutils.New(nProc)
-	dag, _ = check.Signatures(dag, conf.Keys)
 	dag = check.BasicCompliance(dag)
 	dag = check.ParentConsistency(dag)
 	dag = check.NoSelfForkingEvidence(dag)
@@ -92,14 +90,15 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 	}()
 	dag = dagutils.AfterInsert(dag, orderIfPrime)
 
-	adder, adderService := parallel.New()
+	adr, adderService := adder.New(conf.PublicKeys)
 
 	syncService, dag, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
 	if err != nil {
 		return nil, err
 	}
+	dagMC := dagutils.AfterInsert(dag, multicastUnit)
 
-	createService := create.NewService(dag, adder, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService := create.NewService(dagMC, adr, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
