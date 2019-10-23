@@ -13,7 +13,7 @@ type freeUnit struct {
 	hash      gomel.Hash
 	parents   []gomel.Unit
 	crown     gomel.Crown
-	data      []byte
+	data      gomel.Data
 	rsData    []byte
 	height    int
 	level     int
@@ -42,7 +42,7 @@ func (u *freeUnit) RandomSourceData() []byte {
 	return u.rsData
 }
 
-func (u *freeUnit) Data() []byte {
+func (u *freeUnit) Data() gomel.Data {
 	return u.data
 }
 
@@ -160,7 +160,7 @@ type unit struct {
 	crown         gomel.Crown
 	parents       []gomel.Unit
 	floor         [][]gomel.Unit
-	data          []byte
+	data          gomel.Data
 	rsData        []byte
 	forkingHeight int
 }
@@ -187,7 +187,7 @@ func (u *unit) RandomSourceData() []byte {
 	return u.rsData
 }
 
-func (u *unit) Data() []byte {
+func (u *unit) Data() gomel.Data {
 	return u.data
 }
 

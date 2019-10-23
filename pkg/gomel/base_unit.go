@@ -1,5 +1,8 @@
 package gomel
 
+// Data is a packet of binary data that is embedded in a single unit.
+type Data []byte
+
 // BaseUnit defines the most general interface for units.
 type BaseUnit interface {
 	// Creator is the id of the process that created this unit.
@@ -13,7 +16,7 @@ type BaseUnit interface {
 	// View returns the crown of the dag below the unit.
 	View() *Crown
 	// Data is the slice of data contained in the unit.
-	Data() []byte
+	Data() Data
 	// RandomSourceData is data contained in the unit needed to maintain
 	// the common random source among processes.
 	RandomSourceData() []byte
