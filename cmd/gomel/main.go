@@ -155,11 +155,14 @@ func main() {
 		defer trace.Stop()
 	}
 
+	tds := tests.NewDataSource(1000)
+	tds.Start()
 	var dag gomel.Dag
-	dag, err = run.Process(processConfig, setupLog, log)
+	dag, err = run.Process(processConfig, tds.DataSource(), setupLog, log)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
+	tds.Stop()
 
 	if options.memProfFilename != "" {
 		f, err := os.Create(options.memProfFilename)

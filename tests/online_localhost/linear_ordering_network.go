@@ -16,6 +16,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
@@ -111,14 +112,18 @@ func createAndStartProcess(
 		return err
 	}
 
+	tds := tests.NewDataSource(1000)
+	tds.Start()
+
 	go func() {
-		dag, err := run.Process(config, setupLog, log)
+		dag, err := run.Process(config, tds.DataSource(), setupLog, log)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 			panic(err)
 		}
 		dags[id] = dag
 		finished.Done()
+		tds.Stop()
 	}()
 	return nil
 }
