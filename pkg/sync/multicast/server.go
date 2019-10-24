@@ -28,17 +28,15 @@ type request struct {
 }
 
 type server struct {
-	pid       uint16
-	dag       gomel.Dag
-	adder     gomel.Adder
-	netserv   network.Server
-	fallback  sync.Fallback
-	fetchData sync.FetchData
-	requests  []chan request
-	outPool   sync.WorkerPool
-	inPool    sync.WorkerPool
-	timeout   time.Duration
-	log       zerolog.Logger
+	pid      uint16
+	dag      gomel.Dag
+	adder    gomel.Adder
+	netserv  network.Server
+	requests []chan request
+	outPool  sync.WorkerPool
+	inPool   sync.WorkerPool
+	timeout  time.Duration
+	log      zerolog.Logger
 }
 
 // NewServer returns a server that runs the multicast protocol.
@@ -79,14 +77,6 @@ func (s *server) StopOut() {
 		close(s.requests[i])
 	}
 	s.outPool.Stop()
-}
-
-func (s *server) SetFallback(qs sync.Fallback) {
-	s.fallback = qs
-}
-
-func (s *server) SetFetchData(fd sync.FetchData) {
-	s.fetchData = fd
 }
 
 func (s *server) Send(unit gomel.Unit) {

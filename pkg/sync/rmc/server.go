@@ -26,8 +26,6 @@ type server struct {
 	dag                 gomel.Dag
 	adder               gomel.Adder
 	netserv             network.Server
-	fallback            gsync.Fallback
-	fetchData           gsync.FetchData
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
 	inPool              gsync.WorkerPool
@@ -66,17 +64,6 @@ func (s *server) StopIn() {
 // StopOut stops outgoing connections
 func (s *server) StopOut() {
 	atomic.StoreInt64(&s.quit, 1)
-}
-
-// The fallback has to check that all the units are multisigned as well.
-// RMC guarantees that a process can create only one unit per height.
-// There is no guarantee that there are no forks among parents of a signed unit.
-func (s *server) SetFallback(fbk gsync.Fallback) {
-	s.fallback = fbk
-}
-
-func (s *server) SetFetchData(fd gsync.FetchData) {
-	s.fetchData = fd
 }
 
 func (s *server) Send(unit gomel.Unit) {

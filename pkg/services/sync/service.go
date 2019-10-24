@@ -25,7 +25,7 @@ import (
 )
 
 type service struct {
-	servers     map[string]sync.Server
+	servers     []sync.Server
 	mcServer    sync.MulticastServer
 	subservices []gomel.Service
 	log         zerolog.Logger
@@ -41,9 +41,8 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 		return nil, nil, err
 	}
 	pid := configs[0].Pid
-	fallbacks := make(map[string]sync.Fallback)
 	s := &service{
-		servers: make(map[string]sync.Server),
+		servers: make([]sync.Server, 0, 3),
 		log:     log.With().Int(logging.Service, logging.SyncService).Logger(),
 	}
 
@@ -67,7 +66,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			}
 			server := multicast.NewServer(pid, dag, adder, netserv, timeout, lg)
 			s.mcServer = server
-			s.servers[c.Type] = server
+			s.servers = append(s.servers, server)
 
 		case "rmc":
 			if len(s.servers) > 0 {
@@ -79,13 +78,9 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 				return nil, nil, err
 			}
 			server, fd, rmcCheck := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
-			if fetchData != nil {
-				return nil, nil, errors.New("cannot use RMC with other services that require commitments")
-			}
-			fetchData = fd
+
 			s.mcServer = server
-			s.servers[c.Type] = server
-			dag = check.AddCheck(dag, rmcCheck)
+			s.servers = append(s.servers, server)
 
 		case "gossip":
 			lg := log.With().Int(logging.Service, logging.GossipService).Logger()
@@ -101,7 +96,9 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			server := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			s.servers = append(s.servers, server)
+
 		case "fetch":
 			lg := log.With().Int(logging.Service, logging.FetchService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
@@ -116,25 +113,16 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			server := fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			s.servers = append(s.servers, server)
 
 		default:
 			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
 		}
 	}
 
-	for _, c := range configs {
-		if c.Fallback != "" {
-			fallback := fallbacks[c.Fallback]
-			s.servers[c.Type].SetFallback(fallback)
-		} else {
-			s.servers[c.Type].SetFallback(sync.DefaultFallback(log))
-		}
-		s.servers[c.Type].SetFetchData(fetchData)
-	}
-
-	return s, gdag.AfterInsert(dag, func(unit gomel.Unit) {
-		if s.mcServer != nil && unit.Creator() == pid {
+	return s, func(unit gomel.Unit) {
+		if s.mcServer != nil {
 			s.mcServer.Send(unit)
 		}
 	}), nil
@@ -166,32 +154,18 @@ func (s *service) Stop() {
 	s.log.Info().Msg(logging.ServiceStopped)
 }
 
-// Checks if the list of configs is valid that is:
-// a) every server defined as fallback is present
-// b) there is only one multicasting server
+// Checks if the list of configs is valid, that means there is only one multicasting server.
 func valid(configs []*config.Sync) error {
 	if len(configs) == 0 {
 		return gomel.NewConfigError("empty sync configuration")
 	}
-	availFbks := map[string]bool{}
 	mc := false
 	for _, c := range configs {
-		if c.Type == "fetch" || c.Type == "gossip" || c.Type == "retrying" {
-			availFbks[c.Type] = true
-		}
 		if c.Type == "multicast" || c.Type == "rmc" {
 			if mc {
 				return gomel.NewConfigError("multiple multicast servers defined")
 			}
 			mc = true
-		}
-	}
-	for _, c := range configs {
-		if c.Fallback == "" {
-			continue
-		}
-		if !availFbks[c.Fallback] {
-			return gomel.NewConfigError("defined " + c.Fallback + " as fallback, but there is no configuration for it")
 		}
 	}
 	return nil

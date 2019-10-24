@@ -15,18 +15,16 @@ import (
 )
 
 type server struct {
-	pid       uint16
-	dag       gomel.Dag
-	adder     gomel.Adder
-	netserv   network.Server
-	fallback  sync.Fallback
-	fetchData sync.FetchData
-	requests  chan request
-	syncIds   []uint32
-	outPool   sync.WorkerPool
-	inPool    sync.WorkerPool
-	timeout   time.Duration
-	log       zerolog.Logger
+	pid      uint16
+	dag      gomel.Dag
+	adder    gomel.Adder
+	netserv  network.Server
+	requests chan request
+	syncIds  []uint32
+	outPool  sync.WorkerPool
+	inPool   sync.WorkerPool
+	timeout  time.Duration
+	log      zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
@@ -43,9 +41,9 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 		timeout:  timeout,
 		log:      log,
 	}
-	s.outPool = sync.NewPool(nOut, s.Out)
-	s.inPool = sync.NewPool(nIn, s.In)
-	return s, s
+	s.outPool = sync.NewPool(nOut, s.out)
+	s.inPool = sync.NewPool(nIn, s.in)
+	return s
 }
 
 func (s *server) Start() {
@@ -60,14 +58,6 @@ func (s *server) StopIn() {
 func (s *server) StopOut() {
 	close(s.requests)
 	s.outPool.Stop()
-}
-
-func (s *server) SetFallback(qs sync.Fallback) {
-	s.fallback = qs
-}
-
-func (s *server) SetFetchData(fd sync.FetchData) {
-	s.fetchData = fd
 }
 
 // Resolve builds a fetch request containing all the unknown parents of a problematic preunit.

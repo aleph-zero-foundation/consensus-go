@@ -169,7 +169,7 @@ func (p *server) in() {
 				log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 				return
 			}
-			add.Unit(p.adder, pu, p.fallback, p.fetchData, pu.Creator(), "rmc.in", log)
+			add.Unit(p.dag, p.adder, pu, "rmc.in", log)
 		}
 	case requestFinished:
 		err := p.state.SendFinished(id, conn)
