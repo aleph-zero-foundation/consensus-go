@@ -6,7 +6,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type testDataSource struct {
+// TestDataSource is a data source for testing without proper data source.
+type TestDataSource struct {
 	dataSource chan gomel.Data
 	blockSize  int
 	exitChan   chan struct{}
@@ -14,23 +15,23 @@ type testDataSource struct {
 
 // NewDataSource returns a test data source sending
 // to the channel random slices of data of given size.
-func NewDataSource(blockSize int) *testDataSource {
+func NewDataSource(blockSize int) *TestDataSource {
 	exitChan := make(chan struct{})
 	dataSource := make(chan gomel.Data)
-	return &testDataSource{
+	return &TestDataSource{
 		dataSource,
 		blockSize,
 		exitChan,
 	}
 }
 
-// DataSource returns gomel.DataSource object from the testDataSource.
-func (tds *testDataSource) DataSource() gomel.DataSource {
+// DataSource returns gomel.DataSource object from the TestDataSource.
+func (tds *TestDataSource) DataSource() gomel.DataSource {
 	return tds.dataSource
 }
 
 // Start starts generating and sending random bytes to the DataSource channel.
-func (tds *testDataSource) Start() {
+func (tds *TestDataSource) Start() {
 	go func() {
 		for {
 			data := make([]byte, tds.blockSize)
@@ -46,6 +47,6 @@ func (tds *testDataSource) Start() {
 }
 
 // Stop stops the generation of random bytes.
-func (tds *testDataSource) Stop() {
+func (tds *TestDataSource) Stop() {
 	tds.exitChan <- struct{}{}
 }
