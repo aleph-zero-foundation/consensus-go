@@ -1,11 +1,5 @@
 package gomel
 
-// Data is a packet of binary data that is embedded in a single unit.
-type Data []byte
-
-// DataSource is a source of units data.
-type DataSource <-chan Data
-
 // BaseUnit defines the most general interface for units.
 type BaseUnit interface {
 	// Creator is the id of the process that created this unit.

@@ -112,11 +112,18 @@ func createAndStartProcess(
 		return err
 	}
 
-	tds := tests.NewDataSource(1000)
+	// Mock data source and preblock sink.
+	tds := tests.NewDataSource(10)
 	tds.Start()
+	ps := make(chan gomel.Preblock)
+	// Reading and ignoring all the preblocks.
+	go func() {
+		for range ps {
+		}
+	}()
 
 	go func() {
-		dag, err := run.Process(config, tds.DataSource(), setupLog, log)
+		dag, err := run.Process(config, tds.DataSource(), ps, setupLog, log)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 			panic(err)
@@ -124,6 +131,7 @@ func createAndStartProcess(
 		dags[id] = dag
 		finished.Done()
 		tds.Stop()
+		close(ps)
 	}()
 	return nil
 }

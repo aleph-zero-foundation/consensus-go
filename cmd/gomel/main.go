@@ -155,14 +155,23 @@ func main() {
 		defer trace.Stop()
 	}
 
+	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(1000)
 	tds.Start()
+	ps := make(chan gomel.Preblock)
+	// Reading and ignoring all the preblocks.
+	go func() {
+		for range ps {
+		}
+	}()
+
 	var dag gomel.Dag
-	dag, err = run.Process(processConfig, tds.DataSource(), setupLog, log)
+	dag, err = run.Process(processConfig, tds.DataSource(), ps, setupLog, log)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
 	tds.Stop()
+	close(ps)
 
 	if options.memProfFilename != "" {
 		f, err := os.Create(options.memProfFilename)
