@@ -50,6 +50,20 @@ func MinimalTrusted(nProcesses uint16) uint16 {
 	return nProcesses/3 + 1
 }
 
+// FindMissingParents takes a crown and return IDs of units that are not present in the dag.
+func FindMissingParents(dag Dag, crown *Crown) []uint64 {
+	missing := make([]uint64, 0, 4)
+	for c, h := range crown.Heights {
+		if h == -1 {
+			continue
+		}
+		if dag.UnitsOnHeight(h).Get(uint16(c)) == nil {
+			missing = append(missing, ID(h, uint16(c), dag.NProc()))
+		}
+	}
+	return missing
+}
+
 // GetByCrown searches the dag for a sequence of NProc units
 // created by different processes, such that their heights and a controlHash
 // matches with the given arguments.
