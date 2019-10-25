@@ -1,4 +1,12 @@
 // Package forking provides services and DAG wrappers that handle alerts raised when forks are encountered.
+//
+// When a fork is encountered a forking proof is constructed. The proof consists of two units created by the same process at the same height,
+// and another unit created by the same process, which is the maximal unit created by this process that we can use as a direct parent.
+// This last unit might be nil. This proof is then reliably multicast to all other processes.
+//
+// When we want to add a unit created by a known forker to our dag, we need a proof that it is below a unit that someone used as
+// the third unit in their alert. For this purpose we use commitments. Commitments either refer to a raised alert directly by id,
+// or prove that a unit is a predecessor of a unit to which we have a commitment.
 package forking
 
 import (
