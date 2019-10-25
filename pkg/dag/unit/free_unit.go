@@ -18,7 +18,7 @@ type freeUnit struct {
 	floor     [][]gomel.Unit
 }
 
-// New TODO
+// New creates a new freeUnit based on the given preunit and a list of parents.
 func New(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 	return &freeUnit{
 		nProc:     uint16(len(parents)),
