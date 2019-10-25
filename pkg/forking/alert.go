@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	sending byte = iota
+	alert byte = iota
 	proving
 	finished
 	request
@@ -69,7 +69,7 @@ func (a *AlertHandler) HandleIncoming(conn network.Connection, wg *sync.WaitGrou
 	log.Info().Msg(logging.SyncStarted)
 
 	switch msgType {
-	case sending:
+	case alert:
 		a.acceptAlert(id, pid, conn, log)
 	case proving:
 		a.acceptProof(id, conn, log)
@@ -449,7 +449,7 @@ func (a *AlertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 
 func (a *AlertHandler) attemptGather(conn network.Connection, data []byte, id uint64, pid uint16) error {
 	defer conn.Close()
-	err := rmc.Greet(conn, a.myPid, id, sending)
+	err := rmc.Greet(conn, a.myPid, id, alert)
 	if err != nil {
 		return err
 	}
