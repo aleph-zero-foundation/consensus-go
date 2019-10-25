@@ -155,9 +155,9 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 			if result != nil {
 				resultUnit = result
 			} else if _, ok := err.(*gomel.DuplicateUnit); ok {
-				duplicates := dag.Get([]*gomel.Hash{unit.Hash()})
-				if len(duplicates) > 0 {
-					resultUnit = duplicates[0]
+				duplicate := dag.GetUnit(unit.Hash())
+				if duplicate != nil {
+					resultUnit = duplicate
 				}
 			}
 		}
