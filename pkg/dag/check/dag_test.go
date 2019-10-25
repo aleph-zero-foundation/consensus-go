@@ -147,7 +147,7 @@ var _ = Describe("Dag", func() {
 					It("Should report that fact", func() {
 						result, err := gomel.AddUnit(dag, addedUnit)
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{addedUnit.Hash()})[0])))
+						Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
 					})
 				})
 				Context("When the dag contains another parentless unit for this process", func() {
@@ -247,7 +247,7 @@ var _ = Describe("Dag", func() {
 						It("Should report that fact", func() {
 							result, err := gomel.AddUnit(dag, addedUnit)
 							Expect(result).To(BeNil())
-							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.Get([]*gomel.Hash{addedUnit.Hash()})[0])))
+							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
 						})
 					})
 				})

@@ -86,6 +86,6 @@ func (u *unit) Above(v gomel.Unit) bool {
 	return false
 }
 
-func (u *unit) HasForkingEvidence(creator uint16) bool {
-	return false
+func (u *unit) AboveWithinProc(v gomel.Unit) bool {
+	return u.Above(v)
 }

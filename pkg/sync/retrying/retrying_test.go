@@ -144,11 +144,10 @@ var _ = Describe("Protocol", func() {
 					f.StopIn()
 				}
 
-				uh := []*gomel.Hash{unit.Hash()}
-				theUnitTransferred := dags[0].Get(uh)[0]
+				theUnitTransferred := dags[0].GetUnit(unit.Hash())
 				for theUnitTransferred == nil {
 					time.Sleep(time.Millisecond * 5)
-					theUnitTransferred = dags[0].Get(uh)[0]
+					theUnitTransferred = dags[0].GetUnit(unit.Hash())
 				}
 				Expect(theUnitTransferred.Creator()).To(Equal(unit.Creator()))
 				Expect(theUnitTransferred.Signature()).To(Equal(unit.Signature()))

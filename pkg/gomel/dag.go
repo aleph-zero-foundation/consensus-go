@@ -9,6 +9,8 @@ package gomel
 
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
+	// Decode attempts to decode the given Preunit. Returns an error when that is impossible.
+	Decode(Preunit) (Unit, error)
 	// Prepare checks if the Unit satisfies the assumptions of the dag, and optionally transforms it to a different form. Should be called before Insert.
 	Prepare(Unit) (Unit, error)
 	// Insert puts into the dag a unit that was previously prepared by Prepare.

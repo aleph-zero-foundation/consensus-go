@@ -1,9 +1,5 @@
 package rmc
 
-import (
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-)
-
 const (
 	sendData byte = iota
 	sendProof

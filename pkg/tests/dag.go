@@ -53,15 +53,14 @@ func (dag *Dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	return &u, nil
 }
 
-// Check accepts everything.
-func (dag *Dag) Check(u gomel.Unit) error {
-	return nil
+// Prepare accepts everything.
+func (dag *Dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
+	return u, nil
 }
 
-// Emplace the unit in the dag.
-func (dag *Dag) Emplace(u gomel.Unit) (gomel.Unit, error) {
+// Insert the unit into the dag.
+func (dag *Dag) Insert(u gomel.Unit) {
 	updateDag(u, dag)
-	return u, nil
 }
 
 // PrimeUnits returns the prime units at the given level.
@@ -97,17 +96,31 @@ func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return su
 }
 
-// Get returns the units with the given hashes or nil, when it doesn't find them.
-func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
+// GetUnit returns the units with the given hashes or nil, when it doesn't find them.
+func (dag *Dag) GetUnit(hash *gomel.Hash) gomel.Unit {
+	dag.RLock()
+	defer dag.RUnlock()
+	if hash != nil {
+		return dag.unitByHash[*hash]
+	}
+	return nil
+}
+
+// GetUnits returns the units with the given hashes or nil, when it doesn't find them.
+func (dag *Dag) GetUnits(hashes []*gomel.Hash) ([]gomel.Unit, int) {
 	dag.RLock()
 	defer dag.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
+	unknown := 0
 	for i, h := range hashes {
 		if h != nil {
 			result[i] = dag.unitByHash[*h]
+			if result[i] == nil {
+				unknown++
+			}
 		}
 	}
-	return result
+	return result, unknown
 }
 
 // NProc returns the number of processes in this dag.
