@@ -21,7 +21,7 @@ type server struct {
 	tcpListener *net.TCPListener
 	mx          []sync.Mutex
 	wg          sync.WaitGroup
-	quit        int32
+	quit        int64
 	log         zerolog.Logger
 }
 
@@ -72,7 +72,7 @@ func (s *server) Start() error {
 	go func() {
 		s.wg.Add(1)
 		defer s.wg.Done()
-		for atomic.LoadInt32(&s.quit) == 0 {
+		for atomic.LoadInt64(&s.quit) == 0 {
 			ln, err := s.tcpListener.Accept()
 			if err != nil {
 				continue
@@ -86,7 +86,7 @@ func (s *server) Start() error {
 }
 
 func (s *server) Stop() {
-	atomic.StoreInt32(&s.quit, 1)
+	atomic.StoreInt64(&s.quit, 1)
 	for _, link := range s.callers {
 		if link != nil {
 			link.stop()

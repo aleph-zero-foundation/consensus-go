@@ -16,7 +16,7 @@ type pool struct {
 	size int
 	work func()
 	wg   sync.WaitGroup
-	quit int32
+	quit int64
 }
 
 // NewPool creates a pool of workers with the given size, all doing the same work.
@@ -33,7 +33,7 @@ func (p *pool) Start() {
 		go func() {
 			defer p.wg.Done()
 			for {
-				if atomic.LoadInt32(&p.quit) > 0 {
+				if atomic.LoadInt64(&p.quit) > 0 {
 					return
 				}
 				p.work()
@@ -43,7 +43,7 @@ func (p *pool) Start() {
 }
 
 func (p *pool) Stop() {
-	atomic.StoreInt32(&p.quit, 1)
+	atomic.StoreInt64(&p.quit, 1)
 	p.wg.Wait()
 }
 
@@ -54,7 +54,7 @@ type perPidPool struct {
 	multiple int
 	work     func(id uint16)
 	wg       sync.WaitGroup
-	quit     int32
+	quit     int64
 }
 
 // NewPerPidPool creates a pool of workers doing per-pid work for the given nProc.
@@ -73,7 +73,7 @@ func (p *perPidPool) Start() {
 			i := i
 			go func() {
 				defer p.wg.Done()
-				for atomic.LoadInt32(&p.quit) == 0 {
+				for atomic.LoadInt64(&p.quit) == 0 {
 					p.work(i)
 				}
 			}()
@@ -82,6 +82,6 @@ func (p *perPidPool) Start() {
 }
 
 func (p *perPidPool) Stop() {
-	atomic.StoreInt32(&p.quit, 1)
+	atomic.StoreInt64(&p.quit, 1)
 	p.wg.Wait()
 }

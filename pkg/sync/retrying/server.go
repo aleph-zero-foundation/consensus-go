@@ -20,7 +20,7 @@ type server struct {
 	inner     gsync.Fallback
 	fetchData gsync.FetchData
 	backlog   *backlog
-	quit      int32
+	quit      int64
 	wg        sync.WaitGroup
 	log       zerolog.Logger
 }
@@ -52,7 +52,7 @@ func (f *server) Start() error {
 }
 
 func (f *server) Stop() {
-	atomic.StoreInt32(&f.quit, 1)
+	atomic.StoreInt64(&f.quit, 1)
 	f.wg.Wait()
 }
 
@@ -67,7 +67,7 @@ func (f *server) addToBacklog(pu gomel.Preunit) bool {
 
 func (f *server) work() {
 	defer f.wg.Done()
-	for atomic.LoadInt32(&f.quit) != 1 {
+	for atomic.LoadInt64(&f.quit) != 1 {
 		time.Sleep(f.interval)
 		f.update()
 		f.backlog.refallback(f.inner.Resolve)

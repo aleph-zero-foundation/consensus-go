@@ -23,7 +23,7 @@ type service struct {
 	netserv network.Server
 	timeout time.Duration
 	listens sync.WaitGroup
-	quit    int32
+	quit    int64
 	log     zerolog.Logger
 }
 
@@ -51,14 +51,14 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
-	atomic.StoreInt32(&s.quit, 1)
+	atomic.StoreInt64(&s.quit, 1)
 	s.listens.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
 }
 
 func (s *service) handleConns() {
 	defer s.listens.Done()
-	for atomic.LoadInt32(&s.quit) == 0 {
+	for atomic.LoadInt64(&s.quit) == 0 {
 		conn, err := s.netserv.Listen(s.timeout)
 		if err != nil {
 			s.log.Error().Str("where", "alertService.handleConns.Listen").Msg(err.Error())
