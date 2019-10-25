@@ -19,7 +19,7 @@ import (
 )
 
 type service struct {
-	alert   *forking.Alert
+	alert   *forking.AlertHandler
 	netserv network.Server
 	timeout time.Duration
 	listens sync.WaitGroup
@@ -34,7 +34,7 @@ func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Da
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	a := forking.NewAlert(conf.Pid, dag, conf.PublicKeys, rmc, netserv, conf.Timeout, log)
+	a := forking.NewAlertHandler(conf.Pid, dag, conf.PublicKeys, rmc, netserv, conf.Timeout, log)
 	return forking.Wrap(dag, a), &service{
 		alert:   a,
 		netserv: netserv,

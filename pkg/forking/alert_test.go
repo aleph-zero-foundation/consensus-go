@@ -23,7 +23,7 @@ var _ = Describe("Alert", func() {
 
 	var (
 		nProc    uint16
-		alerters []*Alert
+		alerters []*AlertHandler
 		dags     []gomel.Dag
 		rss      []gomel.RandomSource
 		netservs []network.Server
@@ -43,7 +43,7 @@ var _ = Describe("Alert", func() {
 			pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			verKeys[i], secrKeys[i], _ = bn256.GenerateKeys()
 		}
-		alerters = make([]*Alert, nProc)
+		alerters = make([]*AlertHandler, nProc)
 		dags = make([]gomel.Dag, nProc)
 		rss = make([]gomel.RandomSource, nProc)
 		netservs = tests.NewNetwork(int(nProc))
@@ -52,7 +52,7 @@ var _ = Describe("Alert", func() {
 			rss[i] = tests.NewTestRandomSource()
 			dag = rss[i].Bind(dag)
 			rmc := rmc.New(verKeys, secrKeys[i])
-			alerters[i] = NewAlert(uint16(i), dag, pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
+			alerters[i] = NewAlertHandler(uint16(i), dag, pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
 			dags[i] = Wrap(dag, alerters[i])
 		}
 	})
@@ -225,7 +225,7 @@ var _ = Describe("Alert", func() {
 				wg.Wait()
 				wg.Add(1)
 				go AcceptSomething(2, wg)
-				alerters[1].RequestCommitment(dealingFork2.Hash(), 2)
+				alerters[1].RequestCommitment(dealingFork2, 2)
 				wg.Wait()
 				_, err = gomel.AddUnit(dags[1], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
@@ -248,7 +248,7 @@ var _ = Describe("Alert", func() {
 				wg.Wait()
 				wg.Add(1)
 				go AcceptSomething(2, wg)
-				alerters[1].RequestCommitment(dealingFork2.Hash(), 2)
+				alerters[1].RequestCommitment(dealingFork2, 2)
 				wg.Wait()
 				_, err = gomel.AddUnit(dags[1], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())

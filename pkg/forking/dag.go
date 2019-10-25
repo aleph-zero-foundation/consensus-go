@@ -7,7 +7,7 @@ import (
 
 type alertDag struct {
 	gomel.Dag
-	alert *Alert
+	alert *AlertHandler
 }
 
 func (dag *alertDag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
@@ -53,7 +53,7 @@ func (dag *alertDag) Emplace(u gomel.Unit) (gomel.Unit, error) {
 	defer dag.alert.Unlock(u.Creator())
 	if dag.alert.IsForker(u.Creator()) {
 		if !dag.alert.HasCommitmentTo(u) {
-			return nil, gomel.NewMissingDataError("commitment to fork")
+			return nil, missingCommitmentToForkError
 		}
 	}
 	return dag.Dag.Emplace(u)
@@ -82,6 +82,6 @@ func (dag *alertDag) handleForkerUnit(u gomel.Unit) bool {
 }
 
 // Wrap the dag to support alerts when forks are encountered. The returned service handles raising and accepting alerts.
-func Wrap(dag gomel.Dag, alerter *Alert) gomel.Dag {
+func Wrap(dag gomel.Dag, alerter *AlertHandler) gomel.Dag {
 	return &alertDag{dag, alerter}
 }

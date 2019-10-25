@@ -41,7 +41,7 @@ func handleError(err error, pu gomel.Preunit, fallback sync.Fallback, fetchData 
 		case *gomel.MissingDataError:
 			log.Info().Uint16(logging.Creator, pu.Creator()).Msg(logging.MissingDataError)
 			if fetchData != nil {
-				if err2 := fetchData(pu.Hash(), peer); err2 != nil {
+				if err2 := fetchData(pu, peer); err2 != nil {
 					log.Error().Str("addUnit", where+".fetchData").Msg(err2.Error())
 					return false
 				}

@@ -6,8 +6,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// FetchData that is neccessary to add the unit with hash to the dag. Fetch the data from process pid.
-type FetchData func(hash *gomel.Hash, pid uint16) error
+// FetchData that is neccessary to add the preunit to the dag. Fetch the data from process pid.
+type FetchData func(pu gomel.Preunit, pid uint16) error
 
 // Fallback can find out information about an unknown preunit.
 type Fallback interface {
