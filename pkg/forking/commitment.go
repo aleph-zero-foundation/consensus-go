@@ -10,6 +10,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+// commitment proves that a unit is below a unit that someone used in their forking proof.
+// It might also contain parent hashes of the unit, to facilitate adding it to the dag.
 type commitment interface {
 	getUnit() gomel.Preunit
 	checkProof(fp *forkingProof) error
@@ -19,6 +21,7 @@ type commitment interface {
 	marshal() []byte
 }
 
+// baseCommitment is a commitment directly to the unit included in a forking proof.
 type baseCommitment struct {
 	sync.RWMutex
 	pu           gomel.Preunit
@@ -78,6 +81,7 @@ func (comm *baseCommitment) getParentHash(pid uint16) *gomel.Hash {
 	return result
 }
 
+// inferredCommitment is a commitment to a parent of a unit to which we have another commitment.
 type inferredCommitment struct {
 	sync.RWMutex
 	pu              gomel.Preunit

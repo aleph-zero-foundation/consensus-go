@@ -8,6 +8,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+// forkingProof consists of two units, pu and pv, created by the same process at the same height,
+// and a third unit, pcommit, representing the unit the creator of the proof commits to be the last unit
+// created by the forker the creator will build on directly. The last unit may be nil.
 type forkingProof struct {
 	pu, pv, pcommit gomel.Preunit
 	encoded         []byte
