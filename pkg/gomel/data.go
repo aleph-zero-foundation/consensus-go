@@ -1,6 +1,8 @@
 package gomel
 
-import "gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+import (
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+)
 
 // Data is a packet of binary data that is embedded in a single unit.
 type Data []byte
@@ -16,6 +18,11 @@ type Preblock struct {
 
 // PreblockSink is an output of the aleph protocol.
 type PreblockSink chan<- *Preblock
+
+// NewPreblock constructs a preblock from given data and randomBytes.
+func NewPreblock(data []Data, randomBytes []byte) *Preblock {
+	return &Preblock{data, randomBytes}
+}
 
 // ToPreblock extracts preblock from a given timing round.
 // It assumes that
