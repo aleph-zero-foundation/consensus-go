@@ -17,7 +17,7 @@ type instance struct {
 	rawLen     uint32
 	signedData []byte
 	proof      *multi.Signature
-	status     Status
+	stat       Status
 }
 
 func (ins *instance) sendData(w io.Writer) error {
@@ -34,7 +34,7 @@ func (ins *instance) sendData(w io.Writer) error {
 func (ins *instance) sendProof(w io.Writer) error {
 	ins.Lock()
 	defer ins.Unlock()
-	if ins.status != Finished {
+	if ins.stat != Finished {
 		return errors.New("no proof to send")
 	}
 	_, err := w.Write(ins.proof.Marshal())
@@ -51,6 +51,12 @@ func (ins *instance) sendFinished(w io.Writer) error {
 
 func (ins *instance) data() []byte {
 	return ins.signedData[8 : 8+ins.rawLen]
+}
+
+func (ins *instance) status() Status {
+	ins.Lock()
+	defer ins.Unlock()
+	return ins.stat
 }
 
 type incoming struct {
@@ -92,14 +98,14 @@ func (in *incoming) acceptData(r io.Reader) ([]byte, error) {
 	in.signedData = signedData
 	in.rawLen = rawLen
 	in.proof = proof
-	in.status = Data
+	in.stat = Data
 	return in.data(), nil
 }
 
 func (in *incoming) sendSignature(w io.Writer) error {
 	in.Lock()
 	defer in.Unlock()
-	if in.status == Unknown {
+	if in.stat == Unknown {
 		return errors.New("cannot sign unknown data")
 	}
 	signature := in.keys.Sign(in.signedData)
@@ -107,14 +113,14 @@ func (in *incoming) sendSignature(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	in.status = Signed
+	in.stat = Signed
 	return nil
 }
 
 func (in *incoming) acceptProof(r io.Reader) error {
 	in.Lock()
 	defer in.Unlock()
-	if in.status == Unknown {
+	if in.stat == Unknown {
 		return errors.New("cannot accept proof of unknown data")
 	}
 	data := make([]byte, in.proof.MarshaledLength())
@@ -129,7 +135,7 @@ func (in *incoming) acceptProof(r io.Reader) error {
 	if !in.keys.MultiVerify(in.proof) {
 		return errors.New("wrong multisignature")
 	}
-	in.status = Finished
+	in.stat = Finished
 	return nil
 }
 
@@ -161,7 +167,7 @@ func newOutgoing(id uint64, data []byte, keys *multi.Keychain) *outgoing {
 			rawLen:     rawLen,
 			signedData: signedData,
 			proof:      proof,
-			status:     Data,
+			stat:       Data,
 		},
 	}
 }
@@ -177,10 +183,10 @@ func (out *outgoing) acceptSignature(pid uint16, r io.Reader) (bool, error) {
 	if !out.keys.Verify(pid, append(out.signedData, signature...)) {
 		return false, errors.New("wrong signature")
 	}
-	if out.status != Finished {
+	if out.stat != Finished {
 		done, err := out.proof.Aggregate(pid, signature)
 		if done {
-			out.status = Finished
+			out.stat = Finished
 			return true, err
 		}
 		return false, err

@@ -118,7 +118,7 @@ func (rmc *RMC) Status(id uint64) Status {
 	if err != nil {
 		return Unknown
 	}
-	return ins.status
+	return ins.status()
 }
 
 // Data returns the raw data corresponding to id.
