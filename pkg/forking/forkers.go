@@ -59,7 +59,8 @@ func (fp *forkingProof) Unmarshal(data []byte) (*forkingProof, error) {
 	if err != nil {
 		return nil, err
 	}
-	fp.encoded = append(make([]byte, 0, len(data)), data...)
+	fp.encoded = make([]byte, len(data))
+	copy(fp.encoded, data)
 	return fp, nil
 }
 
