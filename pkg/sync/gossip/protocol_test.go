@@ -69,7 +69,7 @@ var _ = Describe("Protocol", func() {
 		}
 		servs = make([]sync.Server, 2)
 		for i := 0; i < 2; i++ {
-			servs[i], _ = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
+			servs[i], _ = NewServer(uint16(i), dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			servs[i].Start()
 		}
 

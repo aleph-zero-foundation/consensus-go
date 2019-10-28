@@ -24,11 +24,11 @@ type link struct {
 	lastID  uint64
 	mx      sync.Mutex
 	wg      *sync.WaitGroup
-	quit    *int32
+	quit    *int64
 	log     zerolog.Logger
 }
 
-func newLink(tcpLink net.Conn, queue chan network.Connection, wg *sync.WaitGroup, quit *int32, log zerolog.Logger) *link {
+func newLink(tcpLink net.Conn, queue chan network.Connection, wg *sync.WaitGroup, quit *int64, log zerolog.Logger) *link {
 	return &link{
 		tcpLink: tcpLink,
 		conns:   make(map[uint64]*conn),
@@ -44,7 +44,7 @@ func (l *link) start() {
 		l.wg.Add(1)
 		defer l.wg.Done()
 		hdr := make([]byte, headerSize)
-		for atomic.LoadInt32(l.quit) == 0 {
+		for atomic.LoadInt64(l.quit) == 0 {
 			_, err := io.ReadFull(l.tcpLink, hdr)
 			if err != nil {
 				l.log.Error().Str("where", "persistent.link.header").Msg(err.Error())

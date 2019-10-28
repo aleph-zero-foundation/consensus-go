@@ -37,15 +37,15 @@ func newChanMutex() softMutex {
 }
 
 type atomMutex struct {
-	token int32
+	token int64
 }
 
 func (m *atomMutex) tryAcquire() bool {
-	return atomic.CompareAndSwapInt32(&m.token, 0, 1)
+	return atomic.CompareAndSwapInt64(&m.token, 0, 1)
 }
 
 func (m *atomMutex) relase() {
-	atomic.StoreInt32(&m.token, 0)
+	atomic.StoreInt64(&m.token, 0)
 }
 
 func newAtomMutex() softMutex {

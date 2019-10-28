@@ -19,5 +19,5 @@ func AddUnit(dag Dag, pu Preunit) (Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dag.Emplace(result), nil
+	return dag.Emplace(result)
 }

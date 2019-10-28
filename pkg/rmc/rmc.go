@@ -71,10 +71,7 @@ func (rmc *RMC) SendData(id uint64, data []byte, w io.Writer) error {
 		}
 		return out.sendData(w)
 	}
-	out, err := rmc.newOutgoingInstance(id, data)
-	if err != nil {
-		return err
-	}
+	out := rmc.newOutgoingInstance(id, data)
 	return out.sendData(w)
 }
 
@@ -110,10 +107,7 @@ func (rmc *RMC) SendFinished(id uint64, w io.Writer) error {
 func (rmc *RMC) AcceptFinished(id uint64, pid uint16, r io.Reader) ([]byte, error) {
 	in, err := rmc.getIn(id)
 	if err != nil {
-		in, err = rmc.newIncomingInstance(id, pid)
-		if err != nil {
-			return nil, err
-		}
+		in, _ = rmc.newIncomingInstance(id, pid)
 	}
 	return in.acceptFinished(r)
 }
@@ -124,7 +118,7 @@ func (rmc *RMC) Status(id uint64) Status {
 	if err != nil {
 		return Unknown
 	}
-	return ins.status
+	return ins.status()
 }
 
 // Data returns the raw data corresponding to id.
@@ -152,22 +146,22 @@ func (rmc *RMC) newIncomingInstance(id uint64, pid uint16) (*incoming, error) {
 	result := newIncoming(id, pid, rmc.keys)
 	rmc.inMx.Lock()
 	defer rmc.inMx.Unlock()
-	if _, ok := rmc.in[id]; ok {
-		return nil, errors.New("duplicate incoming")
+	if result, ok := rmc.in[id]; ok {
+		return result, errors.New("duplicate incoming")
 	}
 	rmc.in[id] = result
 	return result, nil
 }
 
-func (rmc *RMC) newOutgoingInstance(id uint64, data []byte) (*outgoing, error) {
+func (rmc *RMC) newOutgoingInstance(id uint64, data []byte) *outgoing {
 	result := newOutgoing(id, data, rmc.keys)
 	rmc.outMx.Lock()
 	defer rmc.outMx.Unlock()
-	if _, ok := rmc.out[id]; ok {
-		return nil, errors.New("duplicate outgoing")
+	if result, ok := rmc.out[id]; ok {
+		return result
 	}
 	rmc.out[id] = result
-	return result, nil
+	return result
 }
 
 func (rmc *RMC) getIn(id uint64) (*incoming, error) {

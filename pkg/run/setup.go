@@ -58,7 +58,6 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	if err != nil {
 		log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
 	}
-	// common with main:
 	dag = rs.Bind(dag)
 
 	orderService, orderIfPrime := order.NewService(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
@@ -67,7 +66,7 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
 
-	syncService, multicastUnit, err := sync.NewService(dag, adder, conf.SyncSetup, log)
+	syncService, multicastUnit, err := sync.NewService(dag, adder, nil, conf.SyncSetup, log)
 	if err != nil {
 		log.Error().Str("where", "setup.sync").Msg(err.Error())
 		return
@@ -78,7 +77,6 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	createService := create.NewService(dagMC, adderMC, rs, conf.CreateSetup, dagFinished, txChan, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-	// end common
 
 	err = start(adderService, createService, orderService, memlogService, syncService)
 	if err != nil {

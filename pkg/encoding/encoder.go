@@ -52,6 +52,12 @@ func (e *enc) encodeCrown(crown *gomel.Crown) error {
 
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
 func (e *enc) encodeUnit(unit gomel.Unit) error {
+	if unit == nil {
+		data := make([]byte, 2)
+		binary.LittleEndian.PutUint16(data, math.MaxUint16)
+		_, err := e.Write(data)
+		return err
+	}
 	data := make([]byte, 2+64)
 	s := 0
 	creator := uint16(unit.Creator())

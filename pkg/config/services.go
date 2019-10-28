@@ -11,6 +11,7 @@ import (
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
 	Dag           *Dag
+	Alert         *Alert
 	Sync          []*Sync
 	SyncSetup     []*Sync
 	Create        *Create
@@ -33,6 +34,17 @@ type Dag struct {
 // NProc returns the number of processes in a given dag configuration.
 func (dc Dag) NProc() uint16 {
 	return uint16(len(dc.Keys))
+}
+
+// Alert represents a complete configuration needed for an alert system to start.
+type Alert struct {
+	Pid             uint16
+	PublicKeys      []gomel.PublicKey
+	Pubs            []*bn256.VerificationKey
+	Priv            *bn256.SecretKey
+	LocalAddress    string
+	RemoteAddresses []string
+	Timeout         time.Duration
 }
 
 // Sync represents a complete configuration needed for a syncing service to start.

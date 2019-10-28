@@ -74,6 +74,9 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 	creator := binary.LittleEndian.Uint16(uint16Buf)
+	if creator == math.MaxUint16 {
+		return nil, nil
+	}
 	signature := make([]byte, 64)
 	_, err = io.ReadFull(d, signature)
 	if err != nil {

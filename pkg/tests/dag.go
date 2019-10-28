@@ -59,9 +59,9 @@ func (dag *Dag) Check(u gomel.Unit) error {
 }
 
 // Emplace the unit in the dag.
-func (dag *Dag) Emplace(u gomel.Unit) gomel.Unit {
+func (dag *Dag) Emplace(u gomel.Unit) (gomel.Unit, error) {
 	updateDag(u, dag)
-	return u
+	return u, nil
 }
 
 // PrimeUnits returns the prime units at the given level.

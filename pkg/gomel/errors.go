@@ -34,6 +34,22 @@ func NewComplianceError(msg string) *ComplianceError {
 	return &ComplianceError{msg}
 }
 
+// MissingDataError represents missing data needed to accept a unit.
+// Examples are commitments to forks or proofs of successful RMCs.
+type MissingDataError struct {
+	msg string
+}
+
+// Error returns a string description of a MissingDataError.
+func (e *MissingDataError) Error() string {
+	return "MissingDataError: " + e.msg
+}
+
+// NewMissingDataError constructs a MissingDataError from a given msg.
+func NewMissingDataError(msg string) *MissingDataError {
+	return &MissingDataError{msg}
+}
+
 // DuplicateUnit is an error-like object used when encountering a unit that is already known. Usually not a problem.
 type DuplicateUnit struct {
 	Unit Unit

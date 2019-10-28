@@ -33,7 +33,7 @@ type service struct {
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log zerolog.Logger) (gomel.Service, func(gomel.Unit), error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, configs []*config.Sync, log zerolog.Logger) (gomel.Service, func(gomel.Unit), error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
@@ -56,14 +56,14 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 		case "multicast":
 			lg := log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			server := multicast.NewServer(pid, dag, adder, netserv, timeout, log)
+			server := multicast.NewServer(pid, dag, adder, fetchData, netserv, timeout, log)
 			s.mcServer = server
 			s.servers[c.Type] = server
 
 		case "rmc":
 			lg := log.With().Int(logging.Service, logging.RMCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			server := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
+			server := rmc.NewServer(pid, dag, adder, fetchData, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
 			s.mcServer = server
 			s.servers[c.Type] = server
 
@@ -78,7 +78,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], s.fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
+			s.servers[c.Type], s.fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, fetchData, netserv, timeout, log, nOut, nIn)
 		case "fetch":
 			lg := log.With().Int(logging.Service, logging.FetchService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
@@ -90,7 +90,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], s.fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, netserv, timeout, log, nOut, nIn)
+			s.servers[c.Type], s.fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, fetchData, netserv, timeout, log, nOut, nIn)
 
 		default:
 			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
@@ -103,7 +103,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 			fallback := s.fallbacks[c.Fallback]
 			if c.Retry > 0 {
 				lg := log.With().Int(logging.Service, logging.RetryingService).Logger()
-				service, fallback = retrying.NewService(dag, adder, fallback, c.Retry, lg)
+				service, fallback = retrying.NewService(dag, adder, fallback, fetchData, c.Retry, lg)
 				s.subservices = append(s.subservices, service)
 			}
 			s.servers[c.Type].SetFallback(fallback)

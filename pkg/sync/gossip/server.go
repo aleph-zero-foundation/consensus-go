@@ -18,6 +18,7 @@ type server struct {
 	adder      gomel.Adder
 	netserv    network.Server
 	fallback   sync.Fallback
+	fetchData  sync.FetchData
 	requests   chan uint16
 	peerSource PeerSource
 	inUse      []*mutex
@@ -29,7 +30,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
 	nProc := int(dag.NProc())
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
@@ -41,6 +42,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 		dag:        dag,
 		adder:      adder,
 		netserv:    netserv,
+		fetchData:  fetchData,
 		requests:   requests,
 		peerSource: NewMixedPeerSource(dag.NProc(), pid, requests),
 		inUse:      inUse,

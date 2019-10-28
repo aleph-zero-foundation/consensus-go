@@ -21,21 +21,11 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 		return nil, gomel.NewUnknownParents(unknown)
 	}
 
-	if *gomel.CombineHashes(toHashes(parents)) != pu.View().ControlHash {
+	if *gomel.CombineHashes(gomel.ToHashes(parents)) != pu.View().ControlHash {
 		return nil, gomel.NewDataError("wrong control hash")
 	}
 
-	return newUnit(pu, parents, dag.nProcesses), nil
-}
-
-func toHashes(units []gomel.Unit) []*gomel.Hash {
-	result := make([]*gomel.Hash, len(units))
-	for i, u := range units {
-		if u != nil {
-			result[i] = u.Hash()
-		}
-	}
-	return result
+	return NewUnit(pu, parents), nil
 }
 
 func countUnknown(parents []gomel.Unit, heights []int) int {
@@ -67,7 +57,7 @@ func (dag *dag) Check(gomel.Unit) error {
 	return nil
 }
 
-func (dag *dag) Emplace(u gomel.Unit) gomel.Unit {
+func (dag *dag) Emplace(u gomel.Unit) (gomel.Unit, error) {
 	result := emplaced(u, dag)
 	dag.updateUnitsOnHeight(result)
 	if gomel.Prime(result) {
@@ -75,7 +65,7 @@ func (dag *dag) Emplace(u gomel.Unit) gomel.Unit {
 	}
 	dag.units.add(result)
 	dag.updateMaximal(result)
-	return result
+	return result, nil
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {
