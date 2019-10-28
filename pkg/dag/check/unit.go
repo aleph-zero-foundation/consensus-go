@@ -30,12 +30,12 @@ func (dag *wrapper) Prepare(u gomel.Unit) (gomel.Unit, error) {
 	return dag.tr(prep), nil
 }
 
-// Units wraps the dag so that it performs the provided check on the units.
-func Units(dag gomel.Dag, ch check) gomel.Dag {
+// AddCheck wraps the dag so that it performs the provided check on the units.
+func AddCheck(dag gomel.Dag, ch check) gomel.Dag {
 	return &wrapper{dag, ch, identity()}
 }
 
-// AndTransform wraps the dag so that it performs the provided check and transform on the units.
-func AndTransform(dag gomel.Dag, ch check, tr transform) gomel.Dag {
+// AddCheckAndTransform wraps the dag so that it performs the provided check and transform on the units.
+func AddCheckAndTransform(dag gomel.Dag, ch check, tr transform) gomel.Dag {
 	return &wrapper{dag, ch, tr}
 }

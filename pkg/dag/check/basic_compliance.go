@@ -9,7 +9,7 @@ import (
 //  2. A unit has to have a predecessor or have all parents nil.
 //  3. A unit is a prime unit.
 func BasicCompliance(dag gomel.Dag) gomel.Dag {
-	return Units(dag, func(u gomel.Unit) error {
+	return AddCheck(dag, func(u gomel.Unit) error {
 		return checkBasicCorrectness(u, dag.NProc())
 	})
 }
