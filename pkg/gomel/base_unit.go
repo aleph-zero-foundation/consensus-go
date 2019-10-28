@@ -30,6 +30,6 @@ func ID(height int, creator, nProc uint16) uint64 {
 }
 
 // UnitID returns ID of the given BaseUnit.
-func UnitID(u BaseUnit, nProc uint16) uint64 {
-	return ID(u.Height(), u.Creator(), nProc)
+func UnitID(u BaseUnit) uint64 {
+	return ID(u.Height(), u.Creator(), uint16(len(u.View().Heights)))
 }
