@@ -1,5 +1,7 @@
 package gomel
 
+import "gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+
 // Data is a packet of binary data that is embedded in a single unit.
 type Data []byte
 
@@ -7,16 +9,25 @@ type Data []byte
 type DataSource <-chan Data
 
 // Preblock is a set of Data objects from units contained in one block (timing round).
-type Preblock []Data
+type Preblock struct {
+	data        []Data
+	randomBytes []byte
+}
 
 // PreblockSink is an output of the aleph protocol.
-type PreblockSink chan<- Preblock
+type PreblockSink chan<- *Preblock
 
-// ToPreblock extracts preblock from a given slice of units.
-func ToPreblock(units []Unit) Preblock {
-	pb := make([]Data, 0, len(units))
-	for _, u := range units {
-		pb = append(pb, u.Data())
+// ToPreblock extracts preblock from a given timing round.
+// It assumes that
+// 1. given slice of units forms a timing round,
+// 2. timing unit is the last unit in the slice,
+// 3. random source data of the timing unit starts with
+// random bytes from the previous level.
+func ToPreblock(round []Unit) *Preblock {
+	data := make([]Data, 0, len(round))
+	for _, u := range round {
+		data = append(data, u.Data())
 	}
-	return pb
+	randomBytes := round[len(round)-1].RandomSourceData()[:bn256.SignatureLength]
+	return &Preblock{data, randomBytes}
 }
