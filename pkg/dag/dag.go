@@ -62,7 +62,8 @@ func (dag *dag) GetUnit(hash *gomel.Hash) gomel.Unit {
 }
 
 // GetUnits returns a slice of units corresponding to the hashes provided.
-// If a unit of a given hash is not present in the dag, the value at the same index in the result is nil.
+// If a unit of a given hash is not present in the dag, the corresponding value is nil.
+// Returned int is the number of such missing units.
 func (dag *dag) GetUnits(hashes []*gomel.Hash) ([]gomel.Unit, int) {
 	return dag.units.getMany(hashes)
 }
