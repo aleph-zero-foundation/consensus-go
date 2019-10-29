@@ -21,22 +21,6 @@ func (u *freeUnit) AboveWithinProc(v gomel.Unit) bool {
 	return *w.Hash() == *v.Hash()
 }
 
-func (u *freeUnit) Above(v gomel.Unit) bool {
-	if v == nil || u == nil {
-		return false
-	}
-	for _, w := range u.Floor()[v.Creator()] {
-		// This check is probably redundant, but for now let's keep it just in case.
-		if w.Creator() != v.Creator() {
-			panic("AboveWithinProc: Different creators")
-		}
-		if w.AboveWithinProc(v) {
-			return true
-		}
-	}
-	return false
-}
-
 func (u *unitInDag) AboveWithinProc(v gomel.Unit) bool {
 	if u.Height() < v.Height() {
 		return false

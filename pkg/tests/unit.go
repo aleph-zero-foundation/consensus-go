@@ -58,34 +58,12 @@ func (u *unit) Level() int {
 	return u.level
 }
 
-func (u *unit) Above(v gomel.Unit) bool {
-	if u == nil || v == nil {
+func (u *unit) AboveWithinProc(v gomel.Unit) bool {
+	var w gomel.Unit
+	for w = u; w != nil && w.Height() > v.Height(); w = gomel.Predecessor(w) {
+	}
+	if w == nil {
 		return false
 	}
-	// BFS from u
-	// If we need faster implementation we probably should use floors here
-	seenUnits := make(map[gomel.Hash]bool)
-	seenUnits[*u.Hash()] = true
-	queue := []gomel.Unit{u}
-	for len(queue) > 0 {
-		w := queue[0]
-		queue = queue[1:]
-		if w == v {
-			return true
-		}
-		for _, wParent := range w.Parents() {
-			if wParent == nil {
-				continue
-			}
-			if _, exists := seenUnits[*wParent.Hash()]; !exists {
-				queue = append(queue, wParent)
-				seenUnits[*wParent.Hash()] = true
-			}
-		}
-	}
-	return false
-}
-
-func (u *unit) AboveWithinProc(v gomel.Unit) bool {
-	return u.Above(v)
+	return *w.Hash() == *v.Hash()
 }

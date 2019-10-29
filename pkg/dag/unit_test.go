@@ -71,7 +71,7 @@ var _ = Describe("Units", func() {
 			})
 			It("Should return true", func() {
 				u := units[0][0][0]
-				Expect(u.Above(u)).To(BeTrue())
+				Expect(gomel.Above(u, u)).To(BeTrue())
 			})
 		})
 		Describe("Checking lack of symmetry of Above", func() {
@@ -83,10 +83,10 @@ var _ = Describe("Units", func() {
 				u0 := units[0][0][0]
 				u1 := units[1][0][0]
 				u01 := units[0][1][0]
-				Expect(u01.Above(u0)).To(BeTrue())
-				Expect(u01.Above(u1)).To(BeTrue())
-				Expect(u0.Above(u01)).To(BeFalse())
-				Expect(u1.Above(u01)).To(BeFalse())
+				Expect(gomel.Above(u01, u0)).To(BeTrue())
+				Expect(gomel.Above(u01, u1)).To(BeTrue())
+				Expect(gomel.Above(u0, u01)).To(BeFalse())
+				Expect(gomel.Above(u1, u01)).To(BeFalse())
 			})
 		})
 		Describe("Checking transitivity of Above", func() {
@@ -100,11 +100,11 @@ var _ = Describe("Units", func() {
 				u02 := units[0][2][0]
 				u21 := units[2][1][0]
 
-				Expect(u01.Above(u0)).To(BeTrue())
-				Expect(u02.Above(u01)).To(BeTrue())
-				Expect(u02.Above(u0)).To(BeTrue())
-				Expect(u21.Above(u01)).To(BeTrue())
-				Expect(u21.Above(u0)).To(BeTrue())
+				Expect(gomel.Above(u01, u0)).To(BeTrue())
+				Expect(gomel.Above(u02, u01)).To(BeTrue())
+				Expect(gomel.Above(u02, u0)).To(BeTrue())
+				Expect(gomel.Above(u21, u01)).To(BeTrue())
+				Expect(gomel.Above(u21, u0)).To(BeTrue())
 			})
 		})
 		Describe("Checking Above works properly for forked dealing units.", func() {
@@ -115,8 +115,8 @@ var _ = Describe("Units", func() {
 			It("Should return false for both below queries.", func() {
 				u0 := units[0][0][0]
 				u1 := units[0][0][1]
-				Expect(u0.Above(u1)).To(BeFalse())
-				Expect(u1.Above(u0)).To(BeFalse())
+				Expect(gomel.Above(u0, u1)).To(BeFalse())
+				Expect(gomel.Above(u1, u0)).To(BeFalse())
 			})
 		})
 		Describe("Checking Above works properly for two forks going out of one unit.", func() {
@@ -129,12 +129,12 @@ var _ = Describe("Units", func() {
 				u1 := units[0][1][0]
 				u2 := units[0][1][1]
 
-				Expect(u1.Above(uBase)).To(BeTrue())
-				Expect(u2.Above(uBase)).To(BeTrue())
-				Expect(uBase.Above(u1)).To(BeFalse())
-				Expect(uBase.Above(u2)).To(BeFalse())
-				Expect(u1.Above(u2)).To(BeFalse())
-				Expect(u2.Above(u1)).To(BeFalse())
+				Expect(gomel.Above(u1, uBase)).To(BeTrue())
+				Expect(gomel.Above(u2, uBase)).To(BeTrue())
+				Expect(gomel.Above(uBase, u1)).To(BeFalse())
+				Expect(gomel.Above(uBase, u2)).To(BeFalse())
+				Expect(gomel.Above(u1, u2)).To(BeFalse())
+				Expect(gomel.Above(u2, u1)).To(BeFalse())
 			})
 		})
 		Describe("Checking floors", func() {

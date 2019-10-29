@@ -96,7 +96,7 @@ func (dag *dag) updateMaximal(u gomel.Unit) {
 	newMaxByCreator := make([]gomel.Unit, 0)
 	// The below code works properly assuming that no unit in the dag created by creator is >= u
 	for _, v := range maxByCreator {
-		if !u.Above(v) {
+		if !gomel.Above(u, v) {
 			newMaxByCreator = append(newMaxByCreator, v)
 		}
 	}

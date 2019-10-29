@@ -219,7 +219,7 @@ func setFloor(u *unit, dag *Dag) {
 		for _, v := range parentsFloorUnion[pid] {
 			ok := true
 			for _, f := range result[pid] {
-				if f.Above(v) {
+				if f.AboveWithinProc(v) {
 					ok = false
 					break
 				}
