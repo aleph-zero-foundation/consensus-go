@@ -6,18 +6,18 @@
   "StepSize": 0.0,
   "Sync": [
     {
-      "Type": "fetch",
+      "Type": "multicast",
       "Params": {
-        "nIn": "3",
-        "nOut": "2",
+        "network": "tcp",
         "timeout": "2s"
       },
       "Fallback": "fetch"
     },
     {
-      "Type": "multicast",
+      "Type": "fetch",
       "Params": {
-        "network": "tcp",
+        "nIn": "3",
+        "nOut": "2",
         "timeout": "2s"
       },
       "Fallback": "fetch"

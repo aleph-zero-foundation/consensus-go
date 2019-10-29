@@ -13,6 +13,8 @@ type Server interface {
 	StopOut()
 	// SetFallback registers a Fallback that will be used to query information about problematic preunits.
 	SetFallback(Fallback)
+	// SetFetchData registers a data fetcher that will be used to query information about preunits with missing information.
+	SetFetchData(FetchData)
 }
 
 // MulticastServer is a Server that can multicast units to other committee members.

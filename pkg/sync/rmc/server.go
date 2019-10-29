@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
@@ -36,21 +37,20 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData gsync.FetchData, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) (gsync.MulticastServer, gsync.FetchData, func(gomel.Unit) error) {
 	nProc := int(dag.NProc())
 	s := &server{
-		pid:       pid,
-		dag:       dag,
-		adder:     adder,
-		netserv:   netserv,
-		fetchData: fetchData,
-		state:     state,
-		timeout:   timeout,
-		log:       log,
-		quit:      0,
+		pid:     pid,
+		dag:     dag,
+		adder:   adder,
+		netserv: netserv,
+		state:   state,
+		timeout: timeout,
+		log:     log,
+		quit:    0,
 	}
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
-	return s
+	return s, s.requestFinishedRMC, s.properlyMulticast
 }
 
 // Start starts worker pools
@@ -75,6 +75,26 @@ func (s *server) SetFallback(fbk gsync.Fallback) {
 	s.fallback = fbk
 }
 
+func (s *server) SetFetchData(fd gsync.FetchData) {
+	s.fetchData = fd
+}
+
 func (s *server) Send(unit gomel.Unit) {
 	go s.multicast(unit)
+}
+
+func (s *server) properlyMulticast(u gomel.Unit) error {
+	if u.Creator() == s.pid {
+		// We trust our own units.
+		return nil
+	}
+	rmcID := gomel.UnitID(u)
+	if s.state.Status(rmcID) != rmcbox.Finished {
+		return gomel.NewMissingDataError("this RMC is not yet finished")
+	}
+	pu, _ := encoding.DecodePreunit(s.state.Data(rmcID))
+	if *pu.Hash() != *u.Hash() {
+		return gomel.NewComplianceError("unit differs from successfully RMCd unit")
+	}
+	return nil
 }

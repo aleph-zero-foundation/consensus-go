@@ -42,21 +42,20 @@ type server struct {
 }
 
 // NewServer returns a server that runs the multicast protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
 	nProc := int(dag.NProc())
 	requests := make([]chan request, nProc)
 	for i := 0; i < nProc; i++ {
 		requests[i] = make(chan request, requestSize)
 	}
 	s := &server{
-		pid:       pid,
-		dag:       dag,
-		adder:     adder,
-		fetchData: fetchData,
-		netserv:   netserv,
-		requests:  requests,
-		timeout:   timeout,
-		log:       log,
+		pid:      pid,
+		dag:      dag,
+		adder:    adder,
+		netserv:  netserv,
+		requests: requests,
+		timeout:  timeout,
+		log:      log,
 	}
 
 	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.Out)
@@ -84,6 +83,10 @@ func (s *server) StopOut() {
 
 func (s *server) SetFallback(qs sync.Fallback) {
 	s.fallback = qs
+}
+
+func (s *server) SetFetchData(fd sync.FetchData) {
+	s.fetchData = fd
 }
 
 func (s *server) Send(unit gomel.Unit) {

@@ -94,11 +94,10 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 
 	adder, adderService := parallel.New()
 
-	syncService, multicastUnit, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
+	syncService, dag, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
 	if err != nil {
 		return nil, err
 	}
-	dag = dagutils.AfterInsert(dag, multicastUnit)
 
 	createService := create.NewService(dag, adder, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
 

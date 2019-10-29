@@ -30,7 +30,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
 	nProc := int(dag.NProc())
 	inUse := make([]*mutex, nProc)
 	for i := range inUse {
@@ -42,7 +42,6 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData sync.Fetc
 		dag:        dag,
 		adder:      adder,
 		netserv:    netserv,
-		fetchData:  fetchData,
 		requests:   requests,
 		peerSource: NewMixedPeerSource(dag.NProc(), pid, requests),
 		inUse:      inUse,
@@ -71,6 +70,10 @@ func (s *server) StopOut() {
 
 func (s *server) SetFallback(qs sync.Fallback) {
 	s.fallback = qs
+}
+
+func (s *server) SetFetchData(fd sync.FetchData) {
+	s.fetchData = fd
 }
 
 // Resolve requests next gossip to happen with the creator of a problematic preunit.

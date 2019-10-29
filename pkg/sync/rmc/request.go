@@ -3,6 +3,7 @@ package rmc
 const (
 	sendData byte = iota
 	sendProof
+	requestFinished
 )
 
 // request represents a request to a multicast server

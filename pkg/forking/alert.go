@@ -264,7 +264,7 @@ func (a *AlertHandler) handleCommitmentRequest(conn network.Connection, log zero
 	log.Info().Msg(logging.SyncCompleted)
 }
 
-// RequestCommitment to the unit with the given hash, from pid.
+// RequestCommitment to the given preunit, from pid.
 func (a *AlertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 	log := a.log.With().Uint16(logging.PID, pid).Logger()
 	conn, err := a.netserv.Dial(pid, a.timeout)

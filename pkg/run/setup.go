@@ -64,12 +64,11 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 
 	adder, adderService := parallel.New()
 
-	syncService, multicastUnit, err := sync.NewService(dag, adder, nil, conf.SyncSetup, log)
+	syncService, dag, err := sync.NewService(dag, adder, nil, conf.SyncSetup, log)
 	if err != nil {
 		log.Error().Str("where", "setup.sync").Msg(err.Error())
 		return
 	}
-	dag = dagutils.AfterInsert(dag, multicastUnit)
 
 	createService := create.NewService(dag, adder, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 

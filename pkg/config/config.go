@@ -71,23 +71,27 @@ type Configuration struct {
 // NewDefaultConfiguration returns default set of parameters.
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
-		Type:     "gossip",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
-		Fallback: "",
-	}, SyncConfiguration{
 		Type:     "multicast",
 		Params:   map[string]string{"network": "pers", "timeout": "2s"},
+		Fallback: "",
+	}, SyncConfiguration{
+		Type:     "gossip",
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 		Fallback: "",
 	},
 	}
 
 	syncSetupConf := []SyncConfiguration{SyncConfiguration{
+		Type:     "rmc",
+		Params:   map[string]string{"network": "pers", "timeout": "2s"},
+		Fallback: "fetch",
+	}, SyncConfiguration{
+		Type:     "fetch",
+		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
+		Fallback: "gossip",
+	}, SyncConfiguration{
 		Type:     "gossip",
 		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
-		Fallback: "",
-	}, SyncConfiguration{
-		Type:     "multicast",
-		Params:   map[string]string{"network": "pers", "timeout": "2s"},
 		Fallback: "",
 	},
 	}
