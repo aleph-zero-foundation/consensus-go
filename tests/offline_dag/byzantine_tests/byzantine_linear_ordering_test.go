@@ -129,7 +129,7 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 				if err := checkCompliance(dag, preunit.Creator(), parentUnits); err != nil {
 					parentUnits = parentUnits[:len(parentUnits)-1]
 					predecessor := gomel.Predecessor(selectedParent)
-					if predecessor == nil || selfPredecessor.Above(predecessor) {
+					if predecessor == nil || gomel.Above(selfPredecessor, predecessor) {
 						availableParents = availableParents[:len(availableParents)-1]
 					} else {
 						availableParents[len(availableParents)-1] = predecessor

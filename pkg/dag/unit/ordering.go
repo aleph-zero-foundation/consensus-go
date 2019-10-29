@@ -12,6 +12,9 @@ func commonForkingHeight(u, v *unitInDag) int {
 }
 
 func (u *freeUnit) AboveWithinProc(v gomel.Unit) bool {
+	if u.Creator() != v.Creator() {
+		return false
+	}
 	var w gomel.Unit
 	for w = u; w != nil && w.Height() > v.Height(); w = gomel.Predecessor(w) {
 	}
@@ -22,7 +25,7 @@ func (u *freeUnit) AboveWithinProc(v gomel.Unit) bool {
 }
 
 func (u *unitInDag) AboveWithinProc(v gomel.Unit) bool {
-	if u.Height() < v.Height() {
+	if u.Height() < v.Height() || u.Creator() != v.Creator() {
 		return false
 	}
 	if vInDag, ok := v.(*unitInDag); ok && v.Height() <= commonForkingHeight(u, vInDag) {

@@ -23,11 +23,8 @@ type noForkUnit struct {
 	gomel.Unit
 }
 
-// This works under the assumption that any unit we are compared with was decoded by the dag.
-// Because of that all its parents are in the dag, so at most it is on a forking branch of length 1.
-// Hence the height comparison plus checking for equality suffice.
 func (u *noForkUnit) AboveWithinProc(v gomel.Unit) bool {
-	return u.Height() >= v.Height()
+	return u.Creator() == v.Creator() && u.Height() >= v.Height()
 }
 
 // NoForks returns a dag that will error on adding a fork.
