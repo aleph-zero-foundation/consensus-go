@@ -18,8 +18,6 @@ type Config struct {
 	CreateSetup   *Create
 	Order         *Order
 	OrderSetup    *Order
-	TxValidate    *TxValidate
-	TxGenerate    *TxGenerate
 	MemLog        int
 	Setup         string
 	P2PPublicKeys []*p2p.PublicKey
@@ -77,14 +75,4 @@ type Order struct {
 	Pid             uint16
 	OrderStartLevel int
 	CRPFixedPrefix  uint16
-}
-
-// TxValidate represents a complete configuration needed for a transaction validation service to start.
-type TxValidate struct {
-}
-
-// TxGenerate represents a complete configuration needed for a tx generation service to start.
-type TxGenerate struct {
-	CompressionLevel int
-	Txpu             int
 }

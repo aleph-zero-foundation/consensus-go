@@ -17,7 +17,7 @@ type preunitMock struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	crown     gomel.Crown
-	data      []byte
+	data      gomel.Data
 	rsData    []byte
 }
 
@@ -25,7 +25,7 @@ func (pu *preunitMock) RandomSourceData() []byte {
 	return pu.rsData
 }
 
-func (pu *preunitMock) Data() []byte {
+func (pu *preunitMock) Data() gomel.Data {
 	return pu.data
 }
 

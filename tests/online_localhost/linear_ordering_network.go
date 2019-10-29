@@ -16,6 +16,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
@@ -111,14 +112,26 @@ func createAndStartProcess(
 		return err
 	}
 
+	// Mock data source and preblock sink.
+	tds := tests.NewDataSource(10)
+	tds.Start()
+	ps := make(chan *gomel.Preblock)
+	// Reading and ignoring all the preblocks.
 	go func() {
-		dag, err := run.Process(config, setupLog, log)
+		for range ps {
+		}
+	}()
+
+	go func() {
+		dag, err := run.Process(config, tds.DataSource(), ps, setupLog, log)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 			panic(err)
 		}
 		dags[id] = dag
 		finished.Done()
+		tds.Stop()
+		close(ps)
 	}()
 	return nil
 }

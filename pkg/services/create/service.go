@@ -32,7 +32,7 @@ type service struct {
 	previousSuccess  bool
 	delay            time.Duration
 	ticker           *time.Ticker
-	dataSource       <-chan []byte
+	dataSource       gomel.DataSource
 	primeUnitCreated chan<- int
 	dagFinished      chan<- struct{}
 	done             chan struct{}
@@ -48,7 +48,7 @@ type service struct {
 // Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close the dagFinished channel when it stops.
-func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource <-chan []byte, log zerolog.Logger) gomel.Service {
+func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource gomel.DataSource, log zerolog.Logger) gomel.Service {
 	return &service{
 		dag:             dag,
 		adder:           adder,

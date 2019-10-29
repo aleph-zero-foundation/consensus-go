@@ -14,12 +14,12 @@ type preunit struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	crown     gomel.Crown
-	data      []byte
+	data      gomel.Data
 	rsData    []byte
 }
 
 // NewPreunit constructs a a new preunit with given parents and creator id.
-func NewPreunit(creator uint16, crown *gomel.Crown, data []byte, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, crown *gomel.Crown, data gomel.Data, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
 		crown:   *crown,
@@ -36,7 +36,7 @@ func (pu *preunit) RandomSourceData() []byte {
 }
 
 // Data embedded in the preunit.
-func (pu *preunit) Data() []byte {
+func (pu *preunit) Data() gomel.Data {
 	return pu.data
 }
 

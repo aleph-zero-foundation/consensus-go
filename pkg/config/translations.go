@@ -108,17 +108,6 @@ func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *Order {
 	}
 }
 
-func generateTxValidateConfig() *TxValidate {
-	return &TxValidate{}
-}
-
-func generateTxGenerateConfig(conf *Configuration) *TxGenerate {
-	return &TxGenerate{
-		CompressionLevel: 5,
-		Txpu:             conf.Txpu,
-	}
-}
-
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 	return Config{
@@ -130,8 +119,6 @@ func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 		CreateSetup:   generateCreateSetupConfig(conf, m, c),
 		Order:         generateOrderConfig(conf, m, c),
 		OrderSetup:    generateOrderSetupConfig(conf, m, c),
-		TxValidate:    generateTxValidateConfig(),
-		TxGenerate:    generateTxGenerateConfig(conf),
 		MemLog:        conf.LogMemInterval,
 		Setup:         conf.Setup,
 		P2PPublicKeys: c.P2PPublicKeys,

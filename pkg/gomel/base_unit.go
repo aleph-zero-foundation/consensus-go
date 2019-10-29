@@ -13,7 +13,7 @@ type BaseUnit interface {
 	// View returns the crown of the dag below the unit.
 	View() *Crown
 	// Data is the slice of data contained in the unit.
-	Data() []byte
+	Data() Data
 	// RandomSourceData is data contained in the unit needed to maintain
 	// the common random source among processes.
 	RandomSourceData() []byte

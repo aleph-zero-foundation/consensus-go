@@ -110,7 +110,7 @@ func (um *unitMock) View() *gomel.Crown {
 	return um.u.View()
 }
 
-func (um *unitMock) Data() []byte {
+func (um *unitMock) Data() gomel.Data {
 	return um.u.Data()
 }
 

@@ -14,7 +14,7 @@ type unit struct {
 	parents   []gomel.Unit
 	floor     [][]gomel.Unit
 	signature gomel.Signature
-	data      []byte
+	data      gomel.Data
 	rsData    []byte
 }
 
@@ -26,7 +26,7 @@ func (u *unit) RandomSourceData() []byte {
 	return u.rsData
 }
 
-func (u *unit) Data() []byte {
+func (u *unit) Data() gomel.Data {
 	return u.data
 }
 
