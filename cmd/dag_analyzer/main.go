@@ -35,7 +35,7 @@ var popularAfter stat = func(dag gomel.Dag, u gomel.Unit, _ []gomel.Unit, maxLev
 		ok := true
 		primesAbove.Iterate(func(prs []gomel.Unit) bool {
 			for _, v := range prs {
-				if !v.Above(u) {
+				if !gomel.Above(v, u) {
 					ok = false
 					return false
 				}
