@@ -34,35 +34,25 @@ func (dag *alertDag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	}
 }
 
-// TODO
-/*
 func (dag *alertDag) Prepare(u gomel.Unit) (gomel.Unit, error) {
-if err := dag.Dag.Prepare(u); err != nil {
-	return err
-}
-dag.alert.Lock(u.Creator())
-defer dag.alert.Unlock(u.Creator())
-if dag.handleForkerUnit(u) {
-	if !dag.alert.HasCommitmentTo(u) {
-		return missingCommitmentToForkError
+	u, err := dag.Dag.Prepare(u)
+	if err != nil {
+		return nil, err
 	}
-}
-	return nil
-}*/
-
-// TODO
-/*
-func (dag *alertDag) Insert(u gomel.Unit) {
-
 	dag.alert.Lock(u.Creator())
-	defer dag.alert.Unlock(u.Creator())
-	if dag.alert.IsForker(u.Creator()) {
+	if dag.handleForkerUnit(u) {
 		if !dag.alert.HasCommitmentTo(u) {
+			dag.alert.Unlock(u.Creator())
 			return nil, missingCommitmentToForkError
 		}
 	}
+	return u, nil
+}
+
+func (dag *alertDag) Insert(u gomel.Unit) {
 	dag.Dag.Insert(u)
-}*/
+	dag.alert.Unlock(u.Creator())
+}
 
 func (dag *alertDag) handleForkerUnit(u gomel.Unit) bool {
 	creator := u.Creator()
