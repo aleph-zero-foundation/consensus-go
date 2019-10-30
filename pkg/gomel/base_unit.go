@@ -24,9 +24,14 @@ func Nickname(bu BaseUnit) string {
 	return bu.Hash().Short()
 }
 
-// ID is a pair (Creator, Height) encoded as a single number.
+// ID is a pair (Height, Creator) encoded as a single number.
 func ID(height int, creator, nProc uint16) uint64 {
 	return uint64(creator) + uint64(nProc)*uint64(height)
+}
+
+// DecodeID that is a single number into a pair (Height, Creator).
+func DecodeID(id uint64, nProc uint16) (int, uint16) {
+	return int(id / uint64(nProc)), uint16(id % uint64(nProc))
 }
 
 // UnitID returns ID of the given BaseUnit.

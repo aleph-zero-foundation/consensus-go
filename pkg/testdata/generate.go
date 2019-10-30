@@ -56,5 +56,5 @@ func CreateRandomNonForkingUsingCreating(nProcesses uint16, nUnits int, canSkipL
 
 // Use this to generate more test files
 func main() {
-	writeToFile("dag.out", CreateRandomNonForkingUsingCreating(4, 60, true))
+	writeToFile("dag.out", CreateRandomNonForkingUsingCreating(10, 100, true))
 }

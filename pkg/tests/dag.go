@@ -119,6 +119,17 @@ func (dag *Dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 	return result
 }
 
+// GetByID returns all the units associated with the given ID.
+func (dag *Dag) GetByID(id uint64) []gomel.Unit {
+	height, creator := gomel.DecodeID(id, dag.NProc())
+	dag.RLock()
+	defer dag.RUnlock()
+	if height >= len(dag.unitsByHeight) {
+		return nil
+	}
+	return dag.unitsByHeight[height].Get(creator)
+}
+
 // NProc returns the number of processes in this dag.
 func (dag *Dag) NProc() uint16 {
 	// nProcesses doesn't change so no lock needed

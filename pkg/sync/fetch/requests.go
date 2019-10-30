@@ -3,7 +3,6 @@ package fetch
 import (
 	"encoding/binary"
 	"io"
-	"math"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -11,17 +10,18 @@ import (
 
 type request struct {
 	pid     uint16
-	heights []int
+	unitIDs []uint64
 }
 
-func sendRequests(conn network.Connection, heights []int) error {
-	buf := make([]byte, 4)
-	for _, h := range heights {
-		if h == -1 {
-			binary.LittleEndian.PutUint32(buf, math.MaxUint32)
-		} else {
-			binary.LittleEndian.PutUint32(buf, uint32(h))
-		}
+func sendRequests(conn network.Connection, unitIDs []uint64) error {
+	buf := make([]byte, 8)
+	binary.LittleEndian.PutUint32(buf[:4], uint32(len(unitIDs)))
+	_, err := conn.Write(buf[:4])
+	if err != nil {
+		return err
+	}
+	for _, id := range unitIDs {
+		binary.LittleEndian.PutUint64(buf, id)
 		_, err := conn.Write(buf)
 		if err != nil {
 			return err
@@ -30,34 +30,30 @@ func sendRequests(conn network.Connection, heights []int) error {
 	return conn.Flush()
 }
 
-func receiveRequests(conn network.Connection, nProc uint16) ([]int, error) {
-	result := make([]int, nProc)
-	buf := make([]byte, 4)
+func receiveRequests(conn network.Connection) ([]uint64, error) {
+	buf := make([]byte, 8)
+	_, err := io.ReadFull(conn, buf[:4])
+	if err != nil {
+		return nil, err
+	}
+	nReqs := binary.LittleEndian.Uint32(buf[:4])
+	result := make([]uint64, nReqs)
 	for i := range result {
 		_, err := io.ReadFull(conn, buf)
 		if err != nil {
 			return nil, err
 		}
-		h := binary.LittleEndian.Uint32(buf)
-		if h == math.MaxUint32 {
-			result[i] = -1
-		} else {
-			result[i] = int(h)
-		}
+		result[i] = binary.LittleEndian.Uint64(buf)
 	}
 	return result, nil
 }
 
-func getUnits(dag gomel.Dag, heights []int) ([]gomel.Unit, error) {
+// getUnits returns as many units with the given IDs as it can.
+func getUnits(dag gomel.Dag, unitIDs []uint64) []gomel.Unit {
 	result := []gomel.Unit{}
-	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
-		for _, u := range units {
-			for u != nil && u.Height() > heights[u.Creator()] {
-				result = append(result, u)
-				u = gomel.Predecessor(u)
-			}
-		}
-		return true
-	})
-	return result, nil
+	for _, id := range unitIDs {
+		units := dag.GetByID(id)
+		result = append(result, units...)
+	}
+	return result
 }
