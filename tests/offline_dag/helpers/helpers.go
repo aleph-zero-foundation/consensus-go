@@ -210,7 +210,7 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 		return 0
 	}
 	level := 0
-	nProcesses := dag.NProc()
+	nProc := dag.NProc()
 	for _, parent := range parents {
 		if parent == nil {
 			continue
@@ -220,10 +220,10 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 		}
 	}
 	nSeen := uint16(0)
-	for pid := range parents[0].Floor() {
+	for pid := uint16(0); pid < nProc; pid++ {
 		pidFound := false
 		for _, parent := range parents {
-			for _, unit := range parent.Floor()[pid] {
+			for _, unit := range parent.Floor(pid) {
 				if unit.Level() == level {
 					nSeen++
 					pidFound = true
@@ -237,7 +237,7 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 				break
 			}
 		}
-		if !pidFound && !dag.IsQuorum(nSeen+(nProcesses-(uint16(pid)+1))) {
+		if !pidFound && !dag.IsQuorum(nSeen+(nProc-(uint16(pid)+1))) {
 			break
 		}
 	}

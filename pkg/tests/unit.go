@@ -18,8 +18,8 @@ type unit struct {
 	rsData    []byte
 }
 
-func (u *unit) Floor() [][]gomel.Unit {
-	return u.floor
+func (u *unit) Floor(pid uint16) []gomel.Unit {
+	return u.floor[pid]
 }
 
 func (u *unit) RandomSourceData() []byte {

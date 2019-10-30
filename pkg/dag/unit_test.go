@@ -143,16 +143,11 @@ var _ = Describe("Units", func() {
 					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
-				It("Should return floors containing one unit each", func() {
+				It("Should return floors containing no units", func() {
 					for pid := uint16(0); pid < dag.NProc(); pid++ {
-						floor := units[pid][0][0].Floor()
-						for pid2, myFloor := range floor {
-							if uint16(pid2) == pid {
-								Expect(len(myFloor)).To(Equal(1))
-								Expect(myFloor[0]).To(Equal(units[pid][0][0]))
-							} else {
-								Expect(len(myFloor)).To(Equal(0))
-							}
+						for pid2 := uint16(0); pid2 < dag.NProc(); pid2++ {
+							myFloor := units[pid][0][0].Floor(pid2)
+							Expect(len(myFloor)).To(Equal(0))
 						}
 					}
 				})
@@ -163,11 +158,12 @@ var _ = Describe("Units", func() {
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should contain correct floor", func() {
-					floor := units[0][1][0].Floor()
-					Expect(len(floor[0])).To(Equal(1))
-					Expect(floor[0][0]).To(Equal(units[0][1][0]))
-					Expect(len(floor[1])).To(Equal(1))
-					Expect(floor[1][0]).To(Equal(units[1][0][0]))
+					floor0 := units[0][1][0].Floor(0)
+					floor1 := units[0][1][0].Floor(1)
+					Expect(len(floor0)).To(Equal(1))
+					Expect(floor0[0]).To(Equal(units[0][0][0]))
+					Expect(len(floor1)).To(Equal(1))
+					Expect(floor1[0]).To(Equal(units[1][0][0]))
 				})
 			})
 			Describe("When seeing a fork", func() {
@@ -175,21 +171,6 @@ var _ = Describe("Units", func() {
 					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
 					Expect(readingErr).To(HaveOccurred())
 					Expect(readingErr).To(MatchError("ambiguous parents"))
-				})
-			})
-			Describe("On a chain with 9 consecutive dealing units as the other parent ", func() {
-				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/14/chain.txt", df)
-					Expect(readingErr).NotTo(HaveOccurred())
-				})
-				It("Should contain all dealing units in floor", func() {
-					floor := units[0][9][0].Floor()
-					Expect(len(floor[0])).To(Equal(1))
-					Expect(floor[0][0]).To(Equal(units[0][9][0]))
-					for pid := uint16(1); pid < 10; pid++ {
-						Expect(len(floor[pid])).To(Equal(1))
-						Expect(floor[pid][0]).To(Equal(units[pid][0][0]))
-					}
 				})
 			})
 		})

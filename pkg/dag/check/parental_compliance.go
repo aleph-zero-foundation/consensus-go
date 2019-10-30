@@ -32,11 +32,11 @@ func parentConsistencyCheck(parents []gomel.Unit, nProc uint16) error {
 
 // NoSelfForkingEvidence checks if a unit does not provide evidence of its creator forking.
 func NoSelfForkingEvidence(dag gomel.Dag) gomel.Dag {
-	return AddCheck(dag, func(u gomel.Unit) error { return noSelfForkingEvidenceCheck(u.Parents(), u.Creator()) })
+	return AddCheck(dag, func(u gomel.Unit) error { return noSelfForkingEvidenceCheck(u) })
 }
 
-func noSelfForkingEvidenceCheck(parents []gomel.Unit, creator uint16) error {
-	if gomel.HasSelfForkingEvidence(parents, creator) {
+func noSelfForkingEvidenceCheck(u gomel.Unit) error {
+	if gomel.HasForkingEvidence(u, u.Creator()) {
 		return gomel.NewComplianceError("A unit is evidence of self forking")
 	}
 	return nil

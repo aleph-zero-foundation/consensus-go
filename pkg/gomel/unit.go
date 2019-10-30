@@ -9,8 +9,8 @@ type Unit interface {
 	Level() int
 	// AboveWithinProc checks if this unit is above the given unit produced by the same creator.
 	AboveWithinProc(Unit) bool
-	// Floor returns a collection of units containing, for each process, all maximal units created by that process below the unit.
-	Floor() [][]Unit
+	// Floor returns a slice of units maximal units created by the given process that are STRICTLY below this unit.
+	Floor(uint16) []Unit
 }
 
 // Above checks if u is above v.
@@ -18,7 +18,10 @@ func Above(u, v Unit) bool {
 	if v == nil || u == nil {
 		return false
 	}
-	for _, w := range u.Floor()[v.Creator()] {
+	if *u.Hash() == *v.Hash() {
+		return true
+	}
+	for _, w := range u.Floor(v.Creator()) {
 		if w.AboveWithinProc(v) {
 			return true
 		}
@@ -48,17 +51,16 @@ func LevelFromParents(parents []Unit) int {
 	return level
 }
 
-// CombineParentsFloorsPerProc combines floors of the provided parents just for a given creator.
+// MaximalByPid computes all maximal units produced by pid present in parents and their floors.
 // The result will be appended to the 'out' parameter.
-func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {
-
+func MaximalByPid(parents []Unit, pid uint16, out *[]Unit) {
+	*out = append(*out, parents[pid])
 	startIx := len(*out)
-
 	for _, parent := range parents {
 		if parent == nil {
 			continue
 		}
-		for _, w := range parent.Floor()[pid] {
+		for _, w := range parent.Floor(pid) {
 			found, ri := false, -1
 			for ix, v := range (*out)[startIx:] {
 
@@ -87,34 +89,13 @@ func CombineParentsFloorsPerProc(parents []Unit, pid uint16, out *[]Unit) {
 	}
 }
 
-// HasSelfForkingEvidence returns true iff the given set of parents proves that the creator
-// made a fork.
-func HasSelfForkingEvidence(parents []Unit, creator uint16) bool {
-	if parents[creator] == nil {
-		return false
-	}
-	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
-	// check whether collection of these maximal units has a single maximal element
-	var storage [1]Unit
-	combinedFloor := storage[:0]
-	CombineParentsFloorsPerProc(parents, creator, &combinedFloor)
-	if len(combinedFloor) > 1 {
-		return true
-	}
-	// check if some other parent has an evidence of a unit made by 'creator' that is above our self-predecessor
-	return *parents[creator].Hash() != *combinedFloor[0].Hash()
-}
-
 // HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
 // i.e. it is above two units created by creator that share a predecessor.
 func HasForkingEvidence(u Unit, creator uint16) bool {
 	if Dealing(u) {
 		return false
 	}
-	if creator != u.Creator() {
-		return len(u.Floor()[creator]) > 1
-	}
-	return HasSelfForkingEvidence(u.Parents(), creator)
+	return len(u.Floor(creator)) > 1
 }
 
 // Prime checks whether the given unit is a prime unit.

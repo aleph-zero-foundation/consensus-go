@@ -16,14 +16,8 @@ type unitInDag struct {
 // Prepared transforms given unit into unitInDag (with forking height).
 func Prepared(u gomel.Unit, dag gomel.Dag) gomel.Unit {
 	result := &unitInDag{u, 0}
-	result.fixSelfFloor()
 	result.computeForkingHeight(dag)
 	return result
-}
-
-// fixSelfFloor replaces the self-reference in the floor with the correct one.
-func (u *unitInDag) fixSelfFloor() {
-	u.Floor()[u.Creator()] = []gomel.Unit{u}
 }
 
 func (u *unitInDag) computeForkingHeight(dag gomel.Dag) {

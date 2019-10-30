@@ -202,13 +202,13 @@ func setFloor(u *unit, dag *Dag) {
 	dag.RLock()
 	defer dag.RUnlock()
 	parentsFloorUnion := make([][]gomel.Unit, dag.NProc())
-	parentsFloorUnion[u.Creator()] = []gomel.Unit{u}
 	for _, v := range u.Parents() {
 		if v == nil {
 			continue
 		}
-		for pid, units := range v.Floor() {
-			parentsFloorUnion[pid] = append(parentsFloorUnion[pid], units...)
+		parentsFloorUnion[v.Creator()] = append(parentsFloorUnion[v.Creator()], v)
+		for pid := uint16(0); pid < dag.NProc(); pid++ {
+			parentsFloorUnion[pid] = append(parentsFloorUnion[pid], v.Floor(pid)...)
 		}
 	}
 	result := make([][]gomel.Unit, dag.NProc())

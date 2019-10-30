@@ -81,7 +81,19 @@ func createForkUsingNewUnit() forker {
 }
 
 func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
-	return gomel.HasSelfForkingEvidence(parents, creator)
+	if parents[creator] == nil {
+		return false
+	}
+	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
+	// check whether collection of these maximal units has a single maximal element
+	var storage [1]gomel.Unit
+	combinedFloor := storage[:0]
+	gomel.MaximalByPid(parents, creator, &combinedFloor)
+	if len(combinedFloor) > 1 {
+		return true
+	}
+	// check if some other parent has an evidence of a unit made by 'creator' that is above our self-predecessor
+	return *parents[creator].Hash() != *combinedFloor[0].Hash()
 }
 
 func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error {
