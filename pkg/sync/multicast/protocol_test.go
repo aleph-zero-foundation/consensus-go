@@ -15,6 +15,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
+type testServer interface {
+	In()
+	Out(uint16)
+}
+
 type adder struct {
 	gomel.Adder
 	attemptedAdd []gomel.Preunit
@@ -36,13 +41,17 @@ var _ = Describe("Protocol", func() {
 		dags     []gomel.Dag
 		adders   []*adder
 		servs    []sync.MulticastServer
+		tservs   []testServer
 		netservs []network.Server
-		serv     sync.MulticastServer
 		theUnit  gomel.Unit
 	)
 
 	BeforeEach(func() {
 		netservs = tests.NewNetwork(4)
+	})
+
+	AfterEach(func() {
+		tests.CloseNetwork(netservs)
 	})
 
 	JustBeforeEach(func() {
@@ -51,9 +60,9 @@ var _ = Describe("Protocol", func() {
 			adders = append(adders, &adder{tests.NewAdder(dag), nil})
 		}
 		for i := 0; i < 4; i++ {
-			serv = NewServer(uint16(i), dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop())
+			serv := NewServer(uint16(i), dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop())
 			servs = append(servs, serv)
-			serv.Start()
+			tservs = append(tservs, serv.(testServer))
 		}
 	})
 
@@ -75,14 +84,12 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to empty copies", func() {
-				servs[0].Send(theUnit)
-				time.Sleep(time.Millisecond * 500)
-				for i := 0; i < 4; i++ {
-					servs[i].StopOut()
+				for i := uint16(1); i < 4; i++ {
+					go tservs[0].Out(i)
 				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 4; i++ {
-					servs[i].StopIn()
+				servs[0].Send(theUnit)
+				for i := 1; i < 4; i++ {
+					tservs[i].In()
 				}
 				Expect(adders[0].attemptedAdd).To(BeEmpty())
 				for i := 1; i < 4; i++ {

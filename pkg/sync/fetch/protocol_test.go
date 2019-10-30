@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 
-	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -16,19 +15,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
-type adder struct {
-	gomel.Adder
-	attemptedAdd []gomel.Preunit
-}
-
-func (a *adder) AddUnit(unit gomel.Preunit) error {
-	a.attemptedAdd = append(a.attemptedAdd, unit)
-	return a.Adder.AddUnit(unit)
-}
-
-func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
-	a.attemptedAdd = append(a.attemptedAdd, units...)
-	return a.Adder.AddAntichain(units)
+type testServer interface {
+	In()
+	Out()
 }
 
 type mockFB struct {
@@ -44,10 +33,12 @@ var _ = Describe("Protocol", func() {
 	var (
 		dag1     gomel.Dag
 		dag2     gomel.Dag
-		adder1   *adder
-		adder2   *adder
+		adder1   gomel.Adder
+		adder2   gomel.Adder
 		serv1    sync.Server
 		serv2    sync.Server
+		tserv1   testServer
+		tserv2   testServer
 		fbk1     sync.Fallback
 		fb       *mockFB
 		netservs []network.Server
@@ -59,40 +50,21 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		adder1 = &adder{tests.NewAdder(dag1), nil}
-		adder2 = &adder{tests.NewAdder(dag2), nil}
-		serv1, fbk1 = NewServer(0, dag1, adder1, nil, netservs[0], time.Second, zerolog.Nop(), 1, 0)
-		serv2, _ = NewServer(1, dag2, adder2, nil, netservs[1], time.Second, zerolog.Nop(), 0, 1)
+		adder1 = tests.NewAdder(dag1)
+		adder2 = tests.NewAdder(dag2)
+		serv1, fbk1 = NewServer(0, dag1, adder1, nil, netservs[0], time.Second, zerolog.Nop(), 0, 0)
+		serv2, _ = NewServer(1, dag2, adder2, nil, netservs[1], time.Second, zerolog.Nop(), 0, 0)
+		tserv1 = serv1.(testServer)
+		tserv2 = serv2.(testServer)
 		fb = &mockFB{}
 		serv1.SetFallback(fb)
-		serv1.Start()
-		serv2.Start()
+	})
 
+	JustAfterEach(func() {
+		tests.CloseNetwork(netservs)
 	})
 
 	Describe("with only two participants", func() {
-
-		Context("when requesting a unit with no parents", func() {
-
-			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
-				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
-			})
-
-			It("should not add anything", func() {
-				pu = creating.NewPreunit(1, gomel.EmptyCrown(10), nil, nil)
-				fbk1.Resolve(pu) // this is just a roundabout way to send a request to serv1
-
-				time.Sleep(time.Millisecond * 500)
-				serv1.StopOut()
-				tests.CloseNetwork(netservs)
-				serv2.StopIn()
-
-				Expect(adder1.attemptedAdd).To(BeEmpty())
-				Expect(fb.happened).To(BeFalse())
-			})
-
-		})
 
 		Context("when requesting a unit with unknown parents", func() {
 
@@ -104,16 +76,14 @@ var _ = Describe("Protocol", func() {
 				Expect(err).NotTo(HaveOccurred())
 				pu, err = encoding.DecodePreunit(enc)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(adder1.AddUnit(pu)).ToNot(Succeed())
 			})
 
 			It("should add enough units to add the preunit", func() {
+				Expect(adder1.AddUnit(pu)).ToNot(Succeed())
 				fbk1.Resolve(pu)
 
-				time.Sleep(time.Millisecond * 500)
-				serv1.StopOut()
-				tests.CloseNetwork(netservs)
-				serv2.StopIn()
+				go tserv2.In()
+				tserv1.Out()
 
 				Expect(fb.happened).To(BeFalse())
 				Expect(adder1.AddUnit(pu)).To(Succeed())

@@ -43,7 +43,6 @@ func generateSyncSetupConfig(conf *Configuration, m *Member, c *Committee) []*Sy
 			RemoteAddresses: c.SetupAddresses[i],
 			Params:          conf.SyncSetup[i].Params,
 			Fallback:        conf.SyncSetup[i].Fallback,
-			Retry:           parseDuration(conf.SyncSetup[i].Retry),
 			Pubs:            c.RMCVerificationKeys,
 			Priv:            m.RMCSecretKey,
 		}
@@ -62,7 +61,6 @@ func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*Sync {
 			RemoteAddresses: c.Addresses[i],
 			Params:          conf.Sync[i].Params,
 			Fallback:        conf.Sync[i].Fallback,
-			Retry:           parseDuration(conf.Sync[i].Retry),
 			Pubs:            c.RMCVerificationKeys,
 			Priv:            m.RMCSecretKey,
 		}

@@ -7,7 +7,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
-func (p *server) in() {
+func (p *server) In() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
@@ -46,7 +46,7 @@ func (p *server) in() {
 	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
-func (p *server) out() {
+func (p *server) Out() {
 	r, ok := <-p.requests
 	if !ok {
 		return

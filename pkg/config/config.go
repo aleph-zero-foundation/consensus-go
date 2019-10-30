@@ -22,8 +22,6 @@ type SyncConfiguration struct {
 	Params map[string]string
 	// Fallback is a name of a service that is to be used as a fallback to this service.
 	Fallback string
-	// Retry tells how often retry the fallback (0 disables retrying)
-	Retry string
 }
 
 // Configuration represents project-wide configuration.

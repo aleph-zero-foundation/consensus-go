@@ -29,8 +29,7 @@
         "network": "pers",
         "timeout": "2s",
       },
-      "Fallback": "fetch",
-      "Retry": "0.2s"
+      "Fallback": "fetch"
     }
   ],
   "Setup": "coin",
