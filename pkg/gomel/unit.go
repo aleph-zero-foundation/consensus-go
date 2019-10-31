@@ -9,7 +9,7 @@ type Unit interface {
 	Level() int
 	// AboveWithinProc checks if this unit is above the given unit produced by the same creator.
 	AboveWithinProc(Unit) bool
-	// Floor returns a slice of units maximal units created by the given process that are STRICTLY below this unit.
+	// Floor returns a slice of maximal units created by the given process that are strictly below this unit.
 	Floor(uint16) []Unit
 }
 
