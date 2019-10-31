@@ -107,20 +107,16 @@ func (dag *Dag) GetUnit(hash *gomel.Hash) gomel.Unit {
 }
 
 // GetUnits returns the units with the given hashes or nil, when it doesn't find them.
-func (dag *Dag) GetUnits(hashes []*gomel.Hash) ([]gomel.Unit, int) {
+func (dag *Dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 	dag.RLock()
 	defer dag.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
-	unknown := 0
 	for i, h := range hashes {
 		if h != nil {
 			result[i] = dag.unitByHash[*h]
-			if result[i] == nil {
-				unknown++
-			}
 		}
 	}
-	return result, unknown
+	return result
 }
 
 // NProc returns the number of processes in this dag.

@@ -25,8 +25,7 @@ type Dag interface {
 	GetUnit(*Hash) Unit
 	// GetUnits returns slice of units associated with given hashes, in the same order.
 	// If no unit with a particular hash exists in the dag, the result contains a nil at that position.
-	// The returned int is the number of such missing units (number of nils in the returned slice).
-	GetUnits([]*Hash) ([]Unit, int)
+	GetUnits([]*Hash) []Unit
 	// IsQuorum checks if the given number of processes is enough to form a quorum.
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
