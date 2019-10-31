@@ -90,7 +90,7 @@ func (uv *unanimousVoter) lazyCommonVote(uc gomel.Unit, level int) func() vote {
 }
 
 func (uv *unanimousVoter) initialVote(uc, u gomel.Unit) vote {
-	if u.Above(uc) {
+	if gomel.Above(u, uc) {
 		return popular
 	}
 	return unpopular
@@ -136,7 +136,8 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 }
 
 func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u gomel.Unit) (vote vote, finish bool)) (votesLevelBelow votingResult) {
-	for _, floor := range u.Floor() {
+	for pid := range u.Parents() {
+		floor := u.Floor(uint16(pid))
 		votesOne := false
 		votesZero := false
 		finish := false

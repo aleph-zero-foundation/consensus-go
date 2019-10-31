@@ -57,9 +57,14 @@ func (dag *dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return dag.maxUnits
 }
 
-// Get returns a slice of units corresponding to the hashes provided.
-// If a unit of a given hash is not present in the dag, the value at the same index in the result is nil.
-func (dag *dag) Get(hashes []*gomel.Hash) []gomel.Unit {
-	result, _ := dag.units.get(hashes)
-	return result
+func (dag *dag) GetUnit(hash *gomel.Hash) gomel.Unit {
+	return dag.units.getOne(hash)
+}
+
+// GetUnits returns a slice of units corresponding to the hashes provided.
+// If a unit of a given hash is not present in the dag, the corresponding value is nil.
+// Returned int is the number of such missing units.
+func (dag *dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
+	us, _ := dag.units.getMany(hashes)
+	return us
 }

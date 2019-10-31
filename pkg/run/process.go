@@ -90,7 +90,7 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 			ps <- gomel.ToPreblock(round)
 		}
 	}()
-	dag = dagutils.AfterEmplace(dag, orderIfPrime)
+	dag = dagutils.AfterInsert(dag, orderIfPrime)
 
 	adderService := &parallel.Parallel{}
 	adder := adderService.Register(dag)
@@ -99,7 +99,7 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 	if err != nil {
 		return nil, err
 	}
-	dagMC := dagutils.AfterEmplace(dag, multicastUnit)
+	dagMC := dagutils.AfterInsert(dag, multicastUnit)
 	adderMC := adderService.Register(dagMC)
 
 	createService := create.NewService(dagMC, adderMC, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())

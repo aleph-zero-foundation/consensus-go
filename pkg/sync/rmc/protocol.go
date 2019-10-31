@@ -14,7 +14,7 @@ import (
 )
 
 func (p *server) multicast(unit gomel.Unit) {
-	id := unitID(unit, p.dag.NProc())
+	id := gomel.UnitID(unit)
 	data, err := encoding.EncodeUnit(unit)
 	if err != nil {
 		p.log.Error().Str("where", "rmcServer.Send.EncodeUnit").Msg(err.Error())
@@ -194,7 +194,7 @@ func (p *server) acceptData(id uint64, sender uint16, conn network.Connection, l
 		log.Error().Str("where", "rmc.in.DecodePreunit").Msg(err.Error())
 		return
 	}
-	if id != preunitID(pu, p.dag.NProc()) {
+	if id != gomel.UnitID(pu) {
 		log.Error().Str("what", "wrong preunit id").Msg(err.Error())
 		return
 	}

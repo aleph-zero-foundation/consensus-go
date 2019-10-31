@@ -9,22 +9,23 @@ package gomel
 
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
-	// Decode attempts to decode the given Preunit and return a Unit or an error, when that is impossible.
-	// The resulting Unit is NOT inserted in the dag -- to do that one needs to Emplace it.
+	// Decode attempts to decode the given Preunit. Returns an error when that is impossible.
 	Decode(Preunit) (Unit, error)
-	// Check if the Unit satisfies the assumptions of the dag. Should be called before Emplace.
-	Check(Unit) error
-	// Emplace attempts to add the given Unit to the dag. It returns the unit that is included in the dag.
-	Emplace(Unit) (Unit, error)
+	// Prepare checks if the Unit satisfies the assumptions of the dag, and optionally transforms it to a different form. Should be called before Insert.
+	Prepare(Unit) (Unit, error)
+	// Insert puts into the dag a unit that was previously prepared by Prepare.
+	Insert(Unit)
 	// PrimeUnits returns all prime units on a given level of the dag.
 	PrimeUnits(int) SlottedUnits
 	// UnitsOnHeight returns all units on a given height of the dag.
 	UnitsOnHeight(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
-	// Get returns the units associated with the given hashes, in the same order.
-	// If no unit with a hash exists in the dag, the result will contain a nil at the position of the hash.
-	Get([]*Hash) []Unit
+	// GetUnit returns a unit with the given hash, if present in the dag, or nil otherwise.
+	GetUnit(*Hash) Unit
+	// GetUnits returns slice of units associated with given hashes, in the same order.
+	// If no unit with a particular hash exists in the dag, the result contains a nil at that position.
+	GetUnits([]*Hash) []Unit
 	// IsQuorum checks if the given number of processes is enough to form a quorum.
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.

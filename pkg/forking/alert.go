@@ -161,7 +161,7 @@ func (a *AlertHandler) produceCommitmentFor(unit gomel.Unit) (commitment, error)
 	if pu == nil {
 		return nil, errors.New("we did not commit to anything")
 	}
-	commUnit := a.dag.Get([]*gomel.Hash{pu.Hash()})[0]
+	commUnit := a.dag.GetUnit(pu.Hash())
 	if commUnit == nil {
 		return nil, errors.New("we do not have the unit we committed to")
 	}
@@ -201,7 +201,7 @@ func (a *AlertHandler) handleCommitmentRequest(conn network.Connection, log zero
 		log.Error().Str("where", "AlertHandler.handleCommitmentRequest.ReadFull").Msg(err.Error())
 		return
 	}
-	unit := a.dag.Get([]*gomel.Hash{&requested})[0]
+	unit := a.dag.GetUnit(&requested)
 	if unit == nil {
 		log.Error().Str("where", "AlertHandler.handleCommitmentRequest.Get").Msg("no commitment for unit not in dag")
 		return
@@ -534,7 +534,7 @@ func (a *AlertHandler) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preun
 	if cu == nil {
 		return nil, gomel.NewComplianceError(noncommittedParent)
 	}
-	u := a.dag.Get([]*gomel.Hash{cu.Hash()})[0]
+	u := a.dag.GetUnit(cu.Hash())
 	if u == nil {
 		return nil, gomel.NewMissingDataError("no committed unit needed for disambiguation")
 	}

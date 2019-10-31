@@ -71,7 +71,7 @@ var _ = Describe("Units", func() {
 			})
 			It("Should return true", func() {
 				u := units[0][0][0]
-				Expect(u.Above(u)).To(BeTrue())
+				Expect(gomel.Above(u, u)).To(BeTrue())
 			})
 		})
 		Describe("Checking lack of symmetry of Above", func() {
@@ -83,10 +83,10 @@ var _ = Describe("Units", func() {
 				u0 := units[0][0][0]
 				u1 := units[1][0][0]
 				u01 := units[0][1][0]
-				Expect(u01.Above(u0)).To(BeTrue())
-				Expect(u01.Above(u1)).To(BeTrue())
-				Expect(u0.Above(u01)).To(BeFalse())
-				Expect(u1.Above(u01)).To(BeFalse())
+				Expect(gomel.Above(u01, u0)).To(BeTrue())
+				Expect(gomel.Above(u01, u1)).To(BeTrue())
+				Expect(gomel.Above(u0, u01)).To(BeFalse())
+				Expect(gomel.Above(u1, u01)).To(BeFalse())
 			})
 		})
 		Describe("Checking transitivity of Above", func() {
@@ -100,11 +100,11 @@ var _ = Describe("Units", func() {
 				u02 := units[0][2][0]
 				u21 := units[2][1][0]
 
-				Expect(u01.Above(u0)).To(BeTrue())
-				Expect(u02.Above(u01)).To(BeTrue())
-				Expect(u02.Above(u0)).To(BeTrue())
-				Expect(u21.Above(u01)).To(BeTrue())
-				Expect(u21.Above(u0)).To(BeTrue())
+				Expect(gomel.Above(u01, u0)).To(BeTrue())
+				Expect(gomel.Above(u02, u01)).To(BeTrue())
+				Expect(gomel.Above(u02, u0)).To(BeTrue())
+				Expect(gomel.Above(u21, u01)).To(BeTrue())
+				Expect(gomel.Above(u21, u0)).To(BeTrue())
 			})
 		})
 		Describe("Checking Above works properly for forked dealing units.", func() {
@@ -115,8 +115,8 @@ var _ = Describe("Units", func() {
 			It("Should return false for both below queries.", func() {
 				u0 := units[0][0][0]
 				u1 := units[0][0][1]
-				Expect(u0.Above(u1)).To(BeFalse())
-				Expect(u1.Above(u0)).To(BeFalse())
+				Expect(gomel.Above(u0, u1)).To(BeFalse())
+				Expect(gomel.Above(u1, u0)).To(BeFalse())
 			})
 		})
 		Describe("Checking Above works properly for two forks going out of one unit.", func() {
@@ -129,12 +129,12 @@ var _ = Describe("Units", func() {
 				u1 := units[0][1][0]
 				u2 := units[0][1][1]
 
-				Expect(u1.Above(uBase)).To(BeTrue())
-				Expect(u2.Above(uBase)).To(BeTrue())
-				Expect(uBase.Above(u1)).To(BeFalse())
-				Expect(uBase.Above(u2)).To(BeFalse())
-				Expect(u1.Above(u2)).To(BeFalse())
-				Expect(u2.Above(u1)).To(BeFalse())
+				Expect(gomel.Above(u1, uBase)).To(BeTrue())
+				Expect(gomel.Above(u2, uBase)).To(BeTrue())
+				Expect(gomel.Above(uBase, u1)).To(BeFalse())
+				Expect(gomel.Above(uBase, u2)).To(BeFalse())
+				Expect(gomel.Above(u1, u2)).To(BeFalse())
+				Expect(gomel.Above(u2, u1)).To(BeFalse())
 			})
 		})
 		Describe("Checking floors", func() {
@@ -143,16 +143,11 @@ var _ = Describe("Units", func() {
 					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
-				It("Should return floors containing one unit each", func() {
+				It("Should return floors containing no units", func() {
 					for pid := uint16(0); pid < dag.NProc(); pid++ {
-						floor := units[pid][0][0].Floor()
-						for pid2, myFloor := range floor {
-							if uint16(pid2) == pid {
-								Expect(len(myFloor)).To(Equal(1))
-								Expect(myFloor[0]).To(Equal(units[pid][0][0]))
-							} else {
-								Expect(len(myFloor)).To(Equal(0))
-							}
+						for pid2 := uint16(0); pid2 < dag.NProc(); pid2++ {
+							myFloor := units[pid][0][0].Floor(pid2)
+							Expect(len(myFloor)).To(Equal(0))
 						}
 					}
 				})
@@ -163,11 +158,12 @@ var _ = Describe("Units", func() {
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should contain correct floor", func() {
-					floor := units[0][1][0].Floor()
-					Expect(len(floor[0])).To(Equal(1))
-					Expect(floor[0][0]).To(Equal(units[0][1][0]))
-					Expect(len(floor[1])).To(Equal(1))
-					Expect(floor[1][0]).To(Equal(units[1][0][0]))
+					floor0 := units[0][1][0].Floor(0)
+					floor1 := units[0][1][0].Floor(1)
+					Expect(len(floor0)).To(Equal(1))
+					Expect(floor0[0]).To(Equal(units[0][0][0]))
+					Expect(len(floor1)).To(Equal(1))
+					Expect(floor1[0]).To(Equal(units[1][0][0]))
 				})
 			})
 			Describe("When seeing a fork", func() {
@@ -175,21 +171,6 @@ var _ = Describe("Units", func() {
 					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
 					Expect(readingErr).To(HaveOccurred())
 					Expect(readingErr).To(MatchError("ambiguous parents"))
-				})
-			})
-			Describe("On a chain with 9 consecutive dealing units as the other parent ", func() {
-				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/14/chain.txt", df)
-					Expect(readingErr).NotTo(HaveOccurred())
-				})
-				It("Should contain all dealing units in floor", func() {
-					floor := units[0][9][0].Floor()
-					Expect(len(floor[0])).To(Equal(1))
-					Expect(floor[0][0]).To(Equal(units[0][9][0]))
-					for pid := uint16(1); pid < 10; pid++ {
-						Expect(len(floor[pid])).To(Equal(1))
-						Expect(floor[pid][0]).To(Equal(units[pid][0][0]))
-					}
 				})
 			})
 		})

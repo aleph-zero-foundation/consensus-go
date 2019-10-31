@@ -1,6 +1,7 @@
 package dag
 
 import (
+	"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -8,8 +9,8 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	if pu.Creator() < 0 || pu.Creator() >= dag.nProcesses {
 		return nil, gomel.NewDataError("invalid creator")
 	}
-	if u := dag.Get([]*gomel.Hash{pu.Hash()}); u[0] != nil {
-		return nil, gomel.NewDuplicateUnit(u[0])
+	if u := dag.GetUnit(pu.Hash()); u != nil {
+		return nil, gomel.NewDuplicateUnit(u)
 	}
 	possibleParents := dag.heightUnits.get(pu.View().Heights)
 	parents, err := getParents(possibleParents, pu.Creator())
@@ -25,7 +26,17 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 		return nil, gomel.NewDataError("wrong control hash")
 	}
 
-	return NewUnit(pu, parents), nil
+	return unit.New(pu, parents), nil
+}
+
+func toHashes(units []gomel.Unit) []*gomel.Hash {
+	result := make([]*gomel.Hash, len(units))
+	for i, u := range units {
+		if u != nil {
+			result[i] = u.Hash()
+		}
+	}
+	return result
 }
 
 func countUnknown(parents []gomel.Unit, heights []int) int {
@@ -53,19 +64,17 @@ func getParents(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
 	return result, nil
 }
 
-func (dag *dag) Check(gomel.Unit) error {
-	return nil
+func (dag *dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
+	return unit.Prepared(u, dag), nil
 }
 
-func (dag *dag) Emplace(u gomel.Unit) (gomel.Unit, error) {
-	result := emplaced(u, dag)
-	dag.updateUnitsOnHeight(result)
-	if gomel.Prime(result) {
-		dag.addPrime(result)
+func (dag *dag) Insert(u gomel.Unit) {
+	dag.updateUnitsOnHeight(u)
+	if gomel.Prime(u) {
+		dag.addPrime(u)
 	}
-	dag.units.add(result)
-	dag.updateMaximal(result)
-	return result, nil
+	dag.units.add(u)
+	dag.updateMaximal(u)
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {
@@ -87,7 +96,7 @@ func (dag *dag) updateMaximal(u gomel.Unit) {
 	newMaxByCreator := make([]gomel.Unit, 0)
 	// The below code works properly assuming that no unit in the dag created by creator is >= u
 	for _, v := range maxByCreator {
-		if !u.Above(v) {
+		if !gomel.Above(u, v) {
 			newMaxByCreator = append(newMaxByCreator, v)
 		}
 	}

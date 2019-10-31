@@ -9,7 +9,7 @@ import (
 // and no process creates a unit of level n>0 without creating a unit of level n-1.
 // To ensure that it is sufficient to check whether height = level for every unit.
 func PrimeOnlyNoSkipping(dag gomel.Dag) gomel.Dag {
-	return Units(dag, checkPrimeOnlyNoSkipping)
+	return AddCheck(dag, checkPrimeOnlyNoSkipping)
 }
 
 func checkPrimeOnlyNoSkipping(u gomel.Unit) error {
@@ -19,9 +19,21 @@ func checkPrimeOnlyNoSkipping(u gomel.Unit) error {
 	return nil
 }
 
+type noForkUnit struct {
+	gomel.Unit
+}
+
+func (u *noForkUnit) AboveWithinProc(v gomel.Unit) bool {
+	return u.Creator() == v.Creator() && u.Height() >= v.Height()
+}
+
 // NoForks returns a dag that will error on adding a fork.
 func NoForks(dag gomel.Dag) gomel.Dag {
-	return Units(dag, func(u gomel.Unit) error { return checkNoForks(dag, u) })
+	return AddCheckAndTransform(dag, func(u gomel.Unit) error {
+		return checkNoForks(dag, u)
+	}, func(u gomel.Unit) gomel.Unit {
+		return &noForkUnit{u}
+	})
 }
 
 func checkNoForks(dag gomel.Dag, u gomel.Unit) error {

@@ -8,20 +8,26 @@ import (
 
 type unitBag struct {
 	sync.RWMutex
-	contents map[gomel.Hash]*unit
+	contents map[gomel.Hash]gomel.Unit
 }
 
 func newUnitBag() *unitBag {
-	return &unitBag{contents: map[gomel.Hash]*unit{}}
+	return &unitBag{contents: map[gomel.Hash]gomel.Unit{}}
 }
 
-func (units *unitBag) add(u *unit) {
+func (units *unitBag) add(u gomel.Unit) {
 	units.Lock()
 	defer units.Unlock()
 	units.contents[*u.Hash()] = u
 }
 
-func (units *unitBag) get(hashes []*gomel.Hash) ([]gomel.Unit, int) {
+func (units *unitBag) getOne(hash *gomel.Hash) gomel.Unit {
+	units.RLock()
+	defer units.RUnlock()
+	return units.contents[*hash]
+}
+
+func (units *unitBag) getMany(hashes []*gomel.Hash) ([]gomel.Unit, int) {
 	units.RLock()
 	defer units.RUnlock()
 	result := make([]gomel.Unit, len(hashes))

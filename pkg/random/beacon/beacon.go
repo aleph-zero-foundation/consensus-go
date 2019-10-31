@@ -95,7 +95,7 @@ func (b *Beacon) Bind(dag gomel.Dag) gomel.Dag {
 		b.shares[i] = random.NewSyncCSMap()
 		b.subcoins[i] = make(map[uint16]bool)
 	}
-	return chdag.BeforeEmplace(check.Units(dag, b.checkCompliance), b.update)
+	return chdag.BeforeInsert(check.AddCheck(dag, b.checkCompliance), b.update)
 }
 
 // RandomBytes returns a sequence of random bits for a given unit.
@@ -205,7 +205,7 @@ func (b *Beacon) update(u gomel.Unit) {
 		votingUnits := unitsOnLevel(b.dag, votingLevel)
 
 		for _, v := range votingUnits {
-			if u.Above(v) {
+			if gomel.Above(u, v) {
 				providers[v.Creator()] = true
 				nBelowUOnVotingLevel++
 				for pid := uint16(0); pid < b.dag.NProc(); pid++ {
@@ -239,7 +239,7 @@ func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 	dealingUnits := unitsOnLevel(b.dag, dealingLevel)
 	createdDealing := make([]bool, b.dag.NProc())
 	for _, v := range dealingUnits {
-		shouldVote := u.Above(v)
+		shouldVote := gomel.Above(u, v)
 		if shouldVote && votes[v.Creator()] == nil {
 			return errors.New("missing vote")
 		}

@@ -55,7 +55,7 @@ var _ = Describe("Coin", func() {
 				It("should return an error", func() {
 					u := dag[0].PrimeUnits(2).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					err := dag[0].Check(um)
+					_, err := dag[0].Prepare(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -64,7 +64,7 @@ var _ = Describe("Coin", func() {
 					u := dag[0].PrimeUnits(2).Get(0)[0]
 					v := dag[0].PrimeUnits(3).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
-					err := dag[0].Check(um)
+					_, err := dag[0].Prepare(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -74,7 +74,7 @@ var _ = Describe("Coin", func() {
 				It("should return an error", func() {
 					u := dag[0].PrimeUnits(2).Get(n - 1)[0]
 					um := newUnitMock(u, []byte{1, 2, 3})
-					err := dag[0].Check(um)
+					_, err := dag[0].Prepare(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -83,57 +83,14 @@ var _ = Describe("Coin", func() {
 })
 
 type unitMock struct {
-	u      gomel.Unit
+	gomel.Unit
 	rsData []byte
 }
 
 func newUnitMock(u gomel.Unit, rsData []byte) *unitMock {
-	return &unitMock{
-		u:      u,
-		rsData: rsData,
-	}
-}
-
-func (um *unitMock) Creator() uint16 {
-	return um.u.Creator()
-}
-
-func (um *unitMock) Signature() gomel.Signature {
-	return um.u.Signature()
-}
-
-func (um *unitMock) Hash() *gomel.Hash {
-	return um.u.Hash()
-}
-
-func (um *unitMock) View() *gomel.Crown {
-	return um.u.View()
-}
-
-func (um *unitMock) Data() gomel.Data {
-	return um.u.Data()
+	return &unitMock{u, rsData}
 }
 
 func (um *unitMock) RandomSourceData() []byte {
 	return um.rsData
-}
-
-func (um *unitMock) Height() int {
-	return um.u.Height()
-}
-
-func (um *unitMock) Parents() []gomel.Unit {
-	return um.u.Parents()
-}
-
-func (um *unitMock) Level() int {
-	return um.u.Level()
-}
-
-func (um *unitMock) Above(v gomel.Unit) bool {
-	return um.u.Above(v)
-}
-
-func (um *unitMock) Floor() [][]gomel.Unit {
-	return um.u.Floor()
 }

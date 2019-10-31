@@ -1,7 +1,7 @@
 package forking
 
 import (
-	gdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -28,35 +28,30 @@ func (dag *alertDag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 		if *gomel.CombineHashes(gomel.ToHashes(parents)) != pu.View().ControlHash {
 			return nil, gomel.NewDataError("wrong control hash")
 		}
-		return gdag.NewUnit(pu, parents), nil
+		return unit.New(pu, parents), nil
 	default:
 		return u, err
 	}
 }
 
-func (dag *alertDag) Check(u gomel.Unit) error {
-	if err := dag.Dag.Check(u); err != nil {
-		return err
+func (dag *alertDag) Prepare(u gomel.Unit) (gomel.Unit, error) {
+	u, err := dag.Dag.Prepare(u)
+	if err != nil {
+		return nil, err
 	}
 	dag.alert.Lock(u.Creator())
-	defer dag.alert.Unlock(u.Creator())
 	if dag.handleForkerUnit(u) {
 		if !dag.alert.HasCommitmentTo(u) {
-			return missingCommitmentToForkError
-		}
-	}
-	return nil
-}
-
-func (dag *alertDag) Emplace(u gomel.Unit) (gomel.Unit, error) {
-	dag.alert.Lock(u.Creator())
-	defer dag.alert.Unlock(u.Creator())
-	if dag.alert.IsForker(u.Creator()) {
-		if !dag.alert.HasCommitmentTo(u) {
+			dag.alert.Unlock(u.Creator())
 			return nil, missingCommitmentToForkError
 		}
 	}
-	return dag.Dag.Emplace(u)
+	return u, nil
+}
+
+func (dag *alertDag) Insert(u gomel.Unit) {
+	dag.Dag.Insert(u)
+	dag.alert.Unlock(u.Creator())
 }
 
 func (dag *alertDag) handleForkerUnit(u gomel.Unit) bool {

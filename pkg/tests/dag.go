@@ -53,15 +53,14 @@ func (dag *Dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	return &u, nil
 }
 
-// Check accepts everything.
-func (dag *Dag) Check(u gomel.Unit) error {
-	return nil
+// Prepare accepts everything.
+func (dag *Dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
+	return u, nil
 }
 
-// Emplace the unit in the dag.
-func (dag *Dag) Emplace(u gomel.Unit) (gomel.Unit, error) {
+// Insert the unit into the dag.
+func (dag *Dag) Insert(u gomel.Unit) {
 	updateDag(u, dag)
-	return u, nil
 }
 
 // PrimeUnits returns the prime units at the given level.
@@ -97,8 +96,18 @@ func (dag *Dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return su
 }
 
-// Get returns the units with the given hashes or nil, when it doesn't find them.
-func (dag *Dag) Get(hashes []*gomel.Hash) []gomel.Unit {
+// GetUnit returns the units with the given hashes or nil, when it doesn't find them.
+func (dag *Dag) GetUnit(hash *gomel.Hash) gomel.Unit {
+	dag.RLock()
+	defer dag.RUnlock()
+	if hash != nil {
+		return dag.unitByHash[*hash]
+	}
+	return nil
+}
+
+// GetUnits returns the units with the given hashes or nil, when it doesn't find them.
+func (dag *Dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 	dag.RLock()
 	defer dag.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
@@ -189,13 +198,13 @@ func setFloor(u *unit, dag *Dag) {
 	dag.RLock()
 	defer dag.RUnlock()
 	parentsFloorUnion := make([][]gomel.Unit, dag.NProc())
-	parentsFloorUnion[u.Creator()] = []gomel.Unit{u}
 	for _, v := range u.Parents() {
 		if v == nil {
 			continue
 		}
-		for pid, units := range v.Floor() {
-			parentsFloorUnion[pid] = append(parentsFloorUnion[pid], units...)
+		parentsFloorUnion[v.Creator()] = append(parentsFloorUnion[v.Creator()], v)
+		for pid := uint16(0); pid < dag.NProc(); pid++ {
+			parentsFloorUnion[pid] = append(parentsFloorUnion[pid], v.Floor(pid)...)
 		}
 	}
 	result := make([][]gomel.Unit, dag.NProc())
@@ -206,7 +215,7 @@ func setFloor(u *unit, dag *Dag) {
 		for _, v := range parentsFloorUnion[pid] {
 			ok := true
 			for _, f := range result[pid] {
-				if f.Above(v) {
+				if f.AboveWithinProc(v) {
 					ok = false
 					break
 				}

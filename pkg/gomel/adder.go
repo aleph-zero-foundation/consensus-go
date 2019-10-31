@@ -11,13 +11,14 @@ type Adder interface {
 
 // AddUnit to the specified dag.
 func AddUnit(dag Dag, pu Preunit) (Unit, error) {
-	result, err := dag.Decode(pu)
+	freeUnit, err := dag.Decode(pu)
 	if err != nil {
 		return nil, err
 	}
-	err = dag.Check(result)
+	unitInDag, err := dag.Prepare(freeUnit)
 	if err != nil {
 		return nil, err
 	}
-	return dag.Emplace(result)
+	dag.Insert(unitInDag)
+	return unitInDag, nil
 }

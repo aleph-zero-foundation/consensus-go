@@ -155,9 +155,9 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 			if result != nil {
 				resultUnit = result
 			} else if _, ok := err.(*gomel.DuplicateUnit); ok {
-				duplicates := dag.Get([]*gomel.Hash{unit.Hash()})
-				if len(duplicates) > 0 {
-					resultUnit = duplicates[0]
+				duplicate := dag.GetUnit(unit.Hash())
+				if duplicate != nil {
+					resultUnit = duplicate
 				}
 			}
 		}
@@ -210,7 +210,7 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 		return 0
 	}
 	level := 0
-	nProcesses := dag.NProc()
+	nProc := dag.NProc()
 	for _, parent := range parents {
 		if parent == nil {
 			continue
@@ -220,10 +220,10 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 		}
 	}
 	nSeen := uint16(0)
-	for pid := range parents[0].Floor() {
+	for pid := uint16(0); pid < nProc; pid++ {
 		pidFound := false
 		for _, parent := range parents {
-			for _, unit := range parent.Floor()[pid] {
+			for _, unit := range parent.Floor(pid) {
 				if unit.Level() == level {
 					nSeen++
 					pidFound = true
@@ -237,7 +237,7 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 				break
 			}
 		}
-		if !pidFound && !dag.IsQuorum(nSeen+(nProcesses-(uint16(pid)+1))) {
+		if !pidFound && !dag.IsQuorum(nSeen+(nProc-(uint16(pid)+1))) {
 			break
 		}
 	}

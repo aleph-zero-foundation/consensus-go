@@ -23,3 +23,13 @@ type BaseUnit interface {
 func Nickname(bu BaseUnit) string {
 	return bu.Hash().Short()
 }
+
+// ID is a pair (Creator, Height) encoded as a single number.
+func ID(height int, creator, nProc uint16) uint64 {
+	return uint64(creator) + uint64(nProc)*uint64(height)
+}
+
+// UnitID returns ID of the given BaseUnit.
+func UnitID(u BaseUnit) uint64 {
+	return ID(u.Height(), u.Creator(), uint16(len(u.View().Heights)))
+}
