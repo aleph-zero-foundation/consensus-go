@@ -87,8 +87,7 @@ func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
 	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
 	// check whether collection of these maximal units has a single maximal element
 	var storage [1]gomel.Unit
-	combinedFloor := storage[:0]
-	gomel.MaximalByPid(parents, creator, &combinedFloor)
+	combinedFloor := gomel.MaximalByPid(parents, creator, storage[:0])
 	if len(combinedFloor) > 1 {
 		return true
 	}

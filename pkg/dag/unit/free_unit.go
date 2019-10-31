@@ -108,8 +108,7 @@ func (u *freeUnit) computeFloor() {
 	}
 	var storage [1]gomel.Unit
 	for pid := uint16(0); pid < u.nProc; pid++ {
-		maximal := storage[:0]
-		gomel.MaximalByPid(u.parents, pid, &maximal)
+		maximal := gomel.MaximalByPid(u.parents, pid, storage[:0])
 		if len(maximal) > 1 {
 			u.floor[pid] = maximal
 		}
