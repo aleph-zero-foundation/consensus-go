@@ -96,7 +96,7 @@ func (u *freeUnit) Floor(pid uint16) []gomel.Unit {
 		return fl
 	}
 	if u.parents[pid] == nil {
-		return u.parents[0:0]
+		return nil
 	}
 	return u.parents[pid:(pid + 1)]
 }

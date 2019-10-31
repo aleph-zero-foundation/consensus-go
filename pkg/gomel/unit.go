@@ -54,6 +54,9 @@ func LevelFromParents(parents []Unit) int {
 // MaximalByPid computes all maximal units produced by pid present in parents and their floors.
 // The result will be appended to the 'out' parameter.
 func MaximalByPid(parents []Unit, pid uint16, out *[]Unit) {
+	if parents[pid] == nil {
+		return
+	}
 	*out = append(*out, parents[pid])
 	startIx := len(*out)
 	for _, parent := range parents {
