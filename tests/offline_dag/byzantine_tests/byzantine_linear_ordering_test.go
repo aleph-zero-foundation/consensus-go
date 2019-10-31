@@ -607,7 +607,7 @@ func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 				// descend to a common parent
 				current := unit
 				for current != nil {
-					other, _ := dag.GetUnits([]*gomel.Hash{current.Hash()})
+					other := dag.GetUnits([]*gomel.Hash{current.Hash()})
 					if len(other) < 1 || other[0] == nil {
 						if missing[current] {
 							break
