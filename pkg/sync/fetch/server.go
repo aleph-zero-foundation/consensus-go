@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -86,8 +87,15 @@ func (s *server) Resolve(preunit gomel.Preunit) {
 		curCreator++
 		return true
 	})
-	s.requests <- request{
-		pid:     preunit.Creator(),
-		unitIDs: unitIDs,
+	for len(unitIDs) > 0 {
+		end := len(unitIDs)
+		if end > config.MaxUnitsInAntichain {
+			end = config.MaxUnitsInAntichain
+		}
+		s.requests <- request{
+			pid:     preunit.Creator(),
+			unitIDs: unitIDs[:end],
+		}
+		unitIDs = unitIDs[end:]
 	}
 }

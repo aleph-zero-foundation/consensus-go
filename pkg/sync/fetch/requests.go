@@ -2,8 +2,10 @@ package fetch
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
@@ -14,6 +16,9 @@ type request struct {
 }
 
 func sendRequests(conn network.Connection, unitIDs []uint64) error {
+	if len(unitIDs) > config.MaxUnitsInAntichain {
+		unitIDs = unitIDs[:config.MaxUnitsInAntichain]
+	}
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint32(buf[:4], uint32(len(unitIDs)))
 	_, err := conn.Write(buf[:4])
@@ -37,6 +42,9 @@ func receiveRequests(conn network.Connection) ([]uint64, error) {
 		return nil, err
 	}
 	nReqs := binary.LittleEndian.Uint32(buf[:4])
+	if nReqs > config.MaxUnitsInAntichain {
+		return nil, errors.New("requests too big")
+	}
 	result := make([]uint64, nReqs)
 	for i := range result {
 		_, err := io.ReadFull(conn, buf)
