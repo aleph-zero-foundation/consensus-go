@@ -57,8 +57,8 @@ func MaximalByPid(parents []Unit, pid uint16, buffer []Unit) []Unit {
 	if parents[pid] == nil {
 		return nil
 	}
-	buffer = append(buffer, parents[pid])
 	startIx := len(buffer)
+	buffer = append(buffer, parents[pid])
 	for _, parent := range parents {
 		if parent == nil {
 			continue
