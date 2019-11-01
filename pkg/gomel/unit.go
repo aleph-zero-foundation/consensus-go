@@ -18,7 +18,7 @@ func Above(u, v Unit) bool {
 	if v == nil || u == nil {
 		return false
 	}
-	if *u.Hash() == *v.Hash() {
+	if SameUnit(u, v) {
 		return true
 	}
 	for _, w := range u.Floor(v.Creator()) {
@@ -99,7 +99,8 @@ func HasForkingEvidence(u Unit, creator uint16) bool {
 	if Dealing(u) {
 		return false
 	}
-	return len(u.Floor(creator)) > 1
+	f := u.Floor(creator)
+	return len(f) > 1 || (len(f) == 1 && !SameUnit(f[0], u.Parents()[creator]))
 }
 
 // Prime checks whether the given unit is a prime unit.
