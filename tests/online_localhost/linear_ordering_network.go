@@ -78,7 +78,6 @@ func createAndStartProcess(
 	secretKey *bn256.SecretKey,
 	p2pPubKeys []*p2p.PublicKey,
 	p2pSecKey *p2p.SecretKey,
-	userDB string,
 	maxLevel int,
 	finished *sync.WaitGroup,
 	dags []gomel.Dag,
@@ -237,8 +236,6 @@ func checkOrderingFromLogs(nProc uint16, filenamePrefix string) bool {
 
 func main() {
 	testSize := flag.Int("test_size", 10, "number of created processes; default is 10")
-	userDB := flag.String("user_db", "../../pkg/testdata/users.txt",
-		"file containing testdata for user accounts; default is a file containing names of superheros")
 	maxLevel := flag.Int("max_level", 12, "number of levels after which a process should finish; default is 12")
 	flag.Parse()
 
@@ -251,7 +248,7 @@ func main() {
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *userDB, *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}
