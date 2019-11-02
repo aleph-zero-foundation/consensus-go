@@ -53,19 +53,19 @@ func LevelFromParents(parents []Unit) int {
 
 // MaximalByPid computes all maximal units produced by pid present in parents and their floors.
 // The result will be appended to the 'out' parameter.
-func MaximalByPid(parents []Unit, pid uint16, buffer []Unit) []Unit {
+func MaximalByPid(parents []Unit, pid uint16) []Unit {
 	if parents[pid] == nil {
 		return nil
 	}
-	startIx := len(buffer)
-	buffer = append(buffer, parents[pid])
+	startIx := 0
+	maximal := []Unit{parents[pid]}
 	for _, parent := range parents {
 		if parent == nil {
 			continue
 		}
 		for _, w := range parent.Floor(pid) {
 			found, ri := false, -1
-			for ix, v := range buffer[startIx:] {
+			for ix, v := range maximal[startIx:] {
 
 				if Above(w, v) {
 					found = true
@@ -84,13 +84,13 @@ func MaximalByPid(parents []Unit, pid uint16, buffer []Unit) []Unit {
 
 			}
 			if !found {
-				buffer = append(buffer, w)
+				maximal = append(maximal, w)
 			} else if ri >= 0 {
-				buffer[startIx+ri] = w
+				maximal[startIx+ri] = w
 			}
 		}
 	}
-	return buffer
+	return maximal
 }
 
 // HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
