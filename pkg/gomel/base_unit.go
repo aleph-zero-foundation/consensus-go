@@ -34,7 +34,7 @@ func UnitID(u BaseUnit) uint64 {
 	return ID(u.Height(), u.Creator(), uint16(len(u.View().Heights)))
 }
 
-// SameUnit checks if two units are the same.
-func SameUnit(u, v BaseUnit) bool {
+// Equal checks if two units are the same.
+func Equal(u, v BaseUnit) bool {
 	return *u.Hash() == *v.Hash()
 }

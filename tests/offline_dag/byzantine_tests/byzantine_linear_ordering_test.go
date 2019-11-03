@@ -87,7 +87,7 @@ func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
 	// using the knowledge of maximal units produced by 'creator' that are below some of the parents (their floor attributes),
 	// check whether collection of these maximal units has a single maximal element
 	combinedFloor := gomel.MaximalByPid(parents, creator)
-	return len(combinedFloor) > 1 || (len(combinedFloor) == 1 && !gomel.SameUnit(combinedFloor[0], parents[creator]))
+	return len(combinedFloor) > 1 || (len(combinedFloor) == 1 && !gomel.Equal(combinedFloor[0], parents[creator]))
 }
 
 func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error {
