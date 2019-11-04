@@ -33,3 +33,8 @@ func ID(height int, creator, nProc uint16) uint64 {
 func UnitID(u BaseUnit) uint64 {
 	return ID(u.Height(), u.Creator(), uint16(len(u.View().Heights)))
 }
+
+// Equal checks if two units are the same.
+func Equal(u, v BaseUnit) bool {
+	return *u.Hash() == *v.Hash()
+}

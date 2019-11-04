@@ -56,7 +56,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 		case "multicast":
 			lg := log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			server := multicast.NewServer(pid, dag, adder, fetchData, netserv, timeout, log)
+			server := multicast.NewServer(pid, dag, adder, fetchData, netserv, timeout, lg)
 			s.mcServer = server
 			s.servers[c.Type] = server
 
@@ -78,7 +78,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], s.fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, fetchData, netserv, timeout, log, nOut, nIn)
+			s.servers[c.Type], s.fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, fetchData, netserv, timeout, lg, nOut, nIn)
 		case "fetch":
 			lg := log.With().Int(logging.Service, logging.FetchService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
@@ -90,7 +90,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], s.fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, fetchData, netserv, timeout, log, nOut, nIn)
+			s.servers[c.Type], s.fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, fetchData, netserv, timeout, lg, nOut, nIn)
 
 		default:
 			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)

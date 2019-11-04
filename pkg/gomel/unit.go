@@ -18,7 +18,7 @@ func Above(u, v Unit) bool {
 	if v == nil || u == nil {
 		return false
 	}
-	if *u.Hash() == *v.Hash() {
+	if Equal(u, v) {
 		return true
 	}
 	for _, w := range u.Floor(v.Creator()) {
@@ -52,20 +52,18 @@ func LevelFromParents(parents []Unit) int {
 }
 
 // MaximalByPid computes all maximal units produced by pid present in parents and their floors.
-// The result will be appended to the 'out' parameter.
-func MaximalByPid(parents []Unit, pid uint16, buffer []Unit) []Unit {
+func MaximalByPid(parents []Unit, pid uint16) []Unit {
 	if parents[pid] == nil {
 		return nil
 	}
-	buffer = append(buffer, parents[pid])
-	startIx := len(buffer)
+	maximal := []Unit{parents[pid]}
 	for _, parent := range parents {
 		if parent == nil {
 			continue
 		}
 		for _, w := range parent.Floor(pid) {
 			found, ri := false, -1
-			for ix, v := range buffer[startIx:] {
+			for ix, v := range maximal {
 
 				if Above(w, v) {
 					found = true
@@ -84,13 +82,13 @@ func MaximalByPid(parents []Unit, pid uint16, buffer []Unit) []Unit {
 
 			}
 			if !found {
-				buffer = append(buffer, w)
+				maximal = append(maximal, w)
 			} else if ri >= 0 {
-				buffer[startIx+ri] = w
+				maximal[ri] = w
 			}
 		}
 	}
-	return buffer
+	return maximal
 }
 
 // HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
@@ -99,7 +97,8 @@ func HasForkingEvidence(u Unit, creator uint16) bool {
 	if Dealing(u) {
 		return false
 	}
-	return len(u.Floor(creator)) > 1
+	f := u.Floor(creator)
+	return len(f) > 1 || (len(f) == 1 && !Equal(f[0], u.Parents()[creator]))
 }
 
 // Prime checks whether the given unit is a prime unit.

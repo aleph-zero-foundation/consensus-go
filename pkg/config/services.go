@@ -61,12 +61,10 @@ type Sync struct {
 // Create represents a complete configuration needed for a creating service to start.
 type Create struct {
 	Pid          uint16
-	MaxParents   uint16
 	PrimeOnly    bool
 	CanSkipLevel bool
 	PrivateKey   gomel.PrivateKey
-	InitialDelay time.Duration
-	AdjustFactor float64
+	Delay        time.Duration
 	MaxLevel     int
 }
 

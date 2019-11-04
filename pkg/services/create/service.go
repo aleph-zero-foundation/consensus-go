@@ -3,6 +3,7 @@ package create
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -13,31 +14,21 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-const (
-	positiveJerk = 1.01
-	negativeJerk = 0.90
-)
-
 type service struct {
-	dag              gomel.Dag
-	adder            gomel.Adder
-	randomSource     gomel.RandomSource
-	pid              uint16
-	maxParents       uint16
-	primeOnly        bool
-	canSkipLevel     bool
-	maxLevel         int
-	privKey          gomel.PrivateKey
-	adjustFactor     float64
-	previousSuccess  bool
-	delay            time.Duration
-	ticker           *time.Ticker
-	dataSource       gomel.DataSource
-	primeUnitCreated chan<- int
-	dagFinished      chan<- struct{}
-	done             chan struct{}
-	log              zerolog.Logger
-	wg               sync.WaitGroup
+	dag          gomel.Dag
+	adder        gomel.Adder
+	randomSource gomel.RandomSource
+	pid          uint16
+	primeOnly    bool
+	canSkipLevel bool
+	maxLevel     int
+	privKey      gomel.PrivateKey
+	ticker       *time.Ticker
+	dataSource   gomel.DataSource
+	dagFinished  chan<- struct{}
+	quit         int64
+	wg           sync.WaitGroup
+	log          zerolog.Logger
 }
 
 // NewService constructs a creating service for the given dag with the given configuration.
@@ -50,23 +41,18 @@ type service struct {
 // The service will close the dagFinished channel when it stops.
 func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource gomel.DataSource, log zerolog.Logger) gomel.Service {
 	return &service{
-		dag:             dag,
-		adder:           adder,
-		randomSource:    randomSource,
-		pid:             conf.Pid,
-		maxParents:      conf.MaxParents,
-		primeOnly:       conf.PrimeOnly,
-		canSkipLevel:    conf.CanSkipLevel,
-		maxLevel:        conf.MaxLevel,
-		privKey:         conf.PrivateKey,
-		adjustFactor:    conf.AdjustFactor,
-		previousSuccess: false,
-		delay:           conf.InitialDelay,
-		ticker:          time.NewTicker(conf.InitialDelay),
-		dataSource:      dataSource,
-		dagFinished:     dagFinished,
-		done:            make(chan struct{}),
-		log:             log,
+		dag:          dag,
+		adder:        adder,
+		randomSource: randomSource,
+		pid:          conf.Pid,
+		primeOnly:    conf.PrimeOnly,
+		canSkipLevel: conf.CanSkipLevel,
+		maxLevel:     conf.MaxLevel,
+		privKey:      conf.PrivateKey,
+		ticker:       time.NewTicker(conf.Delay),
+		dataSource:   dataSource,
+		dagFinished:  dagFinished,
+		log:          log,
 	}
 }
 
@@ -75,18 +61,12 @@ func (s *service) Start() error {
 	go func() {
 		defer s.ticker.Stop()
 		defer s.wg.Done()
-		s.createUnit()
-		for {
-			select {
-			case <-s.done:
+		for atomic.LoadInt64(&s.quit) == 0 {
+			if !s.createUnit() {
+				close(s.dagFinished)
 				return
-			case <-s.ticker.C:
-				if !s.createUnit() {
-					close(s.dagFinished)
-					<-s.done
-					return
-				}
 			}
+			<-s.ticker.C
 		}
 	}()
 	s.log.Info().Msg(logging.ServiceStarted)
@@ -94,32 +74,9 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
-	close(s.done)
+	atomic.StoreInt64(&s.quit, 1)
 	s.wg.Wait()
 	s.log.Info().Msg(logging.ServiceStopped)
-}
-
-func (s *service) slower() {
-	if !s.previousSuccess {
-		s.adjustFactor *= positiveJerk
-	}
-	s.previousSuccess = false
-	s.delay = time.Duration(float64(s.delay) * (1 + s.adjustFactor))
-	s.updateTicker()
-}
-
-func (s *service) quicker() {
-	if !s.previousSuccess {
-		s.adjustFactor *= negativeJerk
-	}
-	s.previousSuccess = true
-	s.delay = time.Duration(float64(s.delay) / (1 + s.adjustFactor))
-	s.updateTicker()
-}
-
-func (s *service) updateTicker() {
-	s.ticker.Stop()
-	s.ticker = time.NewTicker(s.delay)
 }
 
 func (s *service) getData() []byte {
@@ -134,42 +91,22 @@ func (s *service) getData() []byte {
 // createUnit creates a unit and adds it to the dag
 // It returns boolean value: whether we can create more units or not.
 func (s *service) createUnit() bool {
-	var (
-		created gomel.Preunit
-		level   int
-		isPrime bool
-		err     error
-	)
-	if !s.canSkipLevel {
-		created, level, err = creating.NewUnit(s.dag, s.pid, s.getData(), s.randomSource, false)
-		isPrime = true
-	} else {
-		created, level, err = creating.NewUnit(s.dag, s.pid, s.getData(), s.randomSource, true)
-	}
+	created, level, err := creating.NewUnit(s.dag, s.pid, s.getData(), s.randomSource, s.canSkipLevel)
 	if err != nil {
-		s.slower()
 		s.log.Info().Msg(logging.NotEnoughParents)
 		return true
 	}
 	created.SetSignature(s.privKey.Sign(created))
-
-	canCreateMore := true
 	err = s.adder.AddUnit(created)
 	if err != nil {
-		s.log.Error().Str("where", "dag.AddUnit callback").Msg(err.Error())
-		return canCreateMore
+		s.log.Error().Str("where", "create.AddUnit").Msg(err.Error())
+		return true
 	}
-
-	if isPrime {
-		s.log.Info().Int(logging.Lvl, level).Msg(logging.PrimeUnitCreated)
-		s.quicker()
+	added := s.dag.GetUnit(created.Hash())
+	if gomel.Prime(added) {
+		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
 	} else {
-		s.log.Info().Int(logging.Lvl, level).Msg(logging.UnitCreated)
-		s.slower()
+		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
 	}
-
-	if level >= s.maxLevel {
-		canCreateMore = false
-	}
-	return canCreateMore
+	return level < s.maxLevel
 }

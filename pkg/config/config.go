@@ -34,10 +34,6 @@ type Configuration struct {
 	// Delay after attempting to create a new unit, before another attempt is made.
 	CreateDelay float32
 
-	// A positive number describing how aggressive the CreateDelay adjusting mechanism is initially.
-	// A large value means aggressive adjustment, while 0 - no adjustment at all.
-	StepSize float64
-
 	// Configurations for synchronization services during the setup phase.
 	SyncSetup []SyncConfiguration
 
@@ -103,8 +99,6 @@ func NewDefaultConfiguration() Configuration {
 		CanSkipLevel: true,
 
 		CreateDelay: 0.1,
-
-		StepSize: 0.0,
 
 		SyncSetup: syncSetupConf,
 

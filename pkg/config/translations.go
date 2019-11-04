@@ -75,8 +75,7 @@ func generateCreateSetupConfig(conf *Configuration, m *Member, c *Committee) *Cr
 		Pid:          m.Pid,
 		CanSkipLevel: false,
 		PrivateKey:   m.PrivateKey,
-		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
-		AdjustFactor: conf.StepSize,
+		Delay:        time.Duration(conf.CreateDelay * float32(time.Second)),
 		MaxLevel:     conf.LevelLimit,
 	}
 }
@@ -86,8 +85,7 @@ func generateCreateConfig(conf *Configuration, m *Member, c *Committee) *Create 
 		Pid:          m.Pid,
 		CanSkipLevel: conf.CanSkipLevel,
 		PrivateKey:   m.PrivateKey,
-		InitialDelay: time.Duration(conf.CreateDelay * float32(time.Second)),
-		AdjustFactor: conf.StepSize,
+		Delay:        time.Duration(conf.CreateDelay * float32(time.Second)),
 		MaxLevel:     conf.LevelLimit,
 	}
 }
