@@ -26,6 +26,8 @@ type Dag interface {
 	// GetUnits returns slice of units associated with given hashes, in the same order.
 	// If no unit with a particular hash exists in the dag, the result contains a nil at that position.
 	GetUnits([]*Hash) []Unit
+	// GetByID returns the units associated with the given ID. There will be more than one only in the case of forks.
+	GetByID(uint64) []Unit
 	// IsQuorum checks if the given number of processes is enough to form a quorum.
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
@@ -62,6 +64,10 @@ func GetByCrown(dag Dag, crown *Crown) ([]Unit, error) {
 			continue
 		}
 		su := dag.UnitsOnHeight(h)
+		if su == nil {
+			unknown++
+			continue
+		}
 		possibleUnits[i] = su.Get(uint16(i))
 		if possibleUnits[i] == nil {
 			unknown++

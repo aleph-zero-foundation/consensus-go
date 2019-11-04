@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -68,18 +69,33 @@ func (s *server) SetFallback(qs sync.Fallback) {
 
 // Resolve builds a fetch request containing all the unknown parents of a problematic preunit.
 func (s *server) Resolve(preunit gomel.Preunit) {
-	topHeights := gomel.DealingHeights(s.dag.NProc())
+	unitIDs := []uint64{}
+	requiredHeights := preunit.View().Heights
+	curCreator := uint16(0)
 	s.dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+		highest := -1
 		for _, u := range units {
-			if u.Height() > topHeights[u.Creator()] {
-				topHeights[u.Creator()] = u.Height()
+			if u.Height() > highest {
+				highest = u.Height()
 			}
 		}
+		highest++
+		for highest <= requiredHeights[curCreator] {
+			unitIDs = append(unitIDs, gomel.ID(highest, curCreator, s.dag.NProc()))
+			highest++
+		}
+		curCreator++
 		return true
 	})
-
-	s.requests <- request{
-		pid:     preunit.Creator(),
-		heights: topHeights,
+	for len(unitIDs) > 0 {
+		end := len(unitIDs)
+		if end > config.MaxUnitsInAntichain {
+			end = config.MaxUnitsInAntichain
+		}
+		s.requests <- request{
+			pid:     preunit.Creator(),
+			unitIDs: unitIDs[:end],
+		}
+		unitIDs = unitIDs[end:]
 	}
 }

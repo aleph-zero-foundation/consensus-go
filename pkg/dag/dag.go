@@ -68,3 +68,12 @@ func (dag *dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 	us, _ := dag.units.getMany(hashes)
 	return us
 }
+
+func (dag *dag) GetByID(id uint64) []gomel.Unit {
+	height, creator := gomel.DecodeID(id, dag.NProc())
+	fiber, err := dag.heightUnits.getFiber(height)
+	if err != nil {
+		return nil
+	}
+	return fiber.Get(creator)
+}
