@@ -9,12 +9,18 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
+
+type testServer interface {
+	In()
+	Out()
+}
 
 type adder struct {
 	gomel.Adder
@@ -50,16 +56,22 @@ func (a *adder) removeDuplicates() {
 var _ = Describe("Protocol", func() {
 
 	var (
-		dags     []gomel.Dag
-		adders   []*adder
-		servs    []sync.Server
-		netservs []network.Server
+		dags         []gomel.Dag
+		adders       []*adder
+		servs        []sync.Server
+		fbks         []sync.Fallback
+		tservs       []testServer
+		netservs     []network.Server
+		dummyResolve gomel.Preunit
 	)
 
 	BeforeEach(func() {
 		// Length 2 because the tests below only check communication between the first two processes.
-		// The protocol chooses who to synchronise with at random, so this is the only way to be sure.
 		netservs = tests.NewNetwork(2)
+	})
+
+	AfterEach(func() {
+		tests.CloseNetwork(netservs)
 	})
 
 	JustBeforeEach(func() {
@@ -68,10 +80,13 @@ var _ = Describe("Protocol", func() {
 			adders = append(adders, &adder{tests.NewAdder(dag), snc.Mutex{}, nil})
 		}
 		servs = make([]sync.Server, 2)
+		fbks = make([]sync.Fallback, 2)
+		tservs = make([]testServer, 2)
 		for i := 0; i < 2; i++ {
-			servs[i], _ = NewServer(uint16(i), dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop(), 1, 3)
-			servs[i].Start()
+			servs[i], fbks[i] = NewServer(uint16(i), dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop(), 1, 3)
+			tservs[i] = servs[i].(testServer)
 		}
+		dummyResolve = creating.NewPreunit(1, gomel.EmptyCrown(dags[0].NProc()), nil, nil)
 
 	})
 
@@ -88,14 +103,9 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				time.Sleep(time.Millisecond * 1000)
-				for i := 0; i < 2; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 2; i++ {
-					servs[i].StopIn()
-				}
+				fbks[0].Resolve(dummyResolve)
+				go tservs[0].Out()
+				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
@@ -121,14 +131,9 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to the second copy", func() {
-				time.Sleep(time.Millisecond * 1000)
-				for i := 0; i < 2; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 2; i++ {
-					servs[i].StopIn()
-				}
+				fbks[0].Resolve(dummyResolve)
+				go tservs[0].Out()
+				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
@@ -151,14 +156,9 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to the first copy", func() {
-				time.Sleep(time.Millisecond * 1000)
-				for i := 0; i < 2; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 2; i++ {
-					servs[i].StopIn()
-				}
+				fbks[0].Resolve(dummyResolve)
+				go tservs[1].In()
+				tservs[0].Out()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
@@ -180,14 +180,9 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				time.Sleep(time.Millisecond * 1000)
-				for i := 0; i < 2; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 2; i++ {
-					servs[i].StopIn()
-				}
+				fbks[0].Resolve(dummyResolve)
+				go tservs[0].Out()
+				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
@@ -208,14 +203,9 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add everything", func() {
-				time.Sleep(time.Millisecond * 1000)
-				for i := 0; i < 2; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 2; i++ {
-					servs[i].StopIn()
-				}
+				fbks[0].Resolve(dummyResolve)
+				go tservs[0].Out()
+				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
@@ -234,14 +224,9 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add all units", func() {
-				time.Sleep(time.Millisecond * 1000)
-				for i := 0; i < 2; i++ {
-					servs[i].StopOut()
-				}
-				tests.CloseNetwork(netservs)
-				for i := 0; i < 2; i++ {
-					servs[i].StopIn()
-				}
+				fbks[0].Resolve(dummyResolve)
+				go tservs[0].Out()
+				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}

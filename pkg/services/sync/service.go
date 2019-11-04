@@ -18,7 +18,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/retrying"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/rmc"
 )
 
@@ -98,14 +97,8 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 	}
 
 	for _, c := range configs {
-		var service gomel.Service
 		if c.Fallback != "" {
 			fallback := s.fallbacks[c.Fallback]
-			if c.Retry > 0 {
-				lg := log.With().Int(logging.Service, logging.RetryingService).Logger()
-				service, fallback = retrying.NewService(dag, adder, fallback, fetchData, c.Retry, lg)
-				s.subservices = append(s.subservices, service)
-			}
 			s.servers[c.Type].SetFallback(fallback)
 		} else {
 			s.servers[c.Type].SetFallback(sync.DefaultFallback(log))

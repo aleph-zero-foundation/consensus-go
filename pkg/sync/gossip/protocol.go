@@ -22,7 +22,7 @@ import (
 		8. Add units that are requested and their predecessors down to the first we know they have, and send all the units.
 		9. Add the received units to the dag.
 */
-func (p *server) in() {
+func (p *server) In() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
@@ -157,7 +157,7 @@ func (p *server) in() {
 			9. If the sent requests were nonempty, wait for more units. All the units are resend.
 		10. Add the received units to the dag.
 */
-func (p *server) out() {
+func (p *server) Out() {
 	remotePid := p.peerSource.NextPeer()
 	m := p.inUse[remotePid]
 	if !m.tryAcquire() {

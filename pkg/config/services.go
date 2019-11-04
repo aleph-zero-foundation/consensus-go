@@ -53,7 +53,6 @@ type Sync struct {
 	RemoteAddresses []string
 	Params          map[string]string
 	Fallback        string
-	Retry           time.Duration
 	Pubs            []*bn256.VerificationKey
 	Priv            *bn256.SecretKey
 }

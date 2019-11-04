@@ -6,7 +6,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-func (p *server) in() {
+func (p *server) In() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "multicast.in.listen").Msg(err.Error())
@@ -25,7 +25,7 @@ func (p *server) in() {
 	}
 }
 
-func (p *server) out(pid uint16) {
+func (p *server) Out(pid uint16) {
 	r, ok := <-p.requests[pid]
 	if !ok {
 		return
