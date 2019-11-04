@@ -61,3 +61,9 @@ build:
   stage: build
   script:
     - .gitlab/ci/make_build.sh ${PKG} ${GOPATH}
+
+online_local:
+  stage: build
+  script:
+    - .gitlab/ci/make_online_local.sh ${PKG} ${GOPATH}
+  timeout: 5m

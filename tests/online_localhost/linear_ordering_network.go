@@ -261,11 +261,13 @@ func main() {
 		fmt.Println("Ordering in setup OK")
 	} else {
 		fmt.Println("Processes obtained different orderings in setup!")
+		os.Exit(1)
 	}
 	fmt.Println("Main Dags are the same up to", commonLevel(dags, int(*maxLevel)), "level. Max level is", *maxLevel)
 	if checkOrderingFromLogs(dags[0].NProc(), "log") {
 		fmt.Println("Ordering in main is OK")
 	} else {
 		fmt.Println("Processes obtained different orderings in main!")
+		os.Exit(1)
 	}
 }
