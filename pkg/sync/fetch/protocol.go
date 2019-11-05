@@ -76,7 +76,8 @@ func (p *server) Out() {
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
-	units, nReceived, err := encoding.ReceiveChunk(conn)
+	units, err := encoding.ReceiveChunk(conn)
+	nReceived := len(units)
 	if err != nil {
 		log.Error().Str("where", "fetch.out.receivePreunits").Msg(err.Error())
 		return

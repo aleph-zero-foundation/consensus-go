@@ -57,40 +57,48 @@ func SendChunk(units []gomel.Unit, w io.Writer) error {
 }
 
 // ReceiveChunk decodes slice of preunit antichains from reader.
-func ReceiveChunk(r io.Reader) ([][]gomel.Preunit, int, error) {
+func ReceiveChunk(r io.Reader) ([]gomel.Preunit, error) {
 	return newDecoder(r).decodeChunk()
 }
 
-func computeLayer(u gomel.Unit, layer map[gomel.Unit]int) int {
-	if layer[u] == -1 {
-		maxParentLayer := 0
-		for _, v := range u.Parents() {
-			if computeLayer(v, layer) > maxParentLayer {
-				maxParentLayer = computeLayer(v, layer)
-			}
-		}
-		layer[u] = maxParentLayer + 1
+func max(a, b int) int {
+	if a > b {
+		return a
 	}
-	return layer[u]
+	return b
 }
 
-// toLayers divides the provided units into antichains, so that each antichain is
-// maximal, and depends only on units from outside or from previous antichains.
-func toLayers(units []gomel.Unit) [][]gomel.Unit {
-	layer := map[gomel.Unit]int{}
-	maxLayer := 0
-	for _, u := range units {
-		layer[u] = -1
-	}
-	for _, u := range units {
-		layer[u] = computeLayer(u, layer)
-		if layer[u] > maxLayer {
-			maxLayer = layer[u]
+func computeLayer(u gomel.Unit, layers map[gomel.Unit]int) int {
+	if layers[u] == -1 {
+		maxParentLayer := 0
+		for _, v := range u.Parents() {
+			maxParentLayer = max(maxParentLayer, computeLayer(v, layers))
 		}
+		layers[u] = maxParentLayer + 1
 	}
-	result := make([][]gomel.Unit, maxLayer)
+	return layers[u]
+}
+
+// topSort sorts the given slice of units in the topological order.
+func topSort(units []gomel.Unit) []gomel.Unit {
+	layers := map[gomel.Unit]int{}
 	for _, u := range units {
-		result[layer[u]-1] = append(result[layer[u]-1], u)
+		layers[u] = -1
+	}
+	for _, u := range units {
+		layers[u] = computeLayer(u, layers)
+	}
+	maxLayer := -1
+	for _, u := range units {
+		maxLayer = max(maxLayer, layers[u])
+	}
+	result := make([]gomel.Unit, 0, len(units))
+	for layer := 0; layer <= maxLayer; layer++ {
+		for _, u := range units {
+			if layers[u] == layer {
+				result = append(result, u)
+			}
+		}
 	}
 	return result
 }

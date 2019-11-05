@@ -82,8 +82,8 @@ func (s *server) Resolve(preunit gomel.Preunit) {
 	})
 	for len(unitIDs) > 0 {
 		end := len(unitIDs)
-		if end > config.MaxUnitsInAntichain {
-			end = config.MaxUnitsInAntichain
+		if end > config.MaxUnitsInChunk {
+			end = config.MaxUnitsInChunk
 		}
 		s.requests <- request{
 			pid:     preunit.Creator(),

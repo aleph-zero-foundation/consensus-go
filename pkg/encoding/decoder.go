@@ -119,13 +119,13 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 	return result, nil
 }
 
-func (d *dec) decodeAntichain() ([]gomel.Preunit, error) {
+func (d *dec) decodeChunk() ([]gomel.Preunit, error) {
 	k, err := d.decodeUint32()
 	if err != nil {
 		return nil, err
 	}
-	if k > config.MaxUnitsInAntichain {
-		return nil, errors.New("antichain length too long")
+	if k > config.MaxUnitsInChunk {
+		return nil, errors.New("chunk contains too many units")
 	}
 	result := make([]gomel.Preunit, k)
 	for i := range result {
@@ -135,27 +135,6 @@ func (d *dec) decodeAntichain() ([]gomel.Preunit, error) {
 		}
 	}
 	return result, nil
-}
-
-func (d *dec) decodeChunk() ([][]gomel.Preunit, int, error) {
-	k, err := d.decodeUint32()
-	if err != nil {
-		return nil, 0, err
-	}
-	if k > config.MaxAntichainsInChunk {
-		return nil, 0, errors.New("chunk contains too many antichains")
-	}
-	result := make([][]gomel.Preunit, k)
-	nUnits := 0
-	for i := range result {
-		layer, err := d.decodeAntichain()
-		if err != nil {
-			return nil, 0, err
-		}
-		result[i] = layer
-		nUnits += len(layer)
-	}
-	return result, nUnits, nil
 }
 
 func (d *dec) decodeUint32() (uint32, error) {

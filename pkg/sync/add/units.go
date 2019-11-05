@@ -13,15 +13,11 @@ func Unit(dag gomel.Dag, adder gomel.Adder, pu gomel.Preunit, where string, log 
 }
 
 // Chunk adds slice of antichains to the dag and returns whether everything went fine.
-func Chunk(dag gomel.Dag, adder gomel.Adder, antichains [][]gomel.Preunit, where string, log zerolog.Logger) bool {
+func Chunk(dag gomel.Dag, adder gomel.Adder, preunits []gomel.Preunit, where string, log zerolog.Logger) bool {
 	success := true
-	var units []gomel.Preunit
-	for _, ach := range antichains {
-		units = append(units, ach...)
-	}
-	aggErr := adder.AddUnits(units)
+	aggErr := adder.AddUnits(preunits)
 	for i, err := range aggErr.Errors() {
-		if !handleError(err, units[i], where, log) {
+		if !handleError(err, preunits[i], where, log) {
 			success = false
 		}
 	}

@@ -91,7 +91,8 @@ func (p *server) In() {
 	}
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := encoding.ReceiveChunk(conn)
+	theirPreunitsReceived, err := encoding.ReceiveChunk(conn)
+	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getPreunits").Msg(err.Error())
 		return
@@ -99,7 +100,8 @@ func (p *server) In() {
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	log.Debug().Msg(logging.GetPreunits)
-	theirFreshPreunitsReceived, nFreshReceived, err := encoding.ReceiveChunk(conn)
+	theirFreshPreunitsReceived, err := encoding.ReceiveChunk(conn)
+	nFreshReceived := len(theirFreshPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getPreunitsFresh").Msg(err.Error())
 		return
@@ -202,7 +204,8 @@ func (p *server) Out() {
 		return
 	}
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, nReceived, err := encoding.ReceiveChunk(conn)
+	theirPreunitsReceived, err := encoding.ReceiveChunk(conn)
+	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.getPreunits").Msg(err.Error())
 		return
@@ -255,7 +258,8 @@ func (p *server) Out() {
 	if nonempty(req) {
 		log.Info().Msg(logging.AdditionalExchange)
 		log.Debug().Msg(logging.GetPreunits)
-		theirPreunitsReceived, nReceived, err = encoding.ReceiveChunk(conn)
+		theirPreunitsReceived, err = encoding.ReceiveChunk(conn)
+		nReceived := len(theirPreunitsReceived)
 		if err != nil {
 			log.Error().Str("where", "gossip.out.getPreunits(extra)").Msg(err.Error())
 			return
