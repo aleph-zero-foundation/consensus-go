@@ -49,7 +49,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 	}
 	s.outPool = sync.NewPool(nOut, s.Out)
 	s.inPool = sync.NewPool(nIn, s.In)
-	return s, s
+	return s
 }
 
 func (s *server) Start() {

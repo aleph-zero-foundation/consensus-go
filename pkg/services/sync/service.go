@@ -36,7 +36,7 @@ var errMulticastFirst = errors.New("multicast sync servers need to be defined be
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, configs []*config.Sync, log zerolog.Logger) (gomel.Service, gomel.Dag, error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log zerolog.Logger) (gomel.Service, func(gomel.Unit), error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
@@ -61,9 +61,6 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			}
 			lg := log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			if err != nil {
-				return nil, nil, err
-			}
 			server := multicast.NewServer(pid, dag, adder, netserv, timeout, lg)
 			s.mcServer = server
 			s.servers = append(s.servers, server)
@@ -74,11 +71,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			}
 			lg := log.With().Int(logging.Service, logging.RMCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			if err != nil {
-				return nil, nil, err
-			}
-			server, fd, rmcCheck := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
-
+			server := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
 			s.mcServer = server
 			s.servers = append(s.servers, server)
 

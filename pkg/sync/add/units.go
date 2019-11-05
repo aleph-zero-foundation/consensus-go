@@ -9,18 +9,20 @@ import (
 
 // Unit adds a preunit to the dag and returns whether everything went fine.
 func Unit(dag gomel.Dag, adder gomel.Adder, pu gomel.Preunit, where string, log zerolog.Logger) bool {
-	return handleError(adder.AddUnit(pu, dag), pu, where, log)
+	return handleError(adder.AddUnit(pu), pu, where, log)
 }
 
 // Chunk adds slice of antichains to the dag and returns whether everything went fine.
 func Chunk(dag gomel.Dag, adder gomel.Adder, antichains [][]gomel.Preunit, where string, log zerolog.Logger) bool {
 	success := true
-	for _, antichain := range antichains {
-		aggErr := adder.AddAntichain(antichain, dag)
-		for i, err := range aggErr.Errors() {
-			if !handleError(err, antichain[i], where, log) {
-				success = false
-			}
+	var units []gomel.Preunit
+	for _, ach := range antichains {
+		units = append(units, ach...)
+	}
+	aggErr := adder.AddUnits(units)
+	for i, err := range aggErr.Errors() {
+		if !handleError(err, units[i], where, log) {
+			success = false
 		}
 	}
 	return success
@@ -34,17 +36,14 @@ func handleError(err error, pu gomel.Preunit, where string, log zerolog.Logger) 
 			log.Info().Uint16(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
 		case *gomel.UnknownParents:
 			log.Info().Uint16(logging.Creator, pu.Creator()).Int(logging.Size, e.Amount).Msg(logging.UnknownParents)
-			if fallback != nil {
-				fallback.Resolve(pu)
-			}
 		case *gomel.MissingDataError:
 			log.Info().Uint16(logging.Creator, pu.Creator()).Msg(logging.MissingDataError)
-			if fetchData != nil {
+			/*if fetchData != nil {
 				if err2 := fetchData(pu, peer); err2 != nil {
 					log.Error().Str("addUnit", where+".fetchData").Msg(err2.Error())
 					return false
 				}
-			}
+			}*/
 		default:
 			log.Error().Str("addUnit", where).Msg(err.Error())
 			return false

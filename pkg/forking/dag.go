@@ -1,7 +1,7 @@
 package forking
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
+	//"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -10,6 +10,7 @@ type alertDag struct {
 	alert *AlertHandler
 }
 
+/*
 func (dag *alertDag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	u, err := dag.Dag.Decode(pu)
 	if err == nil {
@@ -32,7 +33,7 @@ func (dag *alertDag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	default:
 		return u, err
 	}
-}
+}*/
 
 func (dag *alertDag) Prepare(u gomel.Unit) (gomel.Unit, error) {
 	u, err := dag.Dag.Prepare(u)
