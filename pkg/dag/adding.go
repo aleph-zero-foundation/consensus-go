@@ -5,6 +5,14 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
+	parents, err := gomel.GetByCrown(dag, pu.View())
+	if err != nil {
+		return nil, err
+	}
+	freeUnit := unit.New(nd.pu, parents), nil
+}
+
 func (dag *dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
 	return unit.Prepared(u, dag), nil
 }

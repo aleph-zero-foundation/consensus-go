@@ -3,56 +3,71 @@ package adder
 import (
 	"sync"
 
-	"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+// adder is a buffer zone where preunits wait to be added to dag. A preunit with
+// missing parents is waiting until all the parents are available. Then it's considered
+// 'ready' and added to per-pid channel, from where it's picked by the worker doing gomel.AddUnit.
 type adder struct {
-	nProc uint16
-	keys  []gomel.PublicKey
-	limbo *limbo
-	ready []chan *node
-	wg    sync.WaitGroup
+	nProc       uint16
+	dag         gomel.Dag
+	keys        []gomel.PublicKey
+	ready       []chan *node
+	waiting     map[gomel.Hash]*node
+	waitingByID map[uint64]*node
+	missing     map[uint64][]*node
+	mx          sync.Mutex
+	wg          sync.WaitGroup
 }
 
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
-func New(keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
-	nProc := uint16(len(keys))
+func New(nProc uint16, keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
 	ready := make([]chan *node, nProc)
 	for i := range ready {
 		ready[i] = make(chan *node, 32)
 	}
 	ad := &adder{
-		nProc: nProc,
-		keys:  keys,
-		limbo: newLimbo(ready),
-		ready: ready,
+		nProc:       nProc,
+		keys:        keys,
+		ready:       ready,
+		waiting:     make(map[gomel.Hash]*node),
+		waitingByID: make(map[uint64]*node),
+		missing:     make(map[uint64][]*node),
 	}
 	return ad, ad
 }
 
-func (ad *adder) AddAntichain(preunits []gomel.Preunit, dag gomel.Dag) *gomel.AggregateError {
-	return nil
+func (ad *adder) Register(dag gomel.Dag) {
+	ad.dag = dag
 }
 
-func (ad *adder) AddUnit(pu gomel.Preunit, dag gomel.Dag) error {
+func (ad *adder) AddUnit(pu gomel.Preunit) error {
 	err := ad.checkCorrectness(pu)
 	if err != nil {
 		return err
 	}
-	// check if we've already seen this unit. We remove units from limbo AFTER adding them to dag,
-	// so checking limbo first is required to ensure thread safety.
-	if nd := ad.limbo.get(pu.Hash()); nd != nil {
-		nd.wg.Wait()
-		return *(nd.err)
-	}
-	if u := dag.GetUnit(pu.Hash()); u != nil {
-		return gomel.NewDuplicateUnit(u)
-	}
-	nd := ad.limbo.add(pu, dag)
+	nd := ad.addNode(pu)
 	nd.wg.Wait()
-	return *(nd.err)
+	return nd.err
+}
+
+func (ad *adder) AddUnits(preunits []gomel.Preunit) *gomel.AggregateError {
+	errors := make([]error, len(preunits))
+	for i, pu := range preunits {
+		err := ad.checkCorrectness(pu)
+		if err != nil {
+			errors[i] = err
+			return gomel.NewAggregateError(errors)
+		}
+	}
+	nodes := ad.addNodes(preunits)
+	for i := range nodes {
+		nodes[i].wg.Wait()
+		errors[i] = nodes[i].err
+	}
+	return gomel.NewAggregateError(errors)
 }
 
 // Start the adding workers.
@@ -76,23 +91,20 @@ func (ad *adder) Stop() {
 	ad.wg.Wait()
 }
 
-// handleReadyNode takes a limbo node that was just picked from adder channel and performs Prepare+Insert on it.
+// handleReadyNode takes a node that was just picked from adder channel and performs Prepare+Insert on it.
 func (ad *adder) handleReadyNode(nd *node) {
 	defer nd.wg.Done()
-	defer ad.limbo.remove(nd) // TODO maybe not remove on every error...
-	parents, err := gomel.GetByCrown(nd.dag, nd.pu.View())
+	defer ad.remove(nd) // TOTHINK maybe not remove on every error...
+	/*parents, err := gomel.GetByCrown(ad.dag, nd.pu.View())
 	if err != nil {
-		// TO BE DONE handle wrong control hash and ambiguous parents
-		*nd.err = err
+		// SHALL BE DONE: handle wrong control hash and ambiguous parents
+		// ALSO SHALL BE DONE: some parents might be missing if node came from antichain sent by a malicious process
+		nd.err = err
 		return
 	}
 	freeUnit := unit.New(nd.pu, parents)
-	unitInDag, err := nd.dag.Prepare(freeUnit)
-	if err != nil {
-		*nd.err = err
-		return
-	}
-	nd.dag.Insert(unitInDag)
+	*/
+	_, nd.err = gomel.AddUnit(ad.dag, nd.pu)
 }
 
 // checkCorrectness checks very basic correctness of the given preunit: creator and signature.
@@ -100,7 +112,7 @@ func (ad *adder) checkCorrectness(pu gomel.Preunit) error {
 	if pu.Creator() >= ad.nProc {
 		return gomel.NewDataError("invalid creator")
 	}
-	if !ad.keys[pu.Creator()].Verify(pu) {
+	if ad.keys != nil && !ad.keys[pu.Creator()].Verify(pu) {
 		return gomel.NewDataError("invalid signature")
 	}
 	return nil

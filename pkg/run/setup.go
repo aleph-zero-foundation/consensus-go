@@ -22,7 +22,7 @@ import (
 // is equivalent to the version without a setup phase.
 func coinSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	pid := conf.Create.Pid
-	nProc := uint16(len(conf.Dag.Keys))
+	nProc := conf.NProc
 
 	shareProviders := make(map[uint16]bool)
 	for i := uint16(0); i < nProc; i++ {
@@ -55,25 +55,25 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	if err != nil {
 		log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
 	}
-	// common with setup:
 	dag = rs.Bind(dag)
+
+	adr, adderService := adder.New(conf.NProc, conf.PublicKeys)
 
 	orderService, orderIfPrime := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 	dag = dagutils.AfterInsert(dag, orderIfPrime)
 
-	adr, adderService := adder.New(conf.PublicKeys)
-
 	syncService, multicastUnit, err := sync.NewService(dag, adr, conf.Sync, log)
 	if err != nil {
-		return nil, err
+		log.Error().Str("where", "setup.sync").Msg(err.Error())
+		return
 	}
-	dagMC := dagutils.AfterInsert(dag, multicastUnit)
+	dag = dagutils.AfterInsert(dag, multicastUnit)
 
-	createService := create.NewService(dagMC, adr, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService := create.NewService(dag, adr, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
-	adder.Register(dag)
+	adr.Register(dag)
 
 	err = start(adderService, createService, orderService, memlogService, syncService)
 	if err != nil {
@@ -87,7 +87,7 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	}
 	head := units[len(units)-1]
 	rsCh <- rs.GetCoin(head.Creator())
-	// logging the order
+
 	for _, u := range units {
 		log.Info().Int(logging.Service, logging.ValidateService).Uint16(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
 	}

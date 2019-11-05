@@ -2,12 +2,12 @@ package gomel
 
 // Adder represents a mechanism for adding units to a dag.
 type Adder interface {
-	// AddUnit to the underlying dag. Waits until the adding finishes and returns an error if applicable.
+	// AddUnit adds a single unit to the underlying dag. Waits until the adding finishes and returns an error if applicable.
 	AddUnit(Preunit) error
-	// AddAntichain to the underlying dag. Waits until the adding of all units finishes and
+	// AddUnits adds multiple units to the underlying . Waits until the adding of all units finishes and
 	// returns the AggregateError with errors corresponding to the respective preunits.
-	AddAntichain([]Preunit) *AggregateError
-	// Register a dag for the adder. After a series of calls only the last dag is registered.
+	AddUnits([]Preunit) *AggregateError
+	// Register passes the Dag to which units will be added. Must be called before calling any of adding methods.
 	Register(Dag)
 }
 

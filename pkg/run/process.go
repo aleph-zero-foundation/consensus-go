@@ -67,17 +67,18 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
 	orderedUnits := make(chan []gomel.Unit, 10)
-	dag := makeStandardDag(conf.Dag)
+	dag := makeStandardDag(conf.NProc)
 
 	rs, ok := <-rsCh
 	if !ok {
 		return nil, errors.New("setup phase failed")
 	}
 	log.Info().Msg(logging.GotRandomSource)
-
 	dag = rs.Bind(dag)
 
-	dag, alertService, fetchData, err := alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
+	adr, adderService := adder.New(conf.NProc, conf.PublicKeys)
+
+	dag, alertService, err := alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -90,19 +91,17 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 	}()
 	dag = dagutils.AfterInsert(dag, orderIfPrime)
 
-	adr, adderService := adder.New(conf.PublicKeys)
-
-	syncService, dag, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
+	syncService, multicastUnit, err := sync.NewService(dag, adr, conf.Sync, log)
 	if err != nil {
 		return nil, err
 	}
-	dagMC := dagutils.AfterInsert(dag, multicastUnit)
+	dag = dagutils.AfterInsert(dag, multicastUnit)
 
-	createService := create.NewService(dagMC, adr, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService := create.NewService(dag, adr, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
-	adder.Register(dag)
+	adr.Register(dag)
 
 	err = start(alertService, adderService, createService, orderService, memlogService, syncService)
 	if err != nil {
