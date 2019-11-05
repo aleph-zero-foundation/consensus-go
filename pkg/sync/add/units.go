@@ -33,17 +33,11 @@ func handleError(err error, pu gomel.Preunit, where string, log zerolog.Logger) 
 	if err != nil {
 		switch e := err.(type) {
 		case *gomel.DuplicateUnit:
-			log.Info().Uint16(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicatedUnit)
+			log.Info().Uint16(logging.Creator, e.Unit.Creator()).Int(logging.Height, e.Unit.Height()).Msg(logging.DuplicateUnit)
+		case *gomel.DuplicatePreunit:
+			log.Info().Uint16(logging.Creator, e.Pu.Creator()).Int(logging.Height, e.Pu.Height()).Msg(logging.DuplicatePreunit)
 		case *gomel.UnknownParents:
 			log.Info().Uint16(logging.Creator, pu.Creator()).Int(logging.Size, e.Amount).Msg(logging.UnknownParents)
-		case *gomel.MissingDataError:
-			log.Info().Uint16(logging.Creator, pu.Creator()).Msg(logging.MissingDataError)
-			/*if fetchData != nil {
-				if err2 := fetchData(pu, peer); err2 != nil {
-					log.Error().Str("addUnit", where+".fetchData").Msg(err2.Error())
-					return false
-				}
-			}*/
 		default:
 			log.Error().Str("addUnit", where).Msg(err.Error())
 			return false

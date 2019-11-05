@@ -24,7 +24,7 @@ const (
 	AddUnits              = "S"
 	SentUnits             = "T"
 	ReceivedPreunits      = "U"
-	DuplicatedUnit        = "V"
+	DuplicateUnit         = "V"
 	OwnUnitOrdered        = "W"
 	ConnectionClosed      = "X"
 	MemoryUsage           = "Y"
@@ -41,6 +41,7 @@ const (
 	GotRandomSource       = "j"
 	FallbackUsed          = "k"
 	MissingDataError      = "l"
+	DuplicatePreunit      = "m"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -66,7 +67,7 @@ var eventTypeDict = map[string]string{
 	AddUnits:              "adding received units started",
 	SentUnits:             "successfully sent units",
 	ReceivedPreunits:      "successfully received preunits",
-	DuplicatedUnit:        "attempting to add unit already present in dag",
+	DuplicateUnit:         "attempting to add unit already present in dag",
 	OwnUnitOrdered:        "unit created by this process has been ordered",
 	ConnectionClosed:      "connection closed after sync (stats = bytes)",
 	MemoryUsage:           "memory usage statistics",
@@ -83,6 +84,7 @@ var eventTypeDict = map[string]string{
 	GotRandomSource:       "received randomness source",
 	FallbackUsed:          "server used fallback due to missing parents",
 	MissingDataError:      "received unit without associated necessary data",
+	DuplicatePreunit:      "attempting to add unit already present in adder",
 }
 
 // Field names.

@@ -1,8 +1,6 @@
 package adder
 
 import (
-	"sync"
-
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -12,7 +10,6 @@ type node struct {
 	missingParents int     // number of preunit's parents that we've never seen
 	limboParents   int     // number of preunit's parents that are waiting in limbo
 	children       []*node // list of other preunits in limbo that has this preunit as parent (maybe, because forks)
-	wg             *sync.WaitGroup
 	err            error
 }
 
@@ -36,20 +33,16 @@ func (ad *adder) checkIfMissing(nd *node, id uint64) {
 	}
 }
 
-func (ad *adder) addNode(pu gomel.Preunit) *node {
-	nd := &node{
-		pu: pu,
-		wg: new(sync.WaitGroup),
-	}
+func (ad *adder) addNode(pu gomel.Preunit) error {
+	nd := &node{pu: pu}
 	id := gomel.UnitID(pu)
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
 	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
-		nd.err = gomel.NewDuplicateUnit(u)
-		return nd
+		return gomel.NewDuplicateUnit(u)
 	}
 	if nd, ok := ad.waiting[*pu.Hash()]; ok {
-		return nd
+		return gomel.NewDuplicatePreunit(nd.pu)
 	}
 	if _, ok := ad.waitingByID[id]; ok {
 		// We have a fork
@@ -73,19 +66,20 @@ func (ad *adder) addNode(pu gomel.Preunit) *node {
 	ad.waiting[*pu.Hash()] = nd
 	ad.waitingByID[id] = nd
 	ad.checkIfMissing(nd, id)
-	nd.wg.Add(1)
 	ad.checkIfReady(nd)
-	return nd
+	if nd.missingParents > 0 {
+		return gomel.NewUnknownParents(nd.missingParents)
+	}
+	return nil
 }
 
-func (ad *adder) addNodes(preunits []gomel.Preunit) []*node {
+// addNodes does NOT check for missing parents, it assumes all preunits
+// are sorted in topological order and can be added to the dag directly.
+func (ad *adder) addNodes(preunits []gomel.Preunit, errors []error) {
 	var id uint64
-	wg := new(sync.WaitGroup)
-	nodes := make([]*node, len(preunits))
 	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {
 		hashes[i] = pu.Hash()
-		nodes[i] = &node{pu: pu, wg: wg}
 	}
 
 	ad.mx.Lock()
@@ -93,11 +87,11 @@ func (ad *adder) addNodes(preunits []gomel.Preunit) []*node {
 	alreadyInDag := ad.dag.GetUnits(hashes)
 	for i, pu := range preunits {
 		if alreadyInDag[i] != nil {
-			nodes[i].err = gomel.NewDuplicateUnit(alreadyInDag[i])
+			errors[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
 			continue
 		}
 		if nd, ok := ad.waiting[*pu.Hash()]; ok {
-			nodes[i] = nd
+			errors[i] = gomel.NewDuplicatePreunit(nd.pu)
 			continue
 		}
 		id = gomel.UnitID(pu)
@@ -106,13 +100,12 @@ func (ad *adder) addNodes(preunits []gomel.Preunit) []*node {
 			// SHALL BE DONE
 			// Alert(fork, pu)
 		}
-		ad.waiting[*pu.Hash()] = nodes[i]
-		ad.waitingByID[id] = nodes[i]
-		ad.checkIfMissing(nodes[i], id)
-		wg.Add(1)
-		ad.ready[pu.Creator()] <- nodes[i]
+		nd := &node{pu: pu}
+		ad.waiting[*pu.Hash()] = nd
+		ad.waitingByID[id] = nd
+		ad.checkIfMissing(nd, id)
+		ad.ready[pu.Creator()] <- nd
 	}
-	return nodes
 }
 
 func (ad *adder) remove(nd *node) {

@@ -65,6 +65,21 @@ func NewDuplicateUnit(unit Unit) *DuplicateUnit {
 	return &DuplicateUnit{unit}
 }
 
+// DuplicatePreunit is an error-like object used when encountering a unit that is already known. Usually not a problem.
+type DuplicatePreunit struct {
+	Pu Preunit
+}
+
+// Error returns a (fixed) string description of a DuplicatePreunit.
+func (e *DuplicatePreunit) Error() string {
+	return "Unit already in dag."
+}
+
+// NewDuplicatePreunit constructs a DuplicatePreunit error for the given preunit.
+func NewDuplicatePreunit(pu Preunit) *DuplicatePreunit {
+	return &DuplicatePreunit{pu}
+}
+
 // UnknownParents is an error-like object used when trying to add a unit whose parents are not in the dag.
 type UnknownParents struct {
 	Amount int

@@ -48,9 +48,7 @@ func (ad *adder) AddUnit(pu gomel.Preunit) error {
 	if err != nil {
 		return err
 	}
-	nd := ad.addNode(pu)
-	nd.wg.Wait()
-	return nd.err
+	return ad.addNode(pu)
 }
 
 func (ad *adder) AddUnits(preunits []gomel.Preunit) *gomel.AggregateError {
@@ -59,14 +57,10 @@ func (ad *adder) AddUnits(preunits []gomel.Preunit) *gomel.AggregateError {
 		err := ad.checkCorrectness(pu)
 		if err != nil {
 			errors[i] = err
-			return gomel.NewAggregateError(errors)
+			preunits[i] = nil
 		}
 	}
-	nodes := ad.addNodes(preunits)
-	for i := range nodes {
-		nodes[i].wg.Wait()
-		errors[i] = nodes[i].err
-	}
+	ad.addNodes(preunits, errors)
 	return gomel.NewAggregateError(errors)
 }
 
@@ -91,19 +85,11 @@ func (ad *adder) Stop() {
 	ad.wg.Wait()
 }
 
-// handleReadyNode takes a node that was just picked from adder channel and performs Prepare+Insert on it.
+// handleReadyNode takes a node that was just picked from adder channel and performs gomel.AddUnit on it.
 func (ad *adder) handleReadyNode(nd *node) {
-	defer nd.wg.Done()
 	defer ad.remove(nd) // TOTHINK maybe not remove on every error...
-	/*parents, err := gomel.GetByCrown(ad.dag, nd.pu.View())
-	if err != nil {
-		// SHALL BE DONE: handle wrong control hash and ambiguous parents
-		// ALSO SHALL BE DONE: some parents might be missing if node came from antichain sent by a malicious process
-		nd.err = err
-		return
-	}
-	freeUnit := unit.New(nd.pu, parents)
-	*/
+	// SHALL BE DONE: handle wrong control hash and ambiguous parents
+	// ALSO SHALL BE DONE: some parents might be missing if node came from antichain sent by a malicious process
 	_, nd.err = gomel.AddUnit(ad.dag, nd.pu)
 }
 
