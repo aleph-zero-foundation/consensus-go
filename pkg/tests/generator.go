@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"time"
 
-	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -13,7 +12,7 @@ import (
 //  nUnits     - number of units to include in the dag
 func CreateRandomNonForking(nProcesses, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	dag := newDag(config.Dag{Keys: make([]gomel.PublicKey, nProcesses)})
+	dag := newDag(uint16(nProcesses))
 	created := 0
 	for created < nUnits {
 		pid := uint16(r.Intn(nProcesses))

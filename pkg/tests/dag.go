@@ -8,7 +8,6 @@ import (
 	"sort"
 	"sync"
 
-	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -23,14 +22,13 @@ type Dag struct {
 	unitByHash    map[gomel.Hash]gomel.Unit
 }
 
-func newDag(dagConfiguration config.Dag) *Dag {
-	n := dagConfiguration.NProc()
-	maxHeight := make([]int, n)
-	for pid := uint16(0); pid < n; pid++ {
+func newDag(nProc uint16) *Dag {
+	maxHeight := make([]int, nProc)
+	for pid := uint16(0); pid < nProc; pid++ {
 		maxHeight[pid] = -1
 	}
 	newDag := &Dag{
-		nProcesses:    n,
+		nProcesses:    nProc,
 		primeUnits:    []gomel.SlottedUnits{},
 		unitsByHeight: []gomel.SlottedUnits{},
 		maximalHeight: maxHeight,

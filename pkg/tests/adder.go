@@ -11,12 +11,16 @@ func NewAdder(dag gomel.Dag) gomel.Adder {
 	return &adder{dag}
 }
 
+func (a *adder) Register(dag gomel.Dag) {
+	a.dag = dag
+}
+
 func (a *adder) AddUnit(pu gomel.Preunit) error {
 	_, err := gomel.AddUnit(a.dag, pu)
 	return err
 }
 
-func (a *adder) AddAntichain(pus []gomel.Preunit) *gomel.AggregateError {
+func (a *adder) AddUnits(pus []gomel.Preunit) *gomel.AggregateError {
 	result := make([]error, len(pus))
 	for i, pu := range pus {
 		_, result[i] = gomel.AddUnit(a.dag, pu)

@@ -1,5 +1,6 @@
 package gossip_test
 
+/*
 import (
 	snc "sync"
 	"time"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -35,11 +35,11 @@ func (a *adder) AddUnit(unit gomel.Preunit) error {
 	return a.Adder.AddUnit(unit)
 }
 
-func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+func (a *adder) AddUnits(units []gomel.Preunit) *gomel.AggregateError {
 	a.mx.Lock()
 	a.attemptedAdd = append(a.attemptedAdd, units...)
 	a.mx.Unlock()
-	return a.Adder.AddAntichain(units)
+	return a.Adder.AddUnits(units)
 }
 
 func (a *adder) removeDuplicates() {
@@ -56,13 +56,11 @@ func (a *adder) removeDuplicates() {
 var _ = Describe("Protocol", func() {
 
 	var (
-		dags         []gomel.Dag
-		adders       []*adder
-		servs        []sync.Server
-		fbks         []sync.Fallback
-		tservs       []testServer
-		netservs     []network.Server
-		dummyResolve gomel.Preunit
+		dags     []gomel.Dag
+		adders   []*adder
+		servs    []sync.Server
+		tservs   []testServer
+		netservs []network.Server
 	)
 
 	BeforeEach(func() {
@@ -80,14 +78,11 @@ var _ = Describe("Protocol", func() {
 			adders = append(adders, &adder{tests.NewAdder(dag), snc.Mutex{}, nil})
 		}
 		servs = make([]sync.Server, 2)
-		fbks = make([]sync.Fallback, 2)
 		tservs = make([]testServer, 2)
 		for i := 0; i < 2; i++ {
-			servs[i], fbks[i] = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
+			servs[i] = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			tservs[i] = servs[i].(testServer)
 		}
-		dummyResolve = creating.NewPreunit(1, gomel.EmptyCrown(dags[0].NProc()), nil, nil)
-
 	})
 
 	Describe("in a small dag", func() {
@@ -103,7 +98,6 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				fbks[0].Resolve(dummyResolve)
 				go tservs[0].Out()
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
@@ -131,7 +125,6 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to the second copy", func() {
-				fbks[0].Resolve(dummyResolve)
 				go tservs[0].Out()
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
@@ -156,7 +149,6 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add the unit to the first copy", func() {
-				fbks[0].Resolve(dummyResolve)
 				go tservs[1].In()
 				tservs[0].Out()
 				for i := 0; i < 2; i++ {
@@ -180,7 +172,6 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should not add anything", func() {
-				fbks[0].Resolve(dummyResolve)
 				go tservs[0].Out()
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
@@ -203,7 +194,6 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add everything", func() {
-				fbks[0].Resolve(dummyResolve)
 				go tservs[0].Out()
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
@@ -224,7 +214,6 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add all units", func() {
-				fbks[0].Resolve(dummyResolve)
 				go tservs[0].Out()
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
@@ -238,3 +227,4 @@ var _ = Describe("Protocol", func() {
 	})
 
 })
+*/

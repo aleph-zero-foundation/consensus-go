@@ -1,5 +1,6 @@
 package fetch_test
 
+/*
 import (
 	"time"
 
@@ -20,13 +21,6 @@ type testServer interface {
 	Out()
 }
 
-type mockFB struct {
-	happened bool
-}
-
-func (s *mockFB) Resolve(gomel.Preunit) {
-	s.happened = true
-}
 
 var _ = Describe("Protocol", func() {
 
@@ -39,8 +33,6 @@ var _ = Describe("Protocol", func() {
 		serv2    sync.Server
 		tserv1   testServer
 		tserv2   testServer
-		fbk1     sync.Fallback
-		fb       *mockFB
 		netservs []network.Server
 		pu       gomel.Preunit
 	)
@@ -52,12 +44,10 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		adder1 = tests.NewAdder(dag1)
 		adder2 = tests.NewAdder(dag2)
-		serv1, fbk1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
-		serv2, _ = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
+		serv1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 0, 0)
+		serv2 = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 0)
 		tserv1 = serv1.(testServer)
 		tserv2 = serv2.(testServer)
-		fb = &mockFB{}
-		serv1.SetFallback(fb)
 	})
 
 	JustAfterEach(func() {
@@ -80,16 +70,14 @@ var _ = Describe("Protocol", func() {
 
 			It("should add enough units to add the preunit", func() {
 				Expect(adder1.AddUnit(pu)).ToNot(Succeed())
-				fbk1.Resolve(pu)
 
 				go tserv2.In()
 				tserv1.Out()
 
-				Expect(fb.happened).To(BeFalse())
 				Expect(adder1.AddUnit(pu)).To(Succeed())
 			})
 		})
 
 	})
 
-})
+})*/

@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -24,7 +23,7 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 		return nil, err
 	}
 
-	dag := df.CreateDag(config.Dag{Keys: make([]gomel.PublicKey, n)})
+	dag := df.CreateDag(n)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID int

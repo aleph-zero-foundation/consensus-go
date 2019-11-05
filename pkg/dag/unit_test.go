@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"gitlab.com/alephledger/consensus-go/pkg/config"
 	. "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -12,8 +11,8 @@ import (
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(dc config.Dag) gomel.Dag {
-	return New(uint16(len(dc.Keys)))
+func (dagFactory) CreateDag(nProc uint16) gomel.Dag {
+	return New(nProc)
 }
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
@@ -166,13 +165,15 @@ var _ = Describe("Units", func() {
 					Expect(floor1[0]).To(Equal(units[1][0][0]))
 				})
 			})
-			Describe("When seeing a fork", func() {
-				It("Should return an error ambigous parents", func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
-					Expect(readingErr).To(HaveOccurred())
-					Expect(readingErr).To(MatchError("ambiguous parents"))
+			/*
+				Describe("When seeing a fork", func() {
+					It("Should return an error ambigous parents", func() {
+						dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
+						Expect(readingErr).To(HaveOccurred())
+						Expect(readingErr).To(MatchError("ambiguous parents"))
+					})
 				})
-			})
+			*/
 		})
 	})
 })

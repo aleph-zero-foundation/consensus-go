@@ -4,8 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	. "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -66,15 +64,14 @@ func (pu *preunitMock) SetHash(value int) {
 
 type defaultChecksFactory struct{}
 
-func (defaultChecksFactory) CreateDag(dc config.Dag) gomel.Dag {
-	dag, _ := check.Signatures(New(uint16(len(dc.Keys))), dc.Keys)
-	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(dag))))
+func (defaultChecksFactory) CreateDag(nProc uint16) gomel.Dag {
+	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(New(nProc)))))
 }
 
 type noSelfForkingEvidenceFactory struct{}
 
-func (noSelfForkingEvidenceFactory) CreateDag(dc config.Dag) gomel.Dag {
-	return check.NoSelfForkingEvidence(New(uint16(len(dc.Keys))))
+func (noSelfForkingEvidenceFactory) CreateDag(nProc uint16) gomel.Dag {
+	return check.NoSelfForkingEvidence(New(nProc))
 }
 
 var _ = Describe("Dag", func() {
@@ -83,8 +80,6 @@ var _ = Describe("Dag", func() {
 		nProcesses uint16
 		dag        gomel.Dag
 		addFirst   [][]*preunitMock
-		pubKeys    []gomel.PublicKey
-		privKeys   []gomel.PrivateKey
 	)
 
 	BeforeEach(func() {
@@ -96,7 +91,6 @@ var _ = Describe("Dag", func() {
 	JustBeforeEach(func() {
 		for _, pus := range addFirst {
 			for _, pu := range pus {
-				pu.SetSignature(privKeys[pu.creator].Sign(pu))
 				_, err := gomel.AddUnit(dag, pu)
 				Expect(err).NotTo(HaveOccurred())
 			}
@@ -106,12 +100,7 @@ var _ = Describe("Dag", func() {
 	Describe("with default checks", func() {
 		BeforeEach(func() {
 			nProcesses = 4
-			pubKeys = make([]gomel.PublicKey, nProcesses, nProcesses)
-			privKeys = make([]gomel.PrivateKey, nProcesses, nProcesses)
-			for i := uint16(0); i < nProcesses; i++ {
-				pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
-			}
-			dag = defaultChecksFactory{}.CreateDag(config.Dag{Keys: pubKeys})
+			dag = defaultChecksFactory{}.CreateDag(nProcesses)
 		})
 
 		Describe("HasForkingEvidence works properly in case of forks even when combined floors is not an evidence of forking", func() {
@@ -122,9 +111,6 @@ var _ = Describe("Dag", func() {
 		})
 		Describe("Adding units", func() {
 			var addedUnit *preunitMock
-			JustBeforeEach(func() {
-				addedUnit.SetSignature(privKeys[addedUnit.creator].Sign(addedUnit))
-			})
 			Context("With no parents", func() {
 				BeforeEach(func() {
 					addedUnit = newPreunitMock(0, gomel.DealingHeights(nProcesses), make([]*gomel.Hash, nProcesses))
@@ -463,7 +449,6 @@ var _ = Describe("Dag", func() {
 					It("should confirm that a unit is valid", func() {
 						validUnit := newPreunitMock(0, []int{0, 0, 0, -1}, []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash, &gomel.Hash{}})
 						validUnit.SetHash(4)
-						validUnit.SetSignature(privKeys[validUnit.creator].Sign(validUnit))
 						_, err := gomel.AddUnit(dag, validUnit)
 						Expect(err).NotTo(HaveOccurred())
 					})

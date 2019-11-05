@@ -32,7 +32,7 @@ func (a *adder) AddUnit(unit gomel.Preunit) error {
 
 func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
 	a.attemptedAdd = append(a.attemptedAdd, units...)
-	return a.Adder.AddAntichain(units)
+	return a.Adder.AddUnits(units)
 }
 
 var _ = Describe("Protocol", func() {
