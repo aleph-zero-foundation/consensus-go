@@ -10,7 +10,7 @@ func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	freeUnit := unit.New(nd.pu, parents), nil
+	return unit.New(pu, parents), nil
 }
 
 func (dag *dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
