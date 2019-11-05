@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -180,8 +179,8 @@ func main() {
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(dc config.Dag) gomel.Dag {
-	return dag.New(dc.NProc())
+func (dagFactory) CreateDag(nProc uint16) gomel.Dag {
+	return dag.New(nProc)
 }
 
 func collectUnits(dag gomel.Dag) []gomel.Unit {

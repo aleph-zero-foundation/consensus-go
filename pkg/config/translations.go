@@ -101,7 +101,8 @@ func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *Order {
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 	return Config{
-
+		NProc:         uint16(len(c.PublicKeys)),
+		Alert:         generateAlertConfig(conf, m, c),
 		Sync:          generateSyncConfig(conf, m, c),
 		SyncSetup:     generateSyncSetupConfig(conf, m, c),
 		Create:        generateCreateConfig(conf, m, c),

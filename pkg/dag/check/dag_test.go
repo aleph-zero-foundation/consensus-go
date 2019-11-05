@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	. "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -79,6 +80,8 @@ var _ = Describe("Dag", func() {
 	var (
 		nProcesses uint16
 		dag        gomel.Dag
+		ad         gomel.Adder
+		adServ     gomel.Service
 		addFirst   [][]*preunitMock
 	)
 
@@ -86,6 +89,7 @@ var _ = Describe("Dag", func() {
 		nProcesses = 0
 		dag = nil
 		addFirst = nil
+
 	})
 
 	JustBeforeEach(func() {
@@ -95,6 +99,12 @@ var _ = Describe("Dag", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 		}
+		ad, adServ = adder.New(nProcesses, nil)
+		adServ.Start()
+		ad.Register(dag)
+	})
+	JustAfterEach(func() {
+		//adServ.Stop()
 	})
 
 	Describe("with default checks", func() {
@@ -131,8 +141,7 @@ var _ = Describe("Dag", func() {
 						Expect(err).NotTo(HaveOccurred())
 					})
 					It("Should report that fact", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
-						Expect(result).To(BeNil())
+						err := ad.AddUnit(addedUnit)
 						Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
 					})
 				})
@@ -231,8 +240,7 @@ var _ = Describe("Dag", func() {
 							Expect(err).NotTo(HaveOccurred())
 						})
 						It("Should report that fact", func() {
-							result, err := gomel.AddUnit(dag, addedUnit)
-							Expect(result).To(BeNil())
+							err := ad.AddUnit(addedUnit)
 							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
 						})
 					})

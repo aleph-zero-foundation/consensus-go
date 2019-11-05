@@ -605,8 +605,8 @@ func TestUsingTestRandomSource(
 }
 
 // MakeStandardDag returns a daag with standard checks.
-func MakeStandardDag(dc config.Dag) gomel.Dag {
-	dag, _ := check.Signatures(dag.New(uint16(len(dc.Keys))), dc.Keys)
+func MakeStandardDag(nProc uint16) gomel.Dag {
+	dag := dag.New(nProc)
 	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(dag))))
 }
 
@@ -625,7 +625,7 @@ func TestUsingRandomSourceProvider(
 	rss := make([]gomel.RandomSource, 0, nProcesses)
 
 	for pid := uint16(0); len(dags) < int(nProcesses); pid++ {
-		dag := MakeStandardDag(config.Dag{Keys: pubKeys})
+		dag := MakeStandardDag(nProcesses)
 
 		pids = append(pids, pid)
 		rs, dag := rssProvider(pid, dag)
