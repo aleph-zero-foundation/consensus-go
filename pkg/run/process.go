@@ -92,19 +92,18 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 	}()
 	dag = dagutils.AfterInsert(dag, orderIfPrime)
 
-	adderService := &parallel.Parallel{}
-	adder := adderService.Register(dag)
+	adder, adderService := parallel.New()
 
-	syncService, multicastUnit, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
+	syncService, dag, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
 	if err != nil {
 		return nil, err
 	}
-	dagMC := dagutils.AfterInsert(dag, multicastUnit)
-	adderMC := adderService.Register(dagMC)
 
-	createService := create.NewService(dagMC, adderMC, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService := create.NewService(dag, adder, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+
+	adder.Register(dag)
 
 	err = start(alertService, adderService, createService, orderService, memlogService, syncService)
 	if err != nil {

@@ -6,18 +6,18 @@
   "StepSize": 0.0,
   "Sync": [
     {
-      "Type": "gossip",
+      "Type": "multicast",
       "Params": {
-        "nIn": "3",
-        "nOut": "2",
+        "network": "tcp",
         "timeout": "2s"
       },
       "Fallback": ""
     },
     {
-      "Type": "multicast",
+      "Type": "gossip",
       "Params": {
-        "network": "tcp",
+        "nIn": "3",
+        "nOut": "2",
         "timeout": "2s"
       },
       "Fallback": ""

@@ -10,12 +10,12 @@
 		"StepSize": 0.0,
 
         "Sync": [{
-            "Type": "gossip",
+            "Type": "multicast",
             "Params": {
-                "nIn": "2",
-                "nOut": "1",
-                "timeout": "2s"},
-            "Fallback": ""
+                "mcType": "pers",
+                "timeout": "2s"
+            },
+            "Fallback": "fetch"
             }, {
             "Type": "fetch",
             "Params": {
@@ -25,12 +25,12 @@
             },
             "Fallback": "gossip"
             }, {
-            "Type": "multicast",
+            "Type": "gossip",
             "Params": {
-                "mcType": "pers",
-                "timeout": "2s",
-            },
-            "Fallback": "fetch"
+                "nIn": "2",
+                "nOut": "1",
+                "timeout": "2s"},
+            "Fallback": ""
         }],
 
         "Setup": "coin",

@@ -1,6 +1,7 @@
 package rmc
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -170,6 +171,18 @@ func (p *server) in() {
 			}
 			add.Unit(p.adder, pu, p.fallback, p.fetchData, pu.Creator(), "rmc.in", log)
 		}
+	case requestFinished:
+		err := p.state.SendFinished(id, conn)
+		if err != nil {
+			p.log.Error().Str("where", "rmc.in.SendFinished").Msg(err.Error())
+			return
+		}
+		err = conn.Flush()
+		if err != nil {
+			p.log.Error().Str("where", "rmc.in.Flush4").Msg(err.Error())
+			return
+		}
+
 	}
 	log.Info().Msg(logging.SyncCompleted)
 }
@@ -208,4 +221,30 @@ func (p *server) acceptData(id uint64, sender uint16, conn network.Connection, l
 		log.Error().Str("where", "rmc.in.Flush").Msg(err.Error())
 		return
 	}
+}
+
+func (p *server) requestFinishedRMC(pu gomel.Preunit, pid uint16) error {
+	conn, err := p.netserv.Dial(pid, p.timeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	conn.TimeoutAfter(p.timeout)
+	id := gomel.UnitID(pu)
+	err = rmcbox.Greet(conn, p.pid, id, requestFinished)
+	if err != nil {
+		return err
+	}
+	data, err := p.state.AcceptFinished(id, pu.Creator(), conn)
+	if err != nil {
+		return err
+	}
+	puc, err := encoding.DecodePreunit(data)
+	if err != nil {
+		return err
+	}
+	if *pu.Hash() != *puc.Hash() {
+		return errors.New("mismatched unit commitment")
+	}
+	return nil
 }

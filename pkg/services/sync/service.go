@@ -2,11 +2,14 @@
 package sync
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
+	gdag "gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
@@ -22,25 +25,26 @@ import (
 )
 
 type service struct {
-	fallbacks   map[string]sync.Fallback
 	servers     map[string]sync.Server
 	mcServer    sync.MulticastServer
 	subservices []gomel.Service
 	log         zerolog.Logger
 }
 
+var errMulticastFirst = errors.New("multicast sync servers need to be defined before any other servers")
+
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, configs []*config.Sync, log zerolog.Logger) (gomel.Service, func(gomel.Unit), error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, configs []*config.Sync, log zerolog.Logger) (gomel.Service, gomel.Dag, error) {
 	if err := valid(configs); err != nil {
 		return nil, nil, err
 	}
 	pid := configs[0].Pid
+	fallbacks := make(map[string]sync.Fallback)
 	s := &service{
-		fallbacks: make(map[string]sync.Fallback),
-		servers:   make(map[string]sync.Server),
-		log:       log.With().Int(logging.Service, logging.SyncService).Logger(),
+		servers: make(map[string]sync.Server),
+		log:     log.With().Int(logging.Service, logging.SyncService).Logger(),
 	}
 
 	for _, c := range configs {
@@ -53,22 +57,42 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 
 		switch c.Type {
 		case "multicast":
+			if len(s.servers) > 0 {
+				return nil, nil, errMulticastFirst
+			}
 			lg := log.With().Int(logging.Service, logging.MCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			server := multicast.NewServer(pid, dag, adder, fetchData, netserv, timeout, lg)
+			if err != nil {
+				return nil, nil, err
+			}
+			server := multicast.NewServer(pid, dag, adder, netserv, timeout, lg)
 			s.mcServer = server
 			s.servers[c.Type] = server
 
 		case "rmc":
+			if len(s.servers) > 0 {
+				return nil, nil, errMulticastFirst
+			}
 			lg := log.With().Int(logging.Service, logging.RMCService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			server := rmc.NewServer(pid, dag, adder, fetchData, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
+			if err != nil {
+				return nil, nil, err
+			}
+			server, fd, rmcCheck := rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
+			if fetchData != nil {
+				return nil, nil, errors.New("cannot use RMC with other services that require commitments")
+			}
+			fetchData = fd
 			s.mcServer = server
 			s.servers[c.Type] = server
+			dag = check.AddCheck(dag, rmcCheck)
 
 		case "gossip":
 			lg := log.With().Int(logging.Service, logging.GossipService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
+			if err != nil {
+				return nil, nil, err
+			}
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
 				return nil, nil, err
@@ -77,10 +101,13 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], s.fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, fetchData, netserv, timeout, lg, nOut, nIn)
+			s.servers[c.Type], fallbacks[c.Type] = gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
 		case "fetch":
 			lg := log.With().Int(logging.Service, logging.FetchService).Logger()
 			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
+			if err != nil {
+				return nil, nil, err
+			}
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
 				return nil, nil, err
@@ -89,7 +116,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 			if err != nil {
 				return nil, nil, err
 			}
-			s.servers[c.Type], s.fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, fetchData, netserv, timeout, lg, nOut, nIn)
+			s.servers[c.Type], fallbacks[c.Type] = fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
 
 		default:
 			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
@@ -98,18 +125,19 @@ func NewService(dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, conf
 
 	for _, c := range configs {
 		if c.Fallback != "" {
-			fallback := s.fallbacks[c.Fallback]
+			fallback := fallbacks[c.Fallback]
 			s.servers[c.Type].SetFallback(fallback)
 		} else {
 			s.servers[c.Type].SetFallback(sync.DefaultFallback(log))
 		}
+		s.servers[c.Type].SetFetchData(fetchData)
 	}
 
-	return s, func(unit gomel.Unit) {
-		if s.mcServer != nil {
+	return s, gdag.AfterInsert(dag, func(unit gomel.Unit) {
+		if s.mcServer != nil && unit.Creator() == pid {
 			s.mcServer.Send(unit)
 		}
-	}, nil
+	}), nil
 }
 
 func (s *service) Start() error {

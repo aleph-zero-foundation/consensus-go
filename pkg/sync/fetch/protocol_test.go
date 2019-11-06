@@ -52,8 +52,8 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		adder1 = tests.NewAdder(dag1)
 		adder2 = tests.NewAdder(dag2)
-		serv1, fbk1 = NewServer(0, dag1, adder1, nil, netservs[0], time.Second, zerolog.Nop(), 0, 0)
-		serv2, _ = NewServer(1, dag2, adder2, nil, netservs[1], time.Second, zerolog.Nop(), 0, 0)
+		serv1, fbk1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 1, 0)
+		serv2, _ = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 1)
 		tserv1 = serv1.(testServer)
 		tserv2 = serv2.(testServer)
 		fb = &mockFB{}

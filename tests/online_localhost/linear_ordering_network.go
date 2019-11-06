@@ -46,23 +46,25 @@ func generateP2PKeys(nProcesses uint16) (p2pPubKeys []*p2p.PublicKey, p2pSecKeys
 	return
 }
 
-func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]string, []string, []string, []string, []string) {
+func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]string, []string, []string, []string, []string, []string) {
 	const (
 		magicPort = 21037
 	)
 	result := make([]string, nProcesses)
 	resultMC := make([]string, nProcesses)
 	setupResult := make([]string, nProcesses)
+	setupFetchResult := make([]string, nProcesses)
 	setupMCResult := make([]string, nProcesses)
 	alertResult := make([]string, nProcesses)
 	for id := 0; id < nProcesses; id++ {
-		result[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id)
-		resultMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+1)
-		setupResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+2)
-		setupMCResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+3)
-		alertResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+5*id+4)
+		result[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id)
+		resultMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+1)
+		setupResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+2)
+		setupFetchResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+3)
+		setupMCResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+4)
+		alertResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+5)
 	}
-	return result, setupResult, resultMC, setupMCResult, alertResult
+	return result, setupResult, resultMC, setupMCResult, setupFetchResult, alertResult
 }
 
 func createAndStartProcess(
@@ -71,6 +73,7 @@ func createAndStartProcess(
 	setupAddresses []string,
 	mcAddresses []string,
 	setupMCAddresses []string,
+	setupFetchAddresses []string,
 	alertAddresses []string,
 	pubKeys []gomel.PublicKey,
 	privKey gomel.PrivateKey,
@@ -92,8 +95,8 @@ func createAndStartProcess(
 		PublicKeys:          pubKeys,
 		RMCVerificationKeys: verificationKeys,
 		P2PPublicKeys:       p2pPubKeys,
-		SetupAddresses:      [][]string{setupAddresses, setupMCAddresses},
-		Addresses:           [][]string{addresses, mcAddresses},
+		SetupAddresses:      [][]string{setupMCAddresses, setupFetchAddresses, setupAddresses},
+		Addresses:           [][]string{mcAddresses, addresses, alertAddresses},
 	}
 	defaultAppConfig := config.NewDefaultConfiguration()
 	defaultAppConfig.OrderStartLevel = 6
@@ -239,7 +242,7 @@ func main() {
 	maxLevel := flag.Int("max_level", 12, "number of levels after which a process should finish; default is 12")
 	flag.Parse()
 
-	addresses, setupAddresses, mcAddresses, setupMCAddresses, alertAddresses := generateLocalhostAddresses("localhost", *testSize)
+	addresses, setupAddresses, mcAddresses, setupMCAddresses, setupFetchAddresses, alertAddresses := generateLocalhostAddresses("localhost", *testSize)
 	pubKeys, privKeys := generateKeys(uint16(*testSize))
 	sekKeys, verKeys := generateRMCKeys(uint16(*testSize))
 	p2pPubKeys, p2pSecKeys := generateP2PKeys(uint16(*testSize))
@@ -248,7 +251,7 @@ func main() {
 	var allDone sync.WaitGroup
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, setupFetchAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *maxLevel, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}

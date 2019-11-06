@@ -30,19 +30,18 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, fetchData sync.FetchData, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, sync.Fallback) {
 	nProc := int(dag.NProc())
 	requests := make(chan request, nProc)
 	s := &server{
-		pid:       pid,
-		dag:       dag,
-		adder:     adder,
-		netserv:   netserv,
-		fetchData: fetchData,
-		requests:  requests,
-		syncIds:   make([]uint32, nProc),
-		timeout:   timeout,
-		log:       log,
+		pid:      pid,
+		dag:      dag,
+		adder:    adder,
+		netserv:  netserv,
+		requests: requests,
+		syncIds:  make([]uint32, nProc),
+		timeout:  timeout,
+		log:      log,
 	}
 	s.outPool = sync.NewPool(nOut, s.Out)
 	s.inPool = sync.NewPool(nIn, s.In)
@@ -65,6 +64,10 @@ func (s *server) StopOut() {
 
 func (s *server) SetFallback(qs sync.Fallback) {
 	s.fallback = qs
+}
+
+func (s *server) SetFetchData(fd sync.FetchData) {
+	s.fetchData = fd
 }
 
 // Resolve builds a fetch request containing all the unknown parents of a problematic preunit.

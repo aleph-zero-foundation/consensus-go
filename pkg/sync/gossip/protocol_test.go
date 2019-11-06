@@ -83,7 +83,7 @@ var _ = Describe("Protocol", func() {
 		fbks = make([]sync.Fallback, 2)
 		tservs = make([]testServer, 2)
 		for i := 0; i < 2; i++ {
-			servs[i], fbks[i] = NewServer(uint16(i), dags[i], adders[i], nil, netservs[i], time.Second, zerolog.Nop(), 1, 3)
+			servs[i], fbks[i] = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			tservs[i] = servs[i].(testServer)
 		}
 		dummyResolve = creating.NewPreunit(1, gomel.EmptyCrown(dags[0].NProc()), nil, nil)
