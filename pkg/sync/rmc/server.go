@@ -48,7 +48,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 		quit:    0,
 	}
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
-	return s, s.requestFinishedRMC, s.properlyMulticast
+	return s
 }
 
 // Start starts worker pools

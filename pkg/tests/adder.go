@@ -27,7 +27,3 @@ func (a *adder) AddUnits(pus []gomel.Preunit) *gomel.AggregateError {
 	}
 	return gomel.NewAggregateError(result)
 }
-
-func (a *adder) Register(dag gomel.Dag) {
-	a.dag = dag
-}

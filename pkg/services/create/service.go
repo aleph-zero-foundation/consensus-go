@@ -102,11 +102,11 @@ func (s *service) createUnit() bool {
 		s.log.Error().Str("where", "create.AddUnit").Msg(err.Error())
 		return true
 	}
-	added := s.dag.GetUnit(created.Hash())
+	/*added := s.dag.GetUnit(created.Hash())
 	if gomel.Prime(added) {
 		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
 	} else {
 		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
-	}
+	}*/
 	return level < s.maxLevel
 }
