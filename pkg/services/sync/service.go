@@ -2,7 +2,6 @@
 package sync
 
 import (
-	"errors"
 	"strconv"
 	"time"
 
@@ -24,7 +23,6 @@ import (
 
 type service struct {
 	servers     []sync.Server
-	mcServer    sync.MulticastServer
 	subservices []gomel.Service
 	log         zerolog.Logger
 }
@@ -32,9 +30,9 @@ type service struct {
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log zerolog.Logger) (gomel.Service, func(gomel.Unit), error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log zerolog.Logger) (gomel.Service, error) {
 	if err := valid(configs); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	pid := configs[0].Pid
 	s := &service{
@@ -42,77 +40,53 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 		log:     log.With().Int(logging.Service, logging.SyncService).Logger(),
 	}
 
+	logNames := map[string]int{
+		"multicast": logging.MCService,
+		"rmc":       logging.RMCService,
+		"gossip":    logging.GossipService,
+		"fetch":     logging.FetchService,
+	}
+
+	var netserv network.Server
 	for i, c := range configs {
-		var netserv network.Server
 
 		timeout, err := time.ParseDuration(c.Params["timeout"])
 		if err != nil {
-			return nil, nil, err
+			return nil, err
+		}
+
+		lg := log.With().Int(logging.Service, logNames[c.Type]).Logger()
+		netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
+		if err != nil {
+			return nil, err
 		}
 
 		switch c.Type {
 		case "multicast":
-			lg := log.With().Int(logging.Service, logging.MCService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			if err != nil {
-				return nil, nil, err
-			}
-			s.mcServer = multicast.NewServer(pid, dag, adder, netserv, timeout, lg)
-			s.servers[i] = s.mcServer
+			s.servers[i] = multicast.NewServer(pid, dag, adder, netserv, timeout, lg)
 
 		case "rmc":
-			lg := log.With().Int(logging.Service, logging.RMCService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
-			if err != nil {
-				return nil, nil, err
-			}
-			s.mcServer = rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
-			s.servers[i] = s.mcServer
+			s.servers[i] = rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
 
 		case "gossip":
-			lg := log.With().Int(logging.Service, logging.GossipService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
+			nIn, nOut, err := parseInOut(c.Params)
 			if err != nil {
-				return nil, nil, err
-			}
-			nOut, err := strconv.Atoi(c.Params["nOut"])
-			if err != nil {
-				return nil, nil, err
-			}
-			nIn, err := strconv.Atoi(c.Params["nIn"])
-			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			s.servers[i] = gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
 
 		case "fetch":
-			lg := log.With().Int(logging.Service, logging.FetchService).Logger()
-			netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
+			nIn, nOut, err := parseInOut(c.Params)
 			if err != nil {
-				return nil, nil, err
-			}
-			nOut, err := strconv.Atoi(c.Params["nOut"])
-			if err != nil {
-				return nil, nil, err
-			}
-			nIn, err := strconv.Atoi(c.Params["nIn"])
-			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			s.servers[i] = fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
 
 		default:
-			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
+			return nil, gomel.NewConfigError("unknown sync type: " + c.Type)
 		}
 	}
-
-	mutlicastUnit := func(unit gomel.Unit) {
-		if s.mcServer != nil && unit.Creator() == pid {
-			s.mcServer.Send(unit)
-		}
-	}
-
-	return s, multicastUnit, nil
+	return s, nil
 }
 
 func (s *service) Start() error {
@@ -183,4 +157,16 @@ func getNetServ(net string, localAddress string, remoteAddresses []string, servi
 		}
 		return netserv, services, nil
 	}
+}
+
+func parseInOut(params map[string]string) (int, int, error) {
+	nOut, err := strconv.Atoi(params["nOut"])
+	if err != nil {
+		return 0, 0, err
+	}
+	nIn, err := strconv.Atoi(params["nIn"])
+	if err != nil {
+		return 0, 0, err
+	}
+	return nIn, nOut, nil
 }

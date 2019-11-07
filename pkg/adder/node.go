@@ -10,7 +10,6 @@ type node struct {
 	missingParents int     // number of preunit's parents that we've never seen
 	limboParents   int     // number of preunit's parents that are waiting in limbo
 	children       []*node // list of other preunits in limbo that has this preunit as parent (maybe, because forks)
-	err            error
 }
 
 func (ad *adder) checkIfReady(nd *node) {

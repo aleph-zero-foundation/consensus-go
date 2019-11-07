@@ -10,8 +10,9 @@ import (
 // missing parents is waiting until all the parents are available. Then it's considered
 // 'ready' and added to per-pid channel, from where it's picked by the worker doing gomel.AddUnit.
 type adder struct {
-	nProc       uint16
 	dag         gomel.Dag
+	decHandlers []gomel.DecodeErrorHandler
+	chkHandlers []gomel.CheckErrorHandler
 	keys        []gomel.PublicKey
 	ready       []chan *node
 	waiting     map[gomel.Hash]*node
@@ -23,13 +24,13 @@ type adder struct {
 
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
-func New(nProc uint16, keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
-	ready := make([]chan *node, nProc)
+func New(dag gomel.Dag, keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
+	ready := make([]chan *node, dag.NProc())
 	for i := range ready {
 		ready[i] = make(chan *node, 32)
 	}
 	ad := &adder{
-		nProc:       nProc,
+		dag:         dag,
 		keys:        keys,
 		ready:       ready,
 		waiting:     make(map[gomel.Hash]*node),
@@ -39,11 +40,16 @@ func New(nProc uint16, keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
 	return ad, ad
 }
 
-func (ad *adder) Register(dag gomel.Dag) {
-	ad.dag = dag
+func (ad *adder) AddDecodeErrorHandler(h gomel.DecodeErrorHandler) {
+	ad.decHandlers = append(ad.decHandlers, h)
 }
 
-func (ad *adder) AddUnit(pu gomel.Preunit) error {
+func (ad *adder) AddCheckErrorHandler(h gomel.CheckErrorHandler) {
+	ad.chkHandlers = append(ad.chkHandlers, h)
+}
+
+func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
+	// SHALL BE DONE: unit registry check here
 	err := ad.checkCorrectness(pu)
 	if err != nil {
 		return err
@@ -51,7 +57,8 @@ func (ad *adder) AddUnit(pu gomel.Preunit) error {
 	return ad.addNode(pu)
 }
 
-func (ad *adder) AddUnits(preunits []gomel.Preunit) *gomel.AggregateError {
+func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
+	// SHALL BE DONE: unit registry check here
 	errors := make([]error, len(preunits))
 	for i, pu := range preunits {
 		err := ad.checkCorrectness(pu)
@@ -66,7 +73,7 @@ func (ad *adder) AddUnits(preunits []gomel.Preunit) *gomel.AggregateError {
 
 // Start the adding workers.
 func (ad *adder) Start() error {
-	ad.wg.Add(int(ad.nProc))
+	ad.wg.Add(int(ad.dag.NProc()))
 	for i := range ad.ready {
 		go func(i int) {
 			for nd := range ad.ready[i] {
@@ -87,15 +94,43 @@ func (ad *adder) Stop() {
 
 // handleReadyNode takes a node that was just picked from adder channel and performs gomel.AddUnit on it.
 func (ad *adder) handleReadyNode(nd *node) {
-	defer ad.remove(nd) // TOTHINK maybe not remove on every error...
+	defer ad.remove(nd)
+	parents, err := gomel.DecodeParents(ad.dag, nd.pu)
+	if err != nil {
+		for _, handler := range ad.decHandlers {
+			if parents, err = handler(err); err == nil {
+				break
+			}
+		}
+		if err != nil {
+			// log error
+			return
+		}
+	}
+	freeUnit := ad.dag.BuildUnit(nd.pu, parents)
+	err = ad.dag.Check(freeUnit)
+	if err != nil {
+		for _, handler := range ad.chkHandlers {
+			if err = handler(err); err == nil {
+				break
+			}
+		}
+		if err != nil {
+			// log error
+			return
+		}
+	}
+	unitInDag := ad.dag.Transform(freeUnit)
+	ad.dag.Insert(unitInDag)
+	// log success
+
 	// SHALL BE DONE: handle wrong control hash and ambiguous parents
 	// ALSO SHALL BE DONE: some parents might be missing if node came from antichain sent by a malicious process
-	_, nd.err = gomel.AddUnit(ad.dag, nd.pu)
 }
 
 // checkCorrectness checks very basic correctness of the given preunit: creator and signature.
 func (ad *adder) checkCorrectness(pu gomel.Preunit) error {
-	if pu.Creator() >= ad.nProc {
+	if pu.Creator() >= ad.dag.NProc() {
 		return gomel.NewDataError("invalid creator")
 	}
 	if ad.keys != nil && !ad.keys[pu.Creator()].Verify(pu) {

@@ -14,8 +14,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
-	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
@@ -79,7 +77,7 @@ func New(pid uint16, pKeys []*p2p.PublicKey, sKey *p2p.SecretKey) (*Beacon, erro
 }
 
 // Bind the beacon with the given dag.
-func (b *Beacon) Bind(dag gomel.Dag) gomel.Dag {
+func (b *Beacon) Bind(dag gomel.Dag) {
 	n := dag.NProc()
 	b.dag = dag
 	b.multicoins = make([]*tcoin.ThresholdCoin, n)
@@ -95,7 +93,8 @@ func (b *Beacon) Bind(dag gomel.Dag) gomel.Dag {
 		b.shares[i] = random.NewSyncCSMap()
 		b.subcoins[i] = make(map[uint16]bool)
 	}
-	return chdag.BeforeInsert(check.AddCheck(dag, b.checkCompliance), b.update)
+	dag.AddCheck(b.checkCompliance)
+	dag.BeforeInsert(b.update)
 }
 
 // RandomBytes returns a sequence of random bits for a given unit.

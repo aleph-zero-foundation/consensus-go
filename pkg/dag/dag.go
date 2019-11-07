@@ -11,6 +11,10 @@ type dag struct {
 	primeUnits  *fiberMap
 	heightUnits *fiberMap
 	maxUnits    gomel.SlottedUnits
+	checks      []gomel.UnitChecker
+	transforms  []gomel.UnitTransformer
+	preInsert   []gomel.InsertHook
+	postInsert  []gomel.InsertHook
 }
 
 // New constructs a dag for a given number of processes.

@@ -35,10 +35,10 @@ func coinSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog.L
 
 func makeBeaconDag(nProc uint16) gomel.Dag {
 	dag := dagutils.New(nProc)
-	dag = check.BasicCompliance(dag)
-	dag = check.ParentConsistency(dag)
-	dag = check.PrimeOnlyNoSkipping(dag)
-	dag = check.NoForks(dag)
+	check.BasicCompliance(dag)
+	check.ParentConsistency(dag)
+	check.PrimeOnlyNoSkipping(dag)
+	check.NoForks(dag)
 	return dag
 }
 
@@ -55,25 +55,21 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	if err != nil {
 		log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
 	}
-	dag = rs.Bind(dag)
+	rs.Bind(dag)
 
-	adr, adderService := adder.New(conf.NProc, conf.PublicKeys)
+	adr, adderService := adder.New(dag, conf.PublicKeys)
 
-	orderService, orderIfPrime := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
-	dag = dagutils.AfterInsert(dag, orderIfPrime)
+	orderService := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 
-	syncService, multicastUnit, err := sync.NewService(dag, adr, conf.Sync, log)
+	syncService, err := sync.NewService(dag, adr, conf.Sync, log)
 	if err != nil {
 		log.Error().Str("where", "setup.sync").Msg(err.Error())
 		return
 	}
-	dag = dagutils.AfterInsert(dag, multicastUnit)
 
 	createService := create.NewService(dag, adr, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-
-	adr.Register(dag)
 
 	err = start(adderService, createService, orderService, memlogService, syncService)
 	if err != nil {

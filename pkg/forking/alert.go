@@ -30,7 +30,10 @@ const (
 	request
 )
 
-var missingCommitmentToForkError = gomel.NewMissingDataError("commitment to fork")
+const (
+	noncommittedParent = "unit built on noncommitted parent"
+	missingCommitment  = "missing commitment to fork"
+)
 
 // AlertHandler allows to raise alerts and handle commitments to units.
 type AlertHandler struct {
@@ -511,13 +514,11 @@ func (a *AlertHandler) attemptProve(conn network.Connection, id uint64) error {
 	return nil
 }
 
-const noncommittedParent = "unit built on noncommitted parent"
-
 // disambiguateForker uses the commitment to this unit to figure out which unit is its predecessor.
 func (a *AlertHandler) disambiguateForker(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
 	comm := a.commitments.getByHash(pu.Hash())
 	if comm == nil {
-		return nil, missingCommitmentToForkError
+		return nil, gomel.NewMissingDataError(missingCommitment)
 	}
 	h := comm.getParentHash(pu.Creator())
 	if h == nil {

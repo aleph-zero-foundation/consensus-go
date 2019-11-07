@@ -7,12 +7,23 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
+// UnitChecker is a function that performs a check on Unit before Prepare.
+type UnitChecker func(Unit) error
+
+// UnitTransformer is a function that transforms a unit after it passed all the checks and Prepare.
+type UnitTransformer func(Unit) Unit
+
+// InsertHook is a function that performs some additional action on a unit before or after Insert.
+type InsertHook func(Unit)
+
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
-	// Decode attempts to decode the given Preunit. Returns an error when that is impossible.
-	Decode(Preunit) (Unit, error)
-	// Prepare checks if the Unit satisfies the assumptions of the dag, and optionally transforms it to a different form. Should be called before Insert.
-	Prepare(Unit) (Unit, error)
+	// BuildUnit constructs a new unit from the preunit and the slice of parents.
+	BuildUnit(Preunit, []Unit) Unit
+	// Check runs on the given unit a series of UnitChechers added to the dag with AddCheck.
+	Check(Unit) error
+	// Transform takes the unit that passed Check and returns a new version of it that was modified to fit the dag.
+	Transform(Unit) Unit
 	// Insert puts into the dag a unit that was previously prepared by Prepare.
 	Insert(Unit)
 	// PrimeUnits returns all prime units on a given level of the dag.
@@ -32,6 +43,11 @@ type Dag interface {
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
+	//TODO comment!
+	AddCheck(UnitChecker)
+	AddTransform(UnitTransformer)
+	BeforeInsert(InsertHook)
+	AfterInsert(InsertHook)
 }
 
 // IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
@@ -64,16 +80,11 @@ func FindMissingParents(dag Dag, crown *Crown) []uint64 {
 	return missing
 }
 
-// GetByCrown searches the dag for a sequence of NProc units
-// created by different processes, such that their heights and a controlHash
-// matches with the given arguments.
-// If there is no valid sequence of units it returns an error.
-// This implementation checks among all the possibilities between the forks,
-// which might be a very expensive computation.
-func GetByCrown(dag Dag, crown *Crown) ([]Unit, error) {
+// DecodeParents TODO
+func DecodeParents(dag Dag, pu Preunit) ([]Unit, error) {
 	possibleUnits := make([][]Unit, dag.NProc())
 	unknown := 0
-	for i, h := range crown.Heights {
+	for i, h := range pu.View().Heights {
 		if h == -1 {
 			continue
 		}
@@ -90,36 +101,5 @@ func GetByCrown(dag Dag, crown *Crown) ([]Unit, error) {
 	if unknown > 0 {
 		return nil, NewUnknownParents(unknown)
 	}
-	return getTransversal(possibleUnits, crown.Heights, &crown.ControlHash)
-}
-
-func getTransversal(units [][]Unit, heights []int, hash *Hash) ([]Unit, error) {
-	nProc := len(units)
-	answer := make([]Unit, nProc)
-	hashes := make([]*Hash, nProc)
-	var rec func(int) bool
-	rec = func(ind int) bool {
-		if ind == nProc {
-			if *hash == *CombineHashes(hashes) {
-				return true
-			}
-			return false
-		}
-		if heights[ind] == -1 {
-			return rec(ind + 1)
-		}
-		for _, u := range units[ind] {
-			answer[ind] = u
-			hashes[ind] = u.Hash()
-			if rec(ind + 1) {
-				return true
-			}
-			hashes[ind] = nil
-		}
-		return false
-	}
-	if rec(0) {
-		return answer, nil
-	}
-	return nil, NewDataError("wrong control hash")
+	return
 }

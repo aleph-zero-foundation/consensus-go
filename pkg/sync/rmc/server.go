@@ -35,7 +35,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.Server {
 	nProc := int(dag.NProc())
 	s := &server{
 		pid:     pid,
@@ -48,6 +48,8 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 		quit:    0,
 	}
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
+	dag.AddCheck(s.finishedRMC)
+	dag.AfterInsert(s.send)
 	return s
 }
 
@@ -66,11 +68,13 @@ func (s *server) StopOut() {
 	atomic.StoreInt64(&s.quit, 1)
 }
 
-func (s *server) Send(unit gomel.Unit) {
-	go s.multicast(unit)
+func (s *server) send(unit gomel.Unit) {
+	if unit.Creator() == s.pid {
+		go s.multicast(unit)
+	}
 }
 
-func (s *server) properlyMulticast(u gomel.Unit) error {
+func (s *server) finishedRMC(u gomel.Unit) error {
 	if u.Creator() == s.pid {
 		// We trust our own units.
 		return nil

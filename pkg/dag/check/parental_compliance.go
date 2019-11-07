@@ -5,8 +5,8 @@ import (
 )
 
 // ParentConsistency checks the consistency rule.
-func ParentConsistency(dag gomel.Dag) gomel.Dag {
-	return AddCheck(dag, func(u gomel.Unit) error { return parentConsistencyCheck(u.Parents(), dag.NProc()) })
+func ParentConsistency(dag gomel.Dag) {
+	dag.AddCheck(func(u gomel.Unit) error { return parentConsistencyCheck(u.Parents(), dag.NProc()) })
 }
 
 func parentConsistencyCheck(parents []gomel.Unit, nProc uint16) error {
@@ -31,8 +31,8 @@ func parentConsistencyCheck(parents []gomel.Unit, nProc uint16) error {
 }
 
 // NoSelfForkingEvidence checks if a unit does not provide evidence of its creator forking.
-func NoSelfForkingEvidence(dag gomel.Dag) gomel.Dag {
-	return AddCheck(dag, func(u gomel.Unit) error { return noSelfForkingEvidenceCheck(u) })
+func NoSelfForkingEvidence(dag gomel.Dag) {
+	dag.AddCheck(noSelfForkingEvidenceCheck)
 }
 
 func noSelfForkingEvidenceCheck(u gomel.Unit) error {
@@ -43,8 +43,8 @@ func noSelfForkingEvidenceCheck(u gomel.Unit) error {
 }
 
 // ForkerMuting checks if the set of units respects the forker-muting policy.
-func ForkerMuting(dag gomel.Dag) gomel.Dag {
-	return AddCheck(dag, func(u gomel.Unit) error { return ForkerMutingCheck(u.Parents()) })
+func ForkerMuting(dag gomel.Dag) {
+	dag.AddCheck(func(u gomel.Unit) error { return ForkerMutingCheck(u.Parents()) })
 }
 
 // ForkerMutingCheck checks if the set of units respects the forker-muting policy, i.e.:

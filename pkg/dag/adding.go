@@ -5,25 +5,56 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
-	parents, err := gomel.GetByCrown(dag, pu.View())
-	if err != nil {
-		return nil, err
-	}
-	return unit.New(pu, parents), nil
+func (dag *dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
+	return unit.New(pu, parents)
 }
 
-func (dag *dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
-	return unit.Prepared(u, dag), nil
+func (dag *dag) Check(u gomel.Unit) error {
+	for _, check := range dag.checks {
+		if err := check(u); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (dag *dag) Transform(u gomel.Unit) gomel.Unit {
+	prepared := unit.Prepared(u, dag)
+	for _, trans := range dag.transforms {
+		prepared = trans(prepared)
+	}
+	return prepared
 }
 
 func (dag *dag) Insert(u gomel.Unit) {
+	for _, hook := range dag.preInsert {
+		hook(u)
+	}
 	dag.updateUnitsOnHeight(u)
 	if gomel.Prime(u) {
 		dag.addPrime(u)
 	}
 	dag.units.add(u)
 	dag.updateMaximal(u)
+	for _, hook := range dag.postInsert {
+		hook(u)
+	}
+}
+
+func (dag *dag) AddCheck(check gomel.UnitChecker) {
+	dag.checks = append(dag.checks, check)
+}
+
+func (dag *dag) AddTransform(trans gomel.UnitTransformer) {
+	dag.transforms = append(dag.transforms, trans)
+}
+
+func (dag *dag) BeforeInsert(hook gomel.InsertHook) {
+	dag.preInsert = append(dag.preInsert, hook)
+}
+
+func (dag *dag) AfterInsert(hook gomel.InsertHook) {
+	dag.postInsert = append(dag.postInsert, hook)
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {

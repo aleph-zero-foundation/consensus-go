@@ -40,7 +40,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs the multicast protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.MulticastServer {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.Server {
 	nProc := int(dag.NProc())
 	requests := make([]chan request, nProc)
 	for i := 0; i < nProc; i++ {
@@ -58,8 +58,8 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 
 	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.Out)
 	s.inPool = sync.NewPool(inPoolSize*nProc, s.In)
+	dag.AfterInsert(s.send)
 	return s
-
 }
 
 func (s *server) Start() {
@@ -79,7 +79,7 @@ func (s *server) StopOut() {
 	s.outPool.Stop()
 }
 
-func (s *server) Send(unit gomel.Unit) {
+func (s *server) send(unit gomel.Unit) {
 	encUnit, err := encoding.EncodeUnit(unit)
 	if err != nil {
 		s.log.Error().Str("where", "multicastServer.Send.EncodeUnit").Msg(err.Error())
