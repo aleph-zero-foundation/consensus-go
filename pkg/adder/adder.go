@@ -3,6 +3,7 @@ package adder
 import (
 	"sync"
 
+	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -20,11 +21,12 @@ type adder struct {
 	missing     map[uint64][]*waitingPreunit
 	mx          sync.Mutex
 	wg          sync.WaitGroup
+	log         zerolog.Logger
 }
 
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
-func New(dag gomel.Dag, keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
+func New(dag gomel.Dag, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service) {
 	ready := make([]chan *waitingPreunit, dag.NProc())
 	for i := range ready {
 		ready[i] = make(chan *waitingPreunit, 32)
@@ -36,6 +38,7 @@ func New(dag gomel.Dag, keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
 		waiting:     make(map[gomel.Hash]*waitingPreunit),
 		waitingByID: make(map[uint64]*waitingPreunit),
 		missing:     make(map[uint64][]*waitingPreunit),
+		log:         log,
 	}
 	return ad, ad
 }
@@ -95,7 +98,7 @@ func (ad *adder) Stop() {
 // handleReadyNode takes a node that was just picked from adder channel and performs gomel.AddUnit on it.
 func (ad *adder) handleReadyNode(wp *waitingPreunit) {
 	defer ad.remove(wp)
-	parents, err := gomel.DecodeParents(ad.dag, wp.pu)
+	parents, err := ad.dag.DecodeParents(wp.pu)
 	if err != nil {
 		for _, handler := range ad.decHandlers {
 			if parents, err = handler(err); err == nil {
@@ -123,9 +126,6 @@ func (ad *adder) handleReadyNode(wp *waitingPreunit) {
 	unitInDag := ad.dag.Transform(freeUnit)
 	ad.dag.Insert(unitInDag)
 	// log success
-
-	// SHALL BE DONE: handle wrong control hash and ambiguous parents
-	// ALSO SHALL BE DONE: some parents might be missing if node came from antichain sent by a malicious process
 }
 
 // checkCorrectness checks very basic correctness of the given preunit: creator and signature.
