@@ -5,6 +5,25 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
+	heights := pu.View().Heights
+	possibleParents := dag.heightUnits.get(heights)
+	parents := make([]gomel.Unit, dag.nProcesses)
+	for i, units := range possibleParents {
+		if heights[i] != -1 && units == nil {
+			return nil, gomel.NewUnknownParents(countUnknown(possibleParents, heights))
+		}
+		if len(units) > 1 {
+			return nil, gomel.NewAmbiguousParents(possibleParents)
+		}
+		parents[i] = units[0]
+	}
+	if *gomel.CombineHashes(gomel.ToHashes(parents)) != pu.View().ControlHash {
+		return nil, gomel.NewDataError("wrong control hash")
+	}
+	return parents, nil
+}
+
 func (dag *dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 	return unit.New(pu, parents)
 }
@@ -19,11 +38,11 @@ func (dag *dag) Check(u gomel.Unit) error {
 }
 
 func (dag *dag) Transform(u gomel.Unit) gomel.Unit {
-	prepared := unit.Prepared(u, dag)
+	u = unit.Prepared(u, dag)
 	for _, trans := range dag.transforms {
-		prepared = trans(prepared)
+		u = trans(u)
 	}
-	return prepared
+	return u
 }
 
 func (dag *dag) Insert(u gomel.Unit) {
@@ -55,6 +74,16 @@ func (dag *dag) BeforeInsert(hook gomel.InsertHook) {
 
 func (dag *dag) AfterInsert(hook gomel.InsertHook) {
 	dag.postInsert = append(dag.postInsert, hook)
+}
+
+func countUnknown(possibleParents [][]gomel.Unit, heights []int) int {
+	unknown := 0
+	for i, h := range heights {
+		if h != -1 && possibleParents[i] == nil {
+			unknown++
+		}
+	}
+	return unknown
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {

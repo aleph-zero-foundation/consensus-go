@@ -18,6 +18,8 @@ type InsertHook func(Unit)
 
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
+	// DecodeParents returns a slice of parents of the given preunit, if the control hash matches.
+	DecodeParents(Preunit) ([]Unit, error)
 	// BuildUnit constructs a new unit from the preunit and the slice of parents.
 	BuildUnit(Preunit, []Unit) Unit
 	// Check runs on the given unit a series of UnitChechers added to the dag with AddCheck.
@@ -67,9 +69,10 @@ func MinimalTrusted(nProcesses uint16) uint16 {
 }
 
 // FindMissingParents takes a crown and return IDs of units that are not present in the dag.
-func FindMissingParents(dag Dag, crown *Crown) []uint64 {
+// TOTHINK this takes and releases lock on heights fiber map multiple times. Can that lead to inconsistency? Is that a problem?
+func FindMissingParents(dag Dag, pu Preunit) []uint64 {
 	missing := make([]uint64, 0, 4)
-	for c, h := range crown.Heights {
+	for c, h := range pu.View().Heights {
 		if h == -1 {
 			continue
 		}
@@ -78,28 +81,4 @@ func FindMissingParents(dag Dag, crown *Crown) []uint64 {
 		}
 	}
 	return missing
-}
-
-// DecodeParents TODO
-func DecodeParents(dag Dag, pu Preunit) ([]Unit, error) {
-	possibleUnits := make([][]Unit, dag.NProc())
-	unknown := 0
-	for i, h := range pu.View().Heights {
-		if h == -1 {
-			continue
-		}
-		su := dag.UnitsOnHeight(h)
-		if su == nil {
-			unknown++
-			continue
-		}
-		possibleUnits[i] = su.Get(uint16(i))
-		if possibleUnits[i] == nil {
-			unknown++
-		}
-	}
-	if unknown > 0 {
-		return nil, NewUnknownParents(unknown)
-	}
-	return
 }
