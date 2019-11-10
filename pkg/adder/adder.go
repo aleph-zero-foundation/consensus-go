@@ -14,10 +14,10 @@ type adder struct {
 	decHandlers []gomel.DecodeErrorHandler
 	chkHandlers []gomel.CheckErrorHandler
 	keys        []gomel.PublicKey
-	ready       []chan *node
-	waiting     map[gomel.Hash]*node
-	waitingByID map[uint64]*node
-	missing     map[uint64][]*node
+	ready       []chan *waitingPreunit
+	waiting     map[gomel.Hash]*waitingPreunit
+	waitingByID map[uint64]*waitingPreunit
+	missing     map[uint64][]*waitingPreunit
 	mx          sync.Mutex
 	wg          sync.WaitGroup
 }
@@ -25,17 +25,17 @@ type adder struct {
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
 func New(dag gomel.Dag, keys []gomel.PublicKey) (gomel.Adder, gomel.Service) {
-	ready := make([]chan *node, dag.NProc())
+	ready := make([]chan *waitingPreunit, dag.NProc())
 	for i := range ready {
-		ready[i] = make(chan *node, 32)
+		ready[i] = make(chan *waitingPreunit, 32)
 	}
 	ad := &adder{
 		dag:         dag,
 		keys:        keys,
 		ready:       ready,
-		waiting:     make(map[gomel.Hash]*node),
-		waitingByID: make(map[uint64]*node),
-		missing:     make(map[uint64][]*node),
+		waiting:     make(map[gomel.Hash]*waitingPreunit),
+		waitingByID: make(map[uint64]*waitingPreunit),
+		missing:     make(map[uint64][]*waitingPreunit),
 	}
 	return ad, ad
 }
@@ -54,7 +54,7 @@ func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	if err != nil {
 		return err
 	}
-	return ad.addNode(pu)
+	return ad.addOne(pu)
 }
 
 func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
@@ -67,7 +67,7 @@ func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.Aggreg
 			preunits[i] = nil
 		}
 	}
-	ad.addNodes(preunits, errors)
+	ad.addBatch(preunits, errors)
 	return gomel.NewAggregateError(errors)
 }
 
@@ -93,9 +93,9 @@ func (ad *adder) Stop() {
 }
 
 // handleReadyNode takes a node that was just picked from adder channel and performs gomel.AddUnit on it.
-func (ad *adder) handleReadyNode(nd *node) {
-	defer ad.remove(nd)
-	parents, err := gomel.DecodeParents(ad.dag, nd.pu)
+func (ad *adder) handleReadyNode(wp *waitingPreunit) {
+	defer ad.remove(wp)
+	parents, err := gomel.DecodeParents(ad.dag, wp.pu)
 	if err != nil {
 		for _, handler := range ad.decHandlers {
 			if parents, err = handler(err); err == nil {
@@ -107,7 +107,7 @@ func (ad *adder) handleReadyNode(nd *node) {
 			return
 		}
 	}
-	freeUnit := ad.dag.BuildUnit(nd.pu, parents)
+	freeUnit := ad.dag.BuildUnit(wp.pu, parents)
 	err = ad.dag.Check(freeUnit)
 	if err != nil {
 		for _, handler := range ad.chkHandlers {

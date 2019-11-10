@@ -4,77 +4,77 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// node is a struct that keeps a single preunit waiting to be added to dag.
-type node struct {
+// waitingPreunit is a struct that keeps a single preunit waiting to be added to dag.
+type waitingPreunit struct {
 	pu             gomel.Preunit
-	missingParents int     // number of preunit's parents that we've never seen
-	limboParents   int     // number of preunit's parents that are waiting in limbo
-	children       []*node // list of other preunits in limbo that has this preunit as parent (maybe, because forks)
+	missingParents int               // number of preunit's parents that we've never seen
+	waitingParents int               // number of preunit's parents that are waiting in adder
+	children       []*waitingPreunit // list of other preunits that has this preunit as parent (maybe, because forks)
 }
 
-func (ad *adder) checkIfReady(nd *node) {
-	if nd.limboParents == 0 && nd.missingParents == 0 {
-		ad.ready[nd.pu.Creator()] <- nd
+func (ad *adder) checkIfReady(wp *waitingPreunit) {
+	if wp.waitingParents == 0 && wp.missingParents == 0 {
+		ad.ready[wp.pu.Creator()] <- wp
 	}
 }
 
 // checkIfMissing sets the children attribute of a newly created node, depending on if it was missing
-func (ad *adder) checkIfMissing(nd *node, id uint64) {
+func (ad *adder) checkIfMissing(wp *waitingPreunit, id uint64) {
 	if children, ok := ad.missing[id]; ok {
-		nd.children = children
+		wp.children = children
 		for _, ch := range children {
 			ch.missingParents--
-			ch.limboParents++
+			ch.waitingParents++
 		}
 		delete(ad.missing, id)
 	} else {
-		nd.children = make([]*node, 0, 8)
+		wp.children = make([]*waitingPreunit, 0, 8)
 	}
 }
 
-func (ad *adder) addNode(pu gomel.Preunit) error {
-	nd := &node{pu: pu}
+func (ad *adder) addOne(pu gomel.Preunit) error {
+	wp := &waitingPreunit{pu: pu}
 	id := gomel.UnitID(pu)
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
 	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
 		return gomel.NewDuplicateUnit(u)
 	}
-	if nd, ok := ad.waiting[*pu.Hash()]; ok {
-		return gomel.NewDuplicatePreunit(nd.pu)
+	if wp, ok := ad.waiting[*pu.Hash()]; ok {
+		return gomel.NewDuplicatePreunit(wp.pu)
 	}
 	if _, ok := ad.waitingByID[id]; ok {
 		// We have a fork
 		// SHALL BE DONE
 		// Alert(fork, pu)
 	}
-	// find out which parents are in dag, which in waiting, and which are missing
-	unknown := gomel.FindMissingParents(ad.dag, pu.View())
+	// find out which parents are in dag, which are waiting, and which are missing
+	unknown := gomel.FindMissingParents(ad.dag, pu)
 	for _, unkID := range unknown {
 		if par, ok := ad.waitingByID[unkID]; ok {
-			nd.limboParents++
-			par.children = append(par.children, nd)
+			wp.waitingParents++
+			par.children = append(par.children, wp)
 		} else {
-			nd.missingParents++
+			wp.missingParents++
 			if _, ok := ad.missing[unkID]; !ok {
-				ad.missing[unkID] = make([]*node, 0, 8)
+				ad.missing[unkID] = make([]*waitingPreunit, 0, 8)
 			}
-			ad.missing[unkID] = append(ad.missing[unkID], nd)
+			ad.missing[unkID] = append(ad.missing[unkID], wp)
 		}
 	}
-	ad.waiting[*pu.Hash()] = nd
-	ad.waitingByID[id] = nd
-	ad.checkIfMissing(nd, id)
-	ad.checkIfReady(nd)
-	if nd.missingParents > 0 {
-		return gomel.NewUnknownParents(nd.missingParents)
+	ad.waiting[*pu.Hash()] = wp
+	ad.waitingByID[id] = wp
+	ad.checkIfMissing(wp, id)
+	ad.checkIfReady(wp)
+	if wp.missingParents > 0 {
+		return gomel.NewUnknownParents(wp.missingParents)
 	}
 	return nil
 }
 
-// addNodes does NOT check for missing parents, it assumes all preunits
+// addBatch does NOT check for missing parents, it assumes all preunits
 // are sorted in topological order and can be added to the dag directly.
-func (ad *adder) addNodes(preunits []gomel.Preunit, errors []error) {
+func (ad *adder) addBatch(preunits []gomel.Preunit, errors []error) {
 	var id uint64
 	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {
@@ -89,8 +89,8 @@ func (ad *adder) addNodes(preunits []gomel.Preunit, errors []error) {
 			errors[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
 			continue
 		}
-		if nd, ok := ad.waiting[*pu.Hash()]; ok {
-			errors[i] = gomel.NewDuplicatePreunit(nd.pu)
+		if wp, ok := ad.waiting[*pu.Hash()]; ok {
+			errors[i] = gomel.NewDuplicatePreunit(wp.pu)
 			continue
 		}
 		id = gomel.UnitID(pu)
@@ -99,22 +99,22 @@ func (ad *adder) addNodes(preunits []gomel.Preunit, errors []error) {
 			// SHALL BE DONE
 			// Alert(fork, pu)
 		}
-		nd := &node{pu: pu}
-		ad.waiting[*pu.Hash()] = nd
-		ad.waitingByID[id] = nd
-		ad.checkIfMissing(nd, id)
-		ad.ready[pu.Creator()] <- nd
+		wp := &waitingPreunit{pu: pu}
+		ad.waiting[*pu.Hash()] = wp
+		ad.waitingByID[id] = wp
+		ad.checkIfMissing(wp, id)
+		ad.ready[pu.Creator()] <- wp
 	}
 }
 
-func (ad *adder) remove(nd *node) {
-	id := gomel.UnitID(nd.pu)
+func (ad *adder) remove(wp *waitingPreunit) {
+	id := gomel.UnitID(wp.pu)
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
-	delete(ad.waiting, *(nd.pu.Hash()))
+	delete(ad.waiting, *(wp.pu.Hash()))
 	delete(ad.waitingByID, id)
-	for _, ch := range nd.children {
-		ch.limboParents--
+	for _, ch := range wp.children {
+		ch.waitingParents--
 		ad.checkIfReady(ch)
 	}
 }

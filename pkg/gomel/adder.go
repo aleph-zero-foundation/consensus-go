@@ -1,9 +1,11 @@
 package gomel
 
 // DecodeErrorHandler is a function that processes errors encountered while decoding parents of a preunit.
+// If it succeeds in recovering from error, it should return a valid list of parents and nil.
 type DecodeErrorHandler func(error) ([]Unit, error)
 
 // CheckErrorHandler is a function that processes errors encountered while checking a newly built unit.
+// If it cannot process a particular error, it should return it for further handling.
 type CheckErrorHandler func(error) error
 
 // Adder represents a mechanism for adding units to a dag.
@@ -18,35 +20,3 @@ type Adder interface {
 	// AddCheckErrorHandler adds new error handler for processing errors encountered during checks.
 	AddCheckErrorHandler(CheckErrorHandler)
 }
-
-/*
-// AddUnit to the specified dag.
-func AddUnit(dag Dag, pu Preunit, dehs []DecodeErrorHandler, cehs []CheckErrorHandler) (Unit, error) {
-	parents, err := DecodeParents(dag, pu)
-	if err != nil {
-		for _, handler := range dehs {
-			if parents, err = handler(err); err == nil {
-				break
-			}
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	freeUnit := dag.BuildUnit(pu, parents)
-	err = dag.Check(freeUnit)
-	if err != nil {
-		for _, handler := range cehs {
-			if err = handler(err); err == nil {
-				break
-			}
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	unitInDag := dag.Transform(freeUnit)
-	dag.Insert(unitInDag)
-	return unitInDag, nil
-}
-*/
