@@ -97,7 +97,7 @@ func (s *service) createUnit() bool {
 		return true
 	}
 	created.SetSignature(s.privKey.Sign(created))
-	err = s.adder.AddUnit(created)
+	err = s.adder.AddUnit(created, s.pid)
 	if err != nil {
 		s.log.Error().Str("where", "create.AddUnit").Msg(err.Error())
 		return true

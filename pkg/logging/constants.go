@@ -139,7 +139,6 @@ const (
 	OrderService
 	SyncService
 	ValidateService
-	GenerateService
 	MemLogService
 	GossipService
 	FetchService
@@ -147,6 +146,7 @@ const (
 	RetryingService
 	RMCService
 	AlertService
+	AdderService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
@@ -155,7 +155,6 @@ var serviceTypeDict = map[int]string{
 	OrderService:    "ORDER",
 	SyncService:     "SYNC",
 	ValidateService: "VALID",
-	GenerateService: "GENER",
 	MemLogService:   "MEMLOG",
 	GossipService:   "GOSSIP",
 	FetchService:    "FETCH",
@@ -163,6 +162,7 @@ var serviceTypeDict = map[int]string{
 	RetryingService: "RETRY",
 	RMCService:      "RMC",
 	AlertService:    "ALERT",
+	AdderService:    "ADDER",
 }
 
 // Genesis was better with Phil Collins.

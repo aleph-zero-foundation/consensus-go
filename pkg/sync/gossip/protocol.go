@@ -137,8 +137,8 @@ func (p *server) In() {
 	}
 
 	log.Debug().Msg(logging.AddUnits)
-	if add.Chunk(p.dag, p.adder, theirPreunitsReceived, "gossip.in", log) &&
-		add.Chunk(p.dag, p.adder, theirFreshPreunitsReceived, "gossip.in.fresh", log) {
+	if add.Chunk(p.adder, theirPreunitsReceived, pid, "gossip.in", log) &&
+		add.Chunk(p.adder, theirFreshPreunitsReceived, pid, "gossip.in.fresh", log) {
 		log.Info().Int(logging.Sent, len(units)).Int(logging.Recv, nReceived).Int(logging.FreshRecv, nFreshReceived).Msg(logging.SyncCompleted)
 	}
 }
@@ -267,7 +267,7 @@ func (p *server) Out() {
 		log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 	}
 	log.Debug().Msg(logging.AddUnits)
-	if add.Chunk(p.dag, p.adder, theirPreunitsReceived, "gossip.out", log) {
+	if add.Chunk(p.adder, theirPreunitsReceived, remotePid, "gossip.out", log) {
 		log.Info().Int(logging.Sent, len(units)).Int(logging.FreshSent, len(freshUnitsUnknown)).Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 	}
 }

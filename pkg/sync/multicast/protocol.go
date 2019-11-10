@@ -20,7 +20,7 @@ func (p *server) In() {
 		p.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
 		return
 	}
-	if add.Unit(p.dag, p.adder, preunit, "multicast.in", p.log) {
+	if add.Unit(p.adder, preunit, preunit.Creator(), "multicast.in", p.log) {
 		p.log.Info().Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 	}
 }

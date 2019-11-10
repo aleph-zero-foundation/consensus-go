@@ -41,7 +41,7 @@ func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Se
 		log:     log,
 	}
 
-	forking.Wrap(dag, a)
+	//forking.Wrap(dag, a)
 	return s, nil
 }
 

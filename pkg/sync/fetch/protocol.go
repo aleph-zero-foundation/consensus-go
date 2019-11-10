@@ -83,7 +83,7 @@ func (p *server) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
-	if add.Chunk(p.dag, p.adder, units, "fetch.out", log) {
+	if add.Chunk(p.adder, units, remotePid, "fetch.out", log) {
 		log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 	}
 }

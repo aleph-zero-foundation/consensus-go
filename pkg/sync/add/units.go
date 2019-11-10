@@ -8,14 +8,14 @@ import (
 )
 
 // Unit adds a preunit to the dag and returns whether everything went fine.
-func Unit(dag gomel.Dag, adder gomel.Adder, pu gomel.Preunit, where string, log zerolog.Logger) bool {
-	return handleError(adder.AddUnit(pu), pu, where, log)
+func Unit(adder gomel.Adder, pu gomel.Preunit, source uint16, where string, log zerolog.Logger) bool {
+	return handleError(adder.AddUnit(pu, source), pu, where, log)
 }
 
-// Chunk adds slice of antichains to the dag and returns whether everything went fine.
-func Chunk(dag gomel.Dag, adder gomel.Adder, preunits []gomel.Preunit, where string, log zerolog.Logger) bool {
+// Chunk adds a slice of preunits to the dag and returns whether everything went fine.
+func Chunk(adder gomel.Adder, preunits []gomel.Preunit, source uint16, where string, log zerolog.Logger) bool {
 	success := true
-	aggErr := adder.AddUnits(preunits)
+	aggErr := adder.AddUnits(preunits, source)
 	for i, err := range aggErr.Errors() {
 		if !handleError(err, preunits[i], where, log) {
 			success = false
