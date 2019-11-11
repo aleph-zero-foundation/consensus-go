@@ -16,6 +16,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
 	"gitlab.com/alephledger/consensus-go/pkg/services/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
+	"gitlab.com/alephledger/validator-skeleton/pkg/core"
 )
 
 func stop(services ...gomel.Service) {
@@ -45,7 +46,7 @@ func makeStandardDag(nProc uint16) gomel.Dag {
 }
 
 // Process starts the main and setup processes.
-func Process(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, setupLog zerolog.Logger, log zerolog.Logger) (gomel.Dag, error) {
+func Process(conf config.Config, ds core.DataSource, ps core.PreblockSink, setupLog zerolog.Logger, log zerolog.Logger) (gomel.Dag, error) {
 	// rsCh is a channel shared between setup process and the main process.
 	// The setup process should create a random source and push it to the channel.
 	// The main process waits on the channel.
@@ -62,7 +63,7 @@ func Process(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, set
 
 // main runs all the services with the configuration provided.
 // It blocks until all of them are done.
-func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <-chan gomel.RandomSource, log zerolog.Logger) (gomel.Dag, error) {
+func main(conf config.Config, ds core.DataSource, ps core.PreblockSink, rsCh <-chan gomel.RandomSource, log zerolog.Logger) (gomel.Dag, error) {
 	dagFinished := make(chan struct{})
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel

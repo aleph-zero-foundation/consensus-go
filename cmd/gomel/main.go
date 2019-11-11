@@ -17,6 +17,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/validator-skeleton/pkg/core"
 )
 
 func getMember(filename string) (*config.Member, error) {
@@ -170,7 +171,7 @@ func main() {
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(300 * conf.Txpu)
 	tds.Start()
-	ps := make(chan *gomel.Preblock)
+	ps := make(chan *core.Preblock)
 	// Reading and ignoring all the preblocks.
 	go func() {
 		for range ps {

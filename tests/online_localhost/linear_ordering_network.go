@@ -17,6 +17,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/validator-skeleton/pkg/core"
 )
 
 func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
@@ -117,7 +118,7 @@ func createAndStartProcess(
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(10)
 	tds.Start()
-	ps := make(chan *gomel.Preblock)
+	ps := make(chan *core.Preblock)
 	// Reading and ignoring all the preblocks.
 	go func() {
 		for range ps {

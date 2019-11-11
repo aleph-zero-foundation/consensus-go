@@ -2,6 +2,7 @@ package tests
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/validator-skeleton/pkg/core"
 )
 
 type unit struct {
@@ -14,7 +15,7 @@ type unit struct {
 	parents   []gomel.Unit
 	floor     [][]gomel.Unit
 	signature gomel.Signature
-	data      gomel.Data
+	data      core.Data
 	rsData    []byte
 }
 
@@ -26,7 +27,7 @@ func (u *unit) RandomSourceData() []byte {
 	return u.rsData
 }
 
-func (u *unit) Data() gomel.Data {
+func (u *unit) Data() core.Data {
 	return u.data
 }
 

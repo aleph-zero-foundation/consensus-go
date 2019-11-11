@@ -8,6 +8,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/validator-skeleton/pkg/core"
 )
 
 type preunitMock struct {
@@ -15,7 +16,7 @@ type preunitMock struct {
 	signature gomel.Signature
 	hash      gomel.Hash
 	crown     gomel.Crown
-	data      gomel.Data
+	data      core.Data
 	rsData    []byte
 }
 
@@ -23,7 +24,7 @@ func (pu *preunitMock) RandomSourceData() []byte {
 	return pu.rsData
 }
 
-func (pu *preunitMock) Data() gomel.Data {
+func (pu *preunitMock) Data() core.Data {
 	return pu.data
 }
 

@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/validator-skeleton/pkg/core"
 )
 
 type service struct {
@@ -24,7 +25,7 @@ type service struct {
 	maxLevel     int
 	privKey      gomel.PrivateKey
 	ticker       *time.Ticker
-	dataSource   gomel.DataSource
+	dataSource   core.DataSource
 	dagFinished  chan<- struct{}
 	added        chan gomel.Unit
 	quit         int64
@@ -34,7 +35,7 @@ type service struct {
 
 // NewService constructs a creating service for the given dag with the given configuration.
 // The service will close the dagFinished channel when it stops.
-func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource gomel.DataSource, log zerolog.Logger) gomel.Service {
+func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource core.DataSource, log zerolog.Logger) gomel.Service {
 	s := &service{
 		dag:          dag,
 		adder:        adder,
