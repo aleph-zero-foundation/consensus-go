@@ -7,6 +7,7 @@ import (
 // waitingPreunit is a struct that keeps a single preunit waiting to be added to dag.
 type waitingPreunit struct {
 	pu             gomel.Preunit
+	source         uint16            // pid of the process that sent us this preunit
 	missingParents int               // number of preunit's parents that we've never seen
 	waitingParents int               // number of preunit's parents that are waiting in adder
 	children       []*waitingPreunit // list of other preunits that has this preunit as parent (maybe, because forks)
@@ -32,8 +33,8 @@ func (ad *adder) checkIfMissing(wp *waitingPreunit, id uint64) {
 	}
 }
 
-func (ad *adder) addOne(pu gomel.Preunit) error {
-	wp := &waitingPreunit{pu: pu}
+func (ad *adder) addOne(pu gomel.Preunit, source uint16) error {
+	wp := &waitingPreunit{pu: pu, source: source}
 	id := gomel.UnitID(pu)
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
@@ -74,7 +75,7 @@ func (ad *adder) addOne(pu gomel.Preunit) error {
 
 // addBatch does NOT check for missing parents, it assumes all preunits
 // are sorted in topological order and can be added to the dag directly.
-func (ad *adder) addBatch(preunits []gomel.Preunit, errors []error) {
+func (ad *adder) addBatch(preunits []gomel.Preunit, source uint16, errors []error) {
 	var id uint64
 	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {
@@ -99,7 +100,7 @@ func (ad *adder) addBatch(preunits []gomel.Preunit, errors []error) {
 			// SHALL BE DONE
 			// Alert(fork, pu)
 		}
-		wp := &waitingPreunit{pu: pu}
+		wp := &waitingPreunit{pu: pu, source: source}
 		ad.waiting[*pu.Hash()] = wp
 		ad.waitingByID[id] = wp
 		ad.checkIfMissing(wp, id)

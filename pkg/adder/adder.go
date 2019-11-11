@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with
@@ -57,7 +58,7 @@ func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	if err != nil {
 		return err
 	}
-	return ad.addOne(pu)
+	return ad.addOne(pu, source)
 }
 
 func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
@@ -70,7 +71,7 @@ func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.Aggreg
 			preunits[i] = nil
 		}
 	}
-	ad.addBatch(preunits, errors)
+	ad.addBatch(preunits, source, errors)
 	return gomel.NewAggregateError(errors)
 }
 
@@ -84,6 +85,7 @@ func (ad *adder) Start() error {
 			}
 		}(i)
 	}
+	ad.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
 
@@ -93,6 +95,7 @@ func (ad *adder) Stop() {
 		close(c)
 	}
 	ad.wg.Wait()
+	ad.log.Info().Msg(logging.ServiceStopped)
 }
 
 // handleReadyNode takes a node that was just picked from adder channel and performs gomel.AddUnit on it.
@@ -106,7 +109,7 @@ func (ad *adder) handleReadyNode(wp *waitingPreunit) {
 			}
 		}
 		if err != nil {
-			// log error
+			ad.log.Error().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(err.Error())
 			return
 		}
 	}
@@ -119,13 +122,13 @@ func (ad *adder) handleReadyNode(wp *waitingPreunit) {
 			}
 		}
 		if err != nil {
-			// log error
+			ad.log.Error().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(err.Error())
 			return
 		}
 	}
 	unitInDag := ad.dag.Transform(freeUnit)
 	ad.dag.Insert(unitInDag)
-	// log success
+	ad.log.Info().Int(logging.Height, unitInDag.Height()).Uint16(logging.Creator, unitInDag.Creator()).Uint16(logging.PID, wp.source).Msg(logging.UnitAdded)
 }
 
 // checkCorrectness checks very basic correctness of the given preunit: creator and signature.

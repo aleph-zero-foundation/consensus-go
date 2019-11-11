@@ -42,19 +42,20 @@ const (
 	FallbackUsed          = "k"
 	MissingDataError      = "l"
 	DuplicatePreunit      = "m"
+	UnitAdded             = "n"
 )
 
 // eventTypeDict maps short event names to human readable form.
 var eventTypeDict = map[string]string{
 	ServiceStarted:        "service started",
 	ServiceStopped:        "service stopped",
-	UnitCreated:           "new regular unit created",
+	UnitCreated:           "new unit created",
 	PrimeUnitCreated:      "new prime unit created",
 	NewTimingUnit:         "new timing unit",
 	LinearOrderExtended:   "linear order extended",
 	ConnectionReceived:    "listener received a TCP connection",
 	ConnectionEstablished: "dialer established a TCP connection",
-	NotEnoughParents:      "creating.NewUnit failed (not enough parents)",
+	NotEnoughParents:      "creating new unit failed (not enough parents)",
 	SyncStarted:           "new sync started",
 	SyncCompleted:         "sync completed",
 	GetDagInfo:            "receiving dag info started",
@@ -69,7 +70,7 @@ var eventTypeDict = map[string]string{
 	ReceivedPreunits:      "successfully received preunits",
 	DuplicateUnit:         "attempting to add unit already present in dag",
 	OwnUnitOrdered:        "unit created by this process has been ordered",
-	ConnectionClosed:      "connection closed after sync (stats = bytes)",
+	ConnectionClosed:      "connection closed after sync (stats in bytes)",
 	MemoryUsage:           "memory usage statistics",
 	DataValidated:         "validated some bytes of data",
 	TooManyIncoming:       "too many incoming connections",
@@ -78,13 +79,14 @@ var eventTypeDict = map[string]string{
 	SentFreshUnits:        "sending fresh units finished",
 	UnitBroadcasted:       "sent a unit through multicast",
 	UnknownParents:        "unable to add unit due to missing parents",
-	AddedBCUnit:           "successfully added unit from multicast",
+	AddedBCUnit:           "unit from multicast was put into adder",
 	AddedToBacklog:        "added unit to retrying backlog",
 	RemovedFromBacklog:    "removed unit from retrying backlog",
 	GotRandomSource:       "received randomness source",
 	FallbackUsed:          "server used fallback due to missing parents",
 	MissingDataError:      "received unit without associated necessary data",
 	DuplicatePreunit:      "attempting to add unit already present in adder",
+	UnitAdded:             "unit successfully added to the dag",
 }
 
 // Field names.
