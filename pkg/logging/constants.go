@@ -74,6 +74,7 @@ var eventTypeDict = map[string]string{
 	TooManyIncoming:       "too many incoming connections",
 	TooManyOutgoing:       "too many outgoing connections",
 	SendFreshUnits:        "sending fresh units started",
+	SentFreshUnits:        "sending fresh units finished",
 	UnitBroadcasted:       "sent a unit through multicast",
 	UnknownParents:        "unable to add unit due to missing parents",
 	AddedBCUnit:           "successfully added unit from multicast",
