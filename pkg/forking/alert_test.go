@@ -1,5 +1,6 @@
 package forking_test
 
+/*
 import (
 	"sync"
 	"time"
@@ -261,3 +262,4 @@ var _ = Describe("Alert", func() {
 	})
 
 })
+*/

@@ -12,7 +12,7 @@ import (
 )
 
 // ReadDag reads a dag description from the given reader and builds the dag using the given dag factory.
-func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
+func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, gomel.Adder, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	text := scanner.Text()
@@ -20,10 +20,10 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 
 	_, err := fmt.Sscanf(text, "%d", &n)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	dag := df.CreateDag(n)
+	dag, adder := df.CreateDag(n)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
 	var txID int
@@ -42,17 +42,17 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 
 			_, err := fmt.Sscanf(t, "%d-%d-%d", &creator, &height, &version)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			if i == 0 {
 				puCreator, puHeight, puVersion = creator, height, version
 			} else {
 				if _, ok := preunitHashes[[3]int{creator, height, version}]; !ok {
-					return nil, gomel.NewDataError("Trying to set parent to non-existing unit")
+					return nil, nil, gomel.NewDataError("Trying to set parent to non-existing unit")
 				}
 				if parents[creator] != nil {
-					return nil, gomel.NewDataError("Duplicate parent")
+					return nil, nil, gomel.NewDataError("Duplicate parent")
 				}
 				parents[creator] = preunitHashes[[3]int{creator, height, version}]
 				parentsHeights[creator] = height
@@ -63,20 +63,20 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, error) {
 		pu := NewPreunit(uint16(puCreator), gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), unitData, nil)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
-		_, err := gomel.AddUnit(dag, pu)
+		err := adder.AddUnit(pu, pu.Creator())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return dag, nil
+	return dag, adder, nil
 }
 
 // CreateDagFromTestFile reads a dag description from the given test file and uses the factory to build the dag.
-func CreateDagFromTestFile(filename string, df DagFactory) (gomel.Dag, error) {
+func CreateDagFromTestFile(filename string, df DagFactory) (gomel.Dag, gomel.Adder, error) {
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	reader := bufio.NewReader(file)
 	return ReadDag(reader, df)

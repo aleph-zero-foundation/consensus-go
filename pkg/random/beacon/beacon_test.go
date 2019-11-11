@@ -21,6 +21,7 @@ var _ = Describe("Beacon", func() {
 		n        uint16
 		maxLevel int
 		dag      []gomel.Dag
+		adder    []gomel.Adder
 		rs       []gomel.RandomSource
 		sKeys    []*p2p.SecretKey
 		pKeys    []*p2p.PublicKey
@@ -31,6 +32,7 @@ var _ = Describe("Beacon", func() {
 		n = 4
 		maxLevel = 13
 		dag = make([]gomel.Dag, n)
+		adder = make([]gomel.Adder, n)
 		rs = make([]gomel.RandomSource, n)
 		sKeys = make([]*p2p.SecretKey, n)
 		pKeys = make([]*p2p.PublicKey, n)
@@ -42,11 +44,11 @@ var _ = Describe("Beacon", func() {
 			p2pKeys[i], _ = p2p.Keys(sKeys[i], pKeys, i)
 		}
 		for pid := uint16(0); pid < n; pid++ {
-			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+			dag[pid], adder[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			rs[pid], err = New(pid, pKeys, sKeys[pid])
 			Expect(err).NotTo(HaveOccurred())
-			dag[pid] = rs[pid].Bind(dag[pid])
+			rs[pid].Bind(dag[pid])
 		}
 	})
 
@@ -58,7 +60,7 @@ var _ = Describe("Beacon", func() {
 					pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
 					Expect(err).NotTo(HaveOccurred())
 					for pid := uint16(0); pid < n; pid++ {
-						_, err = gomel.AddUnit(dag[pid], pu)
+						err = adder[pid].AddUnit(pu, pu.Creator())
 						Expect(err).NotTo(HaveOccurred())
 					}
 				}
@@ -68,7 +70,7 @@ var _ = Describe("Beacon", func() {
 			It("Should return an error", func() {
 				u := dag[0].PrimeUnits(0).Get(0)[0]
 				um := newUnitMock(u, []byte{})
-				_, err := dag[0].Prepare(um)
+				err := dag[0].Check(um)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(HavePrefix("Decoding tcoin failed")))
 			})
@@ -78,7 +80,7 @@ var _ = Describe("Beacon", func() {
 				It("Should return an error", func() {
 					u := dag[0].PrimeUnits(3).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError(HavePrefix("votes wrongly encoded")))
 				})
@@ -89,7 +91,7 @@ var _ = Describe("Beacon", func() {
 					votes := u.RandomSourceData()
 					votes[0] = 0
 					um := newUnitMock(u, votes)
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("missing vote"))
 				})
@@ -109,7 +111,7 @@ var _ = Describe("Beacon", func() {
 					votes = append(votes, buf.Bytes()...)
 
 					um := newUnitMock(u, votes)
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("the provided proof is incorrect"))
 				})
@@ -120,7 +122,7 @@ var _ = Describe("Beacon", func() {
 				It("Should return an error", func() {
 					u := dag[0].PrimeUnits(8).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("cses wrongly encoded"))
 				})
@@ -130,7 +132,7 @@ var _ = Describe("Beacon", func() {
 					u := dag[0].PrimeUnits(8).Get(0)[0]
 					shares := make([]byte, dag[0].NProc())
 					um := newUnitMock(u, shares)
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("missing share"))
 				})
@@ -141,7 +143,7 @@ var _ = Describe("Beacon", func() {
 					// taking shares of a unit of different level
 					v := dag[0].PrimeUnits(9).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("invalid share"))
 				})
@@ -153,17 +155,17 @@ var _ = Describe("Beacon", func() {
 		var maliciousNode uint16
 		BeforeEach(func() {
 			maliciousNode = uint16(2)
-			dag[maliciousNode], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+			dag[maliciousNode], adder[maliciousNode], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			rs[maliciousNode] = &maliciousDealerSource{p2pKeys[maliciousNode]}
-			dag[maliciousNode] = rs[maliciousNode].Bind(dag[maliciousNode])
+			rs[maliciousNode].Bind(dag[maliciousNode])
 			pu, _, err := creating.NewUnit(dag[maliciousNode], maliciousNode, []byte{}, rs[maliciousNode], false)
 
 			for pid := uint16(0); pid < n; pid++ {
 				if pid == maliciousNode {
 					continue
 				}
-				_, err = gomel.AddUnit(dag[pid], pu)
+				err = adder[pid].AddUnit(pu, pu.Creator())
 				Expect(err).NotTo(HaveOccurred())
 			}
 			for level := 0; level < maxLevel; level++ {
@@ -178,7 +180,7 @@ var _ = Describe("Beacon", func() {
 						if pid == maliciousNode {
 							continue
 						}
-						_, err = gomel.AddUnit(dag[pid], pu)
+						err = adder[pid].AddUnit(pu, pu.Creator())
 						Expect(err).NotTo(HaveOccurred())
 					}
 				}
@@ -220,9 +222,7 @@ type maliciousDealerSource struct {
 	keys []encrypt.SymmetricKey
 }
 
-func (ms *maliciousDealerSource) Bind(dag gomel.Dag) gomel.Dag {
-	return dag
-}
+func (ms *maliciousDealerSource) Bind(dag gomel.Dag) {}
 
 func (ms *maliciousDealerSource) RandomBytes(_ uint16, _ int) []byte {
 	return []byte{}

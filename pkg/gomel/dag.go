@@ -76,7 +76,8 @@ func FindMissingParents(dag Dag, pu Preunit) []uint64 {
 		if h == -1 {
 			continue
 		}
-		if dag.UnitsOnHeight(h).Get(uint16(c)) == nil {
+		su := dag.UnitsOnHeight(h)
+		if su == nil || su.Get(uint16(c)) == nil {
 			missing = append(missing, ID(h, uint16(c), dag.NProc()))
 		}
 	}

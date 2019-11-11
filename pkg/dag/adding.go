@@ -10,7 +10,10 @@ func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
 	possibleParents := dag.heightUnits.get(heights)
 	parents := make([]gomel.Unit, dag.nProcesses)
 	for i, units := range possibleParents {
-		if heights[i] != -1 && units == nil {
+		if heights[i] == -1 {
+			continue
+		}
+		if len(units) == 0 {
 			return nil, gomel.NewUnknownParents(countUnknown(possibleParents, heights))
 		}
 		if len(units) > 1 {

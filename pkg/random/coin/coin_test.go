@@ -15,6 +15,7 @@ var _ = Describe("Coin", func() {
 		maxLevel       int
 		seed           int
 		dag            []gomel.Dag
+		adder          []gomel.Adder
 		rs             []gomel.RandomSource
 		shareProviders map[uint16]bool
 		err            error
@@ -24,6 +25,7 @@ var _ = Describe("Coin", func() {
 		maxLevel = 7
 		seed = 2137
 		dag = make([]gomel.Dag, n)
+		adder = make([]gomel.Adder, n)
 		rs = make([]gomel.RandomSource, n)
 
 		shareProviders = make(map[uint16]bool)
@@ -32,10 +34,10 @@ var _ = Describe("Coin", func() {
 		}
 
 		for pid := uint16(0); pid < n; pid++ {
-			dag[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+			dag[pid], adder[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 			Expect(err).NotTo(HaveOccurred())
 			rs[pid] = NewFixedCoin(n, pid, seed, shareProviders)
-			dag[pid] = rs[pid].Bind(dag[pid])
+			rs[pid].Bind(dag[pid])
 		}
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
@@ -43,7 +45,7 @@ var _ = Describe("Coin", func() {
 				pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
 				Expect(err).NotTo(HaveOccurred())
 				for pid := uint16(0); pid < n; pid++ {
-					_, err = gomel.AddUnit(dag[pid], pu)
+					err = adder[pid].AddUnit(pu, pu.Creator())
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
@@ -55,7 +57,7 @@ var _ = Describe("Coin", func() {
 				It("should return an error", func() {
 					u := dag[0].PrimeUnits(2).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -64,7 +66,7 @@ var _ = Describe("Coin", func() {
 					u := dag[0].PrimeUnits(2).Get(0)[0]
 					v := dag[0].PrimeUnits(3).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -74,7 +76,7 @@ var _ = Describe("Coin", func() {
 				It("should return an error", func() {
 					u := dag[0].PrimeUnits(2).Get(n - 1)[0]
 					um := newUnitMock(u, []byte{1, 2, 3})
-					_, err := dag[0].Prepare(um)
+					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})

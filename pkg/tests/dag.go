@@ -20,6 +20,10 @@ type Dag struct {
 	maximalHeight []int
 	unitsByHeight []gomel.SlottedUnits
 	unitByHash    map[gomel.Hash]gomel.Unit
+	checks        []gomel.UnitChecker
+	transforms    []gomel.UnitTransformer
+	preInsert     []gomel.InsertHook
+	postInsert    []gomel.InsertHook
 }
 
 func newDag(nProc uint16) *Dag {
@@ -37,28 +41,94 @@ func newDag(nProc uint16) *Dag {
 	return newDag
 }
 
-// Decode the given preunit to a unit.
-func (dag *Dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
-	var u unit
-	err := dehashParents(&u, dag, pu)
-	if err != nil {
-		return nil, err
+// AddCheck Ihatelinter
+func (dag *Dag) AddCheck(check gomel.UnitChecker) {
+	dag.checks = append(dag.checks, check)
+}
+
+// AddTransform Ihatelinter
+func (dag *Dag) AddTransform(trans gomel.UnitTransformer) {
+	dag.transforms = append(dag.transforms, trans)
+}
+
+// BeforeInsert Ihatelinter
+func (dag *Dag) BeforeInsert(hook gomel.InsertHook) {
+	dag.preInsert = append(dag.preInsert, hook)
+}
+
+// AfterInsert Ihatelinter
+func (dag *Dag) AfterInsert(hook gomel.InsertHook) {
+	dag.postInsert = append(dag.postInsert, hook)
+}
+
+// DecodeParents of the given preunit.
+func (dag *Dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
+	heights := pu.View().Heights
+	parents := make([]gomel.Unit, len(heights))
+	unknown := 0
+	dag.RLock()
+	defer dag.RUnlock()
+	for i, h := range heights {
+		if h == -1 {
+			continue
+		}
+		su := dag.UnitsOnHeight(h)
+		if su == nil {
+			unknown++
+			continue
+		}
+		units := su.Get(uint16(i))
+		if len(units) == 0 {
+			unknown++
+			continue
+		}
+		parents[i] = units[0]
 	}
+
+	if unknown > 0 {
+		return nil, gomel.NewUnknownParents(unknown)
+	}
+	return parents, nil
+}
+
+// BuildUnit makes a new test unit based on the given preunit and parents.
+func (dag *Dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
+	var u unit
+	u.parents = parents
 	// Setting height, creator, signature, version, hash
 	setBasicInfo(&u, dag, pu)
 	setLevel(&u, dag)
 	setFloor(&u, dag)
-	return &u, nil
+	return &u
 }
 
-// Prepare accepts everything.
-func (dag *Dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
-	return u, nil
+// Check accepts everything.
+func (dag *Dag) Check(u gomel.Unit) error {
+	for _, check := range dag.checks {
+		if err := check(u); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Transform is identity.
+func (dag *Dag) Transform(u gomel.Unit) gomel.Unit {
+	for _, trans := range dag.transforms {
+		u = trans(u)
+	}
+	return u
 }
 
 // Insert the unit into the dag.
 func (dag *Dag) Insert(u gomel.Unit) {
+	for _, hook := range dag.preInsert {
+		hook(u)
+	}
 	updateDag(u, dag)
+	for _, hook := range dag.postInsert {
+		hook(u)
+	}
 }
 
 // PrimeUnits returns the prime units at the given level.
@@ -138,17 +208,6 @@ func (dag *Dag) NProc() uint16 {
 func (dag *Dag) IsQuorum(number uint16) bool {
 	// nProcesses doesn't change so no lock needed
 	return 3*number >= 2*dag.nProcesses
-}
-
-func dehashParents(u *unit, dag *Dag, pu gomel.Preunit) error {
-	dag.RLock()
-	defer dag.RUnlock()
-	parents, err := gomel.GetByCrown(dag, pu.View())
-	if err != nil {
-		return err
-	}
-	u.parents = parents
-	return nil
 }
 
 func setBasicInfo(u *unit, dag *Dag, pu gomel.Preunit) {

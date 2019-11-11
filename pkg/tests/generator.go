@@ -13,12 +13,13 @@ import (
 func CreateRandomNonForking(nProcesses, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	dag := newDag(uint16(nProcesses))
+	adder := NewAdder(dag)
 	created := 0
 	for created < nUnits {
 		pid := uint16(r.Intn(nProcesses))
 		if dag.maximalHeight[pid] == -1 {
 			pu := NewPreunit(pid, gomel.EmptyCrown(uint16(nProcesses)), []byte{}, nil)
-			_, err := gomel.AddUnit(dag, pu)
+			err := adder.AddUnit(pu, pu.Creator())
 			if err == nil {
 				created++
 			}
@@ -35,7 +36,7 @@ func CreateRandomNonForking(nProcesses, nUnits int) gomel.Dag {
 				parentsHeights[i] = h
 			}
 			pu := NewPreunit(pid, gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), []byte{}, nil)
-			_, err := gomel.AddUnit(dag, pu)
+			err := adder.AddUnit(pu, pu.Creator())
 			if err == nil {
 				created++
 			}

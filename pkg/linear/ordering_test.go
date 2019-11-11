@@ -24,30 +24,30 @@ var _ = Describe("Ordering", func() {
 	Describe("DecideTiming", func() {
 		Context("On empty dag on level 0", func() {
 			It("should return nil", func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
-				dag = rs.Bind(dag)
+				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 				Expect(ordering.DecideTiming()).To(BeNil())
 			})
 		})
 		Context("On a dag with only dealing units on level 0", func() {
 			It("should return nil", func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
+				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
-				dag = rs.Bind(dag)
+				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 				Expect(ordering.DecideTiming()).To(BeNil())
 			})
 		})
 		Context("On a very regular dag with 4 processes and 10 levels defined in regular.txt file", func() {
 			BeforeEach(func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactoryWithChecks())
+				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactoryWithChecks())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
-				dag = rs.Bind(dag)
+				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 			})
 			It("should decide up to 8th level", func() {
@@ -63,10 +63,10 @@ var _ = Describe("Ordering", func() {
 		var timingRounds [][]gomel.Unit
 		Context("On empty dag on level 0", func() {
 			It("should return nil", func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
-				dag = rs.Bind(dag)
+				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 				ordering.DecideTiming()
 				Expect(ordering.TimingRound(0)).To(BeNil())
@@ -74,10 +74,10 @@ var _ = Describe("Ordering", func() {
 		})
 		Context("On a very regular dag with 4 processes and 10 levels defined in regular.txt file", func() {
 			BeforeEach(func() {
-				dag, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactoryWithChecks())
+				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactoryWithChecks())
 				Expect(err).NotTo(HaveOccurred())
 				rs = tests.NewTestRandomSource()
-				dag = rs.Bind(dag)
+				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 				for level := 0; level < 8; level++ {
 					ordering.DecideTiming()

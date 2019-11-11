@@ -19,7 +19,7 @@ var _ = Describe("Encoding/Decoding", func() {
 		network    *bytes.Buffer
 	)
 	BeforeEach(func() {
-		dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
+		dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 		Expect(readingErr).NotTo(HaveOccurred())
 		network = &bytes.Buffer{}
 	})

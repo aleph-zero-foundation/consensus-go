@@ -25,14 +25,14 @@ type adder struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (a *adder) AddUnit(unit gomel.Preunit) error {
+func (a *adder) AddUnit(unit gomel.Preunit, source uint16) error {
 	a.attemptedAdd = append(a.attemptedAdd, unit)
-	return a.Adder.AddUnit(unit)
+	return a.Adder.AddUnit(unit, source)
 }
 
-func (a *adder) AddAntichain(units []gomel.Preunit) *gomel.AggregateError {
+func (a *adder) AddAntichain(units []gomel.Preunit, source uint16) *gomel.AggregateError {
 	a.attemptedAdd = append(a.attemptedAdd, units...)
-	return a.Adder.AddUnits(units)
+	return a.Adder.AddUnits(units, source)
 }
 
 var _ = Describe("Protocol", func() {
@@ -40,10 +40,10 @@ var _ = Describe("Protocol", func() {
 	var (
 		dags     []gomel.Dag
 		adders   []*adder
-		servs    []sync.MulticastServer
+		servs    []sync.Server
 		tservs   []testServer
 		netservs []network.Server
-		theUnit  gomel.Unit
+		pu       gomel.Preunit
 	)
 
 	BeforeEach(func() {
@@ -72,30 +72,25 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
-
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/one_unit.txt", tests.NewTestDagFactory())
-				dags = append(dags, tdag)
-				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
-
-				for i := 1; i < 4; i++ {
-					tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
-					dags = append(dags, tdag)
+				for i := 0; i < 4; i++ {
+					dag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+					dags = append(dags, dag)
 				}
+				pu = tests.NewPreunit(0, gomel.EmptyCrown(4), []byte{}, nil)
 			})
 
 			It("should add the unit to empty copies", func() {
 				for i := uint16(1); i < 4; i++ {
 					go tservs[0].Out(i)
 				}
-				servs[0].Send(theUnit)
+				adders[0].AddUnit(pu, 0)
 				for i := 1; i < 4; i++ {
 					tservs[i].In()
 				}
-				Expect(adders[0].attemptedAdd).To(BeEmpty())
-				for i := 1; i < 4; i++ {
+				for i := 0; i < 4; i++ {
 					Expect(adders[i].attemptedAdd).To(HaveLen(1))
 					Expect(adders[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-					Expect(adders[i].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+					Expect(adders[i].attemptedAdd[0].Hash()).To(Equal(pu.Hash()))
 				}
 			})
 		})

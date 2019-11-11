@@ -10,20 +10,28 @@ type adder struct {
 func NewAdder(dag gomel.Dag) gomel.Adder {
 	return &adder{dag}
 }
+func (ad *adder) AddDecodeErrorHandler(gomel.DecodeErrorHandler) {}
+func (ad *adder) AddCheckErrorHandler(gomel.CheckErrorHandler)   {}
 
-func (a *adder) Register(dag gomel.Dag) {
-	a.dag = dag
+func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
+	parents, err := ad.dag.DecodeParents(pu)
+	if err != nil {
+		return err
+	}
+	freeUnit := ad.dag.BuildUnit(pu, parents)
+	err = ad.dag.Check(freeUnit)
+	if err != nil {
+		return err
+	}
+	unitInDag := ad.dag.Transform(freeUnit)
+	ad.dag.Insert(unitInDag)
+	return nil
 }
 
-func (a *adder) AddUnit(pu gomel.Preunit) error {
-	_, err := gomel.AddUnit(a.dag, pu)
-	return err
-}
-
-func (a *adder) AddUnits(pus []gomel.Preunit) *gomel.AggregateError {
+func (ad *adder) AddUnits(pus []gomel.Preunit, source uint16) *gomel.AggregateError {
 	result := make([]error, len(pus))
 	for i, pu := range pus {
-		_, result[i] = gomel.AddUnit(a.dag, pu)
+		result[i] = ad.AddUnit(pu, source)
 	}
 	return gomel.NewAggregateError(result)
 }

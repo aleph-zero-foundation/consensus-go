@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	. "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -65,14 +64,21 @@ func (pu *preunitMock) SetHash(value int) {
 
 type defaultChecksFactory struct{}
 
-func (defaultChecksFactory) CreateDag(nProc uint16) gomel.Dag {
-	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(New(nProc)))))
+func (defaultChecksFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
+	dag := New(nProc)
+	check.BasicCompliance(dag)
+	check.ParentConsistency(dag)
+	check.NoSelfForkingEvidence(dag)
+	check.ForkerMuting(dag)
+	return dag, tests.NewAdder(dag)
 }
 
 type noSelfForkingEvidenceFactory struct{}
 
-func (noSelfForkingEvidenceFactory) CreateDag(nProc uint16) gomel.Dag {
-	return check.NoSelfForkingEvidence(New(nProc))
+func (noSelfForkingEvidenceFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
+	dag := New(nProc)
+	check.NoSelfForkingEvidence(dag)
+	return dag, tests.NewAdder(dag)
 }
 
 var _ = Describe("Dag", func() {
@@ -80,8 +86,7 @@ var _ = Describe("Dag", func() {
 	var (
 		nProcesses uint16
 		dag        gomel.Dag
-		ad         gomel.Adder
-		adServ     gomel.Service
+		adder      gomel.Adder
 		addFirst   [][]*preunitMock
 	)
 
@@ -95,27 +100,21 @@ var _ = Describe("Dag", func() {
 	JustBeforeEach(func() {
 		for _, pus := range addFirst {
 			for _, pu := range pus {
-				_, err := gomel.AddUnit(dag, pu)
+				err := adder.AddUnit(pu, pu.Creator())
 				Expect(err).NotTo(HaveOccurred())
 			}
 		}
-		ad, adServ = adder.New(nProcesses, nil)
-		adServ.Start()
-		ad.Register(dag)
-	})
-	JustAfterEach(func() {
-		//adServ.Stop()
 	})
 
 	Describe("with default checks", func() {
 		BeforeEach(func() {
 			nProcesses = 4
-			dag = defaultChecksFactory{}.CreateDag(nProcesses)
+			dag, adder = defaultChecksFactory{}.CreateDag(nProcesses)
 		})
 
 		Describe("HasForkingEvidence works properly in case of forks even when combined floors is not an evidence of forking", func() {
 			It("should confirm that a unit exploiting it is a self-forking evidence", func() {
-				_, err := tests.CreateDagFromTestFile("../../testdata/dags/10/self_forking_evidence.txt", noSelfForkingEvidenceFactory{})
+				_, _, err := tests.CreateDagFromTestFile("../../testdata/dags/10/self_forking_evidence.txt", noSelfForkingEvidenceFactory{})
 				Expect(err).To(Equal(gomel.NewComplianceError("A unit is evidence of self forking")))
 			})
 		})
@@ -128,23 +127,26 @@ var _ = Describe("Dag", func() {
 				})
 				Context("When the dag is empty", func() {
 					It("Should be added as a dealing unit", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						result := dag.GetUnit(addedUnit.Hash())
 						Expect(err).NotTo(HaveOccurred())
 						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 						Expect(result.Signature()).To(Equal(addedUnit.Signature()))
 						Expect(gomel.Prime(result)).To(BeTrue())
 					})
 				})
-				Context("When the dag already contains the unit", func() {
-					JustBeforeEach(func() {
-						_, err := gomel.AddUnit(dag, addedUnit)
-						Expect(err).NotTo(HaveOccurred())
+				/*
+					Context("When the dag already contains the unit", func() {
+						JustBeforeEach(func() {
+							err := adder.AddUnit(addedUnit, addedUnit.Creator())
+							Expect(err).NotTo(HaveOccurred())
+						})
+						It("Should report that fact", func() {
+							err := adder.AddUnit(addedUnit, addedUnit.Creator())
+							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
+						})
 					})
-					It("Should report that fact", func() {
-						err := ad.AddUnit(addedUnit)
-						Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
-					})
-				})
+				*/
 				Context("When the dag contains another parentless unit for this process", func() {
 					BeforeEach(func() {
 						pu := newPreunitMock(0, gomel.DealingHeights(nProcesses), make([]*gomel.Hash, nProcesses))
@@ -152,7 +154,8 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 					It("Should be added as a second dealing unit", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						result := dag.GetUnit(addedUnit.Hash())
 						Expect(err).NotTo(HaveOccurred())
 						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 						Expect(gomel.Prime(result)).To(BeTrue())
@@ -172,7 +175,8 @@ var _ = Describe("Dag", func() {
 				})
 				Context("When the dag is empty", func() {
 					It("Should fail because of lack of parents", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
 						Expect(err).To(MatchError(gomel.NewUnknownParents(1)))
 					})
@@ -184,7 +188,8 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 					It("Should fail because of non prime unit", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
 						Expect(err).To(MatchError(gomel.NewComplianceError("non-prime unit")))
 					})
@@ -203,7 +208,8 @@ var _ = Describe("Dag", func() {
 				})
 				Context("When the dag is empty", func() {
 					It("Should fail because of lack of parents", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
 						Expect(err).To(MatchError(gomel.NewUnknownParents(3)))
 					})
@@ -215,7 +221,8 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 					It("Should fail because of lack of parents", func() {
-						result, err := gomel.AddUnit(dag, addedUnit)
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
 						Expect(err).To(MatchError(gomel.NewUnknownParents(2)))
 					})
@@ -231,19 +238,21 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2, pu3}}
 					})
 					It("Should add the unit succesfully", func() {
-						_, err := gomel.AddUnit(dag, addedUnit)
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
 						Expect(err).NotTo(HaveOccurred())
 					})
-					Context("When the dag already contains the unit", func() {
-						JustBeforeEach(func() {
-							_, err := gomel.AddUnit(dag, addedUnit)
-							Expect(err).NotTo(HaveOccurred())
+					/*
+						Context("When the dag already contains the unit", func() {
+							JustBeforeEach(func() {
+								err := adder.AddUnit(addedUnit, addedUnit.Creator())
+								Expect(err).NotTo(HaveOccurred())
+							})
+							It("Should report that fact", func() {
+								err := adder.AddUnit(addedUnit, addedUnit.Creator())
+								Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
+							})
 						})
-						It("Should report that fact", func() {
-							err := ad.AddUnit(addedUnit)
-							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
-						})
-					})
+					*/
 				})
 			})
 		})
@@ -457,7 +466,7 @@ var _ = Describe("Dag", func() {
 					It("should confirm that a unit is valid", func() {
 						validUnit := newPreunitMock(0, []int{0, 0, 0, -1}, []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash, &gomel.Hash{}})
 						validUnit.SetHash(4)
-						_, err := gomel.AddUnit(dag, validUnit)
+						err := adder.AddUnit(validUnit, validUnit.Creator())
 						Expect(err).NotTo(HaveOccurred())
 					})
 				})

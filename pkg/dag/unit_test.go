@@ -11,8 +11,10 @@ import (
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(nProc uint16) gomel.Dag {
-	return New(nProc)
+func (dagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
+	dag := New(nProc)
+	adder := tests.NewAdder(dag)
+	return dag, adder
 }
 
 // collectUnits runs dfs from maximal units in the given dag and returns a map
@@ -65,7 +67,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking reflexivity of Above", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/one_unit.txt", df)
+				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/one_unit.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should return true", func() {
@@ -75,7 +77,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking lack of symmetry of Above", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/single_unit_with_two_parents.txt", df)
+				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/single_unit_with_two_parents.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should be true in one direction and false in the other", func() {
@@ -90,7 +92,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking transitivity of Above", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/six_units.txt", df)
+				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/six_units.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should be true if two relations are true", func() {
@@ -108,7 +110,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking Above works properly for forked dealing units.", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/forked_dealing.txt", df)
+				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/forked_dealing.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should return false for both below queries.", func() {
@@ -120,7 +122,7 @@ var _ = Describe("Units", func() {
 		})
 		Describe("Checking Above works properly for two forks going out of one unit.", func() {
 			BeforeEach(func() {
-				dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_4u.txt", df)
+				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_4u.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
 			})
 			It("Should correctly answer all pairs of below queries.", func() {
@@ -139,7 +141,7 @@ var _ = Describe("Units", func() {
 		Describe("Checking floors", func() {
 			Describe("On dealing", func() {
 				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", df)
+					dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should return floors containing no units", func() {
@@ -153,7 +155,7 @@ var _ = Describe("Units", func() {
 			})
 			Describe("On a single unit with two parents", func() {
 				BeforeEach(func() {
-					dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/single_unit_with_two_parents.txt", df)
+					dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/single_unit_with_two_parents.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
 				})
 				It("Should contain correct floor", func() {
@@ -165,15 +167,14 @@ var _ = Describe("Units", func() {
 					Expect(floor1[0]).To(Equal(units[1][0][0]))
 				})
 			})
-			/*
-				Describe("When seeing a fork", func() {
-					It("Should return an error ambigous parents", func() {
-						dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
-						Expect(readingErr).To(HaveOccurred())
-						Expect(readingErr).To(MatchError("ambiguous parents"))
-					})
+
+			Describe("When seeing a fork", func() {
+				It("Should return an error ambigous parents", func() {
+					dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_accepted.txt", df)
+					Expect(readingErr).To(HaveOccurred())
+					Expect(readingErr).To(MatchError("ambiguous parents"))
 				})
-			*/
+			})
 		})
 	})
 })

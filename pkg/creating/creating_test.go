@@ -30,13 +30,13 @@ var _ = Describe("Creating", func() {
 		)
 		JustBeforeEach(func() {
 			rs = tests.NewTestRandomSource()
-			dag = rs.Bind(dag)
+			rs.Bind(dag)
 		})
 		Context("when not allowed to skip level", func() {
 			Context("and the dag is empty", func() {
 				BeforeEach(func() {
 					canSkipLevel = false
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				})
 				It("should return a dealing unit", func() {
 					pu, level, err := NewUnit(dag, 3, []byte{}, rs, canSkipLevel)
@@ -49,7 +49,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains a single dealing unit", func() {
 				BeforeEach(func() {
 					canSkipLevel = false
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
 				})
 				It("should return a dealing unit for a different creator", func() {
 					pu, level, err := NewUnit(dag, 3, []byte{}, rs, canSkipLevel)
@@ -66,7 +66,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains two dealing units", func() {
 				BeforeEach(func() {
 					canSkipLevel = false
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/two_dealing.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/two_dealing.txt", tests.NewTestDagFactory())
 				})
 				It("should return an error", func() {
 					_, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
@@ -76,7 +76,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains all the dealing units", func() {
 				BeforeEach(func() {
 					canSkipLevel = false
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
 				})
 				It("should return a unit with all the dealing units as parents", func() {
 					pu, _, err := NewUnit(dag, 7, []byte{}, rs, canSkipLevel)
@@ -94,7 +94,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains two levels without one unit", func() {
 				BeforeEach(func() {
 					canSkipLevel = false
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/4/two_levels_without_a_unit.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/4/two_levels_without_a_unit.txt", tests.NewTestDagFactory())
 				})
 				It("should return a unit with all the dealing units as parents", func() {
 					pu, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
@@ -114,7 +114,7 @@ var _ = Describe("Creating", func() {
 			Context("and the dag is empty", func() {
 				BeforeEach(func() {
 					canSkipLevel = true
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				})
 				It("should return a dealing unit", func() {
 					pu, level, err := NewUnit(dag, 3, []byte{}, rs, canSkipLevel)
@@ -127,7 +127,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains a single dealing unit", func() {
 				BeforeEach(func() {
 					canSkipLevel = true
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/one_unit.txt", tests.NewTestDagFactory())
 				})
 				It("should return a dealing unit for a different creator", func() {
 					pu, level, err := NewUnit(dag, 3, []byte{}, rs, canSkipLevel)
@@ -144,7 +144,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains two dealing units", func() {
 				BeforeEach(func() {
 					canSkipLevel = true
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/two_dealing.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/two_dealing.txt", tests.NewTestDagFactory())
 				})
 				It("should return an error", func() {
 					_, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
@@ -154,7 +154,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains all the dealing units", func() {
 				BeforeEach(func() {
 					canSkipLevel = true
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
 				})
 				It("should return a unit with all the dealing units as parents", func() {
 					pu, _, err := NewUnit(dag, 7, []byte{}, rs, canSkipLevel)
@@ -172,7 +172,7 @@ var _ = Describe("Creating", func() {
 			Context("that contains two levels without one unit", func() {
 				BeforeEach(func() {
 					canSkipLevel = true
-					dag, _ = tests.CreateDagFromTestFile("../testdata/dags/4/two_levels_without_a_unit.txt", tests.NewTestDagFactory())
+					dag, _, _ = tests.CreateDagFromTestFile("../testdata/dags/4/two_levels_without_a_unit.txt", tests.NewTestDagFactory())
 				})
 				It("should return a unit that skips one level", func() {
 					pu, _, err := NewUnit(dag, 0, []byte{}, rs, canSkipLevel)
