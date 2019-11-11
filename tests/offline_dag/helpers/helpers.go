@@ -554,9 +554,7 @@ func newTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
 }
 
-func (rs *testRandomSource) Bind(dag gomel.Dag) gomel.Dag {
-	return dag
-}
+func (rs *testRandomSource) Bind(dag gomel.Dag) {}
 
 func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 	if SimpleCoin(pid, level) {
@@ -582,7 +580,7 @@ func Test(
 			shareProviders[i] = true
 		}
 		rs := coin.NewFixedCoin(dag.NProc(), pid, 0, shareProviders)
-		dag = rs.Bind(dag)
+		rs.Bind(dag)
 		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
@@ -598,7 +596,7 @@ func TestUsingTestRandomSource(
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
 		rs := newTestRandomSource()
-		dag = rs.Bind(dag)
+		rs.Bind(dag)
 		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
@@ -607,7 +605,11 @@ func TestUsingTestRandomSource(
 // MakeStandardDag returns a daag with standard checks.
 func MakeStandardDag(nProc uint16) gomel.Dag {
 	dag := dag.New(nProc)
-	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(dag))))
+	check.ForkerMuting(dag)
+	check.NoSelfForkingEvidence(dag)
+	check.ParentConsistency(dag)
+	check.BasicCompliance(dag)
+	return dag
 }
 
 // TestUsingRandomSourceProvider is a helper function that performs a single test using provided TestingRoutineFactory.
