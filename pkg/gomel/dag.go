@@ -45,7 +45,7 @@ type Dag interface {
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
-	//TODO comment!
+	// SHALL BE DONE comment!
 	AddCheck(UnitChecker)
 	AddTransform(UnitTransformer)
 	BeforeInsert(InsertHook)

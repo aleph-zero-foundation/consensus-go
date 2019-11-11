@@ -66,7 +66,6 @@ func (s *server) StopOut() {
 	s.outPool.Stop()
 }
 
-
 // Resolve requests next gossip to happen with the creator of a problematic preunit.
 func (s *server) Resolve(preunit gomel.Preunit) {
 	select {
