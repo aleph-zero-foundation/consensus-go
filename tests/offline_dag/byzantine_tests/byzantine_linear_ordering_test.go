@@ -17,6 +17,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 	"gitlab.com/alephledger/consensus-go/tests/offline_dag/helpers"
 )
 
@@ -59,11 +60,11 @@ func createForkUsingNewUnit() forker {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
 
-		preunitParents, err := gomel.GetByCrown(dag, preunit.View())
+		preunitParents, err := dag.DecodeParents(preunit)
 		if err != nil {
 			return nil, err
 		}
-		puParents, err := gomel.GetByCrown(dag, pu.View())
+		puParents, err := dag.DecodeParents(pu)
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +105,7 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 
 	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
 
-		preunitParents, err := gomel.GetByCrown(dag, preunit.View())
+		preunitParents, err := dag.DecodeParents(preunit)
 		if err != nil {
 			return nil, err
 		}
@@ -644,7 +645,7 @@ func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 	adder := func(units []gomel.Unit, dag gomel.Dag, rs gomel.RandomSource) error {
 		for _, unit := range units {
 			preunit := unitToPreunit(unit)
-			_, err := gomel.AddUnit(dag, preunit)
+			err := tests.NewAdder(dag).AddUnit(preunit, preunit.Creator())
 			if err != nil {
 				return err
 			}
@@ -1095,7 +1096,8 @@ func buildOneLevelUp(
 				return nil, fmt.Errorf("error while creating a unit for dag no %d: %s", ids[ix], err.Error())
 			}
 			// add only to its creator's dag
-			addedUnit, err := gomel.AddUnit(dag, preunit)
+			err = tests.NewAdder(dag).AddUnit(preunit, preunit.Creator())
+			addedUnit := dag.GetUnit(preunit.Hash())
 			if err != nil {
 				return nil, fmt.Errorf("error while adding to dag no %d: %s", ids[ix], err.Error())
 			}
@@ -1153,10 +1155,12 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 			if err != nil {
 				return err
 			}
-			triggeringUnit, err := gomel.AddUnit(dags[triggeringDag], triggeringPreunit)
+			err = tests.NewAdder(dags[triggeringDag]).AddUnit(triggeringPreunit, triggeringPreunit.Creator())
 			if err != nil {
 				return err
 			}
+			triggeringUnit := dags[triggeringDag].GetUnit(triggeringPreunit.Hash())
+
 			commonVotes := newDefaultCommonVote(triggeringUnit, initialVotingRound, numberOfDeterministicRounds)
 
 			dagsCopy[triggeringDag], dagsCopy[0] = dagsCopy[0], dagsCopy[triggeringDag]
