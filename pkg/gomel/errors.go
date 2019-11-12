@@ -143,7 +143,7 @@ type AmbiguousParents struct {
 }
 
 func (e *AmbiguousParents) Error() string {
-	return "ambiguous parents"
+	return "Ambiguous parents"
 }
 
 // NewAmbiguousParents constructs an AmbigousParents error for a given process.

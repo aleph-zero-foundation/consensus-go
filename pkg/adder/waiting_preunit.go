@@ -13,12 +13,6 @@ type waitingPreunit struct {
 	children       []*waitingPreunit // list of other preunits that has this preunit as parent (maybe, because forks)
 }
 
-func (ad *adder) checkIfReady(wp *waitingPreunit) {
-	if wp.waitingParents == 0 && wp.missingParents == 0 {
-		ad.ready[wp.pu.Creator()] <- wp
-	}
-}
-
 // checkIfMissing sets the children attribute of a newly created node, depending on if it was missing
 func (ad *adder) checkIfMissing(wp *waitingPreunit, id uint64) {
 	if children, ok := ad.missing[id]; ok {

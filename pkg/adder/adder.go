@@ -2,6 +2,7 @@ package adder
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -22,6 +23,7 @@ type adder struct {
 	missing     map[uint64][]*waitingPreunit
 	mx          sync.Mutex
 	wg          sync.WaitGroup
+	quit        int64
 	log         zerolog.Logger
 }
 
@@ -80,6 +82,7 @@ func (ad *adder) Start() error {
 	ad.wg.Add(int(ad.dag.NProc()))
 	for i := range ad.ready {
 		go func(i int) {
+			defer ad.wg.Done()
 			for nd := range ad.ready[i] {
 				ad.handleReadyNode(nd)
 			}
@@ -91,6 +94,7 @@ func (ad *adder) Start() error {
 
 // Stop the adding workers.
 func (ad *adder) Stop() {
+	atomic.StoreInt64(&ad.quit, 1)
 	for _, c := range ad.ready {
 		close(c)
 	}
@@ -98,7 +102,13 @@ func (ad *adder) Stop() {
 	ad.log.Info().Msg(logging.ServiceStopped)
 }
 
-// handleReadyNode takes a node that was just picked from adder channel and performs gomel.AddUnit on it.
+func (ad *adder) checkIfReady(wp *waitingPreunit) {
+	if wp.waitingParents == 0 && wp.missingParents == 0 && atomic.LoadInt64(&ad.quit) == 0 {
+		ad.ready[wp.pu.Creator()] <- wp
+	}
+}
+
+// handleReadyNode takes a waitingPreunit that is ready and adds it to the dag.
 func (ad *adder) handleReadyNode(wp *waitingPreunit) {
 	defer ad.remove(wp)
 	parents, err := ad.dag.DecodeParents(wp.pu)
