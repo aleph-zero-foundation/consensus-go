@@ -7,7 +7,6 @@ import (
 )
 
 func hashesFromAcquiredUnits(acquiredUnits []gomel.Preunit) []*gomel.Hash {
-	// SHALL BE DONE: code duplication with adder, should be moved to gomel
 	acquiredHashes := make([]*gomel.Hash, len(acquiredUnits))
 	for i, au := range acquiredUnits {
 		acquiredHashes[i] = au.Hash()

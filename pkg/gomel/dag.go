@@ -45,10 +45,13 @@ type Dag interface {
 	IsQuorum(number uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
-	// SHALL BE DONE comment!
+	// AddCheck extends the list of UnitCheckers that are used during adding a unit.
 	AddCheck(UnitChecker)
+	// AddTranform extends the list of UnitTransformers that are used during adding a unit.
 	AddTransform(UnitTransformer)
+	// BeforeInsert adds an action to perform before insert.
 	BeforeInsert(InsertHook)
+	// AfterInsert adds an action to perform after insert.
 	AfterInsert(InsertHook)
 }
 
