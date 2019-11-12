@@ -160,7 +160,7 @@ func main() {
 	}
 	filename := os.Args[1]
 	var df dagFactory
-	dag, err := tests.CreateDagFromTestFile(filename, df)
+	dag, _, err := tests.CreateDagFromTestFile(filename, df)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error while reading dag %s: %s\n", filename, err.Error())
 		return
@@ -179,8 +179,9 @@ func main() {
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(nProc uint16) gomel.Dag {
-	return dag.New(nProc)
+func (dagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
+	d := dag.New(nProc)
+	return d, tests.NewAdder(d)
 }
 
 func collectUnits(dag gomel.Dag) []gomel.Unit {
