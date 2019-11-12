@@ -43,6 +43,8 @@ func (a *adder) AddUnits(units []gomel.Preunit, source uint16) *gomel.AggregateE
 
 func (a *adder) removeDuplicates() {
 	m := make(map[gomel.Hash]gomel.Preunit)
+	a.mx.Lock()
+	defer a.mx.Unlock()
 	for _, pu := range a.attemptedAdd {
 		m[*pu.Hash()] = pu
 	}
