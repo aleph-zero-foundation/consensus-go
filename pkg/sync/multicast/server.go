@@ -6,6 +6,7 @@ package multicast
 
 import (
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -36,6 +37,7 @@ type server struct {
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
 	timeout  time.Duration
+	quit     int64
 	log      zerolog.Logger
 }
 
@@ -55,7 +57,6 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 		timeout:  timeout,
 		log:      log,
 	}
-
 	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.Out)
 	s.inPool = sync.NewPool(inPoolSize*nProc, s.In)
 	dag.AfterInsert(s.send)
@@ -72,6 +73,7 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
+	atomic.StoreInt64(&s.quit, 1)
 	nProc := int(s.dag.NProc())
 	for i := 0; i < nProc; i++ {
 		close(s.requests[i])
@@ -80,6 +82,9 @@ func (s *server) StopOut() {
 }
 
 func (s *server) send(unit gomel.Unit) {
+	if unit.Creator() != s.pid {
+		return
+	}
 	encUnit, err := encoding.EncodeUnit(unit)
 	if err != nil {
 		s.log.Error().Str("where", "multicastServer.Send.EncodeUnit").Msg(err.Error())
@@ -89,6 +94,8 @@ func (s *server) send(unit gomel.Unit) {
 		if i == int(s.pid) {
 			continue
 		}
-		s.requests[i] <- request{encUnit, unit.Height()}
+		if atomic.LoadInt64(&s.quit) == 0 {
+			s.requests[i] <- request{encUnit, unit.Height()}
+		}
 	}
 }
