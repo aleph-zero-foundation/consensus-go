@@ -51,7 +51,7 @@ func (p *server) Out() {
 	if !ok {
 		return
 	}
-	remotePid := r.pid
+	remotePid := r.Pid
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		p.log.Error().Str("where", "fetch.out.dial").Msg(err.Error())
@@ -70,7 +70,7 @@ func (p *server) Out() {
 	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
 	log.Debug().Msg(logging.SendRequests)
-	err = sendRequests(conn, r.unitIDs)
+	err = sendRequests(conn, r.UnitIDs)
 	if err != nil {
 		log.Error().Str("where", "fetch.out.sendRequests").Msg(err.Error())
 		return

@@ -10,9 +10,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-type request struct {
-	pid     uint16
-	unitIDs []uint64
+// Request is a query for fetch server to perform a sync with the given process and request particular units.
+type Request struct {
+	Pid     uint16
+	UnitIDs []uint64
 }
 
 func sendRequests(conn network.Connection, unitIDs []uint64) error {

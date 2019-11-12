@@ -80,7 +80,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 			if err != nil {
 				return nil, err
 			}
-			s.servers[i] = fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			s.servers[i], _ = fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
 
 		default:
 			return nil, gomel.NewConfigError("unknown sync type: " + c.Type)
