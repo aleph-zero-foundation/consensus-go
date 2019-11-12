@@ -1,6 +1,5 @@
 package forking_test
 
-/*
 import (
 	"sync"
 	"time"
@@ -9,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
@@ -26,6 +26,8 @@ var _ = Describe("Alert", func() {
 		nProc    uint16
 		alerters []*AlertHandler
 		dags     []gomel.Dag
+		adders   []gomel.Adder
+		adServs  []gomel.Service
 		rss      []gomel.RandomSource
 		netservs []network.Server
 		pubKeys  []gomel.PublicKey
@@ -46,15 +48,24 @@ var _ = Describe("Alert", func() {
 		}
 		alerters = make([]*AlertHandler, nProc)
 		dags = make([]gomel.Dag, nProc)
+		adders = make([]gomel.Adder, nProc)
+		adServs = make([]gomel.Service, nProc)
 		rss = make([]gomel.RandomSource, nProc)
 		netservs = tests.NewNetwork(int(nProc))
 		for i := range dags {
-			dag := dag.New(nProc)
+			dags[i] = dag.New(nProc)
 			rss[i] = tests.NewTestRandomSource()
-			dag = rss[i].Bind(dag)
+			rss[i].Bind(dags[i])
+			adders[i], adServs[i] = adder.New(dags[i], nil, zerolog.Nop())
 			rmc := rmc.New(verKeys, secrKeys[i])
-			alerters[i] = NewAlertHandler(uint16(i), dag, pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
-			dags[i] = Wrap(dag, alerters[i])
+			alerters[i] = NewAlertHandler(uint16(i), dags[i], adders[i], pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
+			adServs[i].Start()
+		}
+	})
+
+	AfterEach(func() {
+		for _, s := range adServs {
+			s.Stop()
 		}
 	})
 
@@ -85,7 +96,7 @@ var _ = Describe("Alert", func() {
 				Expect(err).NotTo(HaveOccurred())
 				pu.SetSignature(privKeys[i].Sign(pu))
 				for _, dag := range dags {
-					_, err = gomel.AddUnit(dag, pu)
+					err := tests.NewAdder(dag).AddUnit(pu, 0)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
@@ -100,14 +111,14 @@ var _ = Describe("Alert", func() {
 			pu.SetSignature(privKeys[forker].Sign(pu))
 			puf.SetSignature(privKeys[forker].Sign(puf))
 			dag := dags[1]
-			_, err = gomel.AddUnit(dag, pu)
+			err = tests.NewAdder(dag).AddUnit(pu, 0)
 			Expect(err).NotTo(HaveOccurred())
 			wg := &sync.WaitGroup{}
 			for j := uint16(1); j < nProc; j++ {
 				go AcceptAlert(j, wg)
 			}
-			_, err = gomel.AddUnit(dag, puf)
-			Expect(err).To(MatchError("MissingDataError: commitment to fork"))
+			err = tests.NewAdder(dag).AddUnit(puf, 0)
+			Expect(err).To(MatchError("MissingDataError: missing commitment to fork"))
 			wg.Wait()
 		})
 
@@ -124,7 +135,7 @@ var _ = Describe("Alert", func() {
 					pu, _, err := creating.NewUnit(dags[forker], forker, []byte{byte(i)}, rss[forker], true)
 					Expect(err).NotTo(HaveOccurred())
 					pu.SetSignature(privKeys[forker].Sign(pu))
-					_, err = gomel.AddUnit(dags[i], pu)
+					err = tests.NewAdder(dags[i]).AddUnit(pu, 0)
 					Expect(err).NotTo(HaveOccurred())
 					pus[i] = pu
 				}
@@ -135,14 +146,14 @@ var _ = Describe("Alert", func() {
 				for j := uint16(1); j < nProc; j++ {
 					go AcceptAlert(j, wg)
 				}
-				_, err := gomel.AddUnit(dags[1], pus[2])
+				_ = tests.NewAdder(dags[1]).AddUnit(pus[2], 0)
 				// We cannot expect an error or lack of it here.
 				// It occuring depends on whether 2 finishes its alert before 1 tries checking for the commitment.
 				wg.Wait()
 				// We have to start at 3 here,because we don't know whether adding 2 succeeded, see above.
 				failed := 0
 				for i := uint16(3); i < nProc; i++ {
-					_, err = gomel.AddUnit(dags[1], pus[i])
+					err := tests.NewAdder(dags[1]).AddUnit(pus[i], 0)
 					if err != nil {
 						failed++
 					}
@@ -165,7 +176,7 @@ var _ = Describe("Alert", func() {
 				pu.SetSignature(privKeys[i].Sign(pu))
 				dealing[i] = pu
 				for _, dag := range dags {
-					_, err = gomel.AddUnit(dag, pu)
+					err := tests.NewAdder(dag).AddUnit(pu, 0)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
@@ -183,36 +194,36 @@ var _ = Describe("Alert", func() {
 				forker := uint16(0)
 				forkHelpDag = dag.New(nProc)
 				for i := uint16(1); i < nProc; i++ {
-					_, err = gomel.AddUnit(forkHelpDag, dealing[i])
+					err := tests.NewAdder(forkHelpDag).AddUnit(dealing[i], 0)
 					Expect(err).NotTo(HaveOccurred())
 				}
 				dealingFork1, _, err = creating.NewUnit(dags[forker], forker, []byte{}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				dealingFork1.SetSignature(privKeys[forker].Sign(dealingFork1))
-				_, err = gomel.AddUnit(dags[forker], dealingFork1)
+				err = tests.NewAdder(dags[forker]).AddUnit(dealingFork1, 0)
 				Expect(err).NotTo(HaveOccurred())
 				dealingFork2, _, err = creating.NewUnit(forkHelpDag, forker, []byte{43}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				dealingFork2.SetSignature(privKeys[forker].Sign(dealingFork2))
-				_, err = gomel.AddUnit(forkHelpDag, dealingFork2)
+				err = tests.NewAdder(forkHelpDag).AddUnit(dealingFork1, 0)
 				Expect(err).NotTo(HaveOccurred())
 				childFork1, _, err = creating.NewUnit(dags[forker], forker, []byte{}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				childFork1.SetSignature(privKeys[forker].Sign(childFork1))
-				_, err = gomel.AddUnit(dags[forker], childFork1)
+				err = tests.NewAdder(dags[forker]).AddUnit(childFork1, 0)
 				Expect(err).NotTo(HaveOccurred())
 				childFork2, _, err = creating.NewUnit(forkHelpDag, forker, []byte{43}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				childFork2.SetSignature(privKeys[forker].Sign(childFork2))
-				_, err = gomel.AddUnit(forkHelpDag, childFork2)
+				err = tests.NewAdder(forkHelpDag).AddUnit(childFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = gomel.AddUnit(dags[1], dealingFork1)
+				err = tests.NewAdder(dags[1]).AddUnit(dealingFork1, 0)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = gomel.AddUnit(dags[1], childFork1)
+				err = tests.NewAdder(dags[1]).AddUnit(childFork1, 0)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = gomel.AddUnit(dags[2], dealingFork2)
+				err = tests.NewAdder(dags[2]).AddUnit(dealingFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = gomel.AddUnit(dags[2], childFork2)
+				err = tests.NewAdder(dags[2]).AddUnit(childFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -221,16 +232,16 @@ var _ = Describe("Alert", func() {
 				for j := uint16(1); j < nProc; j++ {
 					go AcceptAlert(j, wg)
 				}
-				_, err := gomel.AddUnit(dags[1], dealingFork2)
+				err := tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
 				Expect(err).To(MatchError("MissingDataError: commitment to fork"))
 				wg.Wait()
 				wg.Add(1)
 				go AcceptSomething(2, wg)
 				alerters[1].RequestCommitment(dealingFork2, 2)
 				wg.Wait()
-				_, err = gomel.AddUnit(dags[1], dealingFork2)
+				err = tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = gomel.AddUnit(dags[1], childFork2)
+				err = tests.NewAdder(dags[1]).AddUnit(childFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -238,28 +249,27 @@ var _ = Describe("Alert", func() {
 				unit2, _, err := creating.NewUnit(dags[2], 2, []byte{}, rss[2], true)
 				Expect(err).NotTo(HaveOccurred())
 				unit2.SetSignature(privKeys[2].Sign(unit2))
-				_, err = gomel.AddUnit(dags[2], unit2)
+				err = tests.NewAdder(dags[2]).AddUnit(unit2, 0)
 				Expect(err).NotTo(HaveOccurred())
 				wg := &sync.WaitGroup{}
 				for j := uint16(1); j < nProc; j++ {
 					go AcceptAlert(j, wg)
 				}
-				_, err = gomel.AddUnit(dags[1], dealingFork2)
+				err = tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
 				Expect(err).To(MatchError("MissingDataError: commitment to fork"))
 				wg.Wait()
 				wg.Add(1)
 				go AcceptSomething(2, wg)
 				alerters[1].RequestCommitment(dealingFork2, 2)
 				wg.Wait()
-				_, err = gomel.AddUnit(dags[1], dealingFork2)
+				err = tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = gomel.AddUnit(dags[1], childFork2)
+				err = tests.NewAdder(dags[1]).AddUnit(childFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = gomel.AddUnit(dags[1], unit2)
+				err = tests.NewAdder(dags[1]).AddUnit(unit2, 0)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})
 
 })
-*/

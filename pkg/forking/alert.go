@@ -30,10 +30,18 @@ const (
 	request
 )
 
-const (
-	noncommittedParent = "unit built on noncommitted parent"
-	missingCommitment  = "missing commitment to fork"
-)
+// noCommitment is an error due to problems with missing commitments.
+type noCommitment struct {
+	msg string
+}
+
+func (e *noCommitment) Error() string {
+	return "MissingCommitment: " + e.msg
+}
+
+func missingCommitment(msg string) *noCommitment {
+	return &noCommitment{msg}
+}
 
 // AlertHandler allows to raise alerts and handle commitments to units.
 type AlertHandler struct {
@@ -50,9 +58,9 @@ type AlertHandler struct {
 }
 
 // NewAlertHandler for raising and handling commitments.
-func NewAlertHandler(myPid uint16, dag gomel.Dag, keys []gomel.PublicKey, rmc *rmc.RMC, netserv network.Server, timeout time.Duration, log zerolog.Logger) *AlertHandler {
+func NewAlertHandler(myPid uint16, dag gomel.Dag, adder gomel.Adder, keys []gomel.PublicKey, rmc *rmc.RMC, netserv network.Server, timeout time.Duration, log zerolog.Logger) *AlertHandler {
 	nProc := uint16(len(keys))
-	return &AlertHandler{
+	al := &AlertHandler{
 		myPid:       myPid,
 		nProc:       nProc,
 		dag:         dag,
@@ -64,6 +72,15 @@ func NewAlertHandler(myPid uint16, dag gomel.Dag, keys []gomel.PublicKey, rmc *r
 		locks:       make([]sync.Mutex, nProc),
 		log:         log,
 	}
+
+	dag.AddCheck(al.checkCommitment)
+	dag.AfterInsert(func(u gomel.Unit) {
+		al.Unlock(u.Creator())
+	})
+	adder.AddDecodeErrorHandler(al.ambiguousParentsHandler)
+	adder.AddCheckErrorHandler(al.checkErrorHandler)
+
+	return al
 }
 
 // HandleIncoming connection, either accepting an alert or responding to a commitment request.
@@ -278,7 +295,7 @@ func (a *AlertHandler) handleCommitmentRequest(conn network.Connection, log zero
 // RequestCommitment to the given preunit, from pid.
 // The other party might reply indicating that they were not aware of the fork.
 // In this case we send the finished alert, in a separate communication.
-func (a *AlertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
+func (a *AlertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 	log := a.log.With().Uint16(logging.PID, pid).Logger()
 	conn, err := a.netserv.Dial(pid, a.timeout)
 	if err != nil {
@@ -294,7 +311,7 @@ func (a *AlertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 		log.Error().Str("where", "AlertHandler.RequestCommitment.Greet").Msg(err.Error())
 		return err
 	}
-	_, err = conn.Write(pu.Hash()[:])
+	_, err = conn.Write(bu.Hash()[:])
 	if err != nil {
 		log.Error().Str("where", "AlertHandler.RequestCommitment.Write").Msg(err.Error())
 		return err
@@ -311,7 +328,7 @@ func (a *AlertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 		return err
 	}
 	if buf[0] == 1 {
-		a.sendFinished(pu.Creator(), pid)
+		a.sendFinished(bu.Creator(), pid)
 		return errors.New("peer was unaware of forker")
 	}
 	comms, err := acquireCommitments(conn)
@@ -518,7 +535,7 @@ func (a *AlertHandler) attemptProve(conn network.Connection, id uint64) error {
 func (a *AlertHandler) disambiguateForker(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
 	comm := a.commitments.getByHash(pu.Hash())
 	if comm == nil {
-		return nil, gomel.NewMissingDataError(missingCommitment)
+		return nil, missingCommitment("missing commitment to fork")
 	}
 	h := comm.getParentHash(pu.Creator())
 	if h == nil {
@@ -532,8 +549,7 @@ func (a *AlertHandler) disambiguateForker(possibleParents []gomel.Unit, pu gomel
 	return nil, gomel.NewUnknownParents(1)
 }
 
-// Disambiguate which of the possibleParents is the actual parent of a unit created by pid.
-// Only uses local data, if some is missing a MissingDataError is returned.
+
 func (a *AlertHandler) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
 	if len(possibleParents) == 0 {
 		return nil, nil
@@ -549,18 +565,18 @@ func (a *AlertHandler) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preun
 	height := possibleParents[0].Height()
 	comm := a.commitments.getByParties(pid, forker)
 	if comm == nil {
-		return nil, gomel.NewMissingDataError("no commitment by this pid")
+		return nil, missingCommitment("no commitment by this pid")
 	}
 	cu := comm.getUnit()
 	if cu == nil {
-		return nil, gomel.NewComplianceError(noncommittedParent)
+		return nil, gomel.NewComplianceError("unit built on noncommitted parent")
 	}
 	u := a.dag.GetUnit(cu.Hash())
 	if u == nil {
-		return nil, gomel.NewMissingDataError("no committed unit needed for disambiguation")
+		return nil, missingCommitment("no committed unit needed for disambiguation")
 	}
 	if u.Height() < height {
-		return nil, gomel.NewComplianceError(noncommittedParent)
+		return nil, gomel.NewComplianceError("unit built on noncommitted parent")
 	}
 	for u.Height() > height {
 		u = gomel.Predecessor(u)

@@ -27,21 +27,19 @@ type service struct {
 }
 
 // NewService constructs an alerting service for the given dag with the given configuration.
-func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Service, error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, conf *config.Alert, log zerolog.Logger) (gomel.Service, error) {
 	rmc := rmc.New(conf.Pubs, conf.Priv)
 	netserv, err := tcp.NewServer(conf.LocalAddress, conf.RemoteAddresses, log)
 	if err != nil {
 		return nil, err
 	}
-	a := forking.NewAlertHandler(conf.Pid, dag, conf.PublicKeys, rmc, netserv, conf.Timeout, log)
+	a := forking.NewAlertHandler(conf.Pid, dag, adder, conf.PublicKeys, rmc, netserv, conf.Timeout, log)
 	s := &service{
 		alert:   a,
 		netserv: netserv,
 		timeout: conf.Timeout,
 		log:     log,
 	}
-
-	//forking.Wrap(dag, a)
 	return s, nil
 }
 

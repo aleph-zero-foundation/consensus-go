@@ -120,7 +120,7 @@ func (ad *adder) handleReadyNode(wp *waitingPreunit) {
 	parents, err := ad.dag.DecodeParents(wp.pu)
 	if err != nil {
 		for _, handler := range ad.decHandlers {
-			if parents, err = handler(err); err == nil {
+			if parents, err = handler(wp.pu, err, wp.source); err == nil {
 				break
 			}
 		}
@@ -133,7 +133,7 @@ func (ad *adder) handleReadyNode(wp *waitingPreunit) {
 	err = ad.dag.Check(freeUnit)
 	if err != nil {
 		for _, handler := range ad.chkHandlers {
-			if err = handler(err); err == nil {
+			if err = handler(freeUnit, err, wp.source); err == nil {
 				break
 			}
 		}

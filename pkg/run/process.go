@@ -12,7 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	//"gitlab.com/alephledger/consensus-go/pkg/services/alert"
+	"gitlab.com/alephledger/consensus-go/pkg/services/alert"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
 	"gitlab.com/alephledger/consensus-go/pkg/services/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
@@ -78,10 +78,10 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 
 	adr, adderService := adder.New(dag, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
-	/*alertService, err := alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
+	alertService, err := alert.NewService(dag, adr, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
 	if err != nil {
 		return nil, err
-	}*/
+	}
 
 	orderService := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 
@@ -100,11 +100,11 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 		}
 	}()
 
-	err = start( /*alertService, */ adderService, createService, orderService, memlogService, syncService)
+	err = start(alertService, adderService, createService, orderService, memlogService, syncService)
 	if err != nil {
 		return nil, err
 	}
 	<-dagFinished
-	stop(createService, orderService, memlogService, syncService, adderService) //, alertService)
+	stop(createService, orderService, memlogService, syncService, adderService, alertService)
 	return dag, nil
 }
