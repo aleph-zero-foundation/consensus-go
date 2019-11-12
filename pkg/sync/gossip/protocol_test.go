@@ -1,6 +1,5 @@
 package gossip_test
 
-/*
 import (
 	snc "sync"
 	"time"
@@ -28,18 +27,18 @@ type adder struct {
 	attemptedAdd []gomel.Preunit
 }
 
-func (a *adder) AddUnit(unit gomel.Preunit) error {
+func (a *adder) AddUnit(unit gomel.Preunit, source uint16) error {
 	a.mx.Lock()
 	a.attemptedAdd = append(a.attemptedAdd, unit)
 	a.mx.Unlock()
-	return a.Adder.AddUnit(unit)
+	return a.Adder.AddUnit(unit, source)
 }
 
-func (a *adder) AddUnits(units []gomel.Preunit) *gomel.AggregateError {
+func (a *adder) AddUnits(units []gomel.Preunit, source uint16) *gomel.AggregateError {
 	a.mx.Lock()
 	a.attemptedAdd = append(a.attemptedAdd, units...)
 	a.mx.Unlock()
-	return a.Adder.AddUnits(units)
+	return a.Adder.AddUnits(units, source)
 }
 
 func (a *adder) removeDuplicates() {
@@ -92,7 +91,7 @@ var _ = Describe("Protocol", func() {
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
 				for i := 0; i < 2; i++ {
-					tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+					tdag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 					dags = append(dags, tdag)
 				}
 			})
@@ -117,10 +116,10 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/one_unit.txt", tests.NewTestDagFactory())
+				tdag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/one_unit.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
 				theUnit = tdag.MaximalUnitsPerProcess().Get(0)[0]
-				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				tdag, _, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
 			})
 
@@ -142,9 +141,9 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				tdag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
-				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/other_unit.txt", tests.NewTestDagFactory())
+				tdag, _, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/other_unit.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
 			})
 
@@ -166,7 +165,7 @@ var _ = Describe("Protocol", func() {
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
 				for i := 0; i < 2; i++ {
-					tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/only_dealing.txt", tests.NewTestDagFactory())
+					tdag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/only_dealing.txt", tests.NewTestDagFactory())
 					dags = append(dags, tdag)
 				}
 			})
@@ -187,9 +186,9 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
+				tdag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
-				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+				tdag, _, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
 			})
 
@@ -207,9 +206,9 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dags = []gomel.Dag{}
-				tdag, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view1.txt", tests.NewTestDagFactory())
+				tdag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view1.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
-				tdag, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
+				tdag, _, _ = tests.CreateDagFromTestFile("../../testdata/dags/4/exchange_with_fork_local_view2.txt", tests.NewTestDagFactory())
 				dags = append(dags, tdag)
 			})
 
@@ -227,4 +226,3 @@ var _ = Describe("Protocol", func() {
 	})
 
 })
-*/

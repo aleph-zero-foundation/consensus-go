@@ -1,6 +1,5 @@
 package fetch_test
 
-/*
 import (
 	"time"
 
@@ -20,7 +19,6 @@ type testServer interface {
 	In()
 	Out()
 }
-
 
 var _ = Describe("Protocol", func() {
 
@@ -42,8 +40,6 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		adder1 = tests.NewAdder(dag1)
-		adder2 = tests.NewAdder(dag2)
 		serv1 = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 0, 0)
 		serv2 = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 0)
 		tserv1 = serv1.(testServer)
@@ -59,8 +55,8 @@ var _ = Describe("Protocol", func() {
 		Context("when requesting a unit with unknown parents", func() {
 
 			BeforeEach(func() {
-				dag1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
-				dag2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/random_100u.txt", tests.NewTestDagFactory())
+				dag1, adder1, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
+				dag2, adder2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/random_100u.txt", tests.NewTestDagFactory())
 				unit := dag2.MaximalUnitsPerProcess().Get(1)[0]
 				enc, err := encoding.EncodeUnit(unit)
 				Expect(err).NotTo(HaveOccurred())
@@ -69,15 +65,15 @@ var _ = Describe("Protocol", func() {
 			})
 
 			It("should add enough units to add the preunit", func() {
-				Expect(adder1.AddUnit(pu)).ToNot(Succeed())
+				Expect(adder1.AddUnit(pu, 0)).ToNot(Succeed())
 
 				go tserv2.In()
 				tserv1.Out()
 
-				Expect(adder1.AddUnit(pu)).To(Succeed())
+				Expect(adder1.AddUnit(pu, 0)).To(Succeed())
 			})
 		})
 
 	})
 
-})*/
+})
