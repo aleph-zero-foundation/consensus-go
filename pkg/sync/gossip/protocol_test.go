@@ -54,6 +54,12 @@ func (a *adder) removeDuplicates() {
 	}
 }
 
+func (a *adder) added() []gomel.Preunit {
+	a.mx.Lock()
+	defer a.mx.Unlock()
+	return a.attemptedAdd
+}
+
 var _ = Describe("Protocol", func() {
 
 	var (
@@ -108,7 +114,7 @@ var _ = Describe("Protocol", func() {
 					adders[i].removeDuplicates()
 				}
 				for i := 0; i < 2; i++ {
-					Expect(adders[i].attemptedAdd).To(BeEmpty())
+					Expect(adders[i].added()).To(BeEmpty())
 				}
 			})
 		})
@@ -135,10 +141,10 @@ var _ = Describe("Protocol", func() {
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
-				Expect(adders[0].attemptedAdd).To(BeEmpty())
-				Expect(adders[1].attemptedAdd).To(HaveLen(1))
-				Expect(adders[1].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))
-				Expect(adders[1].attemptedAdd[0].Hash()).To(Equal(theUnit.Hash()))
+				Expect(adders[0].added()).To(BeEmpty())
+				Expect(adders[1].added()).To(HaveLen(1))
+				Expect(adders[1].added()[0].Creator()).To(BeNumerically("==", 0))
+				Expect(adders[1].added()[0].Hash()).To(Equal(theUnit.Hash()))
 			})
 
 		})
@@ -160,9 +166,9 @@ var _ = Describe("Protocol", func() {
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
-				Expect(adders[0].attemptedAdd).To(HaveLen(1))
-				Expect(adders[0].attemptedAdd[0].Creator()).To(BeNumerically("==", 1))
-				Expect(adders[1].attemptedAdd).To(BeEmpty())
+				Expect(adders[0].added()).To(HaveLen(1))
+				Expect(adders[0].added()[0].Creator()).To(BeNumerically("==", 1))
+				Expect(adders[1].added()).To(BeEmpty())
 			})
 
 		})
@@ -185,7 +191,7 @@ var _ = Describe("Protocol", func() {
 					adders[i].removeDuplicates()
 				}
 				for i := 0; i < 2; i++ {
-					Expect(adders[i].attemptedAdd).To(BeEmpty())
+					Expect(adders[i].added()).To(BeEmpty())
 				}
 			})
 
@@ -207,8 +213,8 @@ var _ = Describe("Protocol", func() {
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
 				}
-				Expect(adders[0].attemptedAdd).To(BeEmpty())
-				Expect(adders[1].attemptedAdd).To(HaveLen(44))
+				Expect(adders[0].added()).To(BeEmpty())
+				Expect(adders[1].added()).To(HaveLen(44))
 			})
 		})
 		Context("when trolled by a forker", func() {
@@ -229,7 +235,7 @@ var _ = Describe("Protocol", func() {
 					adders[i].removeDuplicates()
 				}
 				for i := 0; i < 2; i++ {
-					Expect(adders[i].attemptedAdd).To(HaveLen(3))
+					Expect(adders[i].added()).To(HaveLen(3))
 				}
 			})
 		})
