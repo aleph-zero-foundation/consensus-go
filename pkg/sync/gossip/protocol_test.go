@@ -58,6 +58,7 @@ var _ = Describe("Protocol", func() {
 		dags     []gomel.Dag
 		adders   []*adder
 		servs    []sync.Server
+		requests []chan<- uint16
 		tservs   []testServer
 		netservs []network.Server
 	)
@@ -77,9 +78,10 @@ var _ = Describe("Protocol", func() {
 			adders = append(adders, &adder{tests.NewAdder(dag), snc.Mutex{}, nil})
 		}
 		servs = make([]sync.Server, 2)
+		requests = make([]chan<- uint16, 2)
 		tservs = make([]testServer, 2)
 		for i := 0; i < 2; i++ {
-			servs[i] = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
+			servs[i], requests[i] = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
 			tservs[i] = servs[i].(testServer)
 		}
 	})
@@ -98,6 +100,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should not add anything", func() {
 				go tservs[0].Out()
+				requests[0] <- 1
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
@@ -125,6 +128,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should add the unit to the second copy", func() {
 				go tservs[0].Out()
+				requests[0] <- 1
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
@@ -149,6 +153,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should add the unit to the first copy", func() {
 				go tservs[1].In()
+				requests[0] <- 1
 				tservs[0].Out()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
@@ -172,6 +177,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should not add anything", func() {
 				go tservs[0].Out()
+				requests[0] <- 1
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
@@ -194,6 +200,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should add everything", func() {
 				go tservs[0].Out()
+				requests[0] <- 1
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
@@ -214,6 +221,7 @@ var _ = Describe("Protocol", func() {
 
 			It("should add all units", func() {
 				go tservs[0].Out()
+				requests[0] <- 1
 				tservs[1].In()
 				for i := 0; i < 2; i++ {
 					adders[i].removeDuplicates()
