@@ -49,7 +49,7 @@ const (
 var eventTypeDict = map[string]string{
 	ServiceStarted:        "service started",
 	ServiceStopped:        "service stopped",
-	UnitCreated:           "new unit created",
+	UnitCreated:           "new regular unit created",
 	PrimeUnitCreated:      "new prime unit created",
 	NewTimingUnit:         "new timing unit",
 	LinearOrderExtended:   "linear order extended",

@@ -10,10 +10,11 @@ type CheckErrorHandler func(error) error
 
 // Adder represents a mechanism for adding units to a dag.
 type Adder interface {
-	// AddUnit adds a single unit to the underlying dag. Waits until the adding finishes and returns an error if applicable.
+	// AddOwnUnit adds to the dag a unit produced by creating service (blocks until unit is added).
+	AddOwnUnit(Preunit) Unit
+	// AddUnit adds a single unit received from the given process to the underlying dag.
 	AddUnit(Preunit, uint16) error
-	// AddUnits adds multiple units to the underlying . Waits until the adding of all units finishes and
-	// returns the AggregateError with errors corresponding to the respective preunits.
+	// AddUnits adds multiple units received from the given process to the underlying dag.
 	AddUnits([]Preunit, uint16) *AggregateError
 	// AddDecodeErrorHandler adds new error handler for processing errors encountered during decoding preunit's parents.
 	AddDecodeErrorHandler(DecodeErrorHandler)

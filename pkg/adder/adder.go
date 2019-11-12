@@ -54,6 +54,12 @@ func (ad *adder) AddCheckErrorHandler(h gomel.CheckErrorHandler) {
 	ad.chkHandlers = append(ad.chkHandlers, h)
 }
 
+func (ad *adder) AddOwnUnit(pu gomel.Preunit) gomel.Unit {
+	wp := &waitingPreunit{pu: pu, source: pu.Creator()}
+	ad.handleReadyNode(wp)
+	return ad.dag.GetUnit(pu.Hash())
+}
+
 func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	// SHALL BE DONE: unit registry check here
 	err := ad.checkCorrectness(pu)
@@ -83,8 +89,9 @@ func (ad *adder) Start() error {
 	for i := range ad.ready {
 		go func(i int) {
 			defer ad.wg.Done()
-			for nd := range ad.ready[i] {
-				ad.handleReadyNode(nd)
+			for wp := range ad.ready[i] {
+				ad.handleReadyNode(wp)
+				ad.remove(wp)
 			}
 		}(i)
 	}
@@ -110,7 +117,6 @@ func (ad *adder) checkIfReady(wp *waitingPreunit) {
 
 // handleReadyNode takes a waitingPreunit that is ready and adds it to the dag.
 func (ad *adder) handleReadyNode(wp *waitingPreunit) {
-	defer ad.remove(wp)
 	parents, err := ad.dag.DecodeParents(wp.pu)
 	if err != nil {
 		for _, handler := range ad.decHandlers {

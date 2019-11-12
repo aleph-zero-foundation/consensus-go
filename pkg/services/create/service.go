@@ -97,11 +97,11 @@ func (s *service) createUnit() bool {
 		return true
 	}
 	created.SetSignature(s.privKey.Sign(created))
-	err = s.adder.AddUnit(created, s.pid)
-	if err != nil {
-		s.log.Error().Str("where", "create.AddUnit").Msg(err.Error())
-		return true
+	added := s.adder.AddOwnUnit(created)
+	if gomel.Prime(added) {
+		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
+	} else {
+		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
 	}
-	s.log.Info().Int(logging.Height, created.Height()).Msg(logging.UnitCreated)
 	return level < s.maxLevel
 }
