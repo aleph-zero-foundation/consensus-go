@@ -11,7 +11,14 @@ import (
 
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with
 // missing parents is waiting until all the parents are available. Then it's considered
-// 'ready' and added to per-pid channel, from where it's picked by the worker doing gomel.AddUnit.
+// 'ready' and added to per-pid channel, from where it's picked by the worker.
+// Adding a unit consists of:
+// a) DecodeParents
+// b) BuildUnit
+// c) Check
+// d) Transform
+// e) Insert
+
 type adder struct {
 	dag         gomel.Dag
 	decHandlers []gomel.DecodeErrorHandler
@@ -54,12 +61,19 @@ func (ad *adder) AddCheckErrorHandler(h gomel.CheckErrorHandler) {
 	ad.chkHandlers = append(ad.chkHandlers, h)
 }
 
+// AddOwnUnit adds to the dag a unit produced by the same process. It blocks until unit is added, and returns it.
 func (ad *adder) AddOwnUnit(pu gomel.Preunit) gomel.Unit {
 	wp := &waitingPreunit{pu: pu, source: pu.Creator()}
-	ad.handleReadyNode(wp)
+	ad.handleReady(wp)
 	return ad.dag.GetUnit(pu.Hash())
 }
 
+// AddUnit checks basic correctness of a preunit and then adds it to the buffer zone.
+// Does not block - this method returns when the preunit is added to the waiting preunits.
+// The returned error can be:
+//   DataError - if creator or signature are wrong
+//   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
+//   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	// SHALL BE DONE: unit registry check here
 	err := ad.checkCorrectness(pu)
@@ -69,6 +83,11 @@ func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	return ad.addOne(pu, source)
 }
 
+// AddUnit checks basic correctness of a given slice of preunits and then adds them to the buffer zone.
+// It is assumed all preunits are sorted topologically and can be directly added to the dag (no missing parents).
+// Returned AggregateError can have the following members:
+//   DataError - if creator or signature are wrong
+//   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
 func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
 	// SHALL BE DONE: unit registry check here
 	errors := make([]error, len(preunits))
@@ -79,8 +98,7 @@ func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.Aggreg
 			preunits[i] = nil
 		}
 	}
-	ad.addBatch(preunits, source, errors)
-	return gomel.NewAggregateError(errors)
+	return gomel.NewAggregateError(ad.addBatch(preunits, source, errors))
 }
 
 // Start the adding workers.
@@ -90,7 +108,7 @@ func (ad *adder) Start() error {
 		go func(i int) {
 			defer ad.wg.Done()
 			for wp := range ad.ready[i] {
-				ad.handleReadyNode(wp)
+				ad.handleReady(wp)
 				ad.remove(wp)
 			}
 		}(i)
@@ -109,14 +127,16 @@ func (ad *adder) Stop() {
 	ad.log.Info().Msg(logging.ServiceStopped)
 }
 
-func (ad *adder) checkIfReady(wp *waitingPreunit) {
-	if wp.waitingParents == 0 && wp.missingParents == 0 && atomic.LoadInt64(&ad.quit) == 0 {
+// sendToWorker takes a ready waitingPreuint and adds it to the channel corresponding
+// with its dedicated worker. Atomic flag prevents send on a closed channel after Stop().
+func (ad *adder) sendToWorker(wp *waitingPreunit) {
+	if atomic.LoadInt64(&ad.quit) == 0 {
 		ad.ready[wp.pu.Creator()] <- wp
 	}
 }
 
-// handleReadyNode takes a waitingPreunit that is ready and adds it to the dag.
-func (ad *adder) handleReadyNode(wp *waitingPreunit) {
+// handleReady takes a waitingPreunit that is ready and adds it to the dag.
+func (ad *adder) handleReady(wp *waitingPreunit) {
 	parents, err := ad.dag.DecodeParents(wp.pu)
 	if err != nil {
 		for _, handler := range ad.decHandlers {

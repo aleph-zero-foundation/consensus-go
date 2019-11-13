@@ -13,6 +13,11 @@ type waitingPreunit struct {
 	children       []*waitingPreunit // list of other preunits that has this preunit as parent (maybe, because forks)
 }
 
+// ready waitingPreunit is one without any waiting or missing parents.
+func ready(wp *waitingPreunit) bool {
+	return wp.waitingParents == 0 && wp.missingParents == 0
+}
+
 // checkIfMissing sets the children attribute of a newly created node, depending on if it was missing
 func (ad *adder) checkIfMissing(wp *waitingPreunit, id uint64) {
 	if children, ok := ad.missing[id]; ok {
@@ -27,6 +32,27 @@ func (ad *adder) checkIfMissing(wp *waitingPreunit, id uint64) {
 	}
 }
 
+// checkParents finds out which parents of a newly created waitingPreunit are in dag,
+// which are waiting, and which are missing.
+func (ad *adder) checkParents(wp *waitingPreunit) {
+	unknown := gomel.FindMissingParents(ad.dag, wp.pu)
+	for _, unkID := range unknown {
+		if par, ok := ad.waitingByID[unkID]; ok {
+			wp.waitingParents++
+			par.children = append(par.children, wp)
+		} else {
+			wp.missingParents++
+			if _, ok := ad.missing[unkID]; !ok {
+				ad.missing[unkID] = make([]*waitingPreunit, 0, 8)
+			}
+			ad.missing[unkID] = append(ad.missing[unkID], wp)
+		}
+	}
+}
+
+// addOne takes a preunit for which some parents might be missing and puts
+// it as a waitingPreunit in the buffer zone.
+//
 func (ad *adder) addOne(pu gomel.Preunit, source uint16) error {
 	wp := &waitingPreunit{pu: pu, source: source}
 	id := gomel.UnitID(pu)
@@ -43,33 +69,23 @@ func (ad *adder) addOne(pu gomel.Preunit, source uint16) error {
 		// SHALL BE DONE
 		// Alert(fork, pu)
 	}
-	// find out which parents are in dag, which are waiting, and which are missing
-	unknown := gomel.FindMissingParents(ad.dag, pu)
-	for _, unkID := range unknown {
-		if par, ok := ad.waitingByID[unkID]; ok {
-			wp.waitingParents++
-			par.children = append(par.children, wp)
-		} else {
-			wp.missingParents++
-			if _, ok := ad.missing[unkID]; !ok {
-				ad.missing[unkID] = make([]*waitingPreunit, 0, 8)
-			}
-			ad.missing[unkID] = append(ad.missing[unkID], wp)
-		}
-	}
 	ad.waiting[*pu.Hash()] = wp
 	ad.waitingByID[id] = wp
+	ad.checkParents(wp)
 	ad.checkIfMissing(wp, id)
-	ad.checkIfReady(wp)
+	if ready(wp) {
+		ad.sendToWorker(wp)
+	}
 	if wp.missingParents > 0 {
 		return gomel.NewUnknownParents(wp.missingParents)
 	}
 	return nil
 }
 
-// addBatch does NOT check for missing parents, it assumes all preunits
-// are sorted in topological order and can be added to the dag directly.
-func (ad *adder) addBatch(preunits []gomel.Preunit, source uint16, errors []error) {
+// addBatch adds a slice of preunits received from PID source to the buffer zone,
+// using a single mutex lock for all of them. It does NOT check for missing parents,
+// it assumes all preunits are sorted in topological order and can be added to the dag directly.
+func (ad *adder) addBatch(preunits []gomel.Preunit, source uint16, errors []error) []error {
 	var id uint64
 	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {
@@ -98,10 +114,12 @@ func (ad *adder) addBatch(preunits []gomel.Preunit, source uint16, errors []erro
 		ad.waiting[*pu.Hash()] = wp
 		ad.waitingByID[id] = wp
 		ad.checkIfMissing(wp, id)
-		ad.ready[pu.Creator()] <- wp
+		ad.sendToWorker(wp)
 	}
+	return errors
 }
 
+// remove waitingPreunit from the buffer zone and notify its children.
 func (ad *adder) remove(wp *waitingPreunit) {
 	id := gomel.UnitID(wp.pu)
 	ad.mx.Lock()
@@ -110,6 +128,8 @@ func (ad *adder) remove(wp *waitingPreunit) {
 	delete(ad.waitingByID, id)
 	for _, ch := range wp.children {
 		ch.waitingParents--
-		ad.checkIfReady(ch)
+		if ready(ch) {
+			ad.sendToWorker(ch)
+		}
 	}
 }
