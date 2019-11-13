@@ -81,11 +81,53 @@ func (s *server) finishedRMC(u gomel.Unit) error {
 	}
 	rmcID := gomel.UnitID(u)
 	if s.state.Status(rmcID) != rmcbox.Finished {
-		return gomel.NewMissingDataError("this RMC is not yet finished")
+		return &unfinishedRMC{}
 	}
-	pu, _ := encoding.DecodePreunit(s.state.Data(rmcID))
+	pu, err := encoding.DecodePreunit(s.state.Data(rmcID))
+	if err != nil {
+		return err
+	}
 	if *pu.Hash() != *u.Hash() {
-		return gomel.NewComplianceError("unit differs from successfully RMCd unit")
+		return gomel.NewComplianceError(rmcMismatch)
 	}
 	return nil
+}
+
+func (s *server) checkErrorHandler(u gomel.Unit, err error, source uint16) error {
+	switch err.(type) {
+	case *unfinishedRMC:
+		conn, err := s.netserv.Dial(source, s.timeout)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		conn.TimeoutAfter(s.timeout)
+		id := gomel.UnitID(u)
+		err = rmcbox.Greet(conn, s.pid, id, requestFinished)
+		if err != nil {
+			return err
+		}
+		data, err := s.state.AcceptFinished(id, u.Creator(), conn)
+		if err != nil {
+			return err
+		}
+		pu, err := encoding.DecodePreunit(data)
+		if err != nil {
+			return err
+		}
+		if *pu.Hash() != *u.Hash() {
+			return gomel.NewComplianceError(rmcMismatch)
+		}
+		return nil
+	default:
+		return err
+	}
+}
+
+const rmcMismatch = "unit differs from successfully RMCd unit"
+
+type unfinishedRMC struct{}
+
+func (e *unfinishedRMC) Error() string {
+	return "This instance of RMC is not yet finished"
 }

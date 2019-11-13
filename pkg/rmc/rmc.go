@@ -103,7 +103,7 @@ func (rmc *RMC) SendFinished(id uint64, w io.Writer) error {
 	return ins.sendFinished(w)
 }
 
-// AcceptFinished reads a pair of data and proof from r and verifies it corresponds to a successfuly finished RMC.
+// AcceptFinished reads a pair of data and proof from r and verifies it corresponds to a successfully finished RMC.
 func (rmc *RMC) AcceptFinished(id uint64, pid uint16, r io.Reader) ([]byte, error) {
 	in, err := rmc.getIn(id)
 	if err != nil {
