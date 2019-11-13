@@ -136,11 +136,10 @@ func NewDefaultCreator(maxParents uint16) Creator {
 func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (gomel.Unit, error) {
 	var resultUnit gomel.Unit
 	for ix, dag := range dags {
-		err := tests.NewAdder(dag).AddUnit(unit, unit.Creator())
+		result, err := tests.AddUnit(dag, unit)
 		if err != nil {
 			return nil, err
 		}
-		result := dag.GetUnit(unit.Hash())
 		if ix == int(unit.Creator()) || resultUnit == nil {
 			resultUnit = result
 		}
@@ -152,9 +151,7 @@ func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (
 func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 	var resultUnit gomel.Unit
 	for _, dag := range dags {
-		tests.NewAdder(dag)
-		err := tests.NewAdder(dag).AddUnit(unit, unit.Creator())
-		result := dag.GetUnit(unit.Hash())
+		result, err := tests.AddUnit(dag, unit)
 		if resultUnit == nil {
 			if result != nil {
 				resultUnit = result
@@ -200,7 +197,7 @@ func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag) error 
 		})
 
 		for _, pu := range units {
-			if err := tests.NewAdder(dag).AddUnit(pu, pu.Creator()); err != nil {
+			if _, err := tests.AddUnit(dag, pu); err != nil {
 				return err
 			}
 		}

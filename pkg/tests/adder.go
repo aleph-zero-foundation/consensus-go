@@ -40,3 +40,12 @@ func (ad *adder) AddUnits(pus []gomel.Preunit, source uint16) *gomel.AggregateEr
 	}
 	return gomel.NewAggregateError(result)
 }
+
+// AddUnit adds a preunit to the given dag.
+func AddUnit(dag gomel.Dag, pu gomel.Preunit) (gomel.Unit, error) {
+	err := NewAdder(dag).AddUnit(pu, pu.Creator())
+	if err != nil {
+		return nil, err
+	}
+	return dag.GetUnit(pu.Hash()), nil
+}

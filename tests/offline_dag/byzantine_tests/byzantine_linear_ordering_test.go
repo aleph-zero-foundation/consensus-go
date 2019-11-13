@@ -645,7 +645,7 @@ func syncDags(dag1, dag2 gomel.Dag, rs1, rs2 gomel.RandomSource) (bool, error) {
 	adder := func(units []gomel.Unit, dag gomel.Dag, rs gomel.RandomSource) error {
 		for _, unit := range units {
 			preunit := unitToPreunit(unit)
-			err := tests.NewAdder(dag).AddUnit(preunit, preunit.Creator())
+			_, err := tests.AddUnit(dag, preunit)
 			if err != nil {
 				return err
 			}
@@ -1096,8 +1096,7 @@ func buildOneLevelUp(
 				return nil, fmt.Errorf("error while creating a unit for dag no %d: %s", ids[ix], err.Error())
 			}
 			// add only to its creator's dag
-			err = tests.NewAdder(dag).AddUnit(preunit, preunit.Creator())
-			addedUnit := dag.GetUnit(preunit.Hash())
+			addedUnit, err := tests.AddUnit(dag, preunit)
 			if err != nil {
 				return nil, fmt.Errorf("error while adding to dag no %d: %s", ids[ix], err.Error())
 			}
@@ -1155,11 +1154,10 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 			if err != nil {
 				return err
 			}
-			err = tests.NewAdder(dags[triggeringDag]).AddUnit(triggeringPreunit, triggeringPreunit.Creator())
+			triggeringUnit, err := tests.AddUnit(dags[triggeringDag], triggeringPreunit)
 			if err != nil {
 				return err
 			}
-			triggeringUnit := dags[triggeringDag].GetUnit(triggeringPreunit.Hash())
 
 			commonVotes := newDefaultCommonVote(triggeringUnit, initialVotingRound, numberOfDeterministicRounds)
 

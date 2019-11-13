@@ -96,7 +96,7 @@ var _ = Describe("Alert", func() {
 				Expect(err).NotTo(HaveOccurred())
 				pu.SetSignature(privKeys[i].Sign(pu))
 				for _, dag := range dags {
-					err := tests.NewAdder(dag).AddUnit(pu, 0)
+					_, err = tests.AddUnit(dag, pu)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
@@ -111,14 +111,14 @@ var _ = Describe("Alert", func() {
 			pu.SetSignature(privKeys[forker].Sign(pu))
 			puf.SetSignature(privKeys[forker].Sign(puf))
 			dag := dags[1]
-			err = tests.NewAdder(dag).AddUnit(pu, 0)
+			_, err = tests.AddUnit(dag, pu)
 			Expect(err).NotTo(HaveOccurred())
 			wg := &sync.WaitGroup{}
 			for j := uint16(1); j < nProc; j++ {
 				go AcceptAlert(j, wg)
 			}
-			err = tests.NewAdder(dag).AddUnit(puf, 0)
-			Expect(err).To(MatchError("MissingDataError: missing commitment to fork"))
+			_, err = tests.AddUnit(dag, puf)
+			Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
 			wg.Wait()
 		})
 
@@ -135,7 +135,7 @@ var _ = Describe("Alert", func() {
 					pu, _, err := creating.NewUnit(dags[forker], forker, []byte{byte(i)}, rss[forker], true)
 					Expect(err).NotTo(HaveOccurred())
 					pu.SetSignature(privKeys[forker].Sign(pu))
-					err = tests.NewAdder(dags[i]).AddUnit(pu, 0)
+					_, err = tests.AddUnit(dags[i], pu)
 					Expect(err).NotTo(HaveOccurred())
 					pus[i] = pu
 				}
@@ -146,14 +146,14 @@ var _ = Describe("Alert", func() {
 				for j := uint16(1); j < nProc; j++ {
 					go AcceptAlert(j, wg)
 				}
-				_ = tests.NewAdder(dags[1]).AddUnit(pus[2], 0)
+				_, err := tests.AddUnit(dags[1], pus[2])
 				// We cannot expect an error or lack of it here.
 				// It occuring depends on whether 2 finishes its alert before 1 tries checking for the commitment.
 				wg.Wait()
 				// We have to start at 3 here,because we don't know whether adding 2 succeeded, see above.
 				failed := 0
 				for i := uint16(3); i < nProc; i++ {
-					err := tests.NewAdder(dags[1]).AddUnit(pus[i], 0)
+					_, err = tests.AddUnit(dags[1], pus[i])
 					if err != nil {
 						failed++
 					}
@@ -176,7 +176,7 @@ var _ = Describe("Alert", func() {
 				pu.SetSignature(privKeys[i].Sign(pu))
 				dealing[i] = pu
 				for _, dag := range dags {
-					err := tests.NewAdder(dag).AddUnit(pu, 0)
+					_, err = tests.AddUnit(dag, pu)
 					Expect(err).NotTo(HaveOccurred())
 				}
 			}
@@ -194,36 +194,36 @@ var _ = Describe("Alert", func() {
 				forker := uint16(0)
 				forkHelpDag = dag.New(nProc)
 				for i := uint16(1); i < nProc; i++ {
-					err := tests.NewAdder(forkHelpDag).AddUnit(dealing[i], 0)
+					_, err = tests.AddUnit(forkHelpDag, dealing[i])
 					Expect(err).NotTo(HaveOccurred())
 				}
 				dealingFork1, _, err = creating.NewUnit(dags[forker], forker, []byte{}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				dealingFork1.SetSignature(privKeys[forker].Sign(dealingFork1))
-				err = tests.NewAdder(dags[forker]).AddUnit(dealingFork1, 0)
+				_, err = tests.AddUnit(dags[forker], dealingFork1)
 				Expect(err).NotTo(HaveOccurred())
 				dealingFork2, _, err = creating.NewUnit(forkHelpDag, forker, []byte{43}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				dealingFork2.SetSignature(privKeys[forker].Sign(dealingFork2))
-				err = tests.NewAdder(forkHelpDag).AddUnit(dealingFork1, 0)
+				_, err = tests.AddUnit(forkHelpDag, dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
 				childFork1, _, err = creating.NewUnit(dags[forker], forker, []byte{}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				childFork1.SetSignature(privKeys[forker].Sign(childFork1))
-				err = tests.NewAdder(dags[forker]).AddUnit(childFork1, 0)
+				_, err = tests.AddUnit(dags[forker], childFork1)
 				Expect(err).NotTo(HaveOccurred())
 				childFork2, _, err = creating.NewUnit(forkHelpDag, forker, []byte{43}, rss[forker], true)
 				Expect(err).NotTo(HaveOccurred())
 				childFork2.SetSignature(privKeys[forker].Sign(childFork2))
-				err = tests.NewAdder(forkHelpDag).AddUnit(childFork2, 0)
+				_, err = tests.AddUnit(forkHelpDag, childFork2)
 				Expect(err).NotTo(HaveOccurred())
-				err = tests.NewAdder(dags[1]).AddUnit(dealingFork1, 0)
+				_, err = tests.AddUnit(dags[1], dealingFork1)
 				Expect(err).NotTo(HaveOccurred())
-				err = tests.NewAdder(dags[1]).AddUnit(childFork1, 0)
+				_, err = tests.AddUnit(dags[1], childFork1)
 				Expect(err).NotTo(HaveOccurred())
-				err = tests.NewAdder(dags[2]).AddUnit(dealingFork2, 0)
+				_, err = tests.AddUnit(dags[2], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
-				err = tests.NewAdder(dags[2]).AddUnit(childFork2, 0)
+				_, err = tests.AddUnit(dags[2], childFork2)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -232,16 +232,16 @@ var _ = Describe("Alert", func() {
 				for j := uint16(1); j < nProc; j++ {
 					go AcceptAlert(j, wg)
 				}
-				err := tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
-				Expect(err).To(MatchError("MissingDataError: commitment to fork"))
+				_, err := tests.AddUnit(dags[1], dealingFork2)
+				Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
 				wg.Wait()
 				wg.Add(1)
 				go AcceptSomething(2, wg)
 				alerters[1].RequestCommitment(dealingFork2, 2)
 				wg.Wait()
-				err = tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
+				_, err = tests.AddUnit(dags[1], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
-				err = tests.NewAdder(dags[1]).AddUnit(childFork2, 0)
+				err = adders[1].AddUnit(childFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -249,24 +249,24 @@ var _ = Describe("Alert", func() {
 				unit2, _, err := creating.NewUnit(dags[2], 2, []byte{}, rss[2], true)
 				Expect(err).NotTo(HaveOccurred())
 				unit2.SetSignature(privKeys[2].Sign(unit2))
-				err = tests.NewAdder(dags[2]).AddUnit(unit2, 0)
+				_, err = tests.AddUnit(dags[2], unit2)
 				Expect(err).NotTo(HaveOccurred())
 				wg := &sync.WaitGroup{}
 				for j := uint16(1); j < nProc; j++ {
 					go AcceptAlert(j, wg)
 				}
-				err = tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
-				Expect(err).To(MatchError("MissingDataError: commitment to fork"))
+				_, err = tests.AddUnit(dags[1], dealingFork2)
+				Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
 				wg.Wait()
 				wg.Add(1)
 				go AcceptSomething(2, wg)
 				alerters[1].RequestCommitment(dealingFork2, 2)
 				wg.Wait()
-				err = tests.NewAdder(dags[1]).AddUnit(dealingFork2, 0)
+				_, err = tests.AddUnit(dags[1], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
-				err = tests.NewAdder(dags[1]).AddUnit(childFork2, 0)
+				err = adders[1].AddUnit(childFork2, 0)
 				Expect(err).NotTo(HaveOccurred())
-				err = tests.NewAdder(dags[1]).AddUnit(unit2, 0)
+				err = adders[1].AddUnit(unit2, 0)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
