@@ -10,7 +10,7 @@ type waitingPreunit struct {
 	source         uint16            // pid of the process that sent us this preunit
 	missingParents int               // number of preunit's parents that we've never seen
 	waitingParents int               // number of preunit's parents that are waiting in adder
-	children       []*waitingPreunit // list of other preunits that has this preunit as parent (maybe, because forks)
+	children       []*waitingPreunit // list of other preunits that has this preunit as parent
 }
 
 // ready waitingPreunit is one without any waiting or missing parents.
@@ -20,9 +20,9 @@ func ready(wp *waitingPreunit) bool {
 
 // checkIfMissing sets the children attribute of a newly created node, depending on if it was missing
 func (ad *adder) checkIfMissing(wp *waitingPreunit, id uint64) {
-	if children, ok := ad.missing[id]; ok {
-		wp.children = children
-		for _, ch := range children {
+	if mp, ok := ad.missing[id]; ok {
+		wp.children = mp.neededBy
+		for _, ch := range wp.children {
 			ch.missingParents--
 			ch.waitingParents++
 		}
@@ -34,20 +34,20 @@ func (ad *adder) checkIfMissing(wp *waitingPreunit, id uint64) {
 
 // checkParents finds out which parents of a newly created waitingPreunit are in dag,
 // which are waiting, and which are missing.
-func (ad *adder) checkParents(wp *waitingPreunit) {
+func (ad *adder) checkParents(wp *waitingPreunit) bool {
+	missing := false
 	unknown := gomel.FindMissingParents(ad.dag, wp.pu)
 	for _, unkID := range unknown {
 		if par, ok := ad.waitingByID[unkID]; ok {
 			wp.waitingParents++
 			par.children = append(par.children, wp)
 		} else {
+			missing = true
 			wp.missingParents++
-			if _, ok := ad.missing[unkID]; !ok {
-				ad.missing[unkID] = make([]*waitingPreunit, 0, 8)
-			}
-			ad.missing[unkID] = append(ad.missing[unkID], wp)
+			ad.registerMissing(unkID, wp)
 		}
 	}
+	return missing
 }
 
 // addOne takes a preunit for which some parents might be missing and puts
@@ -71,7 +71,9 @@ func (ad *adder) addOne(pu gomel.Preunit, source uint16) error {
 	}
 	ad.waiting[*pu.Hash()] = wp
 	ad.waitingByID[id] = wp
-	ad.checkParents(wp)
+	if ad.checkParents(wp) {
+		ad.resolveMissing(wp)
+	}
 	ad.checkIfMissing(wp, id)
 	if ready(wp) {
 		ad.sendToWorker(wp)

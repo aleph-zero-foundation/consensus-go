@@ -27,7 +27,7 @@ type adder struct {
 	ready       []chan *waitingPreunit
 	waiting     map[gomel.Hash]*waitingPreunit
 	waitingByID map[uint64]*waitingPreunit
-	missing     map[uint64][]*waitingPreunit
+	missing     map[uint64]*missingPreunit
 	mx          sync.Mutex
 	wg          sync.WaitGroup
 	quit        int64
@@ -47,7 +47,7 @@ func New(dag gomel.Dag, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder
 		ready:       ready,
 		waiting:     make(map[gomel.Hash]*waitingPreunit),
 		waitingByID: make(map[uint64]*waitingPreunit),
-		missing:     make(map[uint64][]*waitingPreunit),
+		missing:     make(map[uint64]*missingPreunit),
 		log:         log,
 	}
 	return ad, ad
