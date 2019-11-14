@@ -549,7 +549,8 @@ func (a *AlertHandler) disambiguateForker(possibleParents []gomel.Unit, pu gomel
 	return nil, gomel.NewUnknownParents(1)
 }
 
-
+// Disambiguate which of the possibleParents is the actual parent of a unit created by pid.
+// Only uses local data, if some is missing a MissingDataError is returned.
 func (a *AlertHandler) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
 	if len(possibleParents) == 0 {
 		return nil, nil
