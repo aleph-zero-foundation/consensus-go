@@ -88,6 +88,7 @@ func (a *AlertHandler) HandleIncoming(conn network.Connection, wg *sync.WaitGrou
 	}
 }
 
+// acceptFinished alert. If this is the first alert pertaining this forker we are aware of, this method also raises our own alert.
 func (a *AlertHandler) acceptFinished(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
 	forker, _, err := a.decodeAlertID(id, pid)
 	if err != nil {
@@ -152,6 +153,9 @@ func (a *AlertHandler) sendFinished(forker, pid uint16) {
 	}
 }
 
+// produceCommitmentFor the given unit. If we have already committed to a unit created by the same process as unit
+// that is above unit, this method uses that commitment to infer a commitment fot unit.
+// Otherwise returns an error.
 func (a *AlertHandler) produceCommitmentFor(unit gomel.Unit) (commitment, error) {
 	comm := a.commitments.getByParties(a.myPid, unit.Creator())
 	if comm == nil {
@@ -194,6 +198,10 @@ func (a *AlertHandler) produceCommitmentFor(unit gomel.Unit) (commitment, error)
 	return comm, nil
 }
 
+// handleCommitmentRequest coming from conn. If we are not aware that the creator is a forker, we respond with a 1 byte and end communication.
+// Otherwise we respond with a 0 byte and send a commitment to the parent of the requested unit.
+// This makes sure that the requesting party will be able to add the unit, even if its parents were ambiguous,
+// as our commitment to the parent will allow them to cheaply decode the crown.
 func (a *AlertHandler) handleCommitmentRequest(conn network.Connection, log zerolog.Logger) {
 	var requested gomel.Hash
 	_, err := io.ReadFull(conn, requested[:])
@@ -265,6 +273,8 @@ func (a *AlertHandler) handleCommitmentRequest(conn network.Connection, log zero
 }
 
 // RequestCommitment to the given preunit, from pid.
+// The other party might reply indicating that they were not aware of the fork.
+// In this case we send the finished alert, in a separate communication.
 func (a *AlertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 	log := a.log.With().Uint16(logging.PID, pid).Logger()
 	conn, err := a.netserv.Dial(pid, a.timeout)
@@ -322,6 +332,8 @@ func (a *AlertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 	return nil
 }
 
+// acceptAlert and, if it is correct, sign it. In this case, if this is the first time we learn about this process forking,
+// also raise our own alert afterwards.
 func (a *AlertHandler) acceptAlert(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
 	forker, _, err := a.decodeAlertID(id, pid)
 	if err != nil {
@@ -381,6 +393,8 @@ func (a *AlertHandler) acceptProof(id uint64, conn network.Connection, log zerol
 }
 
 // Raise an alert using the provided proof.
+// Blocks until the RMC is successful, retrying anyone who failed to sign in the meantime.
+// Should be only ran when the forker's id is locked.
 func (a *AlertHandler) Raise(proof *forkingProof) {
 	if a.commitments.getByParties(a.myPid, proof.forkerID()) != nil {
 		// We already committed at some point, no reason to do it again.
@@ -418,6 +432,10 @@ func (a *AlertHandler) decodeAlertID(id uint64, pid uint16) (uint16, uint16, err
 	return forker, raiser, nil
 }
 
+// sendAlert to the given pid. Keeps trying until it succeeds or the whole RMC finishes successfully.
+// Afterwards it waits for RMC to finish and, if it succeeded in gathering the signature,
+// also sends the proof of the RMC finishing. In the optimistic case, it gathers signatures from all other processes,
+// and sends the proofs also to all of them.
 func (a *AlertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, wg *sync.WaitGroup) {
 	defer wg.Done()
 	success := false
@@ -495,6 +513,7 @@ func (a *AlertHandler) attemptProve(conn network.Connection, id uint64) error {
 
 const noncommittedParent = "unit built on noncommitted parent"
 
+// disambiguateForker uses the commitment to this unit to figure out which unit is its predecessor.
 func (a *AlertHandler) disambiguateForker(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
 	comm := a.commitments.getByHash(pu.Hash())
 	if comm == nil {
@@ -513,6 +532,7 @@ func (a *AlertHandler) disambiguateForker(possibleParents []gomel.Unit, pu gomel
 }
 
 // Disambiguate which of the possibleParents is the actual parent of a unit created by pid.
+// Only uses local data, if some is missing a MissingDataError is returned.
 func (a *AlertHandler) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preunit) (gomel.Unit, error) {
 	if len(possibleParents) == 0 {
 		return nil, nil

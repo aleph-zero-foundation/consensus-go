@@ -79,6 +79,7 @@ func (fp *forkingProof) splitEncoding() ([]byte, []byte) {
 	return proofOnly, commitOnly
 }
 
+// replaceCommit in this proof. Used to create our own alert when we don't know the units in the original alert.
 func (fp *forkingProof) replaceCommit(commit gomel.Unit) {
 	proofOnly, _ := fp.splitEncoding()
 	comme, _ := encoding.EncodeUnit(commit)
