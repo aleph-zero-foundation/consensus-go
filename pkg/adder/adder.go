@@ -80,14 +80,20 @@ func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	if err != nil {
 		return err
 	}
-	return ad.addOne(pu, source)
+	ad.mx.Lock()
+	defer ad.mx.Unlock()
+	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
+		return gomel.NewDuplicateUnit(u)
+	}
+	return ad.addToWaiting(pu, source)
 }
 
-// AddUnit checks basic correctness of a given slice of preunits and then adds them to the buffer zone.
-// It is assumed all preunits are sorted topologically and can be directly added to the dag (no missing parents).
+// AddUnits checks basic correctness of a given slice of preunits and then adds them to the buffer zone.
+// Does not block - this method returns when all preunits are added to the waiting preunits (or rejected due to signature or duplication).
 // Returned AggregateError can have the following members:
 //   DataError - if creator or signature are wrong
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
+//   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
 	// SHALL BE DONE: unit registry check here
 	errors := make([]error, len(preunits))
@@ -98,7 +104,26 @@ func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.Aggreg
 			preunits[i] = nil
 		}
 	}
-	return gomel.NewAggregateError(ad.addBatch(preunits, source, errors))
+	hashes := make([]*gomel.Hash, len(preunits))
+	for i, pu := range preunits {
+		if pu != nil {
+			hashes[i] = pu.Hash()
+		}
+	}
+	ad.mx.Lock()
+	defer ad.mx.Unlock()
+	alreadyInDag := ad.dag.GetUnits(hashes)
+	for i, pu := range preunits {
+		if pu == nil {
+			continue
+		}
+		if alreadyInDag[i] != nil {
+			errors[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
+			continue
+		}
+		errors[i] = ad.addToWaiting(pu, source)
+	}
+	return gomel.NewAggregateError(errors)
 }
 
 // Start the adding workers.
@@ -127,10 +152,11 @@ func (ad *adder) Stop() {
 	ad.log.Info().Msg(logging.ServiceStopped)
 }
 
-// sendToWorker takes a ready waitingPreuint and adds it to the channel corresponding
-// with its dedicated worker. Atomic flag prevents send on a closed channel after Stop().
-func (ad *adder) sendToWorker(wp *waitingPreunit) {
-	if atomic.LoadInt64(&ad.quit) == 0 {
+// checkIfReady checks if a waitingPreunit is ready (has no waiting or missing parents).
+// If yes, the preunit is sent to the channel corresponding to its dedicated worker.
+// Atomic flag prevents send on a closed channel after Stop().
+func (ad *adder) checkIfReady(wp *waitingPreunit) {
+	if wp.waitingParents == 0 && wp.missingParents == 0 && atomic.LoadInt64(&ad.quit) == 0 {
 		ad.ready[wp.pu.Creator()] <- wp
 	}
 }

@@ -21,7 +21,7 @@ func (p *server) In() {
 		return
 	}
 	if add.Unit(p.adder, preunit, preunit.Creator(), "multicast.in", p.log) {
-		p.log.Info().Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
+		p.log.Info().Int(logging.Height, preunit.Height()).Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
 	}
 }
 
