@@ -13,11 +13,6 @@ func NewAdder(dag gomel.Dag) gomel.Adder {
 func (ad *adder) AddDecodeErrorHandler(gomel.DecodeErrorHandler) {}
 func (ad *adder) AddCheckErrorHandler(gomel.CheckErrorHandler)   {}
 
-func (ad *adder) AddOwnUnit(pu gomel.Preunit) gomel.Unit {
-	ad.AddUnit(pu, pu.Creator())
-	return ad.dag.GetUnit(pu.Hash())
-}
-
 func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	parents, err := ad.dag.DecodeParents(pu)
 	if err != nil {

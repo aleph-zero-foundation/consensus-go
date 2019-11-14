@@ -13,8 +13,6 @@ type CheckErrorHandler func(Unit, error, uint16) error
 
 // Adder represents a mechanism for adding units to a dag.
 type Adder interface {
-	// AddOwnUnit adds to the dag a unit produced by creating service (blocks until unit is added).
-	AddOwnUnit(Preunit) Unit
 	// AddUnit adds a single unit received from the given process to the underlying dag.
 	AddUnit(Preunit, uint16) error
 	// AddUnits adds multiple units received from the given process to the underlying dag.

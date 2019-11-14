@@ -26,6 +26,7 @@ type service struct {
 	ticker       *time.Ticker
 	dataSource   gomel.DataSource
 	dagFinished  chan<- struct{}
+	added        chan gomel.Unit
 	quit         int64
 	wg           sync.WaitGroup
 	log          zerolog.Logger
@@ -40,7 +41,7 @@ type service struct {
 // negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close the dagFinished channel when it stops.
 func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource gomel.DataSource, log zerolog.Logger) gomel.Service {
-	return &service{
+	s := &service{
 		dag:          dag,
 		adder:        adder,
 		randomSource: randomSource,
@@ -52,8 +53,15 @@ func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSourc
 		ticker:       time.NewTicker(conf.Delay),
 		dataSource:   dataSource,
 		dagFinished:  dagFinished,
+		added:        make(chan gomel.Unit),
 		log:          log,
 	}
+	dag.AfterInsert(func(u gomel.Unit) {
+		if u.Creator() == s.pid {
+			s.added <- u
+		}
+	})
+	return s
 }
 
 func (s *service) Start() error {
@@ -97,11 +105,14 @@ func (s *service) createUnit() bool {
 		return true
 	}
 	created.SetSignature(s.privKey.Sign(created))
-	added := s.adder.AddOwnUnit(created)
-	if gomel.Prime(added) {
-		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
-	} else {
-		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
+	s.adder.AddUnit(created, s.pid)
+	added := <-s.added
+	if added != nil {
+		if gomel.Prime(added) {
+			s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
+		} else {
+			s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
+		}
 	}
 	return level < s.maxLevel
 }
