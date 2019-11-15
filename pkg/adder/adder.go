@@ -131,7 +131,6 @@ func (ad *adder) Start() error {
 			defer ad.wg.Done()
 			for wp := range ad.ready[i] {
 				ad.handleReady(wp)
-				ad.remove(wp)
 			}
 		}(i)
 	}
@@ -149,10 +148,10 @@ func (ad *adder) Stop() {
 	ad.log.Info().Msg(logging.ServiceStopped)
 }
 
-// checkIfReady checks if a waitingPreunit is ready (has no waiting or missing parents).
+// sendIfReady checks if a waitingPreunit is ready (has no waiting or missing parents).
 // If yes, the preunit is sent to the channel corresponding to its dedicated worker.
 // Atomic flag prevents send on a closed channel after Stop().
-func (ad *adder) checkIfReady(wp *waitingPreunit) {
+func (ad *adder) sendIfReady(wp *waitingPreunit) {
 	if wp.waitingParents == 0 && wp.missingParents == 0 && atomic.LoadInt64(&ad.quit) == 0 {
 		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(logging.PreunitReady)
 		ad.ready[wp.pu.Creator()] <- wp
@@ -161,6 +160,7 @@ func (ad *adder) checkIfReady(wp *waitingPreunit) {
 
 // handleReady takes a waitingPreunit that is ready and adds it to the dag.
 func (ad *adder) handleReady(wp *waitingPreunit) {
+	defer ad.remove(wp)
 	log := ad.log.With().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Logger()
 	log.Debug().Msg(logging.AddingStarted)
 	parents, err := ad.dag.DecodeParents(wp.pu)

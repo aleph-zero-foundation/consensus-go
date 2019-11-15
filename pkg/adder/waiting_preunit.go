@@ -65,7 +65,7 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.FetchParents)
 		ad.fetchMissing(wp)
 	}
-	ad.checkIfReady(wp)
+	ad.sendIfReady(wp)
 	if wp.missingParents > 0 {
 		return gomel.NewUnknownParents(wp.missingParents)
 	}
@@ -80,6 +80,6 @@ func (ad *adder) remove(wp *waitingPreunit) {
 	delete(ad.waitingByID, wp.id)
 	for _, ch := range wp.children {
 		ch.waitingParents--
-		ad.checkIfReady(ch)
+		ad.sendIfReady(ch)
 	}
 }
