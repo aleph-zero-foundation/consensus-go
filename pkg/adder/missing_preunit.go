@@ -27,5 +27,6 @@ func (ad *adder) registerMissing(id uint64, wp *waitingPreunit) {
 	ad.missing[id] = newMissing(wp)
 }
 
-// resolveMissing
-func (ad *adder) resolveMissing(wp *waitingPreunit) {}
+// fetchMissing is called on a freshly created waitingPreunit that has some missing parents.
+// Sends a signal to trigger fetch or gossip.
+func (ad *adder) fetchMissing(wp *waitingPreunit) {}

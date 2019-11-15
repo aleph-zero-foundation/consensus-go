@@ -25,7 +25,7 @@ const (
 	SentUnits             = "T"
 	ReceivedPreunits      = "U"
 	DuplicateUnit         = "V"
-	OwnUnitOrdered        = "W"
+	DuplicatePreunit      = "W"
 	ConnectionClosed      = "X"
 	MemoryUsage           = "Y"
 	DataValidated         = "Z"
@@ -36,13 +36,16 @@ const (
 	UnitBroadcasted       = "e"
 	UnknownParents        = "f"
 	AddedBCUnit           = "g"
-	AddedToBacklog        = "h"
-	RemovedFromBacklog    = "i"
-	GotRandomSource       = "j"
-	FallbackUsed          = "k"
-	MissingDataError      = "l"
-	DuplicatePreunit      = "m"
-	UnitAdded             = "n"
+	AddingStarted         = "h"
+	DecodeParentsError    = "i"
+	CheckError            = "j"
+	GotRandomSource       = "k"
+	OwnUnitOrdered        = "l"
+	UnitAdded             = "m"
+	AddUnitStarted        = "n"
+	AddUnitsStarted       = "o"
+	PreunitReady          = "p"
+	FetchParents          = "r"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -68,8 +71,8 @@ var eventTypeDict = map[string]string{
 	AddUnits:              "adding received units started",
 	SentUnits:             "successfully sent units",
 	ReceivedPreunits:      "successfully received preunits",
-	DuplicateUnit:         "attempting to add unit already present in dag",
-	OwnUnitOrdered:        "unit created by this process has been ordered",
+	DuplicateUnit:         "trying to add unit already present in dag",
+	DuplicatePreunit:      "trying to add unit already present in adder",
 	ConnectionClosed:      "connection closed after sync (stats in bytes)",
 	MemoryUsage:           "memory usage statistics",
 	DataValidated:         "validated some bytes of data",
@@ -78,15 +81,18 @@ var eventTypeDict = map[string]string{
 	SendFreshUnits:        "sending fresh units started",
 	SentFreshUnits:        "sending fresh units finished",
 	UnitBroadcasted:       "sent a unit through multicast",
-	UnknownParents:        "unable to add unit due to missing parents",
+	UnknownParents:        "trying to add a unit with missing parents",
 	AddedBCUnit:           "unit from multicast was put into adder",
-	AddedToBacklog:        "added unit to retrying backlog",
-	RemovedFromBacklog:    "removed unit from retrying backlog",
+	AddingStarted:         "adding a ready waiting preunit started",
+	DecodeParentsError:    "DecodeParents error, passing it to error handlers",
+	CheckError:            "Check error, passing it to error handlers",
 	GotRandomSource:       "received randomness source",
-	FallbackUsed:          "server used fallback due to missing parents",
-	MissingDataError:      "received unit without associated necessary data",
-	DuplicatePreunit:      "attempting to add unit already present in adder",
+	OwnUnitOrdered:        "unit created by this process has been ordered",
 	UnitAdded:             "unit successfully added to the dag",
+	AddUnitStarted:        "adding a single unit received from PID started",
+	AddUnitsStarted:       "adding a chunk of units received from PID started",
+	PreunitReady:          "waiting preunit sent to the adding worker",
+	FetchParents:          "new waiting preunit with some missing parents",
 }
 
 // Field names.

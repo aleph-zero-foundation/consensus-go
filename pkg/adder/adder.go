@@ -61,13 +61,6 @@ func (ad *adder) AddCheckErrorHandler(h gomel.CheckErrorHandler) {
 	ad.chkHandlers = append(ad.chkHandlers, h)
 }
 
-// AddOwnUnit adds to the dag a unit produced by the same process. It blocks until unit is added, and returns it.
-func (ad *adder) AddOwnUnit(pu gomel.Preunit) gomel.Unit {
-	wp := &waitingPreunit{pu: pu, source: pu.Creator()}
-	ad.handleReady(wp)
-	return ad.dag.GetUnit(pu.Hash())
-}
-
 // AddUnit checks basic correctness of a preunit and then adds it to the buffer zone.
 // Does not block - this method returns when the preunit is added to the waiting preunits.
 // The returned error can be:
@@ -75,7 +68,9 @@ func (ad *adder) AddOwnUnit(pu gomel.Preunit) gomel.Unit {
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
 //   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
-	// SHALL BE DONE: unit registry check here
+	ad.log.Debug().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.AddUnitStarted)
+	// SHALL BE DONE: this makes us vulnerable to spamming with the same units over and over.
+	// We need a unit registry that remembers all the units that passed signature check
 	err := ad.checkCorrectness(pu)
 	if err != nil {
 		return err
@@ -95,7 +90,9 @@ func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
 //   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
-	// SHALL BE DONE: unit registry check here
+	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnitsStarted)
+	// SHALL BE DONE: this makes us vulnerable to spamming with the same units over and over.
+	// We need a unit registry that remembers all the units that passed signature check
 	errors := make([]error, len(preunits))
 	for i, pu := range preunits {
 		err := ad.checkCorrectness(pu)
@@ -157,40 +154,45 @@ func (ad *adder) Stop() {
 // Atomic flag prevents send on a closed channel after Stop().
 func (ad *adder) checkIfReady(wp *waitingPreunit) {
 	if wp.waitingParents == 0 && wp.missingParents == 0 && atomic.LoadInt64(&ad.quit) == 0 {
+		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(logging.PreunitReady)
 		ad.ready[wp.pu.Creator()] <- wp
 	}
 }
 
 // handleReady takes a waitingPreunit that is ready and adds it to the dag.
 func (ad *adder) handleReady(wp *waitingPreunit) {
+	log := ad.log.With().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Logger()
+	log.Debug().Msg(logging.AddingStarted)
 	parents, err := ad.dag.DecodeParents(wp.pu)
 	if err != nil {
+		log.Debug().Msg(logging.DecodeParentsError)
 		for _, handler := range ad.decHandlers {
 			if parents, err = handler(wp.pu, err, wp.source); err == nil {
 				break
 			}
 		}
 		if err != nil {
-			ad.log.Error().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(err.Error())
+			log.Error().Str("where", "DecodeParents").Msg(err.Error())
 			return
 		}
 	}
 	freeUnit := ad.dag.BuildUnit(wp.pu, parents)
 	err = ad.dag.Check(freeUnit)
 	if err != nil {
+		log.Debug().Msg(logging.CheckError)
 		for _, handler := range ad.chkHandlers {
 			if err = handler(freeUnit, err, wp.source); err == nil {
 				break
 			}
 		}
 		if err != nil {
-			ad.log.Error().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(err.Error())
+			log.Error().Str("where", "Check").Msg(err.Error())
 			return
 		}
 	}
 	unitInDag := ad.dag.Transform(freeUnit)
 	ad.dag.Insert(unitInDag)
-	ad.log.Info().Int(logging.Height, unitInDag.Height()).Uint16(logging.Creator, unitInDag.Creator()).Uint16(logging.PID, wp.source).Msg(logging.UnitAdded)
+	log.Debug().Msg(logging.UnitAdded)
 }
 
 // checkCorrectness checks very basic correctness of the given preunit: creator and signature.
