@@ -103,7 +103,7 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dag1, _, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
-				adder1 = &adder{tests.NewAdder(dag1), snc.Mutex{}, nil}
+				adder1 = &adder{Adder: tests.NewAdder(dag1)}
 				dag2, adder2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/random_100u.txt", tests.NewTestDagFactory())
 				max1 := dag1.MaximalUnitsPerProcess()
 				unit := dag2.MaximalUnitsPerProcess().Get(1)[0]

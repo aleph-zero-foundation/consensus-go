@@ -93,32 +93,36 @@ func (s *server) finishedRMC(u gomel.Unit) error {
 	return nil
 }
 
+func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
+	conn, err := s.netserv.Dial(source, s.timeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	conn.TimeoutAfter(s.timeout)
+	id := gomel.UnitID(u)
+	err = rmcbox.Greet(conn, s.pid, id, requestFinished)
+	if err != nil {
+		return err
+	}
+	data, err := s.state.AcceptFinished(id, u.Creator(), conn)
+	if err != nil {
+		return err
+	}
+	pu, err := encoding.DecodePreunit(data)
+	if err != nil {
+		return err
+	}
+	if *pu.Hash() != *u.Hash() {
+		return gomel.NewComplianceError(rmcMismatch)
+	}
+	return nil
+}
+
 func (s *server) checkErrorHandler(u gomel.Unit, err error, source uint16) error {
 	switch err.(type) {
 	case *unfinishedRMC:
-		conn, err := s.netserv.Dial(source, s.timeout)
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-		conn.TimeoutAfter(s.timeout)
-		id := gomel.UnitID(u)
-		err = rmcbox.Greet(conn, s.pid, id, requestFinished)
-		if err != nil {
-			return err
-		}
-		data, err := s.state.AcceptFinished(id, u.Creator(), conn)
-		if err != nil {
-			return err
-		}
-		pu, err := encoding.DecodePreunit(data)
-		if err != nil {
-			return err
-		}
-		if *pu.Hash() != *u.Hash() {
-			return gomel.NewComplianceError(rmcMismatch)
-		}
-		return nil
+		return s.fetchFinished(u, source)
 	default:
 		return err
 	}

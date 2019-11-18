@@ -61,18 +61,13 @@ func ReceiveChunk(r io.Reader) ([]gomel.Preunit, error) {
 	return newDecoder(r).decodeChunk()
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func computeLayer(u gomel.Unit, layers map[gomel.Unit]int) int {
 	if layers[u] == -1 {
 		maxParentLayer := 0
 		for _, v := range u.Parents() {
-			maxParentLayer = max(maxParentLayer, computeLayer(v, layers))
+			if cl := computeLayer(v, layers); cl > maxParentLayer {
+				maxParentLayer = cl
+			}
 		}
 		layers[u] = maxParentLayer + 1
 	}
@@ -90,7 +85,9 @@ func topSort(units []gomel.Unit) []gomel.Unit {
 	}
 	maxLayer := -1
 	for _, u := range units {
-		maxLayer = max(maxLayer, layers[u])
+		if layers[u] > maxLayer {
+			maxLayer = layers[u]
+		}
 	}
 	result := make([]gomel.Unit, 0, len(units))
 	for layer := 0; layer <= maxLayer; layer++ {

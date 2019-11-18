@@ -27,6 +27,13 @@ type service struct {
 	log         zerolog.Logger
 }
 
+var logNames = map[string]int{
+	"multicast": logging.MCService,
+	"rmc":       logging.RMCService,
+	"gossip":    logging.GossipService,
+	"fetch":     logging.FetchService,
+}
+
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
@@ -38,13 +45,6 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 	s := &service{
 		servers: make([]sync.Server, len(configs)),
 		log:     log.With().Int(logging.Service, logging.SyncService).Logger(),
-	}
-
-	logNames := map[string]int{
-		"multicast": logging.MCService,
-		"rmc":       logging.RMCService,
-		"gossip":    logging.GossipService,
-		"fetch":     logging.FetchService,
 	}
 
 	var netserv network.Server

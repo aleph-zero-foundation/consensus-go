@@ -32,7 +32,7 @@ func (ad *adder) checkIfMissing(wp *waitingPreunit) {
 // checkParents finds out which parents of a newly created waitingPreunit are in dag,
 // which are waiting, and which are missing.
 func (ad *adder) checkParents(wp *waitingPreunit) {
-	unknown := gomel.FindMissingParents(ad.dag, wp.pu) // SHALL BE DONE: Return not only parents, but also units below them
+	unknown := gomel.FindMissingParents(ad.dag, wp.pu)
 	for _, unkID := range unknown {
 		if par, ok := ad.waitingByID[unkID]; ok {
 			wp.waitingParents++

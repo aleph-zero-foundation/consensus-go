@@ -29,9 +29,9 @@ func New(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 		parents:   parents,
 		data:      pu.Data(),
 		rsData:    pu.RandomSourceData(),
-		height:    -1,
-		level:     -1,
 	}
+	u.computeHeight()
+	u.computeLevel()
 	u.computeFloor()
 	return u
 }

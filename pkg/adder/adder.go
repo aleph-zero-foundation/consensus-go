@@ -36,6 +36,7 @@ type adder struct {
 
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
+// Passing nil as keys disables signature checking.
 func New(dag gomel.Dag, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service) {
 	ready := make([]chan *waitingPreunit, dag.NProc())
 	for i := range ready {

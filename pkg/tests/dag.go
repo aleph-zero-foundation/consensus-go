@@ -102,7 +102,7 @@ func (dag *Dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 	return &u
 }
 
-// Check accepts everything.
+// Check checks.
 func (dag *Dag) Check(u gomel.Unit) error {
 	for _, check := range dag.checks {
 		if err := check(u); err != nil {
@@ -112,7 +112,7 @@ func (dag *Dag) Check(u gomel.Unit) error {
 	return nil
 }
 
-// Transform is identity.
+// Transform transforms.
 func (dag *Dag) Transform(u gomel.Unit) gomel.Unit {
 	for _, trans := range dag.transforms {
 		u = trans(u)

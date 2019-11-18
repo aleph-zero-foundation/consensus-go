@@ -83,7 +83,7 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		adders = nil
 		for _, dag := range dags {
-			adders = append(adders, &adder{tests.NewAdder(dag), snc.Mutex{}, nil})
+			adders = append(adders, &adder{Adder: tests.NewAdder(dag)})
 		}
 		servs = make([]sync.Server, 2)
 		requests = make([]chan<- uint16, 2)

@@ -72,7 +72,7 @@ func MinimalTrusted(nProcesses uint16) uint16 {
 }
 
 // FindMissingParents takes a crown and return IDs of units that are not present in the dag.
-// TOTHINK this takes and releases lock on heights fiber map multiple times. Can that lead to inconsistency? Is that a problem?
+// NOTE this takes and releases lock on heights fiber map multiple times.
 func FindMissingParents(dag Dag, pu Preunit) []uint64 {
 	missing := make([]uint64, 0, 4)
 	for c, h := range pu.View().Heights {

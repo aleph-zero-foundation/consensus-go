@@ -1,7 +1,7 @@
 package gomel
 
 import (
-	"strconv"
+	"fmt"
 	"strings"
 )
 
@@ -74,7 +74,7 @@ type UnknownParents struct {
 
 // Error returns a (fixed) string description of a UnknownParents.
 func (e *UnknownParents) Error() string {
-	return "Unknown parents " + strconv.Itoa(e.Amount)
+	return fmt.Sprint("Unknown parents ", e.Amount)
 }
 
 // NewUnknownParents constructs a UnknownParents error for the given unit.
