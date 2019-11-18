@@ -25,7 +25,7 @@ func (ad *adder) checkIfMissing(wp *waitingPreunit) {
 		}
 		delete(ad.missing, wp.id)
 	} else {
-		wp.children = make([]*waitingPreunit, 0, 4)
+		wp.children = []*waitingPreunit{}
 	}
 }
 

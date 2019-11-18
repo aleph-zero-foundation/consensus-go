@@ -7,9 +7,8 @@ type missingPreunit struct {
 // newMissing constructs a new missingPreunit that is needed by some waitingPreunit.
 func newMissing(wp *waitingPreunit) *missingPreunit {
 	mp := &missingPreunit{
-		neededBy: make([]*waitingPreunit, 1, 4),
+		neededBy: []*waitingPreunit{wp},
 	}
-	mp.neededBy[0] = wp
 	return mp
 }
 
