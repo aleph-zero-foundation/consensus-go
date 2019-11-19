@@ -23,16 +23,18 @@ type votingResult struct {
 }
 
 type unanimousVoter struct {
-	dag        gomel.Dag
-	rs         gomel.RandomSource
-	votingMemo map[[2]gomel.Hash]vote
+	dag                         gomel.Dag
+	rs                          gomel.RandomSource
+	firstRoundZeroForCommonVote int
+	votingMemo                  map[[2]gomel.Hash]vote
 }
 
 func newUnanimousVoter(dag gomel.Dag, rs gomel.RandomSource) *unanimousVoter {
 	return &unanimousVoter{
-		dag:        dag,
-		rs:         rs,
-		votingMemo: make(map[[2]gomel.Hash]vote),
+		dag:                         dag,
+		rs:                          rs,
+		votingMemo:                  make(map[[2]gomel.Hash]vote),
+		firstRoundZeroForCommonVote: 3,
 	}
 }
 
@@ -111,7 +113,7 @@ func (uv *unanimousVoter) commonVote(uc gomel.Unit, level int) vote {
 		return undecided
 	}
 	if round <= commonVoteDeterministicPrefix {
-		if round == 3 {
+		if round == uv.firstRoundZeroForCommonVote {
 			return unpopular
 		}
 		return popular

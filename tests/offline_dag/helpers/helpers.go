@@ -238,7 +238,7 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 				break
 			}
 		}
-		if !pidFound && !dag.IsQuorum(nSeen+(nProc-(uint16(pid)+1))) {
+		if !pidFound && !dag.IsQuorum(nSeen+(nProc-(pid+1))) {
 			break
 		}
 	}
@@ -336,15 +336,17 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 	units := make(chan gomel.Unit)
 	go func() {
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.OrderStartLevel), generalConfig.CRPFixedPrefix, logger)
-		level := 0
-		orderedUnits := ordering.TimingRound(level)
+		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
+		level := generalConfig.OrderStartLevel
+		ordering.DecideTiming()
+		orderedUnits := ordering.TimingRound()
 		for orderedUnits != nil {
 			for _, unit := range orderedUnits {
 				units <- unit
 			}
 			level++
-			orderedUnits = ordering.TimingRound(level)
+			ordering.DecideTiming()
+			orderedUnits = ordering.TimingRound()
 		}
 		dagLevel := dagLevel(dag)
 		fmt.Printf("Dag's no %d max level: %d", pid, dagLevel)
@@ -361,9 +363,12 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
 		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
-		level := 0
+		level := generalConfig.OrderStartLevel
 		timingUnit := ordering.DecideTiming()
 		for timingUnit != nil {
+			if timingUnit.Level() != level {
+				panic(fmt.Sprint("invalid level of a timing unit - expected", level, "received", timingUnit.Level()))
+			}
 			units <- timingUnit
 			level++
 			timingUnit = ordering.DecideTiming()

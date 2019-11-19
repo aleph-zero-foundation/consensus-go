@@ -69,7 +69,7 @@ var _ = Describe("Ordering", func() {
 				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 				ordering.DecideTiming()
-				Expect(ordering.TimingRound(0)).To(BeNil())
+				Expect(ordering.TimingRound()).To(BeNil())
 			})
 		})
 		Context("On a very regular dag with 4 processes and 10 levels defined in regular.txt file", func() {
@@ -81,11 +81,12 @@ var _ = Describe("Ordering", func() {
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 				for level := 0; level < 8; level++ {
 					ordering.DecideTiming()
-					thisRound := ordering.TimingRound(level)
+					thisRound := ordering.TimingRound()
 					Expect(thisRound).NotTo(BeNil())
 					timingRounds = append(timingRounds, thisRound)
 				}
-				Expect(ordering.TimingRound(8)).To(BeNil())
+				Expect(ordering.DecideTiming()).To(BeNil())
+				Expect(ordering.TimingRound()).To(BeNil())
 			})
 			It("should on each level choose timing unit on this level", func() {
 				for level := 0; level < 8; level++ {

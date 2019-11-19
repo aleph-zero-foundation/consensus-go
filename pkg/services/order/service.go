@@ -12,15 +12,13 @@ import (
 )
 
 type service struct {
-	pid                 uint16
-	linearOrdering      gomel.LinearOrdering
-	extendOrderRequests chan int
-	orderedUnits        chan<- []gomel.Unit
-	currentRound        int
-	primeAlert          <-chan struct{}
-	exitChan            chan struct{}
-	wg                  sync.WaitGroup
-	log                 zerolog.Logger
+	pid            uint16
+	linearOrdering gomel.LinearOrdering
+	orderedUnits   chan<- []gomel.Unit
+	primeAlert     <-chan struct{}
+	exitChan       chan struct{}
+	wg             sync.WaitGroup
+	log            zerolog.Logger
 }
 
 // NewService constructs an ordering service.
@@ -30,14 +28,12 @@ type service struct {
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, conf *config.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) gomel.Service {
 	primeAlert := make(chan struct{}, 1)
 	s := &service{
-		pid:                 conf.Pid,
-		linearOrdering:      linear.NewOrdering(dag, randomSource, conf.OrderStartLevel, conf.CRPFixedPrefix, log),
-		orderedUnits:        orderedUnits,
-		extendOrderRequests: make(chan int, 10),
-		primeAlert:          primeAlert,
-		exitChan:            make(chan struct{}),
-		currentRound:        conf.OrderStartLevel,
-		log:                 log,
+		pid:            conf.Pid,
+		linearOrdering: linear.NewOrdering(dag, randomSource, conf.OrderStartLevel, conf.CRPFixedPrefix, log),
+		orderedUnits:   orderedUnits,
+		primeAlert:     primeAlert,
+		exitChan:       make(chan struct{}),
+		log:            log,
 	}
 
 	alertIfPrime := func(u gomel.Unit) {
@@ -54,14 +50,12 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, conf *config.Ord
 }
 
 func (s *service) attemptOrdering() {
-	defer close(s.extendOrderRequests)
 	defer s.wg.Done()
 	for {
 		select {
 		case <-s.primeAlert:
 			for s.linearOrdering.DecideTiming() != nil {
-				s.extendOrderRequests <- s.currentRound
-				s.currentRound++
+				s.extendOrder()
 			}
 		case <-s.exitChan:
 			return
@@ -70,24 +64,19 @@ func (s *service) attemptOrdering() {
 }
 
 func (s *service) extendOrder() {
-	for round := range s.extendOrderRequests {
-		units := s.linearOrdering.TimingRound(round)
-		s.orderedUnits <- units
-		for _, u := range units {
-			if u.Creator() == s.pid {
-				s.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
-			}
+	units := s.linearOrdering.TimingRound()
+	s.orderedUnits <- units
+	for _, u := range units {
+		if u.Creator() == s.pid {
+			s.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
 		}
-		s.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
 	}
-	close(s.orderedUnits)
-	s.wg.Done()
+	s.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
 }
 
 func (s *service) Start() error {
-	s.wg.Add(2)
+	s.wg.Add(1)
 	go s.attemptOrdering()
-	go s.extendOrder()
 	s.log.Info().Msg(logging.ServiceStarted)
 	return nil
 }
