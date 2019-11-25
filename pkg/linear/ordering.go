@@ -53,7 +53,7 @@ func dagMaxLevel(dag gomel.Dag) int {
 }
 
 // DecideTiming tries to pick the next timing unit. Returns nil if it cannot be decided yet.
-func (o *ordering) DecideTiming() gomel.Unit {
+func (o *ordering) DecideTiming() gomel.TimingRound {
 	if o.lastDecideResult {
 		o.lastDecideResult = false
 		o.decider = newSuperMajorityDecider(o.dag, o.randomSource)
@@ -93,7 +93,22 @@ func (o *ordering) DecideTiming() gomel.Unit {
 		}
 		return true
 	})
-	return result
+	if result == nil {
+		return nil
+	}
+	return &timingRound{
+		currentTU: o.currentTU,
+		lastTUs:   append([]gomel.Unit{}, o.lastTUs...),
+	}
+}
+
+type timingRound struct {
+	currentTU gomel.Unit
+	lastTUs   []gomel.Unit
+}
+
+func (tr *timingRound) TimingUnit() gomel.Unit {
+	return tr.currentTU
 }
 
 // getAntichainLayers for a given timing unit tu, returns all the units in its timing round
@@ -101,7 +116,7 @@ func (o *ordering) DecideTiming() gomel.Unit {
 // 0-th layer is formed by minimal units in this timing round.
 // 1-st layer is formed by minimal units when the 0th layer is removed.
 // etc.
-func (o *ordering) getAntichainLayers(tu gomel.Unit, prevTUs []gomel.Unit) [][]gomel.Unit {
+func getAntichainLayers(tu gomel.Unit, prevTUs []gomel.Unit) [][]gomel.Unit {
 	unitToLayer := make(map[gomel.Hash]int)
 	seenUnits := make(map[gomel.Hash]bool)
 	result := [][]gomel.Unit{}
@@ -181,12 +196,8 @@ func mergeLayers(layers [][]gomel.Unit) []gomel.Unit {
 
 // TimingRound establishes the linear ordering on the units in the currently decided timing round and returns them.
 // If the timing decision has not yet been taken it returns nil.
-func (o *ordering) TimingRound() []gomel.Unit {
-	if !o.lastDecideResult {
-		return nil
-	}
-
-	layers := o.getAntichainLayers(o.currentTU, o.lastTUs)
+func (tr *timingRound) TimingRound() []gomel.Unit {
+	layers := getAntichainLayers(tr.currentTU, tr.lastTUs)
 	sortedUnits := mergeLayers(layers)
 	return sortedUnits
 }

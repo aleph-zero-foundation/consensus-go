@@ -338,15 +338,13 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
 		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
 		level := generalConfig.OrderStartLevel
-		ordering.DecideTiming()
-		orderedUnits := ordering.TimingRound()
-		for orderedUnits != nil {
+		timingRound := ordering.DecideTiming()
+		for ; timingRound != nil; timingRound = ordering.DecideTiming() {
+			orderedUnits := timingRound.TimingRound()
 			for _, unit := range orderedUnits {
 				units <- unit
 			}
 			level++
-			ordering.DecideTiming()
-			orderedUnits = ordering.TimingRound()
 		}
 		dagLevel := dagLevel(dag)
 		fmt.Printf("Dag's no %d max level: %d", pid, dagLevel)
@@ -364,14 +362,15 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
 		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
 		level := generalConfig.OrderStartLevel
-		timingUnit := ordering.DecideTiming()
-		for timingUnit != nil {
+		timingRound := ordering.DecideTiming()
+
+		for ; timingRound != nil; timingRound = ordering.DecideTiming() {
+			timingUnit := timingRound.TimingUnit()
 			if timingUnit.Level() != level {
 				panic(fmt.Sprint("invalid level of a timing unit - expected", level, "received", timingUnit.Level()))
 			}
 			units <- timingUnit
 			level++
-			timingUnit = ordering.DecideTiming()
 		}
 		fmt.Printf("maximal decided level of dag no %d: %d", pid, level)
 		fmt.Println()
