@@ -116,20 +116,14 @@ func (o *ordering) getAntichainLayers(tu gomel.Unit, prevTUs []gomel.Unit) [][]g
 				continue
 			}
 			// check if it was already processed
-			// NOTE we can prove that comparing with last k timing units, where k is the first round where deterministic
+			// NOTE we can prove that comparing with last k timing units, where k is the first round for which the deterministic
 			// common vote is zero, is enough to verify if a unit was already ordered. Since the common vote for round k is 0,
 			// every unit on level tu.Level()+k must be above a timing unit tu, otherwise some unit would decide 0 for it.
 			if prevTU := prevTUs[len(prevTUs)-1]; prevTU != nil &&
 				uParent.Level() <= prevTU.Level() {
 
-				if gomel.Above(prevTU, uParent) {
-					continue
-				}
-				if prevTU.Level()-uParent.Level() >= len(prevTUs) {
-					continue
-				}
 				found := false
-				for it := len(prevTUs) - 2; it >= 0; it-- {
+				for it := len(prevTUs) - 1; it >= 0; it-- {
 					if gomel.Above(prevTUs[it], uParent) {
 						found = true
 						break
