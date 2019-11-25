@@ -79,11 +79,10 @@ func (o *ordering) DecideTiming() gomel.Unit {
 		if decision == popular {
 			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagMaxLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 
-			for it := 0; it < len(o.lastTUs)-1; it++ {
-				o.lastTUs[it] = o.lastTUs[it+1]
-			}
-			o.lastTUs[len(o.lastTUs)-1] = o.currentTU
+			o.lastTUs = append(o.lastTUs[:0], o.lastTUs[1:]...)
+			o.lastTUs = append(o.lastTUs, o.currentTU)
 			o.currentTU = uc
+			o.decider = nil
 			o.lastDecideResult = true
 
 			result = uc
