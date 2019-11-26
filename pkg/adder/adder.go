@@ -70,17 +70,15 @@ func (ad *adder) AddCheckErrorHandler(h gomel.CheckErrorHandler) {
 //   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	ad.log.Debug().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.AddUnitStarted)
-	// SHALL BE DONE: this makes us vulnerable to spamming with the same units over and over.
-	// We need a unit registry that remembers all the units that passed signature check
+	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
+		return gomel.NewDuplicateUnit(u)
+	}
 	err := ad.checkCorrectness(pu)
 	if err != nil {
 		return err
 	}
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
-	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
-		return gomel.NewDuplicateUnit(u)
-	}
 	return ad.addToWaiting(pu, source)
 }
 
@@ -92,31 +90,30 @@ func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 //   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
 	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnitsStarted)
-	// SHALL BE DONE: this makes us vulnerable to spamming with the same units over and over.
-	// We need a unit registry that remembers all the units that passed signature check
 	errors := make([]error, len(preunits))
+	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {
-		err := ad.checkCorrectness(pu)
-		if err != nil {
-			errors[i] = err
+		hashes[i] = pu.Hash()
+	}
+	alreadyInDag := ad.dag.GetUnits(hashes)
+
+	for i, pu := range preunits {
+		if alreadyInDag[i] == nil {
+			err := ad.checkCorrectness(pu)
+			if err != nil {
+				errors[i] = err
+				preunits[i] = nil
+			}
+		} else {
+			errors[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
 			preunits[i] = nil
 		}
 	}
-	hashes := make([]*gomel.Hash, len(preunits))
-	for i, pu := range preunits {
-		if pu != nil {
-			hashes[i] = pu.Hash()
-		}
-	}
+
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
-	alreadyInDag := ad.dag.GetUnits(hashes)
 	for i, pu := range preunits {
 		if pu == nil {
-			continue
-		}
-		if alreadyInDag[i] != nil {
-			errors[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
 			continue
 		}
 		errors[i] = ad.addToWaiting(pu, source)

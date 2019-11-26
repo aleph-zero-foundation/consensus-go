@@ -135,18 +135,16 @@ var _ = Describe("Dag", func() {
 						Expect(gomel.Prime(result)).To(BeTrue())
 					})
 				})
-				/*
-					Context("When the dag already contains the unit", func() {
-						JustBeforeEach(func() {
-							err := adder.AddUnit(addedUnit, addedUnit.Creator())
-							Expect(err).NotTo(HaveOccurred())
-						})
-						It("Should report that fact", func() {
-							err := adder.AddUnit(addedUnit, addedUnit.Creator())
-							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
-						})
+				Context("When the dag already contains the unit", func() {
+					JustBeforeEach(func() {
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						Expect(err).NotTo(HaveOccurred())
 					})
-				*/
+					It("Should report that fact", func() {
+						err := adder.AddUnit(addedUnit, addedUnit.Creator())
+						Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
+					})
+				})
 				Context("When the dag contains another parentless unit for this process", func() {
 					BeforeEach(func() {
 						pu := newPreunitMock(0, gomel.DealingHeights(nProcesses), make([]*gomel.Hash, nProcesses))
@@ -241,18 +239,16 @@ var _ = Describe("Dag", func() {
 						err := adder.AddUnit(addedUnit, addedUnit.Creator())
 						Expect(err).NotTo(HaveOccurred())
 					})
-					/*
-						Context("When the dag already contains the unit", func() {
-							JustBeforeEach(func() {
-								err := adder.AddUnit(addedUnit, addedUnit.Creator())
-								Expect(err).NotTo(HaveOccurred())
-							})
-							It("Should report that fact", func() {
-								err := adder.AddUnit(addedUnit, addedUnit.Creator())
-								Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
-							})
+					Context("When the dag already contains the unit", func() {
+						JustBeforeEach(func() {
+							err := adder.AddUnit(addedUnit, addedUnit.Creator())
+							Expect(err).NotTo(HaveOccurred())
 						})
-					*/
+						It("Should report that fact", func() {
+							err := adder.AddUnit(addedUnit, addedUnit.Creator())
+							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
+						})
+					})
 				})
 			})
 		})

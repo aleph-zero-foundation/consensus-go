@@ -6,15 +6,18 @@ import (
 )
 
 func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
+	if u := dag.GetUnit(pu.Hash()); u != nil {
+		return nil, gomel.NewDuplicateUnit(u)
+	}
 	heights := pu.View().Heights
-	possibleParents := dag.heightUnits.get(heights)
+	possibleParents, unknown := dag.heightUnits.get(heights)
+	if unknown > 0 {
+		return nil, gomel.NewUnknownParents(unknown)
+	}
 	parents := make([]gomel.Unit, dag.nProcesses)
 	for i, units := range possibleParents {
 		if heights[i] == -1 {
 			continue
-		}
-		if len(units) == 0 {
-			return nil, gomel.NewUnknownParents(countUnknown(possibleParents, heights))
 		}
 		if len(units) > 1 {
 			return nil, gomel.NewAmbiguousParents(possibleParents)
@@ -77,16 +80,6 @@ func (dag *dag) BeforeInsert(hook gomel.InsertHook) {
 
 func (dag *dag) AfterInsert(hook gomel.InsertHook) {
 	dag.postInsert = append(dag.postInsert, hook)
-}
-
-func countUnknown(possibleParents [][]gomel.Unit, heights []int) int {
-	unknown := 0
-	for i, h := range heights {
-		if h != -1 && possibleParents[i] == nil {
-			unknown++
-		}
-	}
-	return unknown
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {
