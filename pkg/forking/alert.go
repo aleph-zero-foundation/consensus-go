@@ -129,7 +129,7 @@ func (a *alertHandler) acceptFinished(id uint64, pid uint16, conn network.Connec
 		} else {
 			proof.replaceCommit(maxes[0])
 		}
-		a.Raise(proof)
+		a.raiseAlert(proof)
 	}
 }
 
@@ -385,7 +385,7 @@ func (a *alertHandler) acceptAlert(id uint64, pid uint16, conn network.Connectio
 		} else {
 			proof.replaceCommit(maxes[0])
 		}
-		a.Raise(proof)
+		a.raiseAlert(proof)
 	}
 }
 
@@ -405,10 +405,10 @@ func (a *alertHandler) acceptProof(id uint64, conn network.Connection, log zerol
 	}
 }
 
-// Raise an alert using the provided proof.
+// raiseAlert using the provided proof.
 // Blocks until the RMC is successful, retrying anyone who failed to sign in the meantime.
 // Should be only ran when the forker's id is locked.
-func (a *alertHandler) Raise(proof *forkingProof) {
+func (a *alertHandler) raiseAlert(proof *forkingProof) {
 	if a.commitments.getByParties(a.myPid, proof.forkerID()) != nil {
 		// We already committed at some point, no reason to do it again.
 		return
@@ -626,13 +626,13 @@ func (a *alertHandler) handleForkerUnit(u gomel.Unit) bool {
 		if proof == nil {
 			return false
 		}
-		a.Raise(proof)
+		a.raiseAlert(proof)
 		return true
 	}
 	return false
 }
 
-// ResolveMissingCommitment checks if the given error is
+// ResolveMissingCommitment checks if the given error is about missing commitment and tries to resolve it.
 func (a *alertHandler) ResolveMissingCommitment(e error, u gomel.BaseUnit, source uint16) error {
 	if e != nil {
 		switch e.(type) {
@@ -646,4 +646,14 @@ func (a *alertHandler) ResolveMissingCommitment(e error, u gomel.BaseUnit, sourc
 		}
 	}
 	return nil
+}
+
+// NewFork takes two preunits that prove that a fork happened, produces a forking proof and raises an alert.
+func (a *alertHandler) NewFork(u, v gomel.Preunit) {
+	if u.Creator() != v.Creator() || u.Height() != v.Height() {
+		return
+	}
+	// SHALL BE DONE!
+	// construct forkingProof
+	// a.raiseAlert(proof)
 }

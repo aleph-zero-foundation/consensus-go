@@ -52,10 +52,8 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 		return gomel.NewDuplicatePreunit(wp.pu)
 	}
 	id := gomel.UnitID(pu)
-	if _, ok := ad.waitingByID[id]; ok {
-		// We have a fork
-		// SHALL BE DONE
-		// Alert(fork, pu)
+	if fork, ok := ad.waitingByID[id]; ok {
+		ad.alert.NewFork(pu, fork.pu)
 	}
 	wp := &waitingPreunit{pu: pu, id: id, source: source}
 	ad.waiting[*pu.Hash()] = wp
