@@ -13,6 +13,7 @@ type waitingPreunit struct {
 	missingParents int               // number of preunit's parents that we've never seen
 	waitingParents int               // number of preunit's parents that are waiting in adder
 	children       []*waitingPreunit // list of other preunits that has this preunit as parent
+	failed         bool              // flag for signaling problems with adding this unit
 }
 
 // checkIfMissing sets the children attribute of a newly created node, depending on if it was missing
@@ -76,10 +77,23 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 func (ad *adder) remove(wp *waitingPreunit) {
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
+	if wp.failed {
+		ad.removeFailed(wp)
+	} else {
+		delete(ad.waiting, *(wp.pu.Hash()))
+		delete(ad.waitingByID, wp.id)
+		for _, ch := range wp.children {
+			ch.waitingParents--
+			ad.sendIfReady(ch)
+		}
+	}
+}
+
+// removeFailed removes from the buffer zone a ready preunit which we failed to add, together with all its descendants.
+func (ad *adder) removeFailed(wp *waitingPreunit) {
 	delete(ad.waiting, *(wp.pu.Hash()))
 	delete(ad.waitingByID, wp.id)
 	for _, ch := range wp.children {
-		ch.waitingParents--
-		ad.sendIfReady(ch)
+		ad.removeFailed(ch)
 	}
 }

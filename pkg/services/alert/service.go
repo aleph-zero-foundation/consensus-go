@@ -18,7 +18,7 @@ import (
 )
 
 type service struct {
-	alert   *forking.AlertHandler
+	alert   gomel.Alerter
 	netserv network.Server
 	timeout time.Duration
 	listens sync.WaitGroup
@@ -27,20 +27,20 @@ type service struct {
 }
 
 // NewService constructs an alerting service for the given dag with the given configuration.
-func NewService(dag gomel.Dag, adder gomel.Adder, conf *config.Alert, log zerolog.Logger) (gomel.Service, error) {
+func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Alerter, gomel.Service, error) {
 	rmc := rmc.New(conf.Pubs, conf.Priv)
 	netserv, err := tcp.NewServer(conf.LocalAddress, conf.RemoteAddresses, log)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	a := forking.NewAlertHandler(conf.Pid, dag, adder, conf.PublicKeys, rmc, netserv, conf.Timeout, log)
+	a := forking.NewAlertHandler(conf.Pid, dag, conf.PublicKeys, rmc, netserv, conf.Timeout, log)
 	s := &service{
 		alert:   a,
 		netserv: netserv,
 		timeout: conf.Timeout,
 		log:     log,
 	}
-	return s, nil
+	return a, s, nil
 }
 
 func (s *service) Start() error {

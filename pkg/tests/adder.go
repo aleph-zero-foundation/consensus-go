@@ -10,8 +10,6 @@ type adder struct {
 func NewAdder(dag gomel.Dag) gomel.Adder {
 	return &adder{dag}
 }
-func (ad *adder) AddDecodeErrorHandler(gomel.DecodeErrorHandler) {}
-func (ad *adder) AddCheckErrorHandler(gomel.CheckErrorHandler)   {}
 
 func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	parents, err := ad.dag.DecodeParents(pu)

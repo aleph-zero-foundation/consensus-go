@@ -57,7 +57,7 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	}
 	rs.Bind(dag)
 
-	adr, adderService := adder.New(dag, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
+	adr, adderService := adder.New(dag, gomel.NopAlerter(), conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
 	orderService := order.NewService(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 

@@ -24,7 +24,7 @@ var _ = Describe("Alert", func() {
 
 	var (
 		nProc    uint16
-		alerters []*AlertHandler
+		alerters []gomel.Alerter
 		dags     []gomel.Dag
 		adders   []gomel.Adder
 		adServs  []gomel.Service
@@ -46,7 +46,7 @@ var _ = Describe("Alert", func() {
 			pubKeys[i], privKeys[i], _ = signing.GenerateKeys()
 			verKeys[i], secrKeys[i], _ = bn256.GenerateKeys()
 		}
-		alerters = make([]*AlertHandler, nProc)
+		alerters = make([]gomel.Alerter, nProc)
 		dags = make([]gomel.Dag, nProc)
 		adders = make([]gomel.Adder, nProc)
 		adServs = make([]gomel.Service, nProc)
@@ -56,9 +56,9 @@ var _ = Describe("Alert", func() {
 			dags[i] = dag.New(nProc)
 			rss[i] = tests.NewTestRandomSource()
 			rss[i].Bind(dags[i])
-			adders[i], adServs[i] = adder.New(dags[i], nil, zerolog.Nop())
 			rmc := rmc.New(verKeys, secrKeys[i])
-			alerters[i] = NewAlertHandler(uint16(i), dags[i], adders[i], pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
+			alerters[i] = NewAlertHandler(uint16(i), dags[i], pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
+			adders[i], adServs[i] = adder.New(dags[i], alerters[i], nil, zerolog.Nop())
 			adServs[i].Start()
 		}
 	})

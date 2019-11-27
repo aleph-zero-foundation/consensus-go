@@ -21,8 +21,7 @@ import (
 
 type adder struct {
 	dag         gomel.Dag
-	decHandlers []gomel.DecodeErrorHandler
-	chkHandlers []gomel.CheckErrorHandler
+	alert       gomel.Alerter
 	keys        []gomel.PublicKey
 	ready       []chan *waitingPreunit
 	waiting     map[gomel.Hash]*waitingPreunit
@@ -37,13 +36,14 @@ type adder struct {
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
 // Passing nil as keys disables signature checking.
-func New(dag gomel.Dag, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service) {
+func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service) {
 	ready := make([]chan *waitingPreunit, dag.NProc())
 	for i := range ready {
 		ready[i] = make(chan *waitingPreunit, 32)
 	}
 	ad := &adder{
 		dag:         dag,
+		alert:       alert,
 		keys:        keys,
 		ready:       ready,
 		waiting:     make(map[gomel.Hash]*waitingPreunit),
@@ -52,14 +52,6 @@ func New(dag gomel.Dag, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder
 		log:         log,
 	}
 	return ad, ad
-}
-
-func (ad *adder) AddDecodeErrorHandler(h gomel.DecodeErrorHandler) {
-	ad.decHandlers = append(ad.decHandlers, h)
-}
-
-func (ad *adder) AddCheckErrorHandler(h gomel.CheckErrorHandler) {
-	ad.chkHandlers = append(ad.chkHandlers, h)
 }
 
 // AddUnit checks basic correctness of a preunit and then adds it to the buffer zone.
@@ -163,30 +155,42 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	log.Debug().Msg(logging.AddingStarted)
 	parents, err := ad.dag.DecodeParents(wp.pu)
 	if err != nil {
-		log.Debug().Msg(logging.DecodeParentsError)
-		for _, handler := range ad.decHandlers {
-			if parents, err = handler(wp.pu, err, wp.source); err == nil {
-				break
+		switch e := err.(type) {
+		case *gomel.AmbiguousParents:
+			parents = make([]gomel.Unit, 0, len(e.Units))
+			for _, us := range e.Units {
+				parent, err2 := ad.alert.Disambiguate(us, wp.pu)
+				err2 = ad.alert.ResolveMissingCommitment(err2, wp.pu, wp.source)
+				if err2 != nil {
+					log.Error().Str("where", "DecodeParents.Disambiguate").Msg(err2.Error())
+					wp.failed = true
+					return
+				}
+				parents = append(parents, parent)
 			}
-		}
-		if err != nil {
+			if *gomel.CombineHashes(gomel.ToHashes(parents)) != wp.pu.View().ControlHash {
+				log.Error().Str("where", "DecodeParents").Msg("wrong control hash")
+				wp.failed = true
+				return
+			}
+		default:
 			log.Error().Str("where", "DecodeParents").Msg(err.Error())
+			wp.failed = true
 			return
 		}
 	}
+
 	freeUnit := ad.dag.BuildUnit(wp.pu, parents)
+
+	ad.alert.Lock(freeUnit.Creator())
+	defer ad.alert.Unlock(freeUnit.Creator())
+
 	err = ad.dag.Check(freeUnit)
+	err = ad.alert.ResolveMissingCommitment(err, freeUnit, wp.source)
 	if err != nil {
-		log.Debug().Msg(logging.CheckError)
-		for _, handler := range ad.chkHandlers {
-			if err = handler(freeUnit, err, wp.source); err == nil {
-				break
-			}
-		}
-		if err != nil {
-			log.Error().Str("where", "Check").Msg(err.Error())
-			return
-		}
+		log.Error().Str("where", "Check").Msg(err.Error())
+		wp.failed = true
+		return
 	}
 	unitInDag := ad.dag.Transform(freeUnit)
 	ad.dag.Insert(unitInDag)

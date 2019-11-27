@@ -76,12 +76,12 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 	log.Info().Msg(logging.GotRandomSource)
 	rs.Bind(dag)
 
-	adr, adderService := adder.New(dag, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
-
-	alertService, err := alert.NewService(dag, adr, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
+	alerter, alertService, err := alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
 	if err != nil {
 		return nil, err
 	}
+
+	adr, adderService := adder.New(dag, alerter, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
 	orderService := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 

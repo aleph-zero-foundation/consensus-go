@@ -40,11 +40,11 @@ func newForkingProof(u, max gomel.Unit) *forkingProof {
 	}
 }
 
-func (fp *forkingProof) Marshal() []byte {
+func (fp *forkingProof) marshal() []byte {
 	return fp.encoded
 }
 
-func (fp *forkingProof) Unmarshal(data []byte) (*forkingProof, error) {
+func (fp *forkingProof) unmarshal(data []byte) (*forkingProof, error) {
 	reader := bytes.NewReader(data)
 	var err error
 	fp.pu, err = encoding.ReceivePreunit(reader)
@@ -70,7 +70,7 @@ func (fp *forkingProof) forkerID() uint16 {
 
 // splitEncoding returns the encoded proof in two parts, first the proof itself, then the commitment
 func (fp *forkingProof) splitEncoding() ([]byte, []byte) {
-	encoded := fp.Marshal()
+	encoded := fp.marshal()
 	reader := bytes.NewReader(encoded)
 	encoding.ReceivePreunit(reader)
 	encoding.ReceivePreunit(reader)
