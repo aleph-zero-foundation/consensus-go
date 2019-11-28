@@ -64,7 +64,7 @@ func (fm *fiberMap) extendBy(nValues int) {
 }
 
 // get takes a list of heights (of length nProc) and returns a slice (of length nProc) of slices
-// of corresponding units. The second returned value is a number of unknown parents (empty slices).
+// of corresponding units. The second returned value is the number of unknown parents.
 func (fm *fiberMap) get(heights []int) ([][]gomel.Unit, int) {
 	fm.mx.RLock()
 	defer fm.mx.RUnlock()

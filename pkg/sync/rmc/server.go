@@ -50,6 +50,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
 	dag.AddCheck(s.finishedRMC)
 	dag.AfterInsert(s.send)
+	adder.AddErrorHandler(s.checkErrorHandler)
 	return s
 }
 
@@ -119,7 +120,7 @@ func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
 	return nil
 }
 
-func (s *server) checkErrorHandler(u gomel.Unit, err error, source uint16) error {
+func (s *server) checkErrorHandler(err error, u gomel.Unit, source uint16) error {
 	switch err.(type) {
 	case *unfinishedRMC:
 		return s.fetchFinished(u, source)

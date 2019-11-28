@@ -3,12 +3,17 @@ package tests
 import "gitlab.com/alephledger/consensus-go/pkg/gomel"
 
 type adder struct {
-	dag gomel.Dag
+	dag      gomel.Dag
+	handlers []gomel.ErrorHandler
 }
 
 // NewAdder creates a very simple adder for testing purposes.
 func NewAdder(dag gomel.Dag) gomel.Adder {
-	return &adder{dag}
+	return &adder{dag, nil}
+}
+
+func (ad *adder) AddErrorHandler(eh gomel.ErrorHandler) {
+	ad.handlers = append(ad.handlers, eh)
 }
 
 func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
@@ -19,7 +24,14 @@ func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
 	freeUnit := ad.dag.BuildUnit(pu, parents)
 	err = ad.dag.Check(freeUnit)
 	if err != nil {
-		return err
+		for _, handler := range ad.handlers {
+			if err = handler(err, freeUnit, source); err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return err
+		}
 	}
 	unitInDag := ad.dag.Transform(freeUnit)
 	ad.dag.Insert(unitInDag)
