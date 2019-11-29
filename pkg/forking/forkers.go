@@ -16,11 +16,7 @@ type forkingProof struct {
 	encoded         []byte
 }
 
-func newForkingProof(u, max gomel.Unit) *forkingProof {
-	v := max
-	for v.Height() > u.Height() {
-		v = gomel.Predecessor(v)
-	}
+func newForkingProof(u, v, max gomel.BaseUnit) *forkingProof {
 	if *u.Hash() == *v.Hash() {
 		return nil
 	}

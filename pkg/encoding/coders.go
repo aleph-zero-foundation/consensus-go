@@ -19,7 +19,7 @@ type encoder interface {
 	// encodeCrown encodes a crown.
 	encodeCrown(*gomel.Crown) error
 	// encodeUnit encodes a single unit.
-	encodeUnit(gomel.Unit) error
+	encodeUnit(gomel.BaseUnit) error
 	// encodeChunk encodes a slice of units by splitting them into antichains.
 	encodeChunk([]gomel.Unit) error
 }

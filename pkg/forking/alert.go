@@ -622,7 +622,11 @@ func (a *alertHandler) handleForkerUnit(u gomel.Unit) bool {
 	// There can be only one, because the creator is not yet a forker.
 	max := maxes[0]
 	if max.Height() >= u.Height() {
-		proof := newForkingProof(u, max)
+		v := max
+		for v.Height() > u.Height() {
+			v = gomel.Predecessor(v)
+		}
+		proof := newForkingProof(u, v, max)
 		if proof == nil {
 			return false
 		}
@@ -653,7 +657,19 @@ func (a *alertHandler) NewFork(u, v gomel.Preunit) {
 	if u.Creator() != v.Creator() || u.Height() != v.Height() {
 		return
 	}
-	// SHALL BE DONE!
-	// construct forkingProof
-	// a.raiseAlert(proof)
+	a.Lock(u.Creator())
+	defer a.Unlock(u.Creator())
+
+	maxes := a.dag.MaximalUnitsPerProcess().Get(u.Creator())
+	var max gomel.Unit
+	height := -1
+	for _, u := range maxes {
+		if u.Height() > height {
+			max = u
+			height = u.Height()
+		}
+	}
+
+	proof := newForkingProof(u, v, max)
+	a.raiseAlert(proof)
 }
