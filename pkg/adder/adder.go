@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 )
 
 const (
@@ -23,24 +24,26 @@ const (
 // d) Transform
 // e) Insert
 type adder struct {
-	dag         gomel.Dag
-	alert       gomel.Alerter
-	handlers    []gomel.ErrorHandler
-	keys        []gomel.PublicKey
-	ready       []chan *waitingPreunit
-	waiting     map[gomel.Hash]*waitingPreunit
-	waitingByID map[uint64]*waitingPreunit
-	missing     map[uint64]*missingPreunit
-	mx          sync.Mutex
-	wg          sync.WaitGroup
-	quit        int64
-	log         zerolog.Logger
+	dag            gomel.Dag
+	alert          gomel.Alerter
+	handlers       []gomel.ErrorHandler
+	keys           []gomel.PublicKey
+	ready          []chan *waitingPreunit
+	waiting        map[gomel.Hash]*waitingPreunit
+	waitingByID    map[uint64]*waitingPreunit
+	missing        map[uint64]*missingPreunit
+	fetchRequests  chan<- fetch.Request
+	gossipRequests chan<- uint16
+	mx             sync.Mutex
+	wg             sync.WaitGroup
+	quit           int64
+	log            zerolog.Logger
 }
 
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
 // Passing nil as keys disables signature checking.
-func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service) {
+func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service, func(ch chan<- fetch.Request), func(ch chan<- uint16)) {
 	ready := make([]chan *waitingPreunit, dag.NProc())
 	for i := range ready {
 		ready[i] = make(chan *waitingPreunit, channelLength)
@@ -55,7 +58,13 @@ func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog
 		missing:     make(map[uint64]*missingPreunit),
 		log:         log,
 	}
-	return ad, ad
+	setFetch := func(ch chan<- fetch.Request) {
+		ad.fetchRequests = ch
+	}
+	setGossip := func(ch chan<- uint16) {
+		ad.gossipRequests = ch
+	}
+	return ad, ad, setFetch, setGossip
 }
 
 func (ad *adder) AddErrorHandler(eh gomel.ErrorHandler) {
