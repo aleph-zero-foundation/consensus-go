@@ -111,6 +111,18 @@ func (tr *timingRound) TimingUnit() gomel.Unit {
 	return tr.currentTU
 }
 
+func checkIfAlreadyOrdered(u gomel.Unit, prevTUs []gomel.Unit) bool {
+	if prevTU := prevTUs[len(prevTUs)-1]; prevTU == nil || u.Level() > prevTU.Level() {
+		return false
+	}
+	for it := len(prevTUs) - 1; it >= 0; it-- {
+		if gomel.Above(prevTUs[it], u) {
+			return true
+		}
+	}
+	return false
+}
+
 // getAntichainLayers for a given timing unit tu, returns all the units in its timing round
 // divided into layers.
 // 0-th layer is formed by minimal units in this timing round.
@@ -133,19 +145,8 @@ func getAntichainLayers(tu gomel.Unit, prevTUs []gomel.Unit) [][]gomel.Unit {
 			// NOTE we can prove that comparing with last k timing units, where k is the first round for which the deterministic
 			// common vote is zero, is enough to verify if a unit was already ordered. Since the common vote for round k is 0,
 			// every unit on level tu.Level()+k must be above a timing unit tu, otherwise some unit would decide 0 for it.
-			if prevTU := prevTUs[len(prevTUs)-1]; prevTU != nil &&
-				uParent.Level() <= prevTU.Level() {
-
-				found := false
-				for it := len(prevTUs) - 1; it >= 0; it-- {
-					if gomel.Above(prevTUs[it], uParent) {
-						found = true
-						break
-					}
-				}
-				if found {
-					continue
-				}
+			if checkIfAlreadyOrdered(uParent, prevTUs) {
+				continue
 			}
 			if !seenUnits[*uParent.Hash()] {
 				dfs(uParent)
