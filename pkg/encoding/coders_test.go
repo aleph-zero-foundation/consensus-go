@@ -97,7 +97,7 @@ var _ = Describe("Encoding/Decoding", func() {
 				var buf bytes.Buffer
 				err := SendChunk(toSend, &buf)
 				Expect(err).NotTo(HaveOccurred())
-				// receving
+				// receiving
 				pus, err := ReceiveChunk(&buf)
 				// checks
 				Expect(len(pus)).To(Equal(len(toSend)))
@@ -119,7 +119,7 @@ var _ = Describe("Encoding/Decoding", func() {
 				Expect(err).To(MatchError("maximal allowed data size in a preunit exceeded"))
 			})
 		})
-		Context("on a unit with to long random source data", func() {
+		Context("on a unit with too long random source data", func() {
 			It("should return an error", func() {
 				nProc := 0
 				// creator, signature, nParents, parentsHeights, controlHash, data length, random source data length

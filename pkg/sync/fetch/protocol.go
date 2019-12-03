@@ -43,6 +43,11 @@ func (p *server) In() {
 		log.Error().Str("where", "fetch.in.sendUnits").Msg(err.Error())
 		return
 	}
+	err = conn.Flush()
+	if err != nil {
+		log.Error().Str("where", "fetch.in.flush").Msg(err.Error())
+		return
+	}
 	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
