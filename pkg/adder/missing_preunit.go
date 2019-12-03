@@ -1,15 +1,22 @@
 package adder
 
 import (
+	"time"
+
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 )
 
-// gossipAbove is the number of missing units above which gossip is triggered instead of fetch.
-const gossipAbove = 50
+const (
+	// gossipAbove is the number of missing units above which gossip is triggered instead of fetch.
+	gossipAbove = 50
+	// request a missing unit again only after fetchInterval has passed since the last try.
+	fetchInterval = time.Second
+)
 
 type missingPreunit struct {
-	neededBy []*waitingPreunit // list of waitingPreunits that has this preunit as parent
+	neededBy  []*waitingPreunit // list of waitingPreunits that has this preunit as parent
+	requested time.Time
 }
 
 // newMissing constructs a new missingPreunit that is needed by some waitingPreunit.
@@ -46,11 +53,19 @@ func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
 	}
 	nProc := ad.dag.NProc()
 	missing := make([]uint64, 0, 8)
+	now := time.Now()
 	for creator, height := range wp.pu.View().Heights {
 		for h := height; h > maxHeights[creator]; h-- {
 			id := gomel.ID(h, uint16(creator), nProc)
-			if _, ok := ad.waitingByID[id]; !ok {
-				missing = append(missing, id)
+			if _, waiting := ad.waitingByID[id]; !waiting {
+				if mp, ok := ad.missing[id]; ok {
+					if now.Sub(mp.requested) > fetchInterval {
+						missing = append(missing, id)
+						mp.requested = now
+					}
+				} else {
+					missing = append(missing, id)
+				}
 			}
 		}
 		if ad.gossipRequests != nil && len(missing) > gossipAbove {
@@ -58,5 +73,7 @@ func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
 			return
 		}
 	}
-	ad.fetchRequests <- fetch.Request{wp.source, missing}
+	if len(missing) > 0 {
+		ad.fetchRequests <- fetch.Request{wp.source, missing}
+	}
 }
