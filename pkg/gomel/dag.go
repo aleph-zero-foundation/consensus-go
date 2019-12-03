@@ -71,18 +71,19 @@ func MinimalTrusted(nProcesses uint16) uint16 {
 	return nProcesses/3 + 1
 }
 
-// FindMissingParents takes a crown and return IDs of units that are not present in the dag.
-// NOTE this takes and releases lock on heights fiber map multiple times.
-func FindMissingParents(dag Dag, pu Preunit) []uint64 {
-	missing := make([]uint64, 0, 4)
-	for c, h := range pu.View().Heights {
-		if h == -1 {
-			continue
+// MaxView returns a slice of NProc integers containing, for each creator, the maximal height of a unit produced by that creator.
+func MaxView(dag Dag) []int {
+	maxes := dag.MaximalUnitsPerProcess()
+	heights := make([]int, 0, dag.NProc())
+	maxes.Iterate(func(units []Unit) bool {
+		h := -1
+		for _, u := range units {
+			if u.Height() > h {
+				h = u.Height()
+			}
 		}
-		su := dag.UnitsOnHeight(h)
-		if su == nil || su.Get(uint16(c)) == nil {
-			missing = append(missing, ID(h, uint16(c), dag.NProc()))
-		}
-	}
-	return missing
+		heights = append(heights, h)
+		return true
+	})
+	return heights
 }
