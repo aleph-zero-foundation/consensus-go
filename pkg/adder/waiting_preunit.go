@@ -16,7 +16,7 @@ type waitingPreunit struct {
 	failed         bool              // flag for signaling problems with adding this unit
 }
 
-// checkIfMissing sets the children attribute of a newly created node, depending on if it was missing
+// checkIfMissing sets the children attribute of a newly created waitingPreunit, depending on if it was missing
 func (ad *adder) checkIfMissing(wp *waitingPreunit) {
 	if mp, ok := ad.missing[wp.id]; ok {
 		wp.children = mp.neededBy

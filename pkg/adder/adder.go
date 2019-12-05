@@ -3,6 +3,7 @@ package adder
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -11,7 +12,12 @@ import (
 )
 
 const (
-	channelLength = 32
+	//
+	channelLength = 16
+	// gossipAbove is the number of missing units above which gossip is triggered instead of fetch.
+	gossipAbove = 50
+	// request a missing unit again only after fetchInterval has passed since the last try.
+	fetchInterval = time.Second
 )
 
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with

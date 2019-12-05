@@ -7,13 +7,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 )
 
-const (
-	// gossipAbove is the number of missing units above which gossip is triggered instead of fetch.
-	gossipAbove = 50
-	// request a missing unit again only after fetchInterval has passed since the last try.
-	fetchInterval = time.Second
-)
-
 type missingPreunit struct {
 	neededBy  []*waitingPreunit // list of waitingPreunits that has this preunit as parent
 	requested time.Time
