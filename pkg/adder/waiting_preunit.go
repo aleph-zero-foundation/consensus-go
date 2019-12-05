@@ -63,11 +63,9 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	if wp.missingParents > 0 {
 		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.FetchParents)
 		ad.fetchMissing(wp)
-	}
-	ad.sendIfReady(wp)
-	if wp.missingParents > 0 {
 		return gomel.NewUnknownParents(wp.missingParents)
 	}
+	ad.sendIfReady(wp)
 	return nil
 }
 

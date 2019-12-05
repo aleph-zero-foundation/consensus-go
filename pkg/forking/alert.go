@@ -657,8 +657,13 @@ func (a *alertHandler) NewFork(u, v gomel.Preunit) {
 	if u.Creator() != v.Creator() || u.Height() != v.Height() {
 		return
 	}
+
 	a.Lock(u.Creator())
 	defer a.Unlock(u.Creator())
+
+	if a.isForker(u.Creator()) {
+		return
+	}
 
 	maxes := a.dag.MaximalUnitsPerProcess().Get(u.Creator())
 	var max gomel.Unit

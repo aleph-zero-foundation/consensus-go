@@ -12,15 +12,15 @@ func newMissing(wp *waitingPreunit) *missingPreunit {
 	return mp
 }
 
-// addNeeded adds another waitingPreunit that needs this missingPreunit.
-func (mp *missingPreunit) addNeeded(wp *waitingPreunit) {
+// addNeeding adds another waitingPreunit that needs this missingPreunit.
+func (mp *missingPreunit) addNeeding(wp *waitingPreunit) {
 	mp.neededBy = append(mp.neededBy, wp)
 }
 
 // registerMissing registers the fact that the given waitingPreunit needs an unknown unit with the given id.
 func (ad *adder) registerMissing(id uint64, wp *waitingPreunit) {
 	if mp, ok := ad.missing[id]; ok {
-		mp.addNeeded(wp)
+		mp.addNeeding(wp)
 		return
 	}
 	ad.missing[id] = newMissing(wp)
