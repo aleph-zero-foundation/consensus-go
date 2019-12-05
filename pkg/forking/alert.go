@@ -666,13 +666,10 @@ func (a *alertHandler) NewFork(u, v gomel.Preunit) {
 	}
 
 	maxes := a.dag.MaximalUnitsPerProcess().Get(u.Creator())
+	// There can be only one unit in maxes, since its creator is not a forker.
 	var max gomel.Unit
-	height := -1
-	for _, u := range maxes {
-		if u.Height() > height {
-			max = u
-			height = u.Height()
-		}
+	if len(maxes) > 0 {
+		max = maxes[0]
 	}
 
 	proof := newForkingProof(u, v, max)
