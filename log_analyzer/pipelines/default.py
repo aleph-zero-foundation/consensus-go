@@ -4,7 +4,6 @@ driver.add_pipeline('Create', [
     Filter(Service, CreateService),
     CreateCounter(),
     Filter(Event, [UnitCreated, PrimeUnitCreated]),
-    Histogram('parents', [UnitCreated, PrimeUnitCreated], lambda entry: entry[NParents]),
     Timer('unit creation intervals', SKIP)
 ])
 
@@ -23,6 +22,13 @@ driver.add_pipeline('Latency', [
     Delay('Broadcasting latency', [UnitCreated, PrimeUnitCreated], UnitBroadcasted, lambda entry: entry[Height], SKIP),
 ])
 
+driver.add_pipeline('Adder', [
+    Filter(Service, AdderService),
+    Delay('Limbo (Incomplete = AddUnits calls)', AddUnitStarted, PreunitReady, lambda entry: (entry[Creator], entry[Height], entry[PID]), SKIP),
+    Delay('Channels', PreunitReady, AddingStarted, lambda entry: (entry[Creator], entry[Height], entry[PID]), SKIP),
+    Delay('Worker', AddingStarted, UnitAdded, lambda entry: (entry[Creator], entry[Height], entry[PID]), SKIP),
+])
+
 driver.add_pipeline('Gossip', [
     Filter(Service, GossipService),
     GossipStats(),
@@ -37,7 +43,6 @@ driver.add_pipeline('Multicast', [
     Filter(Service, [MCService, RetryingService]),
     MulticastStats(),
     Histogram('number of missing parents', UnknownParents, lambda entry: entry[Size]),
-    Delay('Backlog stay', AddedToBacklog, RemovedFromBacklog, lambda entry: entry[Hash], SKIP),
 ])
 
 driver.add_pipeline('Network traffic', NetworkTraffic())

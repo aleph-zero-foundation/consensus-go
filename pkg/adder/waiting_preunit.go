@@ -53,6 +53,7 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	}
 	id := gomel.UnitID(pu)
 	if fork, ok := ad.waitingByID[id]; ok {
+		ad.log.Warn().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.ForkDetected)
 		ad.alert.NewFork(pu, fork.pu)
 	}
 	wp := &waitingPreunit{pu: pu, id: id, source: source}
@@ -61,7 +62,7 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	ad.checkParents(wp)
 	ad.checkIfMissing(wp)
 	if wp.missingParents > 0 {
-		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.FetchParents)
+		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.MissingParents)
 		ad.fetchMissing(wp)
 		return gomel.NewUnknownParents(wp.missingParents)
 	}

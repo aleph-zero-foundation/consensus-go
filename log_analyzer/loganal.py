@@ -14,6 +14,7 @@ from driver import Driver
 from const import *
 from plugins import *
 from sync_plugins import *
+from other_plugins import *
 from plotters import *
 
 pipelines_folder = join(dirname(__file__), 'pipelines')

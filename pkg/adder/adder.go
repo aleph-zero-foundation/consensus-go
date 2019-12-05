@@ -193,7 +193,7 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	// 5. Insert
 	ad.dag.Insert(unitInDag)
 
-	log.Debug().Msg(logging.UnitAdded)
+	log.Info().Msg(logging.UnitAdded)
 }
 
 // checkCorrectness checks very basic correctness of the given preunit: creator and signature.

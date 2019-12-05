@@ -1,5 +1,7 @@
 from plugins import *
 
+from matplotlib.patches import Patch
+import matplotlib.pyplot as plt
 
 class Plotter(Plugin):
     """Subclass for plugins that produce plots."""

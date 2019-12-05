@@ -17,7 +17,7 @@ class MulticastStats(Plugin):
             self.succ += 1
         elif entry[Event] == UnknownParents:
             self.miss += 1
-        elif entry[Event] == DuplicatedUnit:
+        elif entry[Event] in [DuplicateUnit, DuplicatePreunit]:
             self.dupl += 1
         elif entry[Level] == 3 and 'multicast.In' in entry['where']:
             self.err += 1
@@ -29,7 +29,7 @@ class MulticastStats(Plugin):
 
     @staticmethod
     def multistats(datasets):
-        ret = '    PID     Success    Failed    Duplicated\n'
+        ret = '    PID     Success    Failed    Duplicates\n'
         for name in sorted(datasets.keys()):
             if datasets[name] is not None:
                 s,m,d = datasets[name]
@@ -39,7 +39,7 @@ class MulticastStats(Plugin):
     def report(self):
         if self.get_data() is None:
             return sadpanda
-        ret  =  '    Units added:               %5d\n'%self.succ
+        ret  =  '    Units with all parents:    %5d\n'%self.succ
         ret +=  '    Units with missing parents:%5d\n'%self.miss
         ret +=  '    Duplicates received:       %5d\n'%self.dupl
         ret +=  '    Interrupted by error:      %5d\n'%self.err
@@ -66,7 +66,7 @@ class FetchStats(Plugin):
         elif entry[Event] == SyncCompleted:
             self.data[key]['end'] = entry[Time]
             self.data[key]['recv'] = entry[Recv]
-        elif entry[Event] == DuplicatedUnit:
+        elif entry[Event] in [DuplicateUnit, DuplicatePreunit]:
             self.data[key]['dupl'] += 1
         elif entry[Level] == '3':
             self.data[key]['fail'] = True
@@ -99,7 +99,7 @@ class FetchStats(Plugin):
 
     @staticmethod
     def multistats(datasets):
-        ret = '    PID     Received    Duplicated\n'
+        ret = '    PID     Received    Duplicates\n'
         for name in sorted(datasets.keys()):
             if datasets[name] is not None:
                 _,d,r = datasets[name]
@@ -118,15 +118,16 @@ class FetchStats(Plugin):
             return ret + sadpanda
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
-        ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
+        if self.times[-1] > 10:
+            ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
         ret +=  '    Med time:            %13.2f ms\n\n'%median(self.times)
         ret +=  '    Max units received:  %10d\n'%self.recv[-1]
         ret +=  '    Avg units received:  %13.2f\n'%mean(self.recv)
         ret +=  '    Med units received:  %13.2f\n\n'%median(self.recv)
-        ret +=  '    Max duplicated ratio:%13.2f (%d units)\n'%self.dupl[-1]
-        ret +=  '    Avg duplicated ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
-        ret +=  '    Med duplicated ratio:%13.2f\n'%median(i[0] for i in self.dupl)
-        ret +=  '    Largest duplicated ratio:\n'
+        ret +=  '    Max duplicates ratio:%13.2f (%d units)\n'%self.dupl[-1]
+        ret +=  '    Avg duplicates ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
+        ret +=  '    Med duplicates ratio:%13.2f\n'%median(i[0] for i in self.dupl)
+        ret +=  '    Largest duplicate ratio:\n'
         for i in sorted(self.dupl, reverse=True)[:10]:
             ret +=  '       %13.2f (%d units)\n'%i
         ret += '\n'
@@ -173,7 +174,7 @@ class GossipStats(Plugin):
             d[key]['frecv'] = entry.get(FreshRecv,0)
         elif entry[Event] == AdditionalExchange:
             d[key]['addexc'] = True
-        elif entry[Event] == DuplicatedUnit:
+        elif entry[Event] in [DuplicateUnit, DuplicatePreunit]:
             d[key]['dupl'] += 1
         elif entry[Level] == '3':
             d[key]['fail'] = True
@@ -240,7 +241,8 @@ class GossipStats(Plugin):
             return ret + sadpanda
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]
         ret +=  '    Avg time:            %13.2f ms\n'%mean(self.times)
-        ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
+        if self.times[-1] > 10:
+            ret +=  '    Avg time (>10ms):    %13.2f ms\n'%mean(filter(lambda x:x>10, self.times))
         ret +=  '    Med time:            %13.2f ms\n\n'%median(self.times)
         ret +=  '    Max units sent:      %10d\n'%self.sent[-1]
         ret +=  '    Avg units sent:      %13.2f\n'%mean(self.sent)
@@ -254,10 +256,10 @@ class GossipStats(Plugin):
         ret +=  '    Max fresh units recv:%10d\n'%self.frecv[-1]
         ret +=  '    Avg fresh units recv:%13.2f\n'%mean(self.frecv)
         ret +=  '    Med fresh units recv:%13.2f\n\n'%median(self.frecv)
-        ret +=  '    Max duplicated ratio:%13.2f (%d units)\n'%self.dupl[-1]
-        ret +=  '    Avg duplicated ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
-        ret +=  '    Med duplicated ratio:%13.2f\n'%median(i[0] for i in self.dupl)
-        ret +=  '    Largest recv duplicated ratio:\n'
+        ret +=  '    Max duplicates ratio:%13.2f (%d units)\n'%self.dupl[-1]
+        ret +=  '    Avg duplicates ratio:%13.2f\n'%mean(i[0] for i in self.dupl)
+        ret +=  '    Med duplicates ratio:%13.2f\n'%median(i[0] for i in self.dupl)
+        ret +=  '    Largest recv duplicates ratio:\n'
         for i in sorted(self.dupl, reverse=True)[:10]:
             ret +=  '       %13.2f (%d units)\n'%i
         ret += '\n'

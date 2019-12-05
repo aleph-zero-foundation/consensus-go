@@ -45,7 +45,8 @@ const (
 	AddUnitStarted        = "n"
 	AddUnitsStarted       = "o"
 	PreunitReady          = "p"
-	FetchParents          = "r"
+	MissingParents        = "r"
+	ForkDetected          = "s"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -92,7 +93,8 @@ var eventTypeDict = map[string]string{
 	AddUnitStarted:        "adding a single unit received from PID started",
 	AddUnitsStarted:       "adding a chunk of units received from PID started",
 	PreunitReady:          "waiting preunit sent to the adding worker",
-	FetchParents:          "new waiting preunit with some missing parents",
+	MissingParents:        "new waiting preunit with some missing parents",
+	ForkDetected:          "fork detected in adder",
 }
 
 // Field names.
