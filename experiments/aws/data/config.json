@@ -1,13 +1,7 @@
 {
-		"NParents": 128,
-
-		"PrimeOnly": true,
-
-        "CanSkipLevel": true,
+		"CanSkipLevel": true,
 
 		"CreateDelay": 0.2,
-
-		"StepSize": 0.0,
 
         "Sync": [{
             "Type": "multicast",

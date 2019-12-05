@@ -33,6 +33,7 @@ type service struct {
 }
 
 // NewService constructs a creating service for the given dag with the given configuration.
+// TODO rewrite
 // The service creates units with self-adjusting delay. It aims to create units as quickly as possible, while creating only prime units.
 // Whenever a prime unit is created, the delay is decreased (multiplying by an adjustment factor).
 // Whenever a non-prime unit is created, the delay is increased (dividing by an adjustment factor).
@@ -105,7 +106,11 @@ func (s *service) createUnit() bool {
 		return true
 	}
 	created.SetSignature(s.privKey.Sign(created))
-	s.adder.AddUnit(created, s.pid)
+	err = s.adder.AddUnit(created, s.pid)
+	if err != nil {
+		s.log.Error().Str("where", "create.AddUnit").Msg(err.Error())
+		return true
+	}
 	added := <-s.added
 	if added != nil {
 		if gomel.Prime(added) {

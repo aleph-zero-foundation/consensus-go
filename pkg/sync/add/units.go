@@ -14,6 +14,9 @@ func Unit(adder gomel.Adder, pu gomel.Preunit, source uint16, where string, log 
 
 // Chunk adds a slice of preunits to the dag and returns whether everything went fine.
 func Chunk(adder gomel.Adder, preunits []gomel.Preunit, source uint16, where string, log zerolog.Logger) bool {
+	if len(preunits) == 0 {
+		return true
+	}
 	success := true
 	aggErr := adder.AddUnits(preunits, source)
 	for i, err := range aggErr.Errors() {
