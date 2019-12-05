@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -161,7 +160,7 @@ func main() {
 	}
 	filename := os.Args[1]
 	var df dagFactory
-	dag, err := tests.CreateDagFromTestFile(filename, df)
+	dag, _, err := tests.CreateDagFromTestFile(filename, df)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error while reading dag %s: %s\n", filename, err.Error())
 		return
@@ -180,8 +179,9 @@ func main() {
 
 type dagFactory struct{}
 
-func (dagFactory) CreateDag(dc config.Dag) gomel.Dag {
-	return dag.New(dc.NProc())
+func (dagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
+	d := dag.New(nProc)
+	return d, tests.NewAdder(d)
 }
 
 func collectUnits(dag gomel.Dag) []gomel.Unit {

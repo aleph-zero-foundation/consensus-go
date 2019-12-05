@@ -19,7 +19,7 @@ var _ = Describe("Encoding/Decoding", func() {
 		network    *bytes.Buffer
 	)
 	BeforeEach(func() {
-		dag, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
+		dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 		Expect(readingErr).NotTo(HaveOccurred())
 		network = &bytes.Buffer{}
 	})
@@ -76,12 +76,10 @@ var _ = Describe("Encoding/Decoding", func() {
 				err := SendChunk(toSend, &buf)
 				Expect(err).NotTo(HaveOccurred())
 				// receiving
-				pus, nPus, err := ReceiveChunk(&buf)
+				pus, err := ReceiveChunk(&buf)
 				//checks
-				Expect(nPus).To(Equal(len(toSend)))
-				Expect(len(pus)).To(Equal(1))
-				Expect(len(pus[0])).To(Equal(len(toSend)))
-				for _, pu := range pus[0] {
+				Expect(len(pus)).To(Equal(len(toSend)))
+				for _, pu := range pus {
 					Expect(pu.Hash()).To(Equal(dag.PrimeUnits(0).Get(pu.Creator())[0].Hash()))
 				}
 			})
@@ -100,13 +98,11 @@ var _ = Describe("Encoding/Decoding", func() {
 				err := SendChunk(toSend, &buf)
 				Expect(err).NotTo(HaveOccurred())
 				// receving
-				pus, nPus, err := ReceiveChunk(&buf)
+				pus, err := ReceiveChunk(&buf)
 				// checks
-				Expect(nPus).To(Equal(len(toSend)))
 				Expect(len(pus)).To(Equal(len(toSend)))
 				for h, pu := range pus {
-					Expect(len(pu)).To(Equal(1))
-					Expect(pu[0].Hash()).To(Equal(toSend[len(pus)-1-h].Hash()))
+					Expect(pu.Hash()).To(Equal(toSend[len(pus)-1-h].Hash()))
 				}
 			})
 		})
@@ -136,23 +132,14 @@ var _ = Describe("Encoding/Decoding", func() {
 		})
 	})
 	Context("ReceiveChunk", func() {
-		Context("On a chunk with too many antichains", func() {
+		Context("On a chunk with too many units", func() {
 			It("should return an error", func() {
 				encoded := make([]byte, 4)
-				binary.LittleEndian.PutUint32(encoded[:], config.MaxAntichainsInChunk+1)
-				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded))
-				Expect(err).To(MatchError("chunk contains too many antichains"))
+				binary.LittleEndian.PutUint32(encoded[:], config.MaxUnitsInChunk+1)
+				_, err := ReceiveChunk(bytes.NewBuffer(encoded))
+				Expect(err).To(MatchError("chunk contains too many units"))
 			})
 		})
-		Context("On a chunk with one antichain containing too many units", func() {
-			It("should return an error", func() {
-				// nAntichains, antichain size
-				encoded := make([]byte, 4+4)
-				binary.LittleEndian.PutUint32(encoded[0:4], 1)
-				binary.LittleEndian.PutUint32(encoded[4:8], config.MaxUnitsInAntichain+1)
-				_, _, err := ReceiveChunk(bytes.NewBuffer(encoded))
-				Expect(err).To(MatchError("antichain length too long"))
-			})
-		})
+
 	})
 })

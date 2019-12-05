@@ -19,9 +19,7 @@ type encoder interface {
 	// encodeCrown encodes a crown.
 	encodeCrown(*gomel.Crown) error
 	// encodeUnit encodes a single unit.
-	encodeUnit(gomel.Unit) error
-	// encodeAntichain encodes a single antichain of units.
-	encodeAntichain([]gomel.Unit) error
+	encodeUnit(gomel.BaseUnit) error
 	// encodeChunk encodes a slice of units by splitting them into antichains.
 	encodeChunk([]gomel.Unit) error
 }
@@ -33,8 +31,6 @@ type decoder interface {
 	decodeCrown() (*gomel.Crown, error)
 	// decodePreunit tries to decode preunit from incoming data.
 	decodePreunit() (gomel.Preunit, error)
-	// decodeAntichain tries to decode an antichain of preunits from incoming data.
-	decodeAntichain() ([]gomel.Preunit, error)
 	// decodeChunk tries to a slice consecutive antichains from incoming data.
-	decodeChunk() ([][]gomel.Preunit, int, error)
+	decodeChunk() ([]gomel.Preunit, error)
 }

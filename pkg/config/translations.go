@@ -12,12 +12,6 @@ func parseDuration(s string) time.Duration {
 	return ret
 }
 
-func generateDagConfig(c *Committee) *Dag {
-	return &Dag{
-		Keys: c.PublicKeys,
-	}
-}
-
 func generateAlertConfig(conf *Configuration, m *Member, c *Committee) *Alert {
 	addresses := c.Addresses[len(c.Addresses)-1]
 	timeout, _ := time.ParseDuration("2s")
@@ -107,7 +101,7 @@ func generateOrderConfig(conf *Configuration, m *Member, c *Committee) *Order {
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 	return Config{
-		Dag:           generateDagConfig(c),
+		NProc:         uint16(len(c.PublicKeys)),
 		Alert:         generateAlertConfig(conf, m, c),
 		Sync:          generateSyncConfig(conf, m, c),
 		SyncSetup:     generateSyncSetupConfig(conf, m, c),
@@ -119,5 +113,6 @@ func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
 		Setup:         conf.Setup,
 		P2PPublicKeys: c.P2PPublicKeys,
 		P2PSecretKey:  m.P2PSecretKey,
+		PublicKeys:    c.PublicKeys,
 	}
 }

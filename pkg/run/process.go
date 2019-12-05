@@ -6,12 +6,12 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/parallel"
 	"gitlab.com/alephledger/consensus-go/pkg/services/alert"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
 	"gitlab.com/alephledger/consensus-go/pkg/services/order"
@@ -35,14 +35,12 @@ func start(services ...gomel.Service) error {
 	return nil
 }
 
-func makeStandardDag(conf *config.Dag) gomel.Dag {
-	nProc := uint16(len(conf.Keys))
+func makeStandardDag(nProc uint16) gomel.Dag {
 	dag := dagutils.New(nProc)
-	dag, _ = check.Signatures(dag, conf.Keys)
-	dag = check.BasicCompliance(dag)
-	dag = check.ParentConsistency(dag)
-	dag = check.NoSelfForkingEvidence(dag)
-	dag = check.ForkerMuting(dag)
+	check.BasicCompliance(dag)
+	check.ParentConsistency(dag)
+	check.NoSelfForkingEvidence(dag)
+	check.ForkerMuting(dag)
 	return dag
 }
 
@@ -69,41 +67,38 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 	// orderedUnits is a channel shared between orderer and validator
 	// orderer sends ordered rounds to the channel
 	orderedUnits := make(chan []gomel.Unit, 10)
-	dag := makeStandardDag(conf.Dag)
+	dag := makeStandardDag(conf.NProc)
 
 	rs, ok := <-rsCh
 	if !ok {
 		return nil, errors.New("setup phase failed")
 	}
 	log.Info().Msg(logging.GotRandomSource)
+	rs.Bind(dag)
 
-	dag = rs.Bind(dag)
-
-	dag, alertService, fetchData, err := alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
+	alerter, alertService, err := alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
 	if err != nil {
 		return nil, err
 	}
 
-	orderService, orderIfPrime := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+	adr, adderService := adder.New(dag, alerter, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
+
+	orderService := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+
+	syncService, err := sync.NewService(dag, adr, conf.Sync, log)
+	if err != nil {
+		return nil, err
+	}
+
+	createService := create.NewService(dag, adr, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
+
+	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+
 	go func() {
 		for round := range orderedUnits {
 			ps <- gomel.ToPreblock(round)
 		}
 	}()
-	dag = dagutils.AfterInsert(dag, orderIfPrime)
-
-	adder, adderService := parallel.New()
-
-	syncService, dag, err := sync.NewService(dag, adder, fetchData, conf.Sync, log)
-	if err != nil {
-		return nil, err
-	}
-
-	createService := create.NewService(dag, adder, rs, conf.Create, dagFinished, ds, log.With().Int(logging.Service, logging.CreateService).Logger())
-
-	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-
-	adder.Register(dag)
 
 	err = start(alertService, adderService, createService, orderService, memlogService, syncService)
 	if err != nil {

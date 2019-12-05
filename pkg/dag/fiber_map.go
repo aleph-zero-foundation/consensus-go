@@ -63,18 +63,24 @@ func (fm *fiberMap) extendBy(nValues int) {
 	fm.length += nValues
 }
 
-func (fm *fiberMap) get(heights []int) [][]gomel.Unit {
+// get takes a list of heights (of length nProc) and returns a slice (of length nProc) of slices
+// of corresponding units. The second returned value is the number of unknown parents.
+func (fm *fiberMap) get(heights []int) ([][]gomel.Unit, int) {
 	fm.mx.RLock()
 	defer fm.mx.RUnlock()
 	nProc := len(heights)
 	result := make([][]gomel.Unit, nProc)
+	unknown := 0
 	for pid, h := range heights {
 		if h == -1 {
 			continue
 		}
 		if su, ok := fm.content[h]; ok {
 			result[pid] = su.Get(uint16(pid))
+			if len(result[pid]) == 0 {
+				unknown++
+			}
 		}
 	}
-	return result
+	return result, unknown
 }

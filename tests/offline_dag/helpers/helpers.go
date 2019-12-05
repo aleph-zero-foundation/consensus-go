@@ -15,6 +15,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
+	"gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 const (
@@ -135,7 +136,7 @@ func NewDefaultCreator(maxParents uint16) Creator {
 func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (gomel.Unit, error) {
 	var resultUnit gomel.Unit
 	for ix, dag := range dags {
-		result, err := gomel.AddUnit(dag, unit)
+		result, err := tests.AddUnit(dag, unit)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +151,7 @@ func AddToDags(unit gomel.Preunit, rss []gomel.RandomSource, dags []gomel.Dag) (
 func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 	var resultUnit gomel.Unit
 	for _, dag := range dags {
-		result, err := gomel.AddUnit(dag, unit)
+		result, err := tests.AddUnit(dag, unit)
 		if resultUnit == nil {
 			if result != nil {
 				resultUnit = result
@@ -196,7 +197,7 @@ func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag) error 
 		})
 
 		for _, pu := range units {
-			if _, err := gomel.AddUnit(dag, pu); err != nil {
+			if _, err := tests.AddUnit(dag, pu); err != nil {
 				return err
 			}
 		}
@@ -554,9 +555,7 @@ func newTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
 }
 
-func (rs *testRandomSource) Bind(dag gomel.Dag) gomel.Dag {
-	return dag
-}
+func (rs *testRandomSource) Bind(dag gomel.Dag) {}
 
 func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 	if SimpleCoin(pid, level) {
@@ -582,7 +581,7 @@ func Test(
 			shareProviders[i] = true
 		}
 		rs := coin.NewFixedCoin(dag.NProc(), pid, 0, shareProviders)
-		dag = rs.Bind(dag)
+		rs.Bind(dag)
 		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
@@ -598,16 +597,20 @@ func TestUsingTestRandomSource(
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
 		rs := newTestRandomSource()
-		dag = rs.Bind(dag)
+		rs.Bind(dag)
 		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
 }
 
 // MakeStandardDag returns a daag with standard checks.
-func MakeStandardDag(dc config.Dag) gomel.Dag {
-	dag, _ := check.Signatures(dag.New(uint16(len(dc.Keys))), dc.Keys)
-	return check.ForkerMuting(check.NoSelfForkingEvidence(check.ParentConsistency(check.BasicCompliance(dag))))
+func MakeStandardDag(nProc uint16) gomel.Dag {
+	dag := dag.New(nProc)
+	check.ForkerMuting(dag)
+	check.NoSelfForkingEvidence(dag)
+	check.ParentConsistency(dag)
+	check.BasicCompliance(dag)
+	return dag
 }
 
 // TestUsingRandomSourceProvider is a helper function that performs a single test using provided TestingRoutineFactory.
@@ -625,7 +628,7 @@ func TestUsingRandomSourceProvider(
 	rss := make([]gomel.RandomSource, 0, nProcesses)
 
 	for pid := uint16(0); len(dags) < int(nProcesses); pid++ {
-		dag := MakeStandardDag(config.Dag{Keys: pubKeys})
+		dag := MakeStandardDag(nProcesses)
 
 		pids = append(pids, pid)
 		rs, dag := rssProvider(pid, dag)

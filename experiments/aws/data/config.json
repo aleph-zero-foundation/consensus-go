@@ -15,7 +15,6 @@
                 "mcType": "pers",
                 "timeout": "2s"
             },
-            "Fallback": "fetch"
             }, {
             "Type": "fetch",
             "Params": {
@@ -23,14 +22,12 @@
                 "nOut": "15",
                 "timeout": "2s"
             },
-            "Fallback": "gossip"
             }, {
             "Type": "gossip",
             "Params": {
                 "nIn": "2",
                 "nOut": "1",
                 "timeout": "2s"},
-            "Fallback": ""
         }],
 
         "Setup": "coin",

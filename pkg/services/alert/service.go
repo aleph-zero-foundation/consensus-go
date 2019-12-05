@@ -15,11 +15,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
 	"gitlab.com/alephledger/consensus-go/pkg/rmc"
-	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 )
 
 type service struct {
-	alert   *forking.AlertHandler
+	alert   gomel.Alerter
 	netserv network.Server
 	timeout time.Duration
 	listens sync.WaitGroup
@@ -28,19 +27,20 @@ type service struct {
 }
 
 // NewService constructs an alerting service for the given dag with the given configuration.
-func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Dag, gomel.Service, gsync.FetchData, error) {
+func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Alerter, gomel.Service, error) {
 	rmc := rmc.New(conf.Pubs, conf.Priv)
 	netserv, err := tcp.NewServer(conf.LocalAddress, conf.RemoteAddresses, log)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	a := forking.NewAlertHandler(conf.Pid, dag, conf.PublicKeys, rmc, netserv, conf.Timeout, log)
-	return forking.Wrap(dag, a), &service{
+	s := &service{
 		alert:   a,
 		netserv: netserv,
 		timeout: conf.Timeout,
 		log:     log,
-	}, a.RequestCommitment, nil
+	}
+	return a, s, nil
 }
 
 func (s *service) Start() error {

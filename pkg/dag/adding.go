@@ -5,76 +5,81 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-func (dag *dag) Decode(pu gomel.Preunit) (gomel.Unit, error) {
-	if pu.Creator() < 0 || pu.Creator() >= dag.nProcesses {
-		return nil, gomel.NewDataError("invalid creator")
-	}
+func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
 	if u := dag.GetUnit(pu.Hash()); u != nil {
 		return nil, gomel.NewDuplicateUnit(u)
 	}
-	possibleParents := dag.heightUnits.get(pu.View().Heights)
-	parents, err := getParents(possibleParents, pu.Creator())
-	if err != nil {
-		return nil, err
-	}
-
-	if unknown := countUnknown(parents, pu.View().Heights); unknown > 0 {
+	heights := pu.View().Heights
+	possibleParents, unknown := dag.heightUnits.get(heights)
+	if unknown > 0 {
 		return nil, gomel.NewUnknownParents(unknown)
 	}
-
+	parents := make([]gomel.Unit, dag.nProcesses)
+	for i, units := range possibleParents {
+		if heights[i] == -1 {
+			continue
+		}
+		if len(units) > 1 {
+			return nil, gomel.NewAmbiguousParents(possibleParents)
+		}
+		parents[i] = units[0]
+	}
 	if *gomel.CombineHashes(gomel.ToHashes(parents)) != pu.View().ControlHash {
 		return nil, gomel.NewDataError("wrong control hash")
 	}
-
-	return unit.New(pu, parents), nil
+	return parents, nil
 }
 
-func toHashes(units []gomel.Unit) []*gomel.Hash {
-	result := make([]*gomel.Hash, len(units))
-	for i, u := range units {
-		if u != nil {
-			result[i] = u.Hash()
+func (dag *dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
+	return unit.New(pu, parents)
+}
+
+func (dag *dag) Check(u gomel.Unit) error {
+	for _, check := range dag.checks {
+		if err := check(u); err != nil {
+			return err
 		}
 	}
-	return result
+	return nil
 }
 
-func countUnknown(parents []gomel.Unit, heights []int) int {
-	unknown := 0
-	for i, h := range heights {
-		if h != -1 && parents[i] == nil {
-			unknown++
-		}
+func (dag *dag) Transform(u gomel.Unit) gomel.Unit {
+	u = unit.Prepared(u, dag)
+	for _, trans := range dag.transforms {
+		u = trans(u)
 	}
-	return unknown
-}
-
-func getParents(units [][]gomel.Unit, pid uint16) ([]gomel.Unit, error) {
-	nProc := len(units)
-	result := make([]gomel.Unit, nProc)
-
-	for i, us := range units {
-		if us != nil {
-			result[i] = us[0]
-		}
-		if len(us) > 1 {
-			return nil, gomel.NewAmbiguousParents(units)
-		}
-	}
-	return result, nil
-}
-
-func (dag *dag) Prepare(u gomel.Unit) (gomel.Unit, error) {
-	return unit.Prepared(u, dag), nil
+	return u
 }
 
 func (dag *dag) Insert(u gomel.Unit) {
+	for _, hook := range dag.preInsert {
+		hook(u)
+	}
 	dag.updateUnitsOnHeight(u)
 	if gomel.Prime(u) {
 		dag.addPrime(u)
 	}
 	dag.units.add(u)
 	dag.updateMaximal(u)
+	for _, hook := range dag.postInsert {
+		hook(u)
+	}
+}
+
+func (dag *dag) AddCheck(check gomel.UnitChecker) {
+	dag.checks = append(dag.checks, check)
+}
+
+func (dag *dag) AddTransform(trans gomel.UnitTransformer) {
+	dag.transforms = append(dag.transforms, trans)
+}
+
+func (dag *dag) BeforeInsert(hook gomel.InsertHook) {
+	dag.preInsert = append(dag.preInsert, hook)
+}
+
+func (dag *dag) AfterInsert(hook gomel.InsertHook) {
+	dag.postInsert = append(dag.postInsert, hook)
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {

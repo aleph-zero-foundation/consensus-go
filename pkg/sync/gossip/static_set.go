@@ -6,12 +6,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-func hashesFromAcquiredUnits(acquiredUnits [][]gomel.Preunit) []*gomel.Hash {
-	acquiredHashes := []*gomel.Hash{}
-	for _, aus := range acquiredUnits {
-		for _, au := range aus {
-			acquiredHashes = append(acquiredHashes, au.Hash())
-		}
+func hashesFromAcquiredUnits(acquiredUnits []gomel.Preunit) []*gomel.Hash {
+	acquiredHashes := make([]*gomel.Hash, len(acquiredUnits))
+	for i, au := range acquiredUnits {
+		acquiredHashes[i] = au.Hash()
 	}
 	return acquiredHashes
 }

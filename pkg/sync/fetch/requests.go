@@ -10,14 +10,15 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
-type request struct {
-	pid     uint16
-	unitIDs []uint64
+// Request is a query for fetch server to perform a sync with the given process and request particular units.
+type Request struct {
+	Pid     uint16
+	UnitIDs []uint64
 }
 
 func sendRequests(conn network.Connection, unitIDs []uint64) error {
-	if len(unitIDs) > config.MaxUnitsInAntichain {
-		unitIDs = unitIDs[:config.MaxUnitsInAntichain]
+	if len(unitIDs) > config.MaxUnitsInChunk {
+		unitIDs = unitIDs[:config.MaxUnitsInChunk]
 	}
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint32(buf[:4], uint32(len(unitIDs)))
@@ -42,7 +43,7 @@ func receiveRequests(conn network.Connection) ([]uint64, error) {
 		return nil, err
 	}
 	nReqs := binary.LittleEndian.Uint32(buf[:4])
-	if nReqs > config.MaxUnitsInAntichain {
+	if nReqs > config.MaxUnitsInChunk {
 		return nil, errors.New("requests too big")
 	}
 	result := make([]uint64, nReqs)

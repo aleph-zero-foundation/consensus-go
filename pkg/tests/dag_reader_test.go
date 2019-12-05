@@ -16,7 +16,7 @@ var _ = Describe("DagReader", func() {
 	Describe("CreateDagFromTestFile", func() {
 		Context("On random_10_100u file", func() {
 			BeforeEach(func() {
-				dag, err = CreateDagFromTestFile("../testdata/dags/10/random_100u.txt", NewTestDagFactory())
+				dag, _, err = CreateDagFromTestFile("../testdata/dags/10/random_100u.txt", NewTestDagFactory())
 			})
 			It("Should return dag with 10 parents and 100 units", func() {
 				Expect(err).NotTo(HaveOccurred())
@@ -26,7 +26,7 @@ var _ = Describe("DagReader", func() {
 		})
 		Context("On non existing file", func() {
 			BeforeEach(func() {
-				dag, err = CreateDagFromTestFile("blabla", NewTestDagFactory())
+				dag, _, err = CreateDagFromTestFile("blabla", NewTestDagFactory())
 			})
 			It("Should return dag with 10 parents and 100 units", func() {
 				Expect(err).To(HaveOccurred())
@@ -37,7 +37,7 @@ var _ = Describe("DagReader", func() {
 		Context("On some trash", func() {
 			It("Should return an error", func() {
 				trashString := "fdjalskjfdalkjfa"
-				dag, err = ReadDag(strings.NewReader(trashString), NewTestDagFactory())
+				dag, _, err = ReadDag(strings.NewReader(trashString), NewTestDagFactory())
 				Expect(err).To(HaveOccurred())
 			})
 		})

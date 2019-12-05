@@ -8,10 +8,8 @@ import (
 //  1. If a unit has nProc parents such that the i-th parent is created by the i-th process.
 //  2. A unit has to have a predecessor or have all parents nil.
 //  3. A unit is a prime unit.
-func BasicCompliance(dag gomel.Dag) gomel.Dag {
-	return AddCheck(dag, func(u gomel.Unit) error {
-		return checkBasicCorrectness(u, dag.NProc())
-	})
+func BasicCompliance(dag gomel.Dag) {
+	dag.AddCheck(func(u gomel.Unit) error { return checkBasicCorrectness(u, dag.NProc()) })
 }
 
 func checkBasicCorrectness(u gomel.Unit, nProc uint16) error {

@@ -26,8 +26,6 @@ type server struct {
 	dag                 gomel.Dag
 	adder               gomel.Adder
 	netserv             network.Server
-	fallback            gsync.Fallback
-	fetchData           gsync.FetchData
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
 	inPool              gsync.WorkerPool
@@ -37,7 +35,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) (gsync.MulticastServer, gsync.FetchData, func(gomel.Unit) error) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.Server {
 	nProc := int(dag.NProc())
 	s := &server{
 		pid:     pid,
@@ -50,7 +48,10 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 		quit:    0,
 	}
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
-	return s, s.requestFinishedRMC, s.properlyMulticast
+	dag.AddCheck(s.finishedRMC)
+	dag.AfterInsert(s.send)
+	adder.AddErrorHandler(s.checkErrorHandler)
+	return s
 }
 
 // Start starts worker pools
@@ -68,33 +69,70 @@ func (s *server) StopOut() {
 	atomic.StoreInt64(&s.quit, 1)
 }
 
-// The fallback has to check that all the units are multisigned as well.
-// RMC guarantees that a process can create only one unit per height.
-// There is no guarantee that there are no forks among parents of a signed unit.
-func (s *server) SetFallback(fbk gsync.Fallback) {
-	s.fallback = fbk
+func (s *server) send(unit gomel.Unit) {
+	if unit.Creator() == s.pid {
+		go s.multicast(unit)
+	}
 }
 
-func (s *server) SetFetchData(fd gsync.FetchData) {
-	s.fetchData = fd
-}
-
-func (s *server) Send(unit gomel.Unit) {
-	go s.multicast(unit)
-}
-
-func (s *server) properlyMulticast(u gomel.Unit) error {
+func (s *server) finishedRMC(u gomel.Unit) error {
 	if u.Creator() == s.pid {
 		// We trust our own units.
 		return nil
 	}
 	rmcID := gomel.UnitID(u)
 	if s.state.Status(rmcID) != rmcbox.Finished {
-		return gomel.NewMissingDataError("this RMC is not yet finished")
+		return &unfinishedRMC{}
 	}
-	pu, _ := encoding.DecodePreunit(s.state.Data(rmcID))
+	pu, err := encoding.DecodePreunit(s.state.Data(rmcID))
+	if err != nil {
+		return err
+	}
 	if *pu.Hash() != *u.Hash() {
-		return gomel.NewComplianceError("unit differs from successfully RMCd unit")
+		return gomel.NewComplianceError(rmcMismatch)
 	}
 	return nil
+}
+
+func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
+	conn, err := s.netserv.Dial(source, s.timeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	conn.TimeoutAfter(s.timeout)
+	id := gomel.UnitID(u)
+	err = rmcbox.Greet(conn, s.pid, id, requestFinished)
+	if err != nil {
+		return err
+	}
+	data, err := s.state.AcceptFinished(id, u.Creator(), conn)
+	if err != nil {
+		return err
+	}
+	pu, err := encoding.DecodePreunit(data)
+	if err != nil {
+		return err
+	}
+	if *pu.Hash() != *u.Hash() {
+		return gomel.NewComplianceError(rmcMismatch)
+	}
+	return nil
+}
+
+func (s *server) checkErrorHandler(err error, u gomel.Unit, source uint16) error {
+	switch err.(type) {
+	case *unfinishedRMC:
+		return s.fetchFinished(u, source)
+	default:
+		return err
+	}
+}
+
+const rmcMismatch = "unit differs from successfully RMCd unit"
+
+type unfinishedRMC struct{}
+
+func (e *unfinishedRMC) Error() string {
+	return "This instance of RMC is not yet finished"
 }

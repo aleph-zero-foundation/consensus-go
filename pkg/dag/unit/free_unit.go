@@ -20,7 +20,7 @@ type freeUnit struct {
 
 // New creates a new freeUnit based on the given preunit and a list of parents.
 func New(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
-	return &freeUnit{
+	u := &freeUnit{
 		nProc:     uint16(len(parents)),
 		creator:   pu.Creator(),
 		signature: pu.Signature(),
@@ -29,9 +29,11 @@ func New(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 		parents:   parents,
 		data:      pu.Data(),
 		rsData:    pu.RandomSourceData(),
-		height:    -1,
-		level:     -1,
 	}
+	u.computeHeight()
+	u.computeLevel()
+	u.computeFloor()
+	return u
 }
 
 func (u *freeUnit) RandomSourceData() []byte {

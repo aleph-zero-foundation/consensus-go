@@ -5,12 +5,12 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/parallel"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
@@ -22,7 +22,7 @@ import (
 // is equivalent to the version without a setup phase.
 func coinSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
 	pid := conf.Create.Pid
-	nProc := uint16(len(conf.Dag.Keys))
+	nProc := conf.NProc
 
 	shareProviders := make(map[uint16]bool)
 	for i := uint16(0); i < nProc; i++ {
@@ -33,14 +33,12 @@ func coinSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog.L
 	close(rsCh)
 }
 
-func makeBeaconDag(conf *config.Dag) gomel.Dag {
-	nProc := uint16(len(conf.Keys))
+func makeBeaconDag(nProc uint16) gomel.Dag {
 	dag := dagutils.New(nProc)
-	dag, _ = check.Signatures(dag, conf.Keys)
-	dag = check.BasicCompliance(dag)
-	dag = check.ParentConsistency(dag)
-	dag = check.PrimeOnlyNoSkipping(dag)
-	dag = check.NoForks(dag)
+	check.BasicCompliance(dag)
+	check.ParentConsistency(dag)
+	check.PrimeOnlyNoSkipping(dag)
+	check.NoForks(dag)
 	return dag
 }
 
@@ -52,29 +50,26 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	// orderer sends ordered rounds to the channel
 	orderedUnits := make(chan []gomel.Unit, 10)
 
-	dag := makeBeaconDag(conf.Dag)
+	dag := makeBeaconDag(conf.NProc)
 	rs, err := beacon.New(conf.Create.Pid, conf.P2PPublicKeys, conf.P2PSecretKey)
 	if err != nil {
 		log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
 	}
-	dag = rs.Bind(dag)
+	rs.Bind(dag)
 
-	orderService, orderIfPrime := order.NewService(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
-	dag = dagutils.AfterInsert(dag, orderIfPrime)
+	adr, adderService := adder.New(dag, gomel.NopAlerter(), conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
-	adder, adderService := parallel.New()
+	orderService := order.NewService(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 
-	syncService, dag, err := sync.NewService(dag, adder, nil, conf.SyncSetup, log)
+	syncService, err := sync.NewService(dag, adr, conf.SyncSetup, log)
 	if err != nil {
 		log.Error().Str("where", "setup.sync").Msg(err.Error())
 		return
 	}
 
-	createService := create.NewService(dag, adder, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
+	createService := create.NewService(dag, adr, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 
 	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
-
-	adder.Register(dag)
 
 	err = start(adderService, createService, orderService, memlogService, syncService)
 	if err != nil {
@@ -88,7 +83,7 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 	}
 	head := units[len(units)-1]
 	rsCh <- rs.GetCoin(head.Creator())
-	// logging the order
+
 	for _, u := range units {
 		log.Info().Int(logging.Service, logging.ValidateService).Uint16(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
 	}

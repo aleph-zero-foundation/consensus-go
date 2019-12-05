@@ -24,8 +24,8 @@ const (
 	AddUnits              = "S"
 	SentUnits             = "T"
 	ReceivedPreunits      = "U"
-	DuplicatedUnit        = "V"
-	OwnUnitOrdered        = "W"
+	DuplicateUnit         = "V"
+	DuplicatePreunit      = "W"
 	ConnectionClosed      = "X"
 	MemoryUsage           = "Y"
 	DataValidated         = "Z"
@@ -36,11 +36,16 @@ const (
 	UnitBroadcasted       = "e"
 	UnknownParents        = "f"
 	AddedBCUnit           = "g"
-	AddedToBacklog        = "h"
-	RemovedFromBacklog    = "i"
-	GotRandomSource       = "j"
-	FallbackUsed          = "k"
-	MissingDataError      = "l"
+	AddingStarted         = "h"
+	DecodeParentsError    = "i"
+	CheckError            = "j"
+	GotRandomSource       = "k"
+	OwnUnitOrdered        = "l"
+	UnitAdded             = "m"
+	AddUnitStarted        = "n"
+	AddUnitsStarted       = "o"
+	PreunitReady          = "p"
+	FetchParents          = "r"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -53,7 +58,7 @@ var eventTypeDict = map[string]string{
 	LinearOrderExtended:   "linear order extended",
 	ConnectionReceived:    "listener received a TCP connection",
 	ConnectionEstablished: "dialer established a TCP connection",
-	NotEnoughParents:      "creating.NewUnit failed (not enough parents)",
+	NotEnoughParents:      "creating new unit failed (not enough parents)",
 	SyncStarted:           "new sync started",
 	SyncCompleted:         "sync completed",
 	GetDagInfo:            "receiving dag info started",
@@ -66,9 +71,9 @@ var eventTypeDict = map[string]string{
 	AddUnits:              "adding received units started",
 	SentUnits:             "successfully sent units",
 	ReceivedPreunits:      "successfully received preunits",
-	DuplicatedUnit:        "attempting to add unit already present in dag",
-	OwnUnitOrdered:        "unit created by this process has been ordered",
-	ConnectionClosed:      "connection closed after sync (stats = bytes)",
+	DuplicateUnit:         "trying to add unit already present in dag",
+	DuplicatePreunit:      "trying to add unit already present in adder",
+	ConnectionClosed:      "connection closed after sync (stats in bytes)",
 	MemoryUsage:           "memory usage statistics",
 	DataValidated:         "validated some bytes of data",
 	TooManyIncoming:       "too many incoming connections",
@@ -76,13 +81,18 @@ var eventTypeDict = map[string]string{
 	SendFreshUnits:        "sending fresh units started",
 	SentFreshUnits:        "sending fresh units finished",
 	UnitBroadcasted:       "sent a unit through multicast",
-	UnknownParents:        "unable to add unit due to missing parents",
-	AddedBCUnit:           "successfully added unit from multicast",
-	AddedToBacklog:        "added unit to retrying backlog",
-	RemovedFromBacklog:    "removed unit from retrying backlog",
+	UnknownParents:        "trying to add a unit with missing parents",
+	AddedBCUnit:           "unit from multicast was put into adder",
+	AddingStarted:         "adding a ready waiting preunit started",
+	DecodeParentsError:    "DecodeParents error, passing it to error handlers",
+	CheckError:            "Check error, passing it to error handlers",
 	GotRandomSource:       "received randomness source",
-	FallbackUsed:          "server used fallback due to missing parents",
-	MissingDataError:      "received unit without associated necessary data",
+	OwnUnitOrdered:        "unit created by this process has been ordered",
+	UnitAdded:             "unit successfully added to the dag",
+	AddUnitStarted:        "adding a single unit received from PID started",
+	AddUnitsStarted:       "adding a chunk of units received from PID started",
+	PreunitReady:          "waiting preunit sent to the adding worker",
+	FetchParents:          "new waiting preunit with some missing parents",
 }
 
 // Field names.
@@ -137,7 +147,6 @@ const (
 	OrderService
 	SyncService
 	ValidateService
-	GenerateService
 	MemLogService
 	GossipService
 	FetchService
@@ -145,6 +154,7 @@ const (
 	RetryingService
 	RMCService
 	AlertService
+	AdderService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
@@ -153,7 +163,6 @@ var serviceTypeDict = map[int]string{
 	OrderService:    "ORDER",
 	SyncService:     "SYNC",
 	ValidateService: "VALID",
-	GenerateService: "GENER",
 	MemLogService:   "MEMLOG",
 	GossipService:   "GOSSIP",
 	FetchService:    "FETCH",
@@ -161,6 +170,7 @@ var serviceTypeDict = map[int]string{
 	RetryingService: "RETRY",
 	RMCService:      "RMC",
 	AlertService:    "ALERT",
+	AdderService:    "ADDER",
 }
 
 // Genesis was better with Phil Collins.

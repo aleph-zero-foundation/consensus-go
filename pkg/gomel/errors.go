@@ -1,6 +1,9 @@
 package gomel
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // DataError represents incorrect data received from a process.
 // Indicates a problem with the process providing the data.
@@ -34,22 +37,6 @@ func NewComplianceError(msg string) *ComplianceError {
 	return &ComplianceError{msg}
 }
 
-// MissingDataError represents missing data needed to accept a unit.
-// Examples are commitments to forks or proofs of successful RMCs.
-type MissingDataError struct {
-	msg string
-}
-
-// Error returns a string description of a MissingDataError.
-func (e *MissingDataError) Error() string {
-	return "MissingDataError: " + e.msg
-}
-
-// NewMissingDataError constructs a MissingDataError from a given msg.
-func NewMissingDataError(msg string) *MissingDataError {
-	return &MissingDataError{msg}
-}
-
 // DuplicateUnit is an error-like object used when encountering a unit that is already known. Usually not a problem.
 type DuplicateUnit struct {
 	Unit Unit
@@ -65,6 +52,21 @@ func NewDuplicateUnit(unit Unit) *DuplicateUnit {
 	return &DuplicateUnit{unit}
 }
 
+// DuplicatePreunit is an error-like object used when encountering a unit that is already known. Usually not a problem.
+type DuplicatePreunit struct {
+	Pu Preunit
+}
+
+// Error returns a (fixed) string description of a DuplicatePreunit.
+func (e *DuplicatePreunit) Error() string {
+	return "Unit already in adder."
+}
+
+// NewDuplicatePreunit constructs a DuplicatePreunit error for the given preunit.
+func NewDuplicatePreunit(pu Preunit) *DuplicatePreunit {
+	return &DuplicatePreunit{pu}
+}
+
 // UnknownParents is an error-like object used when trying to add a unit whose parents are not in the dag.
 type UnknownParents struct {
 	Amount int
@@ -72,7 +74,7 @@ type UnknownParents struct {
 
 // Error returns a (fixed) string description of a UnknownParents.
 func (e *UnknownParents) Error() string {
-	return "Unknown parents"
+	return fmt.Sprint("Unknown parents ", e.Amount)
 }
 
 // NewUnknownParents constructs a UnknownParents error for the given unit.
@@ -128,7 +130,7 @@ type AmbiguousParents struct {
 }
 
 func (e *AmbiguousParents) Error() string {
-	return "ambiguous parents"
+	return "Ambiguous parents"
 }
 
 // NewAmbiguousParents constructs an AmbigousParents error for a given process.

@@ -13,8 +13,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
-	chdag "gitlab.com/alephledger/consensus-go/pkg/dag"
-	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
 )
@@ -69,9 +67,10 @@ func NewFixedCoin(nProc, pid uint16, seed int, shareProviders map[uint16]bool) g
 }
 
 // Bind the coin with the dag.
-func (c *coin) Bind(dag gomel.Dag) gomel.Dag {
+func (c *coin) Bind(dag gomel.Dag) {
+	dag.AddCheck(c.checkCompliance)
+	dag.BeforeInsert(c.update)
 	c.dag = dag
-	return chdag.BeforeInsert(check.AddCheck(dag, c.checkCompliance), c.update)
 }
 
 // RandomBytes returns a sequence of random bits for a given level.

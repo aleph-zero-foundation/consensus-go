@@ -10,7 +10,7 @@ import (
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	Dag           *Dag
+	NProc         uint16
 	Alert         *Alert
 	Sync          []*Sync
 	SyncSetup     []*Sync
@@ -22,16 +22,7 @@ type Config struct {
 	Setup         string
 	P2PPublicKeys []*p2p.PublicKey
 	P2PSecretKey  *p2p.SecretKey
-}
-
-// Dag contains configuration required to create a dag.
-type Dag struct {
-	Keys []gomel.PublicKey
-}
-
-// NProc returns the number of processes in a given dag configuration.
-func (dc Dag) NProc() uint16 {
-	return uint16(len(dc.Keys))
+	PublicKeys    []gomel.PublicKey
 }
 
 // Alert represents a complete configuration needed for an alert system to start.

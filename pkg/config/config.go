@@ -8,10 +8,8 @@ const (
 	MaxDataBytesPerUnit = 2e6
 	// MaxRandomSourceDataBytesPerUnit is the maximal allowed size of random source data included in a unit, in bytes.
 	MaxRandomSourceDataBytesPerUnit = 1e6
-	// MaxAntichainsInChunk is the maximal number of antichains in a chunk.
-	MaxAntichainsInChunk = 255
-	// MaxUnitsInAntichain is the maximal allowed number of units in an antichain.
-	MaxUnitsInAntichain = 1e6
+	// MaxUnitsInChunk is the maximal number of units in a chunk.
+	MaxUnitsInChunk = 1e6
 )
 
 // SyncConfiguration represents parameters for a synchronization service.
@@ -71,28 +69,23 @@ type Configuration struct {
 // NewDefaultConfiguration returns default set of parameters.
 func NewDefaultConfiguration() Configuration {
 	syncConf := []SyncConfiguration{SyncConfiguration{
-		Type:     "multicast",
-		Params:   map[string]string{"network": "pers", "timeout": "2s"},
-		Fallback: "",
+		Type:   "multicast",
+		Params: map[string]string{"network": "pers", "timeout": "2s"},
 	}, SyncConfiguration{
-		Type:     "gossip",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
-		Fallback: "",
+		Type:   "gossip",
+		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 	},
 	}
 
 	syncSetupConf := []SyncConfiguration{SyncConfiguration{
-		Type:     "rmc",
-		Params:   map[string]string{"network": "pers", "timeout": "2s"},
-		Fallback: "fetch",
+		Type:   "rmc",
+		Params: map[string]string{"network": "pers", "timeout": "2s"},
 	}, SyncConfiguration{
-		Type:     "fetch",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
-		Fallback: "gossip",
+		Type:   "fetch",
+		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 	}, SyncConfiguration{
-		Type:     "gossip",
-		Params:   map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
-		Fallback: "",
+		Type:   "gossip",
+		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 	},
 	}
 

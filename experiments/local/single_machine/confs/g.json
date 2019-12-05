@@ -12,7 +12,6 @@
         "nOut": "2",
         "timeout": "2s"
       },
-      "Fallback": ""
     }
   ],
   "Setup": "coin",

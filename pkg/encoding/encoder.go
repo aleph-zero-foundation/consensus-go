@@ -51,7 +51,7 @@ func (e *enc) encodeCrown(crown *gomel.Crown) error {
 }
 
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
-func (e *enc) encodeUnit(unit gomel.Unit) error {
+func (e *enc) encodeUnit(unit gomel.BaseUnit) error {
 	if unit == nil {
 		data := make([]byte, 2)
 		binary.LittleEndian.PutUint16(data, math.MaxUint16)
@@ -103,34 +103,16 @@ func (e *enc) encodeUnit(unit gomel.Unit) error {
 	return nil
 }
 
-func (e *enc) encodeAntichain(units []gomel.Unit) error {
-	if len(units) > config.MaxUnitsInAntichain {
-		return errors.New("antichain length too long")
+func (e *enc) encodeChunk(units []gomel.Unit) error {
+	if len(units) > config.MaxUnitsInChunk {
+		return errors.New("chunk contains too many units")
 	}
 	err := e.encodeUint32(uint32(len(units)))
 	if err != nil {
 		return err
 	}
-	for _, u := range units {
+	for _, u := range topSort(units) {
 		err = e.encodeUnit(u)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (e *enc) encodeChunk(units []gomel.Unit) error {
-	layers := toLayers(units)
-	if len(layers) > config.MaxAntichainsInChunk {
-		return errors.New("chunk contains too many antichains")
-	}
-	err := e.encodeUint32(uint32(len(layers)))
-	if err != nil {
-		return err
-	}
-	for _, layer := range layers {
-		err := e.encodeAntichain(layer)
 		if err != nil {
 			return err
 		}

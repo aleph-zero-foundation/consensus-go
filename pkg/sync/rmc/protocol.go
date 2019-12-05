@@ -1,7 +1,6 @@
 package rmc
 
 import (
-	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -56,7 +55,7 @@ func (p *server) sendProof(receipient uint16, id uint64) error {
 	return nil
 }
 
-// getCommiteeSignatures collects singatures of all other committee members
+// getCommitteeSignatures collects signatures of all other committee members
 // on given data with given rmc id.
 // It blocks until it gathers at least quorum signatures.
 // It returns nProc boolean values in a slice, i-th value indicates
@@ -77,9 +76,9 @@ func (p *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 	return signedBy
 }
 
-// getMemeberSignature tries to get a signature from the given receipient on a given data with given rmc id.
+// getMemberSignature tries to get a signature from the given recipient on a given data with given rmc id.
 // It retries until it gets a signature, or there are at least quorum signatures for this rmc-id
-// gathered from different receipients.
+// gathered from different recipients.
 // It returns whether it got a signature or not.
 func (p *server) getMemberSignature(data []byte, id uint64, receipient uint16, gathering *sync.WaitGroup) bool {
 	defer gathering.Done()
@@ -169,7 +168,7 @@ func (p *server) in() {
 				log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 				return
 			}
-			add.Unit(p.adder, pu, p.fallback, p.fetchData, pu.Creator(), "rmc.in", log)
+			add.Unit(p.adder, pu, pu.Creator(), "rmc.in", log)
 		}
 	case requestFinished:
 		err := p.state.SendFinished(id, conn)
@@ -221,30 +220,4 @@ func (p *server) acceptData(id uint64, sender uint16, conn network.Connection, l
 		log.Error().Str("where", "rmc.in.Flush").Msg(err.Error())
 		return
 	}
-}
-
-func (p *server) requestFinishedRMC(pu gomel.Preunit, pid uint16) error {
-	conn, err := p.netserv.Dial(pid, p.timeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
-	id := gomel.UnitID(pu)
-	err = rmcbox.Greet(conn, p.pid, id, requestFinished)
-	if err != nil {
-		return err
-	}
-	data, err := p.state.AcceptFinished(id, pu.Creator(), conn)
-	if err != nil {
-		return err
-	}
-	puc, err := encoding.DecodePreunit(data)
-	if err != nil {
-		return err
-	}
-	if *pu.Hash() != *puc.Hash() {
-		return errors.New("mismatched unit commitment")
-	}
-	return nil
 }
