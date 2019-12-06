@@ -37,7 +37,7 @@ var logNames = map[string]int{
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, setFetch func(ch chan<- fetch.Request), setGossip func(ch chan<- uint16), log zerolog.Logger) (gomel.Service, error) {
+func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log zerolog.Logger) (gomel.Service, error) {
 	if err := valid(configs); err != nil {
 		return nil, err
 	}
@@ -73,18 +73,18 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, setFet
 			if err != nil {
 				return nil, err
 			}
-			serv, ch := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
-			s.servers[i] = serv
-			setGossip(ch)
+			server, trigger := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			s.servers[i] = server
+			adder.SetGossip(trigger)
 
 		case "fetch":
 			nIn, nOut, err := parseInOut(c.Params)
 			if err != nil {
 				return nil, err
 			}
-			serv, ch := fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
-			s.servers[i] = serv
-			setFetch(ch)
+			server, trigger := fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			s.servers[i] = server
+			adder.SetFetch(trigger)
 
 		default:
 			return nil, gomel.NewConfigError("unknown sync type: " + c.Type)

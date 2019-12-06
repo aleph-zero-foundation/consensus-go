@@ -58,7 +58,7 @@ var _ = Describe("Alert", func() {
 			rss[i].Bind(dags[i])
 			rmc := rmc.New(verKeys, secrKeys[i])
 			alerters[i] = NewAlertHandler(uint16(i), dags[i], pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
-			adders[i], adServs[i], _, _ = adder.New(dags[i], alerters[i], nil, zerolog.Nop())
+			adders[i], adServs[i] = adder.New(dags[i], alerters[i], nil, zerolog.Nop())
 			adServs[i].Start()
 		}
 	})

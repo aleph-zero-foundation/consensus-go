@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 )
 
 const (
@@ -38,7 +37,8 @@ type adder struct {
 	waiting        map[gomel.Hash]*waitingPreunit
 	waitingByID    map[uint64]*waitingPreunit
 	missing        map[uint64]*missingPreunit
-	fetchRequests  chan<- fetch.Request
+	requestFetch   gomel.RequestFetch
+	requestGossip  gomel.RequestGossip
 	gossipRequests chan<- uint16
 	mx             sync.Mutex
 	wg             sync.WaitGroup
@@ -49,7 +49,7 @@ type adder struct {
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
 // Returns twice the same object implementing both gomel.Adder and gomel.Service.
 // Passing nil as keys disables signature checking.
-func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service, func(ch chan<- fetch.Request), func(ch chan<- uint16)) {
+func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service) {
 	ready := make([]chan *waitingPreunit, dag.NProc())
 	for i := range ready {
 		ready[i] = make(chan *waitingPreunit, channelLength)
@@ -64,17 +64,19 @@ func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog
 		missing:     make(map[uint64]*missingPreunit),
 		log:         log,
 	}
-	setFetch := func(ch chan<- fetch.Request) {
-		ad.fetchRequests = ch
-	}
-	setGossip := func(ch chan<- uint16) {
-		ad.gossipRequests = ch
-	}
-	return ad, ad, setFetch, setGossip
+	return ad, ad
 }
 
 func (ad *adder) AddErrorHandler(eh gomel.ErrorHandler) {
 	ad.handlers = append(ad.handlers, eh)
+}
+
+func (ad *adder) SetFetch(tf gomel.RequestFetch) {
+	ad.requestFetch = tf
+}
+
+func (ad *adder) SetGossip(tg gomel.RequestGossip) {
+	ad.requestGossip = tg
 }
 
 // AddUnit checks basic correctness of a preunit and then adds it to the buffer zone.

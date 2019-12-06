@@ -81,11 +81,11 @@ func main(conf config.Config, ds gomel.DataSource, ps gomel.PreblockSink, rsCh <
 		return nil, err
 	}
 
-	adr, adderService, setFetch, setGossip := adder.New(dag, alerter, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
+	adr, adderService := adder.New(dag, alerter, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
 	orderService := order.NewService(dag, rs, conf.Order, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 
-	syncService, err := sync.NewService(dag, adr, conf.Sync, setFetch, setGossip, log)
+	syncService, err := sync.NewService(dag, adr, conf.Sync, log)
 	if err != nil {
 		return nil, err
 	}

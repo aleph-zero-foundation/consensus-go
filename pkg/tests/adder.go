@@ -12,6 +12,9 @@ func NewAdder(dag gomel.Dag) gomel.Adder {
 	return &adder{dag, nil}
 }
 
+func (ad *adder) SetGossip(gomel.RequestGossip) {}
+func (ad *adder) SetFetch(gomel.RequestFetch)   {}
+
 func (ad *adder) AddErrorHandler(eh gomel.ErrorHandler) {
 	ad.handlers = append(ad.handlers, eh)
 }

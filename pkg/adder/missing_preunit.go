@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 )
 
 type missingPreunit struct {
@@ -36,9 +35,9 @@ func (ad *adder) registerMissing(id uint64, wp *waitingPreunit) {
 // fetchMissing is called on a freshly created waitingPreunit that has some missing parents.
 // Sends a signal to trigger fetch or gossip.
 func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
-	if ad.fetchRequests == nil {
-		if ad.gossipRequests != nil {
-			ad.gossipRequests <- wp.source
+	if ad.requestFetch == nil {
+		if ad.requestGossip != nil {
+			ad.requestGossip(wp.source)
 		}
 		return
 	}
@@ -62,12 +61,12 @@ func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
 				}
 			}
 		}
-		if ad.gossipRequests != nil && len(toRequest) > gossipAbove {
-			ad.gossipRequests <- wp.source
+		if ad.requestGossip != nil && len(toRequest) > gossipAbove {
+			ad.requestGossip(wp.source)
 			return
 		}
 	}
 	if len(toRequest) > 0 {
-		ad.fetchRequests <- fetch.Request{wp.source, toRequest}
+		ad.requestFetch(wp.source, toRequest)
 	}
 }
