@@ -33,13 +33,6 @@ type service struct {
 }
 
 // NewService constructs a creating service for the given dag with the given configuration.
-// TODO rewrite
-// The service creates units with self-adjusting delay. It aims to create units as quickly as possible, while creating only prime units.
-// Whenever a prime unit is created, the delay is decreased (multiplying by an adjustment factor).
-// Whenever a non-prime unit is created, the delay is increased (dividing by an adjustment factor).
-// Whenever two consecutive units are not prime, the adjustment factor is increased (by a constant ratio positiveJerk)
-// Whenever a prime unit is created after a non-prime one, the adjustment factor is decreased (by a constant ratio negativeJerk)
-// negativeJerk is intentionally stronger than positiveJerk, to encourage convergence.
 // The service will close the dagFinished channel when it stops.
 func NewService(dag gomel.Dag, adder gomel.Adder, randomSource gomel.RandomSource, conf *config.Create, dagFinished chan<- struct{}, dataSource gomel.DataSource, log zerolog.Logger) gomel.Service {
 	s := &service{
