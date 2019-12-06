@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+import os
+import sys
+
+if len(sys.argv) != 2:
+    print('Usage: dagvis [filename]')
+    sys.exit(1)
+
+filename = sys.argv[1]
+if not os.path.isfile(filename):
+    print(f'Invalid file: {filename}')
+    sys.exit(1)
+
+newrow = lambda x: [False] * x
+rows = []
+
+with open(filename) as f:
+    nproc = int(f.readline().strip())
+    for line in f:
+        unit = line.split()[0]
+        c, h, _ = unit.split('-')
+        creator, height = int(c), int(h)
+        while height >= len(rows):
+            rows.append(newrow(nproc))
+        rows[height][creator] = True
+
+for i,row in enumerate(rows):
+    print('%6d   %s'%(i, ''.join([u'\u2551' if i else ' ' for i in row])))

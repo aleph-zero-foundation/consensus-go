@@ -51,7 +51,7 @@ var popularAfter stat = func(dag gomel.Dag, u gomel.Unit, _ []gomel.Unit, maxLev
 var nParentsOnTheSameLevel stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit, _ int) int {
 	result := 0
 	for _, v := range u.Parents() {
-		if u.Level() == v.Level() {
+		if v != nil && u.Level() == v.Level() {
 			result++
 		}
 	}
