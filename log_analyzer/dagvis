@@ -12,11 +12,23 @@ if not os.path.isfile(filename):
     print(f'Invalid file: {filename}')
     sys.exit(1)
 
+def header(n):
+    s = ''
+    for d in range(len(str(n)), 0, -1):
+        s += ' '*6
+        for i in range(n):
+            ln = len(str(i))
+            s += str(i)[ln-d] if ln >= d else ' '
+        s += '\n'
+    return s
+
 newrow = lambda x: [False] * x
+
 rows = []
 
 with open(filename) as f:
     nproc = int(f.readline().strip())
+    print(header(nproc), end='')
     for line in f:
         unit = line.split()[0]
         c, h, _ = unit.split('-')
@@ -26,4 +38,6 @@ with open(filename) as f:
         rows[height][creator] = True
 
 for i,row in enumerate(rows):
-    print('%6d   %s'%(i, ''.join([u'\u2551' if i else ' ' for i in row])))
+    print('%5d %s'%(i, ''.join([u'\u2551' if i else ' ' for i in row])))
+
+
