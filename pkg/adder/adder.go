@@ -13,11 +13,11 @@ import (
 
 const (
 	//
-	channelLength = 16
+	channelLength = 32
 	// gossipAbove is the number of missing units above which gossip is triggered instead of fetch.
 	gossipAbove = 50
 	// request a missing unit again only after fetchInterval has passed since the last try.
-	fetchInterval = time.Second
+	fetchInterval = 2 * time.Second
 )
 
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with
