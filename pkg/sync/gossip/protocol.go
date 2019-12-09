@@ -168,7 +168,6 @@ func (p *server) Out() {
 	defer m.release()
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "gossip.out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()

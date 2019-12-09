@@ -9,7 +9,6 @@ import (
 func (p *server) In() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.in.listen").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
@@ -32,7 +31,6 @@ func (p *server) Out(pid uint16) {
 	}
 	conn, err := p.netserv.Dial(pid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()

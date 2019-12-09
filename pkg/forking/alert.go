@@ -143,7 +143,6 @@ func (a *alertHandler) sendFinished(forker, pid uint16) {
 	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
 	conn, err := a.netserv.Dial(pid, a.timeout)
 	if err != nil {
-		log.Error().Str("where", "alertHandler.sendFinished.Dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
@@ -292,7 +291,6 @@ func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 	log := a.log.With().Uint16(logging.PID, pid).Logger()
 	conn, err := a.netserv.Dial(pid, a.timeout)
 	if err != nil {
-		log.Error().Str("where", "alertHandler.RequestCommitment.Dial").Msg(err.Error())
 		return err
 	}
 	conn.TimeoutAfter(a.timeout)
@@ -456,7 +454,6 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 	for a.rmc.Status(id) != rmc.Finished {
 		conn, err := a.netserv.Dial(pid, a.timeout)
 		if err != nil {
-			log.Error().Str("where", "alertHandler.sendAlert.Dial").Msg(err.Error())
 			continue
 		}
 		conn.TimeoutAfter(a.timeout)
@@ -476,7 +473,6 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 	if success {
 		conn, err := a.netserv.Dial(pid, a.timeout)
 		if err != nil {
-			log.Error().Str("where", "alertHandler.sendAlert.Dial 2").Msg(err.Error())
 			return
 		}
 		err = a.attemptProve(conn, id)

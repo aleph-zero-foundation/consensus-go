@@ -59,7 +59,6 @@ func (p *server) Out() {
 	remotePid := r.Pid
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "fetch.out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()
