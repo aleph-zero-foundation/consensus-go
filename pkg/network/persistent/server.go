@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/network"
 )
 
@@ -45,6 +46,7 @@ func NewServer(localAddress string, remoteAddresses []string, log zerolog.Logger
 func (s *server) Dial(pid uint16, timeout time.Duration) (network.Connection, error) {
 	caller, err := s.getCaller(pid, timeout)
 	if err != nil {
+		s.log.Error().Str("where", "persistent.server.Dial").Msg(err.Error())
 		return nil, err
 	}
 	return caller.call(), nil
@@ -53,8 +55,10 @@ func (s *server) Dial(pid uint16, timeout time.Duration) (network.Connection, er
 func (s *server) Listen(timeout time.Duration) (network.Connection, error) {
 	select {
 	case conn := <-s.queue:
+		s.log.Debug().Msg(logging.ConnectionReceived)
 		return conn, nil
 	case <-time.After(timeout):
+		s.log.Error().Str("where", "persistent.server.Listen").Msg("i/o timeout")
 		return nil, errors.New("Listen timed out")
 	}
 }
