@@ -5,6 +5,7 @@
 package fetch
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -23,11 +24,12 @@ type server struct {
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
 	timeout  time.Duration
+	quit     int64
 	log      zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, chan<- Request) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, gomel.RequestFetch) {
 	nProc := int(dag.NProc())
 	requests := make(chan Request, nProc)
 	s := &server{
@@ -42,7 +44,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 	}
 	s.outPool = sync.NewPool(nOut, s.Out)
 	s.inPool = sync.NewPool(nIn, s.In)
-	return s, s.requests
+	return s, s.trigger
 }
 
 func (s *server) Start() {
@@ -55,6 +57,13 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
+	atomic.StoreInt64(&s.quit, 1)
 	close(s.requests)
 	s.outPool.Stop()
+}
+
+func (s *server) trigger(pid uint16, ids []uint64) {
+	if atomic.LoadInt64(&s.quit) == 0 {
+		s.requests <- Request{pid, ids}
+	}
 }

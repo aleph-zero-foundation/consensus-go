@@ -41,7 +41,7 @@ func decode(data *map[string]interface{}) string {
 	}
 	ret := ""
 	if val, ok := (*data)[Time]; ok {
-		ret += fmt.Sprintf("%6v|", val)
+		ret += fmt.Sprintf("%8v|", val)
 	}
 	if val, ok := (*data)[Level]; ok {
 		i, _ := strconv.Atoi(val.(string))
@@ -60,9 +60,9 @@ func decode(data *map[string]interface{}) string {
 	sort.Strings(slice)
 	for _, k := range slice {
 		if f, ok := fieldNameDict[k]; ok {
-			ret += fmt.Sprintf("%8s = %-6v|", f, (*data)[k])
+			ret += fmt.Sprintf("%8s = %-8v|", f, (*data)[k])
 		} else {
-			ret += fmt.Sprintf("%8s = %-6v|", k, (*data)[k])
+			ret += fmt.Sprintf("%8s = %-8v|", k, (*data)[k])
 		}
 	}
 	if val, ok := (*data)[Event]; ok {

@@ -36,17 +36,18 @@ func (s *server) Listen(timeout time.Duration) (network.Connection, error) {
 	s.listener.SetDeadline(time.Now().Add(timeout))
 	link, err := s.listener.Accept()
 	if err != nil {
-		s.log.Error().Str("where", "tcp.server.Listen").Msg(err.Error())
+		//s.log.Error().Str("where", "tcp.server.Listen").Msg(err.Error())
 		return nil, err
 	}
 	conn := newConn(link, s.log)
-	s.log.Info().Msg(logging.ConnectionReceived)
+	s.log.Debug().Msg(logging.ConnectionReceived)
 	return conn, nil
 }
 
 func (s *server) Dial(pid uint16, timeout time.Duration) (network.Connection, error) {
 	link, err := net.DialTimeout("tcp", s.remoteAddrs[pid], timeout)
 	if err != nil {
+		//s.log.Error().Str("where", "tcp.server.Dial").Msg(err.Error())
 		return nil, err
 	}
 	return newConn(link, s.log), nil

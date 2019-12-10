@@ -1,33 +1,27 @@
 {
-		"NParents": 128,
-
-		"PrimeOnly": true,
-
-        "CanSkipLevel": true,
+		"CanSkipLevel": true,
 
 		"CreateDelay": 0.2,
-
-		"StepSize": 0.0,
 
         "Sync": [{
             "Type": "multicast",
             "Params": {
-                "mcType": "pers",
+                "network": "pers",
                 "timeout": "2s"
-            },
+            }
             }, {
             "Type": "fetch",
             "Params": {
                 "nIn": "10",
                 "nOut": "15",
                 "timeout": "2s"
-            },
+            }
             }, {
             "Type": "gossip",
             "Params": {
                 "nIn": "2",
                 "nOut": "1",
-                "timeout": "2s"},
+                "timeout": "2s"}
         }],
 
         "Setup": "coin",

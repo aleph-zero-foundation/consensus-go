@@ -16,7 +16,7 @@ type waitingPreunit struct {
 	failed         bool              // flag for signaling problems with adding this unit
 }
 
-// checkIfMissing sets the children attribute of a newly created node, depending on if it was missing
+// checkIfMissing sets the children attribute of a newly created waitingPreunit, depending on if it was missing
 func (ad *adder) checkIfMissing(wp *waitingPreunit) {
 	if mp, ok := ad.missing[wp.id]; ok {
 		wp.children = mp.neededBy
@@ -26,23 +26,29 @@ func (ad *adder) checkIfMissing(wp *waitingPreunit) {
 		}
 		delete(ad.missing, wp.id)
 	} else {
-		wp.children = []*waitingPreunit{}
+		wp.children = make([]*waitingPreunit, 0, 8)
 	}
 }
 
-// checkParents finds out which parents of a newly created waitingPreunit are in dag,
-// which are waiting, and which are missing.
-func (ad *adder) checkParents(wp *waitingPreunit) {
-	unknown := gomel.FindMissingParents(ad.dag, wp.pu)
-	for _, unkID := range unknown {
-		if par, ok := ad.waitingByID[unkID]; ok {
-			wp.waitingParents++
-			par.children = append(par.children, wp)
-		} else {
-			wp.missingParents++
-			ad.registerMissing(unkID, wp)
+// checkParents finds out which parents of a newly created waitingPreunit are in the dag,
+// which are waiting, and which are missing. Sets values of waitingParents and missingParents
+// accordingly. Additionally, returns maximal heights of dag.
+func (ad *adder) checkParents(wp *waitingPreunit) []int {
+	nProc := ad.dag.NProc()
+	maxHeights := gomel.MaxView(ad.dag)
+	for creator, height := range wp.pu.View().Heights {
+		if height > maxHeights[creator] {
+			parentID := gomel.ID(height, uint16(creator), nProc)
+			if par, ok := ad.waitingByID[parentID]; ok {
+				wp.waitingParents++
+				par.children = append(par.children, wp)
+			} else {
+				wp.missingParents++
+				ad.registerMissing(parentID, wp)
+			}
 		}
 	}
+	return maxHeights
 }
 
 // addPreunit as a waitingPreunit to the buffer zone.
@@ -59,11 +65,11 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	wp := &waitingPreunit{pu: pu, id: id, source: source}
 	ad.waiting[*pu.Hash()] = wp
 	ad.waitingByID[id] = wp
-	ad.checkParents(wp)
+	maxHeights := ad.checkParents(wp)
 	ad.checkIfMissing(wp)
 	if wp.missingParents > 0 {
 		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.MissingParents)
-		ad.fetchMissing(wp)
+		ad.fetchMissing(wp, maxHeights)
 		return gomel.NewUnknownParents(wp.missingParents)
 	}
 	ad.sendIfReady(wp)

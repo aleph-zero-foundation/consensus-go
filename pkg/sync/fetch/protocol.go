@@ -43,6 +43,11 @@ func (p *server) In() {
 		log.Error().Str("where", "fetch.in.sendUnits").Msg(err.Error())
 		return
 	}
+	err = conn.Flush()
+	if err != nil {
+		log.Error().Str("where", "fetch.in.flush").Msg(err.Error())
+		return
+	}
 	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
@@ -54,7 +59,6 @@ func (p *server) Out() {
 	remotePid := r.Pid
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "fetch.out.dial").Msg(err.Error())
 		return
 	}
 	defer conn.Close()

@@ -73,14 +73,18 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 			if err != nil {
 				return nil, err
 			}
-			s.servers[i], _ = gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			server, trigger := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			s.servers[i] = server
+			adder.SetGossip(trigger)
 
 		case "fetch":
 			nIn, nOut, err := parseInOut(c.Params)
 			if err != nil {
 				return nil, err
 			}
-			s.servers[i], _ = fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			server, trigger := fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			s.servers[i] = server
+			adder.SetFetch(trigger)
 
 		default:
 			return nil, gomel.NewConfigError("unknown sync type: " + c.Type)

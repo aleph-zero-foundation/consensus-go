@@ -86,7 +86,6 @@ func (p *server) getMemberSignature(data []byte, id uint64, receipient uint16, g
 	for p.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&p.quit) == 0 {
 		conn, err := p.netserv.Dial(receipient, p.timeout)
 		if err != nil {
-			log.Error().Str("where", "sync.rmc.sendData.Dial").Msg(err.Error())
 			continue
 		}
 		conn.TimeoutAfter(p.timeout)
@@ -143,7 +142,6 @@ func (p *server) sendProve(conn network.Connection, id uint64) error {
 func (p *server) in() {
 	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
-		p.log.Error().Str("where", "rmc.in.Listen").Msg(err.Error())
 		return
 	}
 	defer conn.Close()

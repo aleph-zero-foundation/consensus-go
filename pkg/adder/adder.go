@@ -3,6 +3,7 @@ package adder
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -10,7 +11,12 @@ import (
 )
 
 const (
+	//
 	channelLength = 32
+	// gossipAbove is the number of missing units above which gossip is triggered instead of fetch.
+	gossipAbove = 50
+	// request a missing unit again only after fetchInterval has passed since the last try.
+	fetchInterval = 2 * time.Second
 )
 
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with
@@ -23,18 +29,21 @@ const (
 // d) Transform
 // e) Insert
 type adder struct {
-	dag         gomel.Dag
-	alert       gomel.Alerter
-	handlers    []gomel.ErrorHandler
-	keys        []gomel.PublicKey
-	ready       []chan *waitingPreunit
-	waiting     map[gomel.Hash]*waitingPreunit
-	waitingByID map[uint64]*waitingPreunit
-	missing     map[uint64]*missingPreunit
-	mx          sync.Mutex
-	wg          sync.WaitGroup
-	quit        int64
-	log         zerolog.Logger
+	dag            gomel.Dag
+	alert          gomel.Alerter
+	handlers       []gomel.ErrorHandler
+	keys           []gomel.PublicKey
+	ready          []chan *waitingPreunit
+	waiting        map[gomel.Hash]*waitingPreunit
+	waitingByID    map[uint64]*waitingPreunit
+	missing        map[uint64]*missingPreunit
+	requestFetch   gomel.RequestFetch
+	requestGossip  gomel.RequestGossip
+	gossipRequests chan<- uint16
+	mx             sync.Mutex
+	wg             sync.WaitGroup
+	quit           int64
+	log            zerolog.Logger
 }
 
 // New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
@@ -60,6 +69,14 @@ func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog
 
 func (ad *adder) AddErrorHandler(eh gomel.ErrorHandler) {
 	ad.handlers = append(ad.handlers, eh)
+}
+
+func (ad *adder) SetFetch(tf gomel.RequestFetch) {
+	ad.requestFetch = tf
+}
+
+func (ad *adder) SetGossip(tg gomel.RequestGossip) {
+	ad.requestGossip = tg
 }
 
 // AddUnit checks basic correctness of a preunit and then adds it to the buffer zone.

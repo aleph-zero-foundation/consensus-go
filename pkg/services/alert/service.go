@@ -61,7 +61,6 @@ func (s *service) handleConns() {
 	for atomic.LoadInt64(&s.quit) == 0 {
 		conn, err := s.netserv.Listen(s.timeout)
 		if err != nil {
-			s.log.Error().Str("where", "alertService.handleConns.Listen").Msg(err.Error())
 			continue
 		}
 		conn.TimeoutAfter(s.timeout)

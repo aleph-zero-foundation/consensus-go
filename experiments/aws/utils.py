@@ -224,7 +224,7 @@ def generate_keys(ip_list):
 
     os.chdir('data/')
     with open('config.json', 'r') as f:
-        n_port = len(json.load(f)['Sync'])
+        n_port = len(json.load(f)['Sync'])+1
     keys_path = glob('*.keys')
     pubs = None
     print('removing old keys')

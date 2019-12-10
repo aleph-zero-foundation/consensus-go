@@ -37,11 +37,11 @@ func (s *server) Listen(timeout time.Duration) (network.Connection, error) {
 	buffer := make([]byte, (1 << 16))
 	n, _, err := s.listener.ReadFromUDP(buffer)
 	if err != nil {
-		s.log.Error().Str("where", "udp.server.Listen").Msg(err.Error())
+		//s.log.Error().Str("where", "udp.server.Listen").Msg(err.Error())
 		return nil, err
 	}
 	conn := newConnIn(buffer[:n], s.log)
-	s.log.Info().Msg(logging.ConnectionReceived)
+	s.log.Debug().Msg(logging.ConnectionReceived)
 	return conn, nil
 }
 
@@ -49,6 +49,7 @@ func (s *server) Dial(pid uint16, timeout time.Duration) (network.Connection, er
 	// can consider setting a timeout here, yet DialUDP is non-blocking, so there should be no need
 	link, err := net.Dial("udp", s.remoteAddrs[pid])
 	if err != nil {
+		//s.log.Error().Str("where", "udp.server.Dial").Msg(err.Error())
 		return nil, err
 	}
 	return newConnOut(link, s.log), nil
