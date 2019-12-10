@@ -2,13 +2,13 @@ package forking_test
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 
-	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
@@ -26,15 +26,45 @@ var _ = Describe("Alert", func() {
 		nProc    uint16
 		alerters []gomel.Alerter
 		dags     []gomel.Dag
-		adders   []gomel.Adder
-		adServs  []gomel.Service
 		rss      []gomel.RandomSource
 		netservs []network.Server
 		pubKeys  []gomel.PublicKey
 		privKeys []gomel.PrivateKey
 		verKeys  []*bn256.VerificationKey
 		secrKeys []*bn256.SecretKey
+		wg       sync.WaitGroup
+		stop     int64
 	)
+
+	KeepHandling := func(pid uint16) {
+		defer GinkgoRecover()
+		defer wg.Done()
+		for atomic.LoadInt64(&stop) == 0 {
+			conn, err := netservs[pid].Listen(2 * time.Second)
+			if err != nil {
+				continue
+			}
+			conn.TimeoutAfter(time.Second)
+			wg.Add(1)
+			go alerters[pid].HandleIncoming(conn, &wg)
+		}
+		// Clean up pending alerts, assume done if timeout.
+		for i := 0; i < int(nProc); i++ {
+			conn, err := netservs[pid].Listen(2 * time.Second)
+			if err != nil {
+				return
+			}
+			conn.TimeoutAfter(time.Second)
+			wg.Add(1)
+			go alerters[pid].HandleIncoming(conn, &wg)
+		}
+	}
+
+	StopHandling := func() {
+		atomic.StoreInt64(&stop, 1)
+		wg.Wait()
+		tests.CloseNetwork(netservs)
+	}
 
 	BeforeEach(func() {
 		nProc = 10
@@ -48,46 +78,23 @@ var _ = Describe("Alert", func() {
 		}
 		alerters = make([]gomel.Alerter, nProc)
 		dags = make([]gomel.Dag, nProc)
-		adders = make([]gomel.Adder, nProc)
-		adServs = make([]gomel.Service, nProc)
 		rss = make([]gomel.RandomSource, nProc)
 		netservs = tests.NewNetwork(int(nProc))
+		stop = 0
 		for i := range dags {
 			dags[i] = dag.New(nProc)
 			rss[i] = tests.NewTestRandomSource()
 			rss[i].Bind(dags[i])
 			rmc := rmc.New(verKeys, secrKeys[i])
-			alerters[i] = NewAlertHandler(uint16(i), dags[i], pubKeys, rmc, netservs[i], 5*time.Second, zerolog.Nop())
-			adders[i], adServs[i] = adder.New(dags[i], alerters[i], nil, zerolog.Nop())
-			adServs[i].Start()
+			alerters[i] = NewAlertHandler(uint16(i), dags[i], pubKeys, rmc, netservs[i], 2*time.Second, zerolog.Nop())
+			wg.Add(1)
+			go KeepHandling(uint16(i))
 		}
 	})
 
 	AfterEach(func() {
-		for _, s := range adServs {
-			s.Stop()
-		}
+		StopHandling()
 	})
-
-	AcceptSomething := func(pid uint16, wg *sync.WaitGroup) {
-		defer GinkgoRecover()
-		conn, err := netservs[pid].Listen(4 * time.Second)
-		if err != nil {
-			// Might happen, the only guarantee is 2/3 of the processes get it.
-			wg.Done()
-			return
-		}
-		alerters[pid].HandleIncoming(conn, wg)
-	}
-
-	AcceptAlert := func(pid uint16, wg *sync.WaitGroup) {
-		defer GinkgoRecover()
-		neededResponses := 2 * (nProc - 2)
-		wg.Add(int(neededResponses))
-		for k := uint16(0); k < neededResponses; k++ {
-			go AcceptSomething(pid, wg)
-		}
-	}
 
 	Describe("When the dags are empty", func() {
 		It("Adds nonforking units without problems", func() {
@@ -102,7 +109,7 @@ var _ = Describe("Alert", func() {
 			}
 		})
 
-		It("Raises an alert and rejects noncommitted forking units", func() {
+		It("Does not add noncommitted forking units after an alert", func() {
 			forker := uint16(0)
 			pu, _, err := creating.NewUnit(dags[forker], forker, []byte{}, rss[forker], true)
 			Expect(err).NotTo(HaveOccurred())
@@ -110,16 +117,21 @@ var _ = Describe("Alert", func() {
 			Expect(err).NotTo(HaveOccurred())
 			pu.SetSignature(privKeys[forker].Sign(pu))
 			puf.SetSignature(privKeys[forker].Sign(puf))
-			dag := dags[1]
-			_, err = tests.AddUnit(dag, pu)
+			_, err = tests.AddUnit(dags[1], pu)
 			Expect(err).NotTo(HaveOccurred())
-			wg := &sync.WaitGroup{}
-			for j := uint16(1); j < nProc; j++ {
-				go AcceptAlert(j, wg)
-			}
-			_, err = tests.AddUnit(dag, puf)
+			_, err = tests.AddUnit(dags[1], puf)
 			Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
-			wg.Wait()
+			// We only know that at least 2f+1 processes received the alert, so at least they should be aware of the fork and react accordingly.
+			ignorants := 0
+			for j := uint16(2); j < nProc; j++ {
+				if alerters[j].IsForker(forker) {
+					_, err = tests.AddUnit(dags[j], puf)
+					Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
+				} else {
+					ignorants++
+				}
+			}
+			Expect(ignorants).To(BeNumerically("<", 3))
 		})
 
 		Context("And a forker creates a fork for every process", func() {
@@ -139,26 +151,23 @@ var _ = Describe("Alert", func() {
 					Expect(err).NotTo(HaveOccurred())
 					pus[i] = pu
 				}
+				pu, _, err := creating.NewUnit(dags[forker], forker, []byte{0}, rss[forker], true)
+				Expect(err).NotTo(HaveOccurred())
+				pu.SetSignature(privKeys[forker].Sign(pu))
+				pus[0] = pu
 			})
 
 			It("Adds committed forking units after acquiring commitments through alerts", func() {
-				wg := &sync.WaitGroup{}
-				for j := uint16(1); j < nProc; j++ {
-					go AcceptAlert(j, wg)
-				}
-				_, err := tests.AddUnit(dags[1], pus[2])
-				// We cannot expect an error or lack of it here.
-				// It occuring depends on whether 2 finishes its alert before 1 tries checking for the commitment.
-				wg.Wait()
-				// We have to start at 3 here,because we don't know whether adding 2 succeeded, see above.
+				_, err := tests.AddUnit(dags[1], pus[0])
+				Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
 				failed := 0
-				for i := uint16(3); i < nProc; i++ {
-					_, err = tests.AddUnit(dags[1], pus[i])
+				for j := uint16(2); j < nProc; j++ {
+					_, err := tests.AddUnit(dags[j], pus[1])
 					if err != nil {
 						failed++
 					}
 				}
-				Expect(failed).To(BeNumerically("<", 2))
+				Expect(failed).To(BeNumerically("<", 3))
 			})
 		})
 	})
@@ -227,22 +236,25 @@ var _ = Describe("Alert", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("Adds forks only after acquiring commitments explicitly", func() {
-				wg := &sync.WaitGroup{}
-				for j := uint16(1); j < nProc; j++ {
-					go AcceptAlert(j, wg)
-				}
+			It("Adds forks after acquiring commitments explicitly", func() {
 				_, err := tests.AddUnit(dags[1], dealingFork2)
 				Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
-				wg.Wait()
-				wg.Add(1)
-				go AcceptSomething(2, wg)
-				alerters[1].RequestCommitment(dealingFork2, 2)
-				wg.Wait()
+				Eventually(func() error { return alerters[1].RequestCommitment(dealingFork2, 2) }, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 				_, err = tests.AddUnit(dags[1], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
-				err = adders[1].AddUnit(childFork2, 0)
-				Expect(err).NotTo(HaveOccurred())
+				_, err = dags[1].DecodeParents(childFork2)
+				Expect(err).To(HaveOccurred())
+				parents := make([]gomel.Unit, 0, nProc)
+				e, ok := err.(*gomel.AmbiguousParents)
+				Expect(ok).To(BeTrue())
+				for _, us := range e.Units {
+					parent, err2 := alerters[1].Disambiguate(us, childFork2)
+					Expect(err2).NotTo(HaveOccurred())
+					parents = append(parents, parent)
+				}
+				fu := dags[1].BuildUnit(childFork2, parents)
+				Expect(dags[1].Check(fu)).To(Succeed())
+				// No need to transform and insert, as they don't return errors anyway.
 			})
 
 			It("Adds a unit built on forks only after acquiring commitments explicitly", func() {
@@ -251,23 +263,36 @@ var _ = Describe("Alert", func() {
 				unit2.SetSignature(privKeys[2].Sign(unit2))
 				_, err = tests.AddUnit(dags[2], unit2)
 				Expect(err).NotTo(HaveOccurred())
-				wg := &sync.WaitGroup{}
-				for j := uint16(1); j < nProc; j++ {
-					go AcceptAlert(j, wg)
-				}
 				_, err = tests.AddUnit(dags[1], dealingFork2)
 				Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
-				wg.Wait()
-				wg.Add(1)
-				go AcceptSomething(2, wg)
-				alerters[1].RequestCommitment(dealingFork2, 2)
-				wg.Wait()
+				Eventually(func() error { return alerters[1].RequestCommitment(dealingFork2, 2) }, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 				_, err = tests.AddUnit(dags[1], dealingFork2)
 				Expect(err).NotTo(HaveOccurred())
-				err = adders[1].AddUnit(childFork2, 0)
-				Expect(err).NotTo(HaveOccurred())
-				err = adders[1].AddUnit(unit2, 0)
-				Expect(err).NotTo(HaveOccurred())
+				_, err = dags[1].DecodeParents(childFork2)
+				Expect(err).To(HaveOccurred())
+				parents := make([]gomel.Unit, 0, nProc)
+				e, ok := err.(*gomel.AmbiguousParents)
+				Expect(ok).To(BeTrue())
+				for _, us := range e.Units {
+					parent, err2 := alerters[1].Disambiguate(us, childFork2)
+					Expect(err2).NotTo(HaveOccurred())
+					parents = append(parents, parent)
+				}
+				fu := dags[1].BuildUnit(childFork2, parents)
+				Expect(dags[1].Check(fu)).To(Succeed())
+				dags[1].Insert(dags[1].Transform(fu))
+				_, err = dags[1].DecodeParents(unit2)
+				Expect(err).To(HaveOccurred())
+				parents = make([]gomel.Unit, 0, nProc)
+				e, ok = err.(*gomel.AmbiguousParents)
+				Expect(ok).To(BeTrue())
+				for _, us := range e.Units {
+					parent, err2 := alerters[1].Disambiguate(us, unit2)
+					Expect(err2).NotTo(HaveOccurred())
+					parents = append(parents, parent)
+				}
+				fu = dags[1].BuildUnit(unit2, parents)
+				Expect(dags[1].Check(fu)).To(Succeed())
 			})
 		})
 	})

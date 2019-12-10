@@ -232,7 +232,7 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 	}
 	comm := a.commitments.getByHash(&requested)
 	if comm == nil {
-		if !a.isForker(unit.Creator()) {
+		if !a.IsForker(unit.Creator()) {
 			log.Error().Str("where", "alertHandler.handleCommitmentRequest.getByHash").Msg("we were not aware there was a fork")
 			_, err = conn.Write([]byte{1})
 			if err != nil {
@@ -583,8 +583,8 @@ func (a *alertHandler) hasCommitmentTo(u gomel.Unit) bool {
 	return true
 }
 
-// isForker checks whether the provided pid corresponds to a process for which we have a proof of forking.
-func (a *alertHandler) isForker(forker uint16) bool {
+// IsForker checks whether the provided pid corresponds to a process for which we have a proof of forking.
+func (a *alertHandler) IsForker(forker uint16) bool {
 	return a.commitments.isForker(forker)
 }
 
@@ -608,7 +608,7 @@ func (a *alertHandler) checkCommitment(u gomel.Unit) error {
 
 func (a *alertHandler) handleForkerUnit(u gomel.Unit) bool {
 	creator := u.Creator()
-	if a.isForker(creator) {
+	if a.IsForker(creator) {
 		return true
 	}
 	maxes := a.dag.MaximalUnitsPerProcess().Get(creator)
@@ -657,7 +657,7 @@ func (a *alertHandler) NewFork(u, v gomel.Preunit) {
 	a.Lock(u.Creator())
 	defer a.Unlock(u.Creator())
 
-	if a.isForker(u.Creator()) {
+	if a.IsForker(u.Creator()) {
 		return
 	}
 
