@@ -7,13 +7,16 @@ driver.add_pipeline('Create', [
     Timer('unit creation intervals', SKIP)
 ])
 
+units_per_level = Counter('units ordered per level', LinearOrderExtended, lambda entry: entry[Size])
+timing_freq = Timer('timing unit decision intervals', SKIP)
 driver.add_pipeline('Ordering', [
     Filter(Event, [NewTimingUnit, LinearOrderExtended]),
     Histogram('timing unit decision level', NewTimingUnit, lambda entry: (entry[Height] - entry[Round])),
     Histogram('dag levels above deciding prime unit', NewTimingUnit, lambda entry: (entry[Size] - entry[Height])),
-    Counter('units ordered per level', LinearOrderExtended, lambda entry: entry[Size]),
+    units_per_level,
     Filter(Event, NewTimingUnit),
-    Timer('timing unit decision intervals', SKIP),
+    timing_freq,
+    TXPS(units_per_level, timing_freq, config)
 ])
 
 driver.add_pipeline('Latency', [
@@ -40,7 +43,7 @@ driver.add_pipeline('Fetch', [
 ])
 
 driver.add_pipeline('Multicast', [
-    Filter(Service, [MCService, RetryingService]),
+    Filter(Service, MCService),
     MulticastStats(),
     Histogram('number of missing parents', UnknownParents, lambda entry: entry[Size]),
 ])

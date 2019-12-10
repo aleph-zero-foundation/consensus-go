@@ -73,9 +73,8 @@ MemLogService    = 4
 GossipService    = 5
 FetchService     = 6
 MCService        = 7
-RetryingService  = 8
-RMCService       = 9
-AlertService     = 10
-AdderService     = 11
+RMCService       = 8
+AlertService     = 9
+AdderService     = 10
 
 Genesis = "genesis"

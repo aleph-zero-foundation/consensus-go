@@ -40,6 +40,35 @@ class CreateCounter(Plugin):
         return ret
 
 
+class TXPS(Plugin):
+    """Plugin calculating the average number of units ordered per second."""
+    multistats = multimean
+
+    def __init__(self, units_per_level, timing_freq, config):
+        self.units_per_level = units_per_level
+        self.timing_freq = timing_freq
+        if config and 'Txpu' in config:
+            self.txpu = int(config['Txpu'])
+            self.name = 'Tx per second'
+        else:
+            self.txpu = 1
+            self.name = 'Units per second'
+
+    def process(self, entry):
+        return entry
+
+    def finalize(self):
+        upl = mean(self.units_per_level.get_data())
+        lps = 1000/mean(self.timing_freq.get_data()) #avg levels per second
+        self.value = upl*lps*self.txpu
+
+    def get_data(self):
+        return [self.value]
+
+    def report(self):
+        return  '    Average: %10d\n'%self.value
+
+
 class NetworkTraffic(Plugin):
     """Plugin measuring the size of data sent/received through the network."""
     name = 'Network traffic [kB/s]'

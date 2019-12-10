@@ -29,14 +29,13 @@ def extract(path):
 
 parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel. Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .log files in the given folder (also ZIP compressed). The file with pipelines (-p flag) can be a custom .py file or one of the predefined pipelines from the log analyzer source directory. Possible pipelines: '+ ', '.join(avail_pipes))
 parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archived folder')
-parser.add_argument('-p', '--pipe', metavar='name', help='file with pipelines definitions')
+parser.add_argument('-p', '--pipe', default='default.py', metavar='name', help='file with pipelines definitions')
 parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
+parser.add_argument('-c', '--config', default='config.json', metavar='file', help='file with the JSON config of the experiment')
 args = parser.parse_args()
 
 
-if not args.pipe:
-    pipelines = join(pipelines_folder, 'default.py')
-elif isfile(args.pipe):
+if isfile(args.pipe):
     pipelines = args.pipe
 elif isfile(args.pipe+'.py'):
     pipelines = args.pipe+'.py'
@@ -47,6 +46,11 @@ elif isfile(join(pipelines_folder, args.pipe+'.py')):
 else:
     print(f'{args.pipe}: invalid file')
     sys.exit(1)
+
+config = None
+if isfile(args.config):
+    with open(args.config) as f:
+        config = json.load(f)
 
 driver = Driver()
 exec(compile(open(pipelines).read(), pipelines, 'exec'))

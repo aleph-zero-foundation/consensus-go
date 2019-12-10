@@ -153,7 +153,6 @@ const (
 	GossipService
 	FetchService
 	MCService
-	RetryingService
 	RMCService
 	AlertService
 	AdderService
@@ -169,7 +168,6 @@ var serviceTypeDict = map[int]string{
 	GossipService:   "GOSSIP",
 	FetchService:    "FETCH",
 	MCService:       "MCAST",
-	RetryingService: "RETRY",
 	RMCService:      "RMC",
 	AlertService:    "ALERT",
 	AdderService:    "ADDER",
