@@ -89,7 +89,7 @@ var _ = Describe("Protocol", func() {
 		requests = make([]gomel.RequestGossip, 2)
 		tservs = make([]testServer, 2)
 		for i := 0; i < 2; i++ {
-			servs[i], requests[i] = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3)
+			servs[i], requests[i] = NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop(), 1, 3, 0)
 			tservs[i] = servs[i].(testServer)
 		}
 	})
