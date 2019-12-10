@@ -14,34 +14,34 @@ import (
 )
 
 type server struct {
-	pid        uint16
-	dag        gomel.Dag
-	adder      gomel.Adder
-	netserv    network.Server
-	requests   chan uint16
-	peerSource PeerSource
-	syncIds    []uint32
-	outPool    sync.WorkerPool
-	inPool     sync.WorkerPool
-	timeout    time.Duration
-	quit       int64
-	log        zerolog.Logger
+	pid         uint16
+	dag         gomel.Dag
+	adder       gomel.Adder
+	netserv     network.Server
+	requests    chan uint16
+	peerManager PeerManager
+	syncIds     []uint32
+	outPool     sync.WorkerPool
+	inPool      sync.WorkerPool
+	timeout     time.Duration
+	quit        int64
+	log         zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, gomel.RequestGossip) {
+func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn, nIdle int) (sync.Server, gomel.RequestGossip) {
 	nProc := int(dag.NProc())
 	requests := make(chan uint16, 5*nOut)
 	s := &server{
-		pid:      pid,
-		dag:      dag,
-		adder:    adder,
-		netserv:  netserv,
-		requests: requests,
-		//peerSource: NewMixedPeerSource(dag.NProc(), pid, requests),
-		syncIds: make([]uint32, nProc),
-		timeout: timeout,
-		log:     log,
+		pid:         pid,
+		dag:         dag,
+		adder:       adder,
+		netserv:     netserv,
+		requests:    requests,
+		peerManager: NewPeerManager(dag.NProc(), pid, nIdle),
+		syncIds:     make([]uint32, nProc),
+		timeout:     timeout,
+		log:         log,
 	}
 	s.outPool = sync.NewPool(nOut, s.Out)
 	s.inPool = sync.NewPool(nIn, s.In)
@@ -65,6 +65,6 @@ func (s *server) StopOut() {
 
 func (s *server) trigger(pid uint16) {
 	if atomic.LoadInt64(&s.quit) == 0 {
-		s.requests <- pid
+		s.peerManager.Request(pid)
 	}
 }
