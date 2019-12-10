@@ -34,15 +34,10 @@ func (p *server) In() {
 		p.log.Error().Str("where", "gossip.in.greeting").Msg(err.Error())
 		return
 	}
-	if int(pid) >= len(p.inUse) {
+	if pid >= p.dag.NProc() {
 		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
 		return
 	}
-	m := p.inUse[pid]
-	if !m.tryAcquire() {
-		return
-	}
-	defer m.release()
 
 	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
 	conn.SetLogger(log)
@@ -161,11 +156,6 @@ func (p *server) In() {
 */
 func (p *server) Out() {
 	remotePid := p.peerSource.NextPeer()
-	m := p.inUse[remotePid]
-	if !m.tryAcquire() {
-		return
-	}
-	defer m.release()
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		return

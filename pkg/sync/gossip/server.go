@@ -20,7 +20,6 @@ type server struct {
 	netserv    network.Server
 	requests   chan uint16
 	peerSource PeerSource
-	inUse      []*mutex
 	syncIds    []uint32
 	outPool    sync.WorkerPool
 	inPool     sync.WorkerPool
@@ -32,22 +31,17 @@ type server struct {
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
 func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, gomel.RequestGossip) {
 	nProc := int(dag.NProc())
-	inUse := make([]*mutex, nProc)
-	for i := range inUse {
-		inUse[i] = newMutex()
-	}
 	requests := make(chan uint16, 5*nOut)
 	s := &server{
-		pid:        pid,
-		dag:        dag,
-		adder:      adder,
-		netserv:    netserv,
-		requests:   requests,
-		peerSource: NewMixedPeerSource(dag.NProc(), pid, requests),
-		inUse:      inUse,
-		syncIds:    make([]uint32, nProc),
-		timeout:    timeout,
-		log:        log,
+		pid:      pid,
+		dag:      dag,
+		adder:    adder,
+		netserv:  netserv,
+		requests: requests,
+		//peerSource: NewMixedPeerSource(dag.NProc(), pid, requests),
+		syncIds: make([]uint32, nProc),
+		timeout: timeout,
+		log:     log,
 	}
 	s.outPool = sync.NewPool(nOut, s.Out)
 	s.inPool = sync.NewPool(nIn, s.In)
