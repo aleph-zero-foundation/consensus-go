@@ -79,7 +79,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 			}
 			nIdle, err := strconv.Atoi(c.Params["nIdle"])
 			if err != nil {
-				return nil, err
+				nIdle = 0
 			}
 			server, trigger := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn, nIdle)
 			s.servers[i] = server
