@@ -40,10 +40,10 @@ func (p *server) In() {
 		return
 	}
 
-	if !p.peerManager.Begin(pid) {
+	if !p.peerManager.begin(pid) {
 		return
 	}
-	defer p.peerManager.Done(pid)
+	defer p.peerManager.done(pid)
 
 	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
 	conn.SetLogger(log)
@@ -161,8 +161,11 @@ func (p *server) In() {
 		10. Add the received units to the dag.
 */
 func (p *server) Out() {
-	remotePid := p.peerManager.NextPeer()
-	defer p.peerManager.Done(remotePid)
+	remotePid, ok := p.peerManager.nextPeer()
+	if !ok {
+		return
+	}
+	defer p.peerManager.done(remotePid)
 
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
