@@ -56,7 +56,7 @@ func (pm *peerManager) nextPeer() (uint16, bool) {
 				if atomic.CompareAndSwapInt64(&pm.inUse[pid], 0, 3) {
 					return pid, true
 				}
-				pm.idle <- struct{}{}
+				pm.putBack()
 			}
 		}
 		if atomic.CompareAndSwapInt64(&pm.inUse[pid], 0, 2) {
@@ -74,9 +74,7 @@ func (pm *peerManager) begin(pid uint16) bool {
 // done notifies peerManager that a single gossip with the given committee member has finished.
 func (pm *peerManager) done(pid uint16) {
 	if atomic.CompareAndSwapInt64(&pm.inUse[pid], 3, 0) {
-		if atomic.LoadInt64(&pm.quit) == 0 {
-			pm.idle <- struct{}{}
-		}
+		pm.putBack()
 		return
 	}
 	atomic.StoreInt64(&pm.inUse[pid], 0)
@@ -91,6 +89,12 @@ func (pm *peerManager) request(pid uint16) {
 	select {
 	case pm.requests <- pid:
 	default:
+	}
+}
+
+func (pm *peerManager) putBack() {
+	if atomic.LoadInt64(&pm.quit) == 0 {
+		pm.idle <- struct{}{}
 	}
 }
 
