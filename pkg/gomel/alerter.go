@@ -18,6 +18,8 @@ type Alerter interface {
 	RequestCommitment(BaseUnit, uint16) error
 	// ResolveMissingCommitment
 	ResolveMissingCommitment(error, BaseUnit, uint16) error
+	//IsForker checks whether the alerter knows that the given pid is a forker.
+	IsForker(uint16) bool
 	// Lock the state for the given process ID.
 	Lock(uint16)
 	// Unlock the state for the given process ID.
@@ -36,5 +38,6 @@ func (*nopAl) HandleIncoming(network.Connection, *sync.WaitGroup)           {}
 func (*nopAl) Disambiguate([]Unit, Preunit) (Unit, error)                   { return nil, nil }
 func (*nopAl) RequestCommitment(BaseUnit, uint16) error                     { return nil }
 func (*nopAl) ResolveMissingCommitment(e error, _ BaseUnit, _ uint16) error { return e }
+func (*nopAl) IsForker(uint16) bool                                         { return false }
 func (*nopAl) Lock(uint16)                                                  {}
 func (*nopAl) Unlock(uint16)                                                {}
