@@ -71,7 +71,7 @@ func (l *link) start() {
 			if l.isOut() {
 				l.log.Error().Uint64(logging.ID, id).Str("where", "persistent.link").Msg("incorrect conn ID")
 			} else {
-				nc := newConn(id, l.tcpLink, l.log)
+				nc := newConn(id, l, l.log)
 				nc.enqueue(buf)
 				l.addConn(nc)
 				l.queue <- nc
@@ -112,8 +112,12 @@ func (l *link) stop() {
 	l.tcpLink.Close()
 	l.tcpLink = nil
 	for _, conn := range l.conns {
-		conn.Close()
+		if atomic.CompareAndSwapInt64(&conn.closed, 0, 1) {
+			conn.sendFinished()
+			conn.finalize(false)
+		}
 	}
+	l.conns = nil
 }
 
 func (l *link) call() network.Connection {
@@ -123,7 +127,7 @@ func (l *link) call() network.Connection {
 	}
 	l.mx.Lock()
 	defer l.mx.Unlock()
-	conn := newConn(l.lastID, l.tcpLink, l.log)
+	conn := newConn(l.lastID, l, l.log)
 	l.conns[l.lastID] = conn
 	l.lastID++
 	return conn

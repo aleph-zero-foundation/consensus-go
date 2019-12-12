@@ -15,7 +15,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"net"
 	"sync/atomic"
 	"time"
 
@@ -25,7 +24,8 @@ import (
 
 const (
 	headerSize = 12
-	bufSize    = 1 << 16
+	// that way allocated slices are 16KB, which should suffice for units with ~15KB data
+	bufSize = (1 << 14) - headerSize
 )
 
 func parseHeader(header []byte) (uint64, uint32) {
@@ -50,7 +50,7 @@ func (cr *chanReader) Read(b []byte) (int, error) {
 
 type conn struct {
 	id     uint64
-	link   net.Conn
+	link   *link
 	queue  *chanReader
 	reader *bufio.Reader
 	frame  []byte
@@ -63,13 +63,13 @@ type conn struct {
 }
 
 // newConn creates a Connection with given id that wraps a tcp connection link
-func newConn(id uint64, link net.Conn, log zerolog.Logger) *conn {
+func newConn(id uint64, ln *link, log zerolog.Logger) *conn {
 	frame := make([]byte, headerSize+bufSize)
 	binary.LittleEndian.PutUint64(frame, id)
 	queue := newChanReader(32)
 	return &conn{
 		id:     id,
-		link:   link,
+		link:   ln,
 		queue:  queue,
 		reader: bufio.NewReaderSize(queue, bufSize),
 		frame:  frame,
@@ -110,7 +110,7 @@ func (c *conn) Flush() error {
 		return nil
 	}
 	binary.LittleEndian.PutUint32(c.frame[8:], uint32(c.bufLen))
-	_, err := c.link.Write(c.frame[:(headerSize + c.bufLen)])
+	_, err := c.link.tcpLink.Write(c.frame[:(headerSize + c.bufLen)])
 	if err != nil {
 		return err
 	}
@@ -120,17 +120,13 @@ func (c *conn) Flush() error {
 }
 
 func (c *conn) Close() error {
-	if !atomic.CompareAndSwapInt64(&c.closed, 0, 1) {
-		return nil
+	if atomic.CompareAndSwapInt64(&c.closed, 0, 1) {
+		err := c.sendFinished()
+		if err != nil {
+			return err
+		}
+		c.finalize(true)
 	}
-	header := make([]byte, headerSize)
-	binary.LittleEndian.PutUint64(header, c.id)
-	binary.LittleEndian.PutUint32(header[8:], 0)
-	_, err := c.link.Write(header)
-	if err != nil {
-		return err
-	}
-	c.finalize()
 	return nil
 }
 
@@ -156,13 +152,26 @@ func (c *conn) enqueue(b []byte) {
 	}
 }
 
+func (c *conn) sendFinished() error {
+	header := make([]byte, headerSize)
+	binary.LittleEndian.PutUint64(header, c.id)
+	binary.LittleEndian.PutUint32(header[8:], 0)
+	_, err := c.link.tcpLink.Write(header)
+	return err
+}
+
 func (c *conn) localClose() {
 	if atomic.CompareAndSwapInt64(&c.closed, 0, 1) {
-		c.finalize()
+		c.finalize(true)
 	}
 }
 
-func (c *conn) finalize() {
+func (c *conn) finalize(withLock bool) {
 	close(c.queue.ch)
 	c.log.Info().Int(logging.Sent, c.sent).Int(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
+	if withLock {
+		c.link.mx.Lock()
+		defer c.link.mx.Unlock()
+	}
+	delete(c.link.conns, c.id)
 }
