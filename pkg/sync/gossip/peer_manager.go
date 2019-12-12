@@ -16,6 +16,7 @@ import (
 // in absence of external requests.
 type peerManager struct {
 	nProc    uint16
+	myPid    uint16
 	inUse    []int64
 	idle     chan struct{}
 	requests chan uint16
@@ -23,7 +24,7 @@ type peerManager struct {
 }
 
 // newPeerManager constructs a peer manager for the member (identified by myPid) of a committee of size nProc.
-// idle indicates how many syncs should happen simultaneously in absence of any external requests.
+// idleCap indicates how many syncs should happen simultaneously in absence of any external requests.
 func newPeerManager(nProc, myPid uint16, idleCap int) *peerManager {
 	idle := make(chan struct{}, idleCap)
 	for i := 0; i < idleCap; i++ {
@@ -33,10 +34,20 @@ func newPeerManager(nProc, myPid uint16, idleCap int) *peerManager {
 	inUse[myPid] = 4
 	return &peerManager{
 		nProc:    nProc,
+		myPid:    myPid,
 		inUse:    inUse,
 		idle:     idle,
 		requests: make(chan uint16, 5*nProc),
 	}
+}
+
+// randomPeer returns a (uniformly) random pid other than myPid.
+func (pm *peerManager) randomPeer() uint16 {
+	pid := uint16(rand.Intn(int(pm.nProc - 1)))
+	if pid == pm.myPid {
+		return pm.nProc - 1
+	}
+	return pid
 }
 
 // nextPeer returns the pid of next committee member we should gossip with.
@@ -52,7 +63,7 @@ func (pm *peerManager) nextPeer() (uint16, bool) {
 				if !ok {
 					return 0, false
 				}
-				pid = uint16(rand.Intn(int(pm.nProc)))
+				pid = pm.randomPeer()
 				if atomic.CompareAndSwapInt64(&pm.inUse[pid], 0, 3) {
 					return pid, true
 				}
