@@ -127,8 +127,8 @@ def get_profile(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'mv cpuprof {pid}.cpuprof')
-        conn.run(f'mv memprof {pid}.memprof')
+        conn.run(f'cp cpuprof {pid}.cpuprof')
+        conn.run(f'cp memprof {pid}.memprof')
         conn.run(f'zip -q prof.zip {pid}.cpuprof {pid}.memprof')
     conn.get(f'{repo_path}/prof.zip', f'../results/{pid}.prof.zip')
 
@@ -147,7 +147,7 @@ def get_out(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'mv out {pid}.out')
+        conn.run(f'cp out {pid}.out')
         conn.run(f'zip -q {pid}.out.zip {pid}.out')
     conn.get(f'{repo_path}/{pid}.out.zip', f'../results/{pid}.out.zip')
 
@@ -157,7 +157,7 @@ def get_log(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'mv aleph.log {pid}.log')
+        conn.run(f'cp aleph.log {pid}.log')
         conn.run(f'zip -q {pid}.log.zip {pid}.log')
     conn.get(f'{repo_path}/{pid}.log.zip', f'../results/{pid}.log.zip')
 

@@ -171,6 +171,8 @@ func main() {
 		}
 	}()
 
+	fmt.Fprintf(os.Stdout, "Starting process...\n")
+
 	var dag gomel.Dag
 	dag, err = run.Process(processConfig, tds.DataSource(), ps, setupLog, log)
 	if err != nil {
@@ -201,4 +203,6 @@ func main() {
 		tests.WriteDag(out, dag)
 		out.Flush()
 	}
+
+	fmt.Fprintf(os.Stdout, "All done! :)\n")
 }
