@@ -131,7 +131,7 @@ var _ = Describe("Alert", func() {
 					ignorants++
 				}
 			}
-			Expect(ignorants).To(BeNumerically("<", 3))
+			Expect(ignorants).To(BeNumerically("<=", (nProc/3)-1))
 			// Add the correct unit everywhere to confirm that any alerts are done.
 			for j := uint16(2); j < nProc; j++ {
 				_, err = tests.AddUnit(dags[j], pu)
@@ -174,10 +174,11 @@ var _ = Describe("Alert", func() {
 				for j := uint16(2); j < nProc; j++ {
 					_, err := tests.AddUnit(dags[j], pus[1])
 					if err != nil {
+						Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
 						failed = append(failed, j)
 					}
 				}
-				Expect(len(failed)).To(BeNumerically("<", 3))
+				Expect(len(failed)).To(BeNumerically("<=", (nProc/3)-1))
 				// Ensure any alerts are done by eventually adding the unit everywhere.
 				for _, j := range failed {
 					_, err = tests.AddUnit(dags[j], pus[1])
