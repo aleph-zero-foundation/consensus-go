@@ -581,6 +581,7 @@ def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_prof=False):
             pid = ip2pid[ip]
             run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
             run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
+            run_task_for_ip('get-out', [ip], parallel=0, pids=[pid])
             if with_prof and int(pid) % 16 == 0:
                 run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
 

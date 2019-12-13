@@ -73,7 +73,7 @@ func (p *server) Out() {
 	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
 	log.Info().Msg(logging.SyncStarted)
 	conn.SetLogger(log)
-	log.Debug().Msg(logging.SendRequests)
+	log.Debug().Int(logging.Size, len(r.UnitIDs)).Msg(logging.SendRequests)
 	err = sendRequests(conn, r.UnitIDs)
 	if err != nil {
 		log.Error().Str("where", "fetch.out.sendRequests").Msg(err.Error())

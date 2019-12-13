@@ -40,4 +40,4 @@ with open(filename) as f:
 for i,row in enumerate(rows):
     print('%5d %s'%(i, ''.join([u'\u2551' if i else ' ' for i in row])))
 
-
+print(header(nproc), end='')
