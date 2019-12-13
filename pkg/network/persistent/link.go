@@ -53,8 +53,10 @@ func (l *link) start() {
 			}
 			id, size := parseHeader(hdr)
 			conn, ok := l.getConn(id)
-			if ok && size == 0 {
-				conn.localClose()
+			if size == 0 {
+				if ok {
+					conn.localClose()
+				}
 				continue
 			}
 			buf := make([]byte, size)
