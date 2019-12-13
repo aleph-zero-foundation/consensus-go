@@ -465,7 +465,7 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler):
     run_task('send-repo', regions, parallel)
 
     color_print('installing bn256 curve')
-    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel) 
+    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel)
 
     color_print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
@@ -592,7 +592,7 @@ def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_prof=False):
 
 
     color_print(f'{len(os.listdir("../results"))} files in ../results')
-    
+
     with open('data/config.json') as f:
         config = json.loads(''.join(f.readlines()))
 
@@ -612,17 +612,29 @@ def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_prof=False):
 
     color_print('zip the dir with all the files')
     with zipfile.ZipFile(result_path+'.zip', 'w') as zf:
+        # write logs
         for path in os.listdir(result_path):
             path = os.path.join(result_path, path)
             zf.write(path)
             os.remove(path)
+
+        # write config
         path = os.path.join(result_path, 'config.json')
         shutil.copyfile('data/config.json', path)
         zf.write(path)
         os.remove(path)
+
+        # write pids
         path = os.path.join(result_path, 'pids')
         with open(path, 'w') as f:
             json.dump(pids, f)
+        zf.write(path)
+        os.remove(path)
+
+        # write repo version
+        path = os.path.join(result_path, 'repo.ver')
+        with open(path, 'w') as f:
+            f.write(check_output('git rev-parse HEAD'.split()).decode())
         zf.write(path)
         os.remove(path)
 

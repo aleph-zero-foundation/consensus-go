@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"syscall"
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -88,6 +89,11 @@ func getOptions() cliOptions {
 }
 
 func main() {
+	// temporary trick to capture stdout and stderr on remote instances
+	logFile, _ := os.OpenFile("out", os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0644)
+	syscall.Dup2(int(logFile.Fd()), 1)
+	syscall.Dup2(int(logFile.Fd()), 2)
+
 	options := getOptions()
 
 	if options.delay != 0 {
