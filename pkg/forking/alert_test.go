@@ -131,7 +131,17 @@ var _ = Describe("Alert", func() {
 					ignorants++
 				}
 			}
-			Expect(ignorants).To(BeNumerically("<", 3))
+			Expect(ignorants).To(BeNumerically("<=", (nProc/3)-1))
+			// Add the correct unit everywhere to confirm that any alerts are done.
+			for j := uint16(2); j < nProc; j++ {
+				_, err = tests.AddUnit(dags[j], pu)
+				if err != nil {
+					Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
+					Eventually(func() error { return alerters[j].RequestCommitment(pu, 1) }, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+					_, err = tests.AddUnit(dags[j], pu)
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
 		})
 
 		Context("And a forker creates a fork for every process", func() {
@@ -160,14 +170,25 @@ var _ = Describe("Alert", func() {
 			It("Adds committed forking units after acquiring commitments through alerts", func() {
 				_, err := tests.AddUnit(dags[1], pus[0])
 				Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
-				failed := 0
+				failed := []uint16{}
 				for j := uint16(2); j < nProc; j++ {
 					_, err := tests.AddUnit(dags[j], pus[1])
 					if err != nil {
-						failed++
+						Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
+						failed = append(failed, j)
 					}
 				}
-				Expect(failed).To(BeNumerically("<", 3))
+				Expect(len(failed)).To(BeNumerically("<=", (nProc/3)-1))
+				// Ensure any alerts are done by eventually adding the unit everywhere.
+				for _, j := range failed {
+					_, err = tests.AddUnit(dags[j], pus[1])
+					if err != nil {
+						Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
+						Eventually(func() error { return alerters[j].RequestCommitment(pus[1], 1) }, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+						_, err = tests.AddUnit(dags[j], pus[1])
+						Expect(err).NotTo(HaveOccurred())
+					}
+				}
 			})
 		})
 	})
@@ -254,7 +275,16 @@ var _ = Describe("Alert", func() {
 				}
 				fu := dags[1].BuildUnit(childFork2, parents)
 				Expect(dags[1].Check(fu)).To(Succeed())
-				// No need to transform and insert, as they don't return errors anyway.
+				// Add one of the dealing units everywhere to confirm that any alerts are done.
+				for j := uint16(2); j < nProc; j++ {
+					_, err = tests.AddUnit(dags[j], dealingFork1)
+					if err != nil {
+						Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
+						Eventually(func() error { return alerters[j].RequestCommitment(dealingFork1, 1) }, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+						_, err = tests.AddUnit(dags[j], dealingFork1)
+						Expect(err).NotTo(HaveOccurred())
+					}
+				}
 			})
 
 			It("Adds a unit built on forks only after acquiring commitments explicitly", func() {
@@ -293,6 +323,16 @@ var _ = Describe("Alert", func() {
 				}
 				fu = dags[1].BuildUnit(unit2, parents)
 				Expect(dags[1].Check(fu)).To(Succeed())
+				// Add one of the dealing units everywhere to confirm that any alerts are done.
+				for j := uint16(2); j < nProc; j++ {
+					_, err = tests.AddUnit(dags[j], dealingFork1)
+					if err != nil {
+						Expect(err).To(MatchError("MissingCommitment: missing commitment to fork"))
+						Eventually(func() error { return alerters[j].RequestCommitment(dealingFork1, 1) }, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+						_, err = tests.AddUnit(dags[j], dealingFork1)
+						Expect(err).NotTo(HaveOccurred())
+					}
+				}
 			})
 		})
 	})
