@@ -113,10 +113,12 @@ func (l *link) stop() {
 	}
 	l.tcpLink.Close()
 	l.tcpLink = nil
-	for _, conn := range l.conns {
+	for id, conn := range l.conns {
 		if atomic.CompareAndSwapInt64(&conn.closed, 0, 1) {
 			conn.sendFinished()
-			conn.finalize(false)
+			conn.finalize()
+			// we don't call erase() here since we're already under mx.Lock()
+			delete(l.conns, id)
 		}
 	}
 	l.conns = nil

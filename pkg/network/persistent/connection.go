@@ -125,9 +125,17 @@ func (c *conn) Close() error {
 		if err != nil {
 			return err
 		}
-		c.finalize(true)
+		c.finalize()
+		c.erase()
 	}
 	return nil
+}
+
+func (c *conn) localClose() {
+	if atomic.CompareAndSwapInt64(&c.closed, 0, 1) {
+		c.finalize()
+		c.erase()
+	}
 }
 
 func (c *conn) TimeoutAfter(t time.Duration) {
@@ -160,18 +168,13 @@ func (c *conn) sendFinished() error {
 	return err
 }
 
-func (c *conn) localClose() {
-	if atomic.CompareAndSwapInt64(&c.closed, 0, 1) {
-		c.finalize(true)
-	}
-}
-
-func (c *conn) finalize(withLock bool) {
+func (c *conn) finalize() {
 	close(c.queue.ch)
 	c.log.Info().Int(logging.Sent, c.sent).Int(logging.Recv, c.recv).Uint64(logging.ID, c.id).Msg(logging.ConnectionClosed)
-	if withLock {
-		c.link.mx.Lock()
-		defer c.link.mx.Unlock()
-	}
+}
+
+func (c *conn) erase() {
+	c.link.mx.Lock()
+	defer c.link.mx.Unlock()
 	delete(c.link.conns, c.id)
 }
