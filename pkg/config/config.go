@@ -73,7 +73,7 @@ func NewDefaultConfiguration() Configuration {
 		Params: map[string]string{"network": "pers", "timeout": "2s"},
 	}, SyncConfiguration{
 		Type:   "gossip",
-		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
+		Params: map[string]string{"nIn": "20", "nOut": "15", "nIdle": "1", "timeout": "2s"},
 	},
 	}
 
@@ -85,7 +85,7 @@ func NewDefaultConfiguration() Configuration {
 		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
 	}, SyncConfiguration{
 		Type:   "gossip",
-		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
+		Params: map[string]string{"nIn": "20", "nOut": "15", "nIdle": "1", "timeout": "2s"},
 	},
 	}
 

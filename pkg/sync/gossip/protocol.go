@@ -29,20 +29,21 @@ func (p *server) In() {
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
+
 	pid, sid, err := handshake.AcceptGreeting(conn)
 	if err != nil {
 		p.log.Error().Str("where", "gossip.in.greeting").Msg(err.Error())
 		return
 	}
-	if int(pid) >= len(p.inUse) {
+	if pid >= p.dag.NProc() {
 		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
 		return
 	}
-	m := p.inUse[pid]
-	if !m.tryAcquire() {
+
+	if !p.peerManager.begin(pid) {
 		return
 	}
-	defer m.release()
+	defer p.peerManager.done(pid)
 
 	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
 	conn.SetLogger(log)
@@ -160,18 +161,19 @@ func (p *server) In() {
 		10. Add the received units to the dag.
 */
 func (p *server) Out() {
-	remotePid := p.peerSource.NextPeer()
-	m := p.inUse[remotePid]
-	if !m.tryAcquire() {
+	remotePid, ok := p.peerManager.nextPeer()
+	if !ok {
 		return
 	}
-	defer m.release()
+	defer p.peerManager.done(remotePid)
+
 	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(p.timeout)
+
 	sid := p.syncIds[remotePid]
 	p.syncIds[remotePid]++
 	err = handshake.Greet(conn, p.pid, sid)

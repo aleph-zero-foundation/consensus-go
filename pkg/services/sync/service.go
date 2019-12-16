@@ -69,16 +69,28 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 			s.servers[i] = rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
 
 		case "gossip":
-			nIn, nOut, err := parseInOut(c.Params)
+			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
 				return nil, err
 			}
-			server, trigger := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			nIn, err := strconv.Atoi(c.Params["nIn"])
+			if err != nil {
+				return nil, err
+			}
+			nIdle, err := strconv.Atoi(c.Params["nIdle"])
+			if err != nil {
+				nIdle = 0
+			}
+			server, trigger := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn, nIdle)
 			s.servers[i] = server
 			adder.SetGossip(trigger)
 
 		case "fetch":
-			nIn, nOut, err := parseInOut(c.Params)
+			nOut, err := strconv.Atoi(c.Params["nOut"])
+			if err != nil {
+				return nil, err
+			}
+			nIn, err := strconv.Atoi(c.Params["nIn"])
 			if err != nil {
 				return nil, err
 			}
@@ -161,16 +173,4 @@ func getNetServ(net string, localAddress string, remoteAddresses []string, servi
 		}
 		return netserv, services, nil
 	}
-}
-
-func parseInOut(params map[string]string) (int, int, error) {
-	nOut, err := strconv.Atoi(params["nOut"])
-	if err != nil {
-		return 0, 0, err
-	}
-	nIn, err := strconv.Atoi(params["nIn"])
-	if err != nil {
-		return 0, 0, err
-	}
-	return nIn, nOut, nil
 }

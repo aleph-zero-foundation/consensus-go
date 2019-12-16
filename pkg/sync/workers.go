@@ -32,10 +32,7 @@ func (p *pool) Start() {
 	for i := 0; i < p.size; i++ {
 		go func() {
 			defer p.wg.Done()
-			for {
-				if atomic.LoadInt64(&p.quit) > 0 {
-					return
-				}
+			for atomic.LoadInt64(&p.quit) == 0 {
 				p.work()
 			}
 		}()
