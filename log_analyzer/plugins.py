@@ -24,18 +24,24 @@ class Plugin:
 
 def multimean(datasets):
     full = []
-    stats = []
+    avgs = []
+    meds = []
     for name, data in datasets.items():
         if data:
             full += data
-            stats.append((median(data), name))
-    stats.sort()
+            avgs.append((mean(data), name))
+            meds.append((median(data), name))
+    avgs.sort()
+    meds.sort()
     if not full:
         return sadpanda
     glob = mean(full)
-    ret =  '    Average of medians: %13.2f\n' % glob
-    ret += '    Min Median: %13.2f (%s)\n' % stats[0]
-    ret += '    Max Median: %13.2f (%s)\n' % stats[-1]
+    ret =  '    Global average:     %13.2f\n' % glob
+    ret += '    Min Average:        %13.2f (%s)\n' % avgs[0]
+    ret += '    Max Average:        %13.2f (%s)\n' % avgs[-1]
+    ret += '    Average of medians: %13.2f\n' % mean(i[0] for i in meds)
+    ret += '    Min Median:         %13.2f (%s)\n' % meds[0]
+    ret += '    Max Median:         %13.2f (%s)\n' % meds[-1]
     return ret
 
 
