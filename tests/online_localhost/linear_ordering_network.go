@@ -266,7 +266,17 @@ func main() {
 		fmt.Println("Processes obtained different orderings in setup!")
 		os.Exit(1)
 	}
-	fmt.Println("Main Dags are the same up to", commonLevel(dags, int(*maxLevel)), "level. Max level is", *maxLevel)
+	cl := commonLevel(dags, int(*maxLevel))
+	fmt.Println("Main Dags are the same up to", cl, "level. Max level is", *maxLevel)
+	if cl != int(*maxLevel) {
+		for i, dag := range dags {
+			f, _ := os.Create(fmt.Sprint("dag", i, ".dag"))
+			out := bufio.NewWriter(f)
+			tests.WriteDag(out, dag)
+			out.Flush()
+			f.Close()
+		}
+	}
 	if checkOrderingFromLogs(dags[0].NProc(), "log") {
 		fmt.Println("Ordering in main is OK")
 	} else {

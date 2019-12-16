@@ -53,8 +53,10 @@ func (l *link) start() {
 			}
 			id, size := parseHeader(hdr)
 			conn, ok := l.getConn(id)
-			if ok && size == 0 {
-				conn.localClose()
+			if size == 0 {
+				if ok {
+					conn.localClose()
+				}
 				continue
 			}
 			buf := make([]byte, size)
@@ -71,7 +73,7 @@ func (l *link) start() {
 			if l.isOut() {
 				l.log.Error().Uint64(logging.ID, id).Str("where", "persistent.link").Msg("incorrect conn ID")
 			} else {
-				nc := newConn(id, l.tcpLink, l.log)
+				nc := newConn(id, l, l.log)
 				nc.enqueue(buf)
 				l.addConn(nc)
 				l.queue <- nc
@@ -111,9 +113,15 @@ func (l *link) stop() {
 	}
 	l.tcpLink.Close()
 	l.tcpLink = nil
-	for _, conn := range l.conns {
-		conn.Close()
+	for id, conn := range l.conns {
+		if atomic.CompareAndSwapInt64(&conn.closed, 0, 1) {
+			conn.sendFinished()
+			conn.finalize()
+			// we don't call erase() here since we're already under mx.Lock()
+			delete(l.conns, id)
+		}
 	}
+	l.conns = nil
 }
 
 func (l *link) call() network.Connection {
@@ -123,7 +131,7 @@ func (l *link) call() network.Connection {
 	}
 	l.mx.Lock()
 	defer l.mx.Unlock()
-	conn := newConn(l.lastID, l.tcpLink, l.log)
+	conn := newConn(l.lastID, l, l.log)
 	l.conns[l.lastID] = conn
 	l.lastID++
 	return conn
