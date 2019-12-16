@@ -28,14 +28,14 @@ def multimean(datasets):
     for name, data in datasets.items():
         if data:
             full += data
-            stats.append((mean(data), name))
+            stats.append((median(data), name))
     stats.sort()
     if not full:
         return sadpanda
     glob = mean(full)
-    ret =  '    Global Average: %13.2f\n' % glob
-    ret += '    Min Average: %13.2f (%s)\n' % stats[0]
-    ret += '    Max Average: %13.2f (%s)\n' % stats[-1]
+    ret =  '    Average of medians: %13.2f\n' % glob
+    ret += '    Min Median: %13.2f (%s)\n' % stats[0]
+    ret += '    Max Median: %13.2f (%s)\n' % stats[-1]
     return ret
 
 

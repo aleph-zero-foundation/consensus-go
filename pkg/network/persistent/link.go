@@ -111,8 +111,6 @@ func (l *link) stop() {
 	if l.tcpLink == nil {
 		return
 	}
-	l.tcpLink.Close()
-	l.tcpLink = nil
 	for id, conn := range l.conns {
 		if atomic.CompareAndSwapInt64(&conn.closed, 0, 1) {
 			conn.sendFinished()
@@ -121,6 +119,8 @@ func (l *link) stop() {
 			delete(l.conns, id)
 		}
 	}
+	l.tcpLink.Close()
+	l.tcpLink = nil
 	l.conns = nil
 }
 
