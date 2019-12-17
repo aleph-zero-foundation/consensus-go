@@ -19,7 +19,7 @@ from utils import image_id_in_region, default_region_name, init_key_pair, securi
 import warnings
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 
-N_JOBS = 4
+N_JOBS = 12
 
 #======================================================================================
 #                              routines for ips
@@ -563,7 +563,7 @@ def memory_usage(regions):
 
     return np.min(mems), np.mean(mems), np.max(mems)
 
-def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_prof=False):
+def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_out=False, with_prof=False):
     '''Retrieves all logs from instances.'''
 
     if not os.path.exists('../results'):
@@ -574,14 +574,18 @@ def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_prof=False):
         print('sth is in dir ../results; aborting')
         return
 
+    downloaded_dag = False
     for rn in regions:
         color_print(f'collecting logs in {rn}')
         collected = 0
         for ip in instances_ip_in_region(rn):
             pid = ip2pid[ip]
             run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
-            run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
-            run_task_for_ip('get-out', [ip], parallel=0, pids=[pid])
+            if not downloaded_dag:
+                run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
+                downloaded_dag = True
+            if with_out:
+                run_task_for_ip('get-out', [ip], parallel=0, pids=[pid])
             if with_prof and int(pid) % 16 == 0:
                 run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
 
