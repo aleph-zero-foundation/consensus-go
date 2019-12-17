@@ -107,7 +107,7 @@ def run_protocol_profiler(conn, pid, delay='0'):
                     --dag {pid}.dag \
                     --delay {int(float(delay))}'
         if int(pid)%16 == 0 :
-            cmd += ' --cpuprof cpuprof --memprof memprof'
+            cmd += ' --cpuprof cpuprof --memprof memprof --mf 5 --bf 5'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task

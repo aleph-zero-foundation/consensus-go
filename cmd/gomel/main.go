@@ -70,6 +70,8 @@ type cliOptions struct {
 	memProfFilename   string
 	traceFilename     string
 	dagFilename       string
+	mutexFraction     int
+	blockFraction     int
 	delay             int64
 }
 
@@ -83,6 +85,8 @@ func getOptions() cliOptions {
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
 	flag.StringVar(&result.dagFilename, "dag", "", "the name of the file to save resulting dag")
+	flag.IntVar(&result.mutexFraction, "mf", 0, "the sampling fraction of mutex contention events")
+	flag.IntVar(&result.blockFraction, "bf", 0, "the sampling fraction of goroutine blocking events")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
 	flag.Parse()
 	return result
@@ -150,6 +154,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Cpu-profile failed to start because: %s", err.Error())
 		}
 		defer pprof.StopCPUProfile()
+		runtime.SetMutexProfileFraction(options.mutexFraction)
+		runtime.SetBlockProfileRate(options.blockFraction)
 	}
 	if options.traceFilename != "" {
 		f, err := os.Create(options.traceFilename)
