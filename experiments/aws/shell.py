@@ -14,7 +14,7 @@ import boto3
 import numpy as np
 import zipfile
 
-from utils import image_id_in_region, default_region_name, init_key_pair, security_group_id_by_region, available_regions, badger_regions, generate_keys, n_processes_per_regions, color_print
+from utils import image_id_in_region, default_region, init_key_pair, security_group_id_by_region, available_regions, use_regions, generate_keys, n_processes_per_regions, color_print
 
 import warnings
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
@@ -61,8 +61,8 @@ def run_task_for_ip(task='test', ip_list=[], parallel=False, output=False, pids=
 #======================================================================================
 
 def latency_in_region(region_name):
-    if region_name == default_region_name():
-        region_name = default_region_name()
+    if region_name == default_region():
+        region_name = default_region()
 
     print('finding latency', region_name)
 
@@ -85,7 +85,7 @@ def latency_in_region(region_name):
     return latency
 
 
-def launch_new_instances_in_region(n_processes=1, region_name=default_region_name(), instance_type='t2.micro'):
+def launch_new_instances_in_region(n_processes=1, region_name=default_region(), instance_type='t2.micro'):
     '''Launches n_processes in a given region.'''
 
     print('launching instances in', region_name)
@@ -117,7 +117,7 @@ def launch_new_instances_in_region(n_processes=1, region_name=default_region_nam
     return instances
 
 
-def all_instances_in_region(region_name=default_region_name(), states=['running', 'pending']):
+def all_instances_in_region(region_name=default_region(), states=['running', 'pending']):
     '''Returns all running or pending instances in a given region.'''
 
     ec2 = boto3.resource('ec2', region_name)
@@ -130,7 +130,7 @@ def all_instances_in_region(region_name=default_region_name(), states=['running'
     return instances
 
 
-def terminate_instances_in_region(region_name=default_region_name()):
+def terminate_instances_in_region(region_name=default_region()):
     '''Terminates all running instances in a given regions.'''
 
     print(region_name, 'terminating instances')
@@ -138,7 +138,7 @@ def terminate_instances_in_region(region_name=default_region_name()):
         instance.terminate()
 
 
-def instances_ip_in_region(region_name=default_region_name()):
+def instances_ip_in_region(region_name=default_region()):
     '''Returns ips of all running or pending instances in a given region.'''
 
     ips = []
@@ -149,7 +149,7 @@ def instances_ip_in_region(region_name=default_region_name()):
     return ips
 
 
-def instances_state_in_region(region_name=default_region_name()):
+def instances_state_in_region(region_name=default_region()):
     '''Returns states of all instances in a given regions.'''
 
     print(region_name, 'collecting instances states')
@@ -161,7 +161,7 @@ def instances_state_in_region(region_name=default_region_name()):
     return states
 
 
-def run_task_in_region(task='test', region_name=default_region_name(), parallel=False, output=False, pids=None, delay=0):
+def run_task_in_region(task='test', region_name=default_region(), parallel=False, output=False, pids=None, delay=0):
     '''
     Runs a task from fabfile.py on all instances in a given region.
     :param string task: name of a task defined in fabfile.py
@@ -196,7 +196,7 @@ def run_task_in_region(task='test', region_name=default_region_name(), parallel=
         print('paramiko troubles')
 
 
-def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region_name()):
+def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region()):
     local = '../../' + path
     remote = 'go/src/gitlab.com/alephledger/consensus-go/' + path
 
@@ -210,7 +210,7 @@ def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region_nam
         print(e)
 
 
-def run_cmd_in_region(cmd='tail -f ~/go/src/gitlab.com/alephledger/consensus-go/aleph.log', region_name=default_region_name(), output=False):
+def run_cmd_in_region(cmd='tail -f ~/go/src/gitlab.com/alephledger/consensus-go/aleph.log', region_name=default_region(), output=False):
     '''
     Runs a shell command cmd on all instances in a given region.
     :param string cmd: a shell command that is run on instances
@@ -232,11 +232,11 @@ def run_cmd_in_region(cmd='tail -f ~/go/src/gitlab.com/alephledger/consensus-go/
     return results
 
 
-def wait_in_region(target_state, region_name=default_region_name()):
+def wait_in_region(target_state, region_name=default_region()):
     '''Waits until all machines in a given region reach a given state.'''
 
-    if region_name == default_region_name():
-        region_name = default_region_name()
+    if region_name == default_region():
+        region_name = default_region()
 
     print('waiting in', region_name)
 
@@ -274,7 +274,7 @@ def wait_in_region(target_state, region_name=default_region_name()):
         print()
 
 
-def installation_finished_in_region(region_name=default_region_name()):
+def installation_finished_in_region(region_name=default_region()):
     '''Checks if installation has finished on all instances in a given region.'''
 
     results = []
@@ -297,7 +297,7 @@ def exec_for_regions(func, regions='badger regions', parallel=True, pids=None, d
     if regions == 'all':
         regions = available_regions()
     if regions == 'badger regions':
-        regions = badger_regions()
+        regions = use_regions()
 
     results = []
     if parallel:
@@ -416,7 +416,7 @@ def wait_install(regions='badger regions'):
     if regions == 'all':
         regions = available_regions()
     if regions == 'badger regions':
-        regions = badger_regions()
+        regions = use_regions()
 
     wait_for_regions = regions.copy()
     while wait_for_regions:
@@ -430,13 +430,13 @@ def wait_install(regions='badger regions'):
 #                               aggregates
 #======================================================================================
 
-def run_protocol(n_processes, regions, restricted, instance_type, profiler):
+def run_protocol(n_processes, regions, restricted, instance_type, profiler, delay):
     '''Runs the protocol.'''
 
     start = time()
     parallel = n_processes > 1
-    if regions == 'badger_regions':
-        regions = badger_regions()
+    if regions == 'use_regions':
+        regions = use_regions()
     if regions == 'all':
         regions = available_regions()
 
@@ -472,7 +472,6 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler):
 
     color_print(f'establishing the environment took {round(time()-start, 2)}s')
     # run the experiment
-    delay = 120
     if profiler:
         run_task('run-protocol-profiler', regions, parallel, False, pids, time()+delay)
     else:
@@ -480,7 +479,7 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler):
 
     return pids, ip2pid
 
-def create_images(regions=badger_regions()):
+def create_images(regions=use_regions()):
     '''Creates images with golang set up for gomel.'''
 
     print('launching a machine')
@@ -665,9 +664,9 @@ restricted = {'ap-south-1':     10,  # Mumbai
               'sa-east-1':      5}   # Sao Paolo
 badger_restricted = {'ap-southeast-2': 5, 'sa-east-1': 5}
 
-rs = lambda : run_protocol(8, badger_regions(), badger_restricted, 't2.micro', False)
-rf = lambda : run_protocol(128, badger_regions(), {}, 'm4.2xlarge', True)
-mu = lambda regions=badger_regions(): memory_usage(regions)
+rs = lambda : run_protocol(8, use_regions(), badger_restricted, 't2.micro', False)
+rf = lambda : run_protocol(128, use_regions(), {}, 'm4.2xlarge', True)
+mu = lambda regions=use_regions(): memory_usage(regions)
 
 #======================================================================================
 #                                         main

@@ -1,46 +1,31 @@
 {
-		"CanSkipLevel": true,
-
-		"CreateDelay": 0.2,
-
-        "Sync": [{
-            "Type": "multicast",
-            "Params": {
-                "network": "pers",
-                "timeout": "2s"
-            }
-            }, {
-            "Type": "fetch",
-            "Params": {
-                "nIn": "10",
-                "nOut": "15",
-                "timeout": "2s"
-            }
-            }, {
-            "Type": "gossip",
-            "Params": {
-                "nIn": "2",
-                "nOut": "1",
-                "timeout": "2s"}
-        }],
-
-        "Setup": "coin",
-
-        "SyncSetup": [],
-
-		"Txpu": 1,
-
-		"LevelLimit": 50,
-
-		"LogLevel": 0,
-
-		"LogBuffer": 100000,
-
-		"LogMemInterval": 10,
-
-		"LogHuman": false,
-
-	    "OrderStartLevel": 0,
-
-		"CRPFixedPrefix": 10
+  "CanSkipLevel": true,
+  "CreateDelay": 0.1,
+  "Sync": [
+    {
+      "Type": "multicast",
+      "Params": {
+        "network": "pers",
+        "timeout": "2s"
+      }
+    },
+    {
+      "Type": "fetch",
+      "Params": {
+        "nIn": "32",
+        "nOut": "16",
+        "timeout": "2s"
+      }
+    }
+  ],
+  "Setup": "coin",
+  "SyncSetup": [],
+  "Txpu": 10,
+  "LevelLimit": 100,
+  "LogLevel": 0,
+  "LogBuffer": 1000000,
+  "LogMemInterval": 5,
+  "LogHuman": false,
+  "OrderStartLevel": 0,
+  "CRPFixedPrefix": 10
 }
