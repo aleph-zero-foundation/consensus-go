@@ -195,6 +195,7 @@ def run_task_in_region(task='test', region_name=default_region_name(), parallel=
     except Exception as e:
         print('paramiko troubles')
 
+
 def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region_name()):
     local = '../../' + path
     remote = 'go/src/gitlab.com/alephledger/consensus-go/' + path
@@ -209,7 +210,7 @@ def send_file_in_region(path='cmd/gomel/main.go', region_name=default_region_nam
         print(e)
 
 
-def run_cmd_in_region(cmd='tail -f ~/go/src/gitlab.com/alephledger/consensug-go/aleph.log', region_name=default_region_name(), output=False):
+def run_cmd_in_region(cmd='tail -f ~/go/src/gitlab.com/alephledger/consensus-go/aleph.log', region_name=default_region_name(), output=False):
     '''
     Runs a shell command cmd on all instances in a given region.
     :param string cmd: a shell command that is run on instances
@@ -372,10 +373,12 @@ def instances_state(regions='badger regions', parallel=True):
 
     return exec_for_regions(instances_state_in_region, regions, parallel)
 
+
 def send_file(path='cmd/gomel/main.go', regions='badger regions'):
     '''Sends file from specified path to all hosts in given regions.'''
 
     return exec_for_regions(partial(send_file_in_region, path), regions, True)
+
 
 def run_task(task='test', regions='badger regions', parallel=True, output=False, pids=None, delay=0):
     '''
@@ -464,9 +467,6 @@ def run_protocol(n_processes, regions, restricted, instance_type, profiler):
     call('zip -uq repo.zip ../../pkg/testdata/users.txt'.split())
     run_task('send-repo', regions, parallel)
 
-    color_print('installing bn256 curve')
-    run_cmd('PATH="$PATH:/snap/bin" && go get github.com/cloudflare/bn256', regions, parallel)
-
     color_print('send data: keys, addresses, parameters')
     run_task('send-data', regions, parallel, False, pids)
 
@@ -544,11 +544,11 @@ def create_images(regions=badger_regions()):
 
     print('\ndone')
 
-def deregister_image(regions, image_names):
+def deregister_image(regions, image_name):
     for r in regions:
         print(r)
         ec2 = boto3.resource('ec2', r)
-        images = ec2.images.filter(Filters=[{'Name':'name','Values':image_name}])
+        images = ec2.images.filter(Filters=[{'Name':'name','Values':[image_name]}])
         for i in images:
             print('   ', i.deregister())
 

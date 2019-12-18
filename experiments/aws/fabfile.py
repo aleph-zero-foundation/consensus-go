@@ -86,6 +86,7 @@ def run_protocol(conn, pid, delay='0'):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
+        conn.run('rm -f out')
         cmd = f'go run cmd/gomel/main.go \
                     --pk {pid}.pk\
                     --keys_addrs committee.ka\
@@ -100,6 +101,7 @@ def run_protocol_profiler(conn, pid, delay='0'):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
+        conn.run('rm -f out')
         cmd = f'go run cmd/gomel/main.go \
                     --pk {pid}.pk\
                     --keys_addrs committee.ka\
