@@ -255,26 +255,18 @@ def available_regions():
     return regions
 
 
-def eu_regions():
-    eu_regs = []
-    for region in available_regions():
-        if region.startswith('eu'):
-            eu_regs.append(region)
-
-    return eu_regs
-
-
 def badger_regions():
     ''' Returns regions used by hbbft in theri experiments'''
 
     return ['us-east-1', 'us-west-1', 'us-west-2', 'eu-west-1',
             'sa-east-1', 'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1']
 
+
 def use_regions():
     return ['eu-central-1', 'eu-west-1', 'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']
 
 
-def default_region_name():
+def default_region():
     ''' Helper function for getting default region name for current setup.'''
 
     return boto3.Session().region_name
@@ -288,33 +280,15 @@ def describe_instances(region_name):
         print(f'ami_launch_index={instance.ami_launch_index} state={instance.state}')
 
 
-def n_processes_per_regions(n_processes, regions=badger_regions(), restricted={'sa-east-1':5, 'ap-southeast-2':5}):
+def n_processes_per_regions(n_processes, regions=use_regions()):
     nhpr = {}
     n_left = n_processes
-    unrestricted = [r for r in regions if r not in restricted.keys()]
-    if restricted and n_processes/len(regions) > min(restricted.values()):
-        nh = n_processes
-        for r in restricted:
-            nh -= restricted[r]
-        nh //= (len(unrestricted))
-        for ur in unrestricted:
-            nhpr[ur] = nh
-            n_left -= nh
-        for r in restricted:
-            if restricted[r]:
-                nhpr[r] = restricted[r]
-                n_left -= restricted[r]
+    for r in regions:
+        nhpr[r] = n_processes // len(regions)
+        n_left -= n_processes // len(regions)
 
-        for i in range(n_left):
-            nhpr[unrestricted[i]] += 1
-
-    else:
-        for r in regions:
-            nhpr[r] = n_processes // len(regions)
-            n_left -= n_processes // len(regions)
-
-        for i in range(n_left):
-            nhpr[regions[i]] += 1
+    for i in range(n_left):
+        nhpr[regions[i]] += 1
 
     for r in regions:
         if r in nhpr and not nhpr[r]:
