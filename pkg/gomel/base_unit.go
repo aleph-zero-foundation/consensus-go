@@ -41,5 +41,5 @@ func UnitID(u BaseUnit) uint64 {
 
 // Equal checks if two units are the same.
 func Equal(u, v BaseUnit) bool {
-	return *u.Hash() == *v.Hash()
+	return u.Creator() == v.Creator() && u.Height() == v.Height() && *u.Hash() == *v.Hash()
 }
