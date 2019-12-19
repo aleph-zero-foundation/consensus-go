@@ -7,9 +7,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"gitlab.com/alephledger/consensus-go/pkg/network"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
 )
 
 var _ = Describe("Greeting", func() {

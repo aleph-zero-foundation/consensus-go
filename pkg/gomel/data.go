@@ -1,8 +1,8 @@
 package gomel
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/validator-skeleton/pkg/core"
+	"gitlab.com/alephledger/validator-skeleton/pkg/crypto/bn256"
 )
 
 // ToPreblock extracts preblock from a given timing round.

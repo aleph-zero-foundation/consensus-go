@@ -10,14 +10,14 @@ import (
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	. "gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/validator-skeleton/pkg/crypto/bn256"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
+	"gitlab.com/alephledger/validator-skeleton/pkg/rmc"
 )
 
 var _ = Describe("Alert", func() {

@@ -3,7 +3,7 @@ package gomel
 import (
 	"sync"
 
-	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
 )
 
 // Alerter is responsible for raising alerts about forks and handling communication about commitments in case of fork.

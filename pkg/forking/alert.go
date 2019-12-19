@@ -19,8 +19,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/rmc"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
+	"gitlab.com/alephledger/validator-skeleton/pkg/rmc"
 )
 
 const (
@@ -86,7 +86,6 @@ func (a *alertHandler) HandleIncoming(conn network.Connection, wg *sync.WaitGrou
 		return
 	}
 	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.ISID, id).Logger()
-	conn.SetLogger(log)
 	log.Info().Msg(logging.SyncStarted)
 
 	switch msgType {
@@ -147,7 +146,6 @@ func (a *alertHandler) sendFinished(forker, pid uint16) {
 	}
 	defer conn.Close()
 	conn.TimeoutAfter(a.timeout)
-	conn.SetLogger(log)
 	log.Info().Msg(logging.SyncStarted)
 	err = rmc.Greet(conn, a.myPid, id, finished)
 	if err != nil {
@@ -294,7 +292,6 @@ func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 		return err
 	}
 	conn.TimeoutAfter(a.timeout)
-	conn.SetLogger(log)
 	log.Info().Msg(logging.SyncStarted)
 	defer conn.Close()
 	err = rmc.Greet(conn, a.myPid, 0, request)
@@ -457,7 +454,6 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 			continue
 		}
 		conn.TimeoutAfter(a.timeout)
-		conn.SetLogger(log)
 		log.Info().Msg(logging.SyncStarted)
 		err = a.attemptGather(conn, data, id, pid)
 		if err != nil {

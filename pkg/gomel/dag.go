@@ -7,6 +7,8 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
+import "gitlab.com/alephledger/validator-skeleton/pkg/crypto"
+
 // UnitChecker is a function that performs a check on Unit before Prepare.
 type UnitChecker func(Unit) error
 
@@ -55,20 +57,15 @@ type Dag interface {
 	AfterInsert(InsertHook)
 }
 
-// IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
-func IsQuorum(nProcesses, subsetSize uint16) bool {
-	return 3*subsetSize >= 2*nProcesses
-}
-
 // MinimalQuorum is the minimal possible size of a subset forming a quorum within nProcesses.
 func MinimalQuorum(nProcesses uint16) uint16 {
-	return nProcesses - nProcesses/3
+	return uint16(crypto.MinimalQuorum(int(nProcesses)))
 }
 
 // MinimalTrusted is the minimal size of a subset of nProcesses, that guarantees
 // that the subset contains at least one honest process.
 func MinimalTrusted(nProcesses uint16) uint16 {
-	return nProcesses/3 + 1
+	return uint16(crypto.MinimalTrusted(int(nProcesses)))
 }
 
 // MaxView returns a slice of NProc integers containing, for each creator, the maximal height of a unit produced by that creator.

@@ -9,7 +9,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
 )
 
 // Greet sends a greeting to the given conn.

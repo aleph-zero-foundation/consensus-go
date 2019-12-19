@@ -5,8 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/rs/zerolog"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
 )
 
 type connection struct {
@@ -35,12 +34,6 @@ func (c *connection) Close() error {
 }
 
 func (c *connection) TimeoutAfter(time.Duration) {}
-
-func (c *connection) Log() zerolog.Logger {
-	return zerolog.Nop()
-}
-
-func (c *connection) SetLogger(zerolog.Logger) {}
 
 // NewConnection creates a pipe simulating a pair of network connections.
 func NewConnection() (network.Connection, network.Connection) {

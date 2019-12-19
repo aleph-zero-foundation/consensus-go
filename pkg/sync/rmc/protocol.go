@@ -8,9 +8,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
+	rmcbox "gitlab.com/alephledger/validator-skeleton/pkg/rmc"
 )
 
 func (p *server) multicast(unit gomel.Unit) {
@@ -89,7 +89,6 @@ func (p *server) getMemberSignature(data []byte, id uint64, receipient uint16, g
 			continue
 		}
 		conn.TimeoutAfter(p.timeout)
-		conn.SetLogger(log)
 		log.Info().Msg(logging.SyncStarted)
 		err = p.attemptGather(conn, data, id, receipient)
 		if err == nil {
@@ -153,7 +152,6 @@ func (p *server) in() {
 		return
 	}
 	log := p.log.With().Uint16(logging.PID, pid).Uint64(logging.ISID, id).Logger()
-	conn.SetLogger(log)
 	log.Info().Msg(logging.SyncStarted)
 
 	switch msgType {

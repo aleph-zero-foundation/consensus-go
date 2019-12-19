@@ -7,7 +7,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
 )
 
 // Request is a query for fetch server to perform a sync with the given process and request particular units.

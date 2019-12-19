@@ -11,9 +11,9 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/validator-skeleton/pkg/network"
+	rmcbox "gitlab.com/alephledger/validator-skeleton/pkg/rmc"
 )
 
 const (
