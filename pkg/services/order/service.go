@@ -83,8 +83,6 @@ func (s *service) extendOrder() {
 		}
 		s.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
 	}
-	close(s.orderedUnits)
-	s.wg.Done()
 }
 
 func (s *service) Start() error {
