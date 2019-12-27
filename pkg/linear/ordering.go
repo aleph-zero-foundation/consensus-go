@@ -73,7 +73,7 @@ func (o *ordering) DecideTiming() gomel.TimingRound {
 	}
 
 	previousTU := o.currentTU
-	var result gomel.Unit
+	decided := false
 	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
 		decision, decidedOn := o.decider.decideUnitIsPopular(uc, dagMaxLevel)
 		if decision == popular {
@@ -85,7 +85,7 @@ func (o *ordering) DecideTiming() gomel.TimingRound {
 			o.decider = nil
 			o.lastDecideResult = true
 
-			result = uc
+			decided = true
 			return false
 		}
 		if decision == undecided {
@@ -93,7 +93,7 @@ func (o *ordering) DecideTiming() gomel.TimingRound {
 		}
 		return true
 	})
-	if result == nil {
+	if !decided {
 		return nil
 	}
 	return &timingRound{
@@ -111,6 +111,9 @@ func (tr *timingRound) TimingUnit() gomel.Unit {
 	return tr.currentTU
 }
 
+// NOTE we can prove that comparing with last k timing units, where k is the first round for which the deterministic
+// common vote is zero, is enough to verify if a unit was already ordered. Since the common vote for round k is 0,
+// every unit on level tu.Level()+k must be above a timing unit tu, otherwise some unit would decide 0 for it.
 func checkIfAlreadyOrdered(u gomel.Unit, prevTUs []gomel.Unit) bool {
 	if prevTU := prevTUs[len(prevTUs)-1]; prevTU == nil || u.Level() > prevTU.Level() {
 		return false
@@ -141,10 +144,6 @@ func getAntichainLayers(tu gomel.Unit, prevTUs []gomel.Unit) [][]gomel.Unit {
 			if uParent == nil {
 				continue
 			}
-			// check if it was already processed
-			// NOTE we can prove that comparing with last k timing units, where k is the first round for which the deterministic
-			// common vote is zero, is enough to verify if a unit was already ordered. Since the common vote for round k is 0,
-			// every unit on level tu.Level()+k must be above a timing unit tu, otherwise some unit would decide 0 for it.
 			if checkIfAlreadyOrdered(uParent, prevTUs) {
 				continue
 			}
@@ -195,9 +194,7 @@ func mergeLayers(layers [][]gomel.Unit) []gomel.Unit {
 	return sortedUnits
 }
 
-// TimingRound establishes the linear ordering on the units in the currently decided timing round and returns them.
-// If the timing decision has not yet been taken it returns nil.
-func (tr *timingRound) TimingRound() []gomel.Unit {
+func (tr *timingRound) OrderedUnits() []gomel.Unit {
 	layers := getAntichainLayers(tr.currentTU, tr.lastTUs)
 	sortedUnits := mergeLayers(layers)
 	return sortedUnits

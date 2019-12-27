@@ -11,6 +11,6 @@ type LinearOrdering interface {
 type TimingRound interface {
 	// TimingUnit returns a timing unit selected for this round.
 	TimingUnit() Unit
-	// TimingRound establishes the linear ordering on the units in this timing round and returns them.
-	TimingRound() []Unit
+	// OrderedUnits establishes the linear ordering of the units in this timing round and returns them.
+	OrderedUnits() []Unit
 }

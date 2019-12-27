@@ -12,14 +12,14 @@ import (
 )
 
 type service struct {
-	pid                 uint16
-	linearOrdering      gomel.LinearOrdering
-	extendOrderRequests chan gomel.TimingRound
-	orderedUnits        chan<- []gomel.Unit
-	primeAlert          <-chan struct{}
-	exitChan            chan struct{}
-	wg                  sync.WaitGroup
-	log                 zerolog.Logger
+	pid            uint16
+	linearOrdering gomel.LinearOrdering
+	timingRounds   chan gomel.TimingRound
+	orderedUnits   chan<- []gomel.Unit
+	primeAlert     <-chan struct{}
+	exitChan       chan struct{}
+	wg             sync.WaitGroup
+	log            zerolog.Logger
 }
 
 // NewService constructs an ordering service.
@@ -29,13 +29,13 @@ type service struct {
 func NewService(dag gomel.Dag, randomSource gomel.RandomSource, conf *config.Order, orderedUnits chan<- []gomel.Unit, log zerolog.Logger) gomel.Service {
 	primeAlert := make(chan struct{}, 1)
 	s := &service{
-		pid:                 conf.Pid,
-		linearOrdering:      linear.NewOrdering(dag, randomSource, conf.OrderStartLevel, conf.CRPFixedPrefix, log),
-		orderedUnits:        orderedUnits,
-		extendOrderRequests: make(chan gomel.TimingRound, 10),
-		primeAlert:          primeAlert,
-		exitChan:            make(chan struct{}),
-		log:                 log,
+		pid:            conf.Pid,
+		linearOrdering: linear.NewOrdering(dag, randomSource, conf.OrderStartLevel, conf.CRPFixedPrefix, log),
+		orderedUnits:   orderedUnits,
+		timingRounds:   make(chan gomel.TimingRound, 10),
+		primeAlert:     primeAlert,
+		exitChan:       make(chan struct{}),
+		log:            log,
 	}
 
 	alertIfPrime := func(u gomel.Unit) {
@@ -52,13 +52,16 @@ func NewService(dag gomel.Dag, randomSource gomel.RandomSource, conf *config.Ord
 }
 
 func (s *service) attemptOrdering() {
-	defer close(s.extendOrderRequests)
 	defer s.wg.Done()
+	defer close(s.timingRounds)
+
 	for {
 		select {
 		case <-s.primeAlert:
-			for round := s.linearOrdering.DecideTiming(); round != nil; round = s.linearOrdering.DecideTiming() {
-				s.extendOrderRequests <- round
+			round := s.linearOrdering.DecideTiming()
+			for round != nil {
+				s.timingRounds <- round
+				round = s.linearOrdering.DecideTiming()
 			}
 		case <-s.exitChan:
 			return
@@ -67,8 +70,11 @@ func (s *service) attemptOrdering() {
 }
 
 func (s *service) extendOrder() {
-	for round := range s.extendOrderRequests {
-		units := round.TimingRound()
+	defer s.wg.Done()
+	defer close(s.orderedUnits)
+
+	for round := range s.timingRounds {
+		units := round.OrderedUnits()
 		s.orderedUnits <- units
 		for _, u := range units {
 			if u.Creator() == s.pid {

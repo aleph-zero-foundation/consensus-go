@@ -340,7 +340,7 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 		level := generalConfig.OrderStartLevel
 		timingRound := ordering.DecideTiming()
 		for ; timingRound != nil; timingRound = ordering.DecideTiming() {
-			orderedUnits := timingRound.TimingRound()
+			orderedUnits := timingRound.OrderedUnits()
 			for _, unit := range orderedUnits {
 				units <- unit
 			}
