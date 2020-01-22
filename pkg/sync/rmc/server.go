@@ -12,8 +12,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network"
-	rmcbox "gitlab.com/alephledger/validator-skeleton/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
 const (

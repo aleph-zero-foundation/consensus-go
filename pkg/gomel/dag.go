@@ -7,7 +7,7 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
-import "gitlab.com/alephledger/validator-skeleton/pkg/crypto"
+import "gitlab.com/alephledger/core-go/pkg/crypto"
 
 // UnitChecker is a function that performs a check on Unit before Prepare.
 type UnitChecker func(Unit) error

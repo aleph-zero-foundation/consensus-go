@@ -17,7 +17,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
-	"gitlab.com/alephledger/validator-skeleton/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 func getMember(filename string) (*config.Member, error) {

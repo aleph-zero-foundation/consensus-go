@@ -16,7 +16,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
-	"gitlab.com/alephledger/validator-skeleton/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 const (

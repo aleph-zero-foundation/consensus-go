@@ -14,7 +14,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
-	"gitlab.com/alephledger/validator-skeleton/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 type coin struct {

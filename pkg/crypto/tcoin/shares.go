@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"sync"
 
-	"gitlab.com/alephledger/validator-skeleton/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 // Marshal returns byte representation of the given coin share in the following form

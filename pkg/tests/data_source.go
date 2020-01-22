@@ -3,7 +3,7 @@ package tests
 import (
 	"crypto/rand"
 
-	"gitlab.com/alephledger/validator-skeleton/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 // TestDataSource is a data source for testing without proper data source.

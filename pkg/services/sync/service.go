@@ -14,11 +14,11 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/rmc"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network/persistent"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network/tcp"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network/udp"
-	rmcbox "gitlab.com/alephledger/validator-skeleton/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/network/persistent"
+	"gitlab.com/alephledger/core-go/pkg/network/tcp"
+	"gitlab.com/alephledger/core-go/pkg/network/udp"
+	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
 type service struct {

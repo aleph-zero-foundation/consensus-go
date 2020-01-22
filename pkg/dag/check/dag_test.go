@@ -8,7 +8,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
-	"gitlab.com/alephledger/validator-skeleton/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 type preunitMock struct {

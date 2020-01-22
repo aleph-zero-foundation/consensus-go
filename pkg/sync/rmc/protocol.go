@@ -9,8 +9,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network"
-	rmcbox "gitlab.com/alephledger/validator-skeleton/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
 func (p *server) multicast(unit gomel.Unit) {

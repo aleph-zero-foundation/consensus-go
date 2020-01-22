@@ -1,6 +1,6 @@
 package gomel
 
-import "gitlab.com/alephledger/validator-skeleton/pkg/core"
+import "gitlab.com/alephledger/core-go/pkg/core"
 
 // BaseUnit defines the most general interface for units.
 type BaseUnit interface {

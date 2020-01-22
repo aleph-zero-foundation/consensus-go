@@ -16,7 +16,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
 	"gitlab.com/alephledger/consensus-go/pkg/services/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
-	"gitlab.com/alephledger/validator-skeleton/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 func stop(services ...gomel.Service) {

@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/network"
 )
 
 type server struct {

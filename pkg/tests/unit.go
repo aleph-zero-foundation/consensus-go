@@ -2,7 +2,7 @@ package tests
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/validator-skeleton/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 type unit struct {

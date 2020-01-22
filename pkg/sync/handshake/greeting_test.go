@@ -8,8 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
-	"gitlab.com/alephledger/consensus-go/pkg/tests"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 var _ = Describe("Greeting", func() {
@@ -19,7 +19,7 @@ var _ = Describe("Greeting", func() {
 	)
 
 	BeforeEach(func() {
-		servs = tests.NewNetwork(2)
+		servs = ctests.NewNetwork(2)
 	})
 
 	Context("correctly", func() {

@@ -12,7 +12,8 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
-	"gitlab.com/alephledger/validator-skeleton/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 type testServer interface {
@@ -47,11 +48,11 @@ var _ = Describe("Protocol", func() {
 	)
 
 	BeforeEach(func() {
-		netservs = tests.NewNetwork(4)
+		netservs = ctests.NewNetwork(4)
 	})
 
 	AfterEach(func() {
-		tests.CloseNetwork(netservs)
+		ctests.CloseNetwork(netservs)
 	})
 
 	JustBeforeEach(func() {
