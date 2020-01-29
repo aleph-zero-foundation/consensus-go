@@ -238,7 +238,7 @@ func ComputeLevel(dag gomel.Dag, parents []gomel.Unit) int {
 				break
 			}
 		}
-		if !pidFound && !dag.IsQuorum(nSeen+(nProc-(uint16(pid)+1))) {
+		if !pidFound && !dag.IsQuorum(nSeen+(nProc-(pid+1))) {
 			break
 		}
 	}
@@ -336,15 +336,15 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 	units := make(chan gomel.Unit)
 	go func() {
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, int(generalConfig.OrderStartLevel), generalConfig.CRPFixedPrefix, logger)
-		level := 0
-		orderedUnits := ordering.TimingRound(level)
-		for orderedUnits != nil {
+		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
+		level := generalConfig.OrderStartLevel
+		timingRound := ordering.NextRound()
+		for ; timingRound != nil; timingRound = ordering.NextRound() {
+			orderedUnits := timingRound.OrderedUnits()
 			for _, unit := range orderedUnits {
 				units <- unit
 			}
 			level++
-			orderedUnits = ordering.TimingRound(level)
 		}
 		dagLevel := dagLevel(dag)
 		fmt.Printf("Dag's no %d max level: %d", pid, dagLevel)
@@ -361,12 +361,16 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
 		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
-		level := 0
-		timingUnit := ordering.DecideTiming()
-		for timingUnit != nil {
+		level := generalConfig.OrderStartLevel
+		timingRound := ordering.NextRound()
+
+		for ; timingRound != nil; timingRound = ordering.NextRound() {
+			timingUnit := timingRound.TimingUnit()
+			if timingUnit.Level() != level {
+				panic(fmt.Sprint("invalid level of a timing unit - expected", level, "received", timingUnit.Level()))
+			}
 			units <- timingUnit
 			level++
-			timingUnit = ordering.DecideTiming()
 		}
 		fmt.Printf("maximal decided level of dag no %d: %d", pid, level)
 		fmt.Println()

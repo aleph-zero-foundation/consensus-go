@@ -11,15 +11,15 @@ import (
 
 // Ordering is an implementation of LinearOrdering interface.
 type ordering struct {
-	dag                 gomel.Dag
-	randomSource        gomel.RandomSource
-	timingUnits         *safeUnitSlice
-	unitPositionInOrder map[gomel.Hash]int
-	orderedUnits        []gomel.Unit
-	orderStartLevel     int
-	crpFixedPrefix      uint16
-	decider             *superMajorityDecider
-	log                 zerolog.Logger
+	lastDecideResult bool
+	orderStartLevel  int
+	crpFixedPrefix   uint16
+	dag              gomel.Dag
+	randomSource     gomel.RandomSource
+	currentTU        gomel.Unit
+	lastTUs          []gomel.Unit
+	decider          *superMajorityDecider
+	log              zerolog.Logger
 }
 
 // NewOrdering creates an Ordering wrapper around a given dag.
@@ -28,15 +28,13 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpF
 	stdDecider := newSuperMajorityDecider(dag, rs)
 
 	return &ordering{
-		dag:                 dag,
-		randomSource:        rs,
-		timingUnits:         newSafeUnitSlice(orderStartLevel),
-		unitPositionInOrder: make(map[gomel.Hash]int),
-		orderedUnits:        []gomel.Unit{},
-		orderStartLevel:     orderStartLevel,
-		crpFixedPrefix:      crpFixedPrefix,
-		decider:             stdDecider,
-		log:                 log,
+		dag:             dag,
+		randomSource:    rs,
+		orderStartLevel: orderStartLevel,
+		crpFixedPrefix:  crpFixedPrefix,
+		lastTUs:         make([]gomel.Unit, stdDecider.firstRoundZeroForCommonVote),
+		decider:         stdDecider,
+		log:             log,
 	}
 }
 
@@ -55,26 +53,39 @@ func dagMaxLevel(dag gomel.Dag) int {
 }
 
 // DecideTiming tries to pick the next timing unit. Returns nil if it cannot be decided yet.
-func (o *ordering) DecideTiming() gomel.Unit {
-	level := o.timingUnits.length()
+func (o *ordering) NextRound() gomel.TimingRound {
+	if o.lastDecideResult {
+		o.lastDecideResult = false
+		o.decider = newSuperMajorityDecider(o.dag, o.randomSource)
+	}
 
 	dagMaxLevel := dagMaxLevel(o.dag)
+	if dagMaxLevel < o.orderStartLevel {
+		return nil
+	}
+
+	level := o.orderStartLevel
+	if o.currentTU != nil {
+		level = o.currentTU.Level() + 1
+	}
 	if dagMaxLevel < level+firstDecidingRound {
 		return nil
 	}
 
-	var previousTU gomel.Unit
-	if level > o.orderStartLevel {
-		previousTU = o.timingUnits.get(level - 1)
-	}
-
-	var result gomel.Unit
+	previousTU := o.currentTU
+	decided := false
 	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
 		decision, decidedOn := o.decider.decideUnitIsPopular(uc, dagMaxLevel)
 		if decision == popular {
 			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagMaxLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
-			o.timingUnits.appendOrIgnore(level, uc)
-			result = uc
+
+			o.lastTUs = o.lastTUs[1:]
+			o.lastTUs = append(o.lastTUs, o.currentTU)
+			o.currentTU = uc
+			o.decider = nil
+			o.lastDecideResult = true
+
+			decided = true
 			return false
 		}
 		if decision == undecided {
@@ -82,7 +93,37 @@ func (o *ordering) DecideTiming() gomel.Unit {
 		}
 		return true
 	})
-	return result
+	if !decided {
+		return nil
+	}
+	return &timingRound{
+		currentTU: o.currentTU,
+		lastTUs:   o.lastTUs,
+	}
+}
+
+type timingRound struct {
+	currentTU gomel.Unit
+	lastTUs   []gomel.Unit
+}
+
+func (tr *timingRound) TimingUnit() gomel.Unit {
+	return tr.currentTU
+}
+
+// NOTE we can prove that comparing with last k timing units, where k is the first round for which the deterministic
+// common vote is zero, is enough to verify if a unit was already ordered. Since the common vote for round k is 0,
+// every unit on level tu.Level()+k must be above a timing unit tu, otherwise some unit would decide 0 for it.
+func checkIfAlreadyOrdered(u gomel.Unit, prevTUs []gomel.Unit) bool {
+	if prevTU := prevTUs[len(prevTUs)-1]; prevTU == nil || u.Level() > prevTU.Level() {
+		return false
+	}
+	for it := len(prevTUs) - 1; it >= 0; it-- {
+		if gomel.Above(prevTUs[it], u) {
+			return true
+		}
+	}
+	return false
 }
 
 // getAntichainLayers for a given timing unit tu, returns all the units in its timing round
@@ -90,7 +131,7 @@ func (o *ordering) DecideTiming() gomel.Unit {
 // 0-th layer is formed by minimal units in this timing round.
 // 1-st layer is formed by minimal units when the 0th layer is removed.
 // etc.
-func (o *ordering) getAntichainLayers(tu gomel.Unit) [][]gomel.Unit {
+func getAntichainLayers(tu gomel.Unit, prevTUs []gomel.Unit) [][]gomel.Unit {
 	unitToLayer := make(map[gomel.Hash]int)
 	seenUnits := make(map[gomel.Hash]bool)
 	result := [][]gomel.Unit{}
@@ -103,8 +144,7 @@ func (o *ordering) getAntichainLayers(tu gomel.Unit) [][]gomel.Unit {
 			if uParent == nil {
 				continue
 			}
-			if _, ok := o.unitPositionInOrder[*uParent.Hash()]; ok {
-				// uParent was already ordered and doesn't belong to this timing round
+			if checkIfAlreadyOrdered(uParent, prevTUs) {
 				continue
 			}
 			if !seenUnits[*uParent.Hash()] {
@@ -154,32 +194,8 @@ func mergeLayers(layers [][]gomel.Unit) []gomel.Unit {
 	return sortedUnits
 }
 
-// TimingRound establishes the linear ordering on the units in the timing round r and returns them.
-// If the timing decision has not yet been taken it returns nil.
-func (o *ordering) TimingRound(r int) []gomel.Unit {
-	if o.timingUnits.length() <= r {
-		return nil
-	}
-	timingUnit := o.timingUnits.get(r)
-
-	// If we already ordered this unit we can read the answer from orderedUnits
-	if roundEnds, alreadyOrdered := o.unitPositionInOrder[*timingUnit.Hash()]; alreadyOrdered {
-		roundBegins := 0
-		if r != o.orderStartLevel {
-			roundBegins = o.unitPositionInOrder[*o.timingUnits.get(r - 1).Hash()] + 1
-		}
-		return o.orderedUnits[roundBegins:(roundEnds + 1)]
-	}
-
-	layers := o.getAntichainLayers(timingUnit)
+func (tr *timingRound) OrderedUnits() []gomel.Unit {
+	layers := getAntichainLayers(tr.currentTU, tr.lastTUs)
 	sortedUnits := mergeLayers(layers)
-
-	// updating orderedUnits, unitPositionInOrder
-	nAlreadyOrdered := len(o.unitPositionInOrder)
-	for i, u := range sortedUnits {
-		o.orderedUnits = append(o.orderedUnits, u)
-		o.unitPositionInOrder[*u.Hash()] = nAlreadyOrdered + i
-	}
-
 	return sortedUnits
 }
