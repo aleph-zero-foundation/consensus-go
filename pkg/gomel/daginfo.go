@@ -21,7 +21,7 @@ func MaxView(dag Dag) *DagInfo {
 		return true
 	})
 	return &DagInfo{
-		Epoch:   0, // TODO!
+		Epoch:   0, // SHALL BE DONE!
 		Heights: heights,
 	}
 }
