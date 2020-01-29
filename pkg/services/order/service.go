@@ -71,7 +71,6 @@ func (s *service) attemptOrdering() {
 
 func (s *service) extendOrder() {
 	defer s.wg.Done()
-	defer close(s.orderedUnits)
 
 	for round := range s.timingRounds {
 		units := round.OrderedUnits()

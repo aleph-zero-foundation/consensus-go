@@ -20,7 +20,10 @@ type Preblock struct {
 }
 
 // PreblockSink is an output of the aleph protocol.
-type PreblockSink chan<- *Preblock
+// NOTE: we assume that after call to this function finishes we are free to clean up all data required to generate
+// the handled Preblock. After this it is gomel's caller responsibility to handle all requests to any data related
+// with this Preblock.
+type PreblockSink chan<- func(func(*Preblock))
 
 // PreblockSource is a source of preblocks.
 type PreblockSource <-chan *Preblock
