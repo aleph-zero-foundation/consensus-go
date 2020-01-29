@@ -21,7 +21,7 @@ var _ = Describe("Ordering", func() {
 		rs       gomel.RandomSource
 		err      error
 	)
-	Describe("DecideTiming", func() {
+	Describe("NextRound", func() {
 		Context("On empty dag on level 0", func() {
 			It("should return nil", func() {
 				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
@@ -29,7 +29,7 @@ var _ = Describe("Ordering", func() {
 				rs = tests.NewTestRandomSource()
 				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
-				Expect(ordering.DecideTiming()).To(BeNil())
+				Expect(ordering.NextRound()).To(BeNil())
 			})
 		})
 		Context("On a dag with only dealing units on level 0", func() {
@@ -39,7 +39,7 @@ var _ = Describe("Ordering", func() {
 				rs = tests.NewTestRandomSource()
 				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
-				Expect(ordering.DecideTiming()).To(BeNil())
+				Expect(ordering.NextRound()).To(BeNil())
 			})
 		})
 		Context("On a very regular dag with 4 processes and 10 levels defined in regular.txt file", func() {
@@ -52,9 +52,9 @@ var _ = Describe("Ordering", func() {
 			})
 			It("should decide up to 8th level", func() {
 				for level := 0; level < 8; level++ {
-					Expect(ordering.DecideTiming()).NotTo(BeNil())
+					Expect(ordering.NextRound()).NotTo(BeNil())
 				}
-				Expect(ordering.DecideTiming()).To(BeNil())
+				Expect(ordering.NextRound()).To(BeNil())
 			})
 		})
 	})
@@ -68,7 +68,7 @@ var _ = Describe("Ordering", func() {
 				rs = tests.NewTestRandomSource()
 				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
-				timingRound := ordering.DecideTiming()
+				timingRound := ordering.NextRound()
 				Expect(timingRound).To(BeNil())
 			})
 		})
@@ -80,13 +80,13 @@ var _ = Describe("Ordering", func() {
 				rs.Bind(dag)
 				ordering = NewOrdering(dag, rs, 0, crpFixedPrefix, zerolog.Nop())
 				for level := 0; level < 8; level++ {
-					timingRound := ordering.DecideTiming()
+					timingRound := ordering.NextRound()
 					Expect(timingRound).NotTo(BeNil())
 					thisRound := timingRound.OrderedUnits()
 					Expect(thisRound).NotTo(BeNil())
 					timingRounds = append(timingRounds, thisRound)
 				}
-				timingRound := ordering.DecideTiming()
+				timingRound := ordering.NextRound()
 				Expect(timingRound).To(BeNil())
 			})
 			It("should on each level choose timing unit on this level", func() {

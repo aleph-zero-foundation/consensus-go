@@ -338,8 +338,8 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
 		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
 		level := generalConfig.OrderStartLevel
-		timingRound := ordering.DecideTiming()
-		for ; timingRound != nil; timingRound = ordering.DecideTiming() {
+		timingRound := ordering.NextRound()
+		for ; timingRound != nil; timingRound = ordering.NextRound() {
 			orderedUnits := timingRound.OrderedUnits()
 			for _, unit := range orderedUnits {
 				units <- unit
@@ -362,9 +362,9 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
 		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
 		level := generalConfig.OrderStartLevel
-		timingRound := ordering.DecideTiming()
+		timingRound := ordering.NextRound()
 
-		for ; timingRound != nil; timingRound = ordering.DecideTiming() {
+		for ; timingRound != nil; timingRound = ordering.NextRound() {
 			timingUnit := timingRound.TimingUnit()
 			if timingUnit.Level() != level {
 				panic(fmt.Sprint("invalid level of a timing unit - expected", level, "received", timingUnit.Level()))

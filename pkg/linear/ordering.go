@@ -53,7 +53,7 @@ func dagMaxLevel(dag gomel.Dag) int {
 }
 
 // DecideTiming tries to pick the next timing unit. Returns nil if it cannot be decided yet.
-func (o *ordering) DecideTiming() gomel.TimingRound {
+func (o *ordering) NextRound() gomel.TimingRound {
 	if o.lastDecideResult {
 		o.lastDecideResult = false
 		o.decider = newSuperMajorityDecider(o.dag, o.randomSource)

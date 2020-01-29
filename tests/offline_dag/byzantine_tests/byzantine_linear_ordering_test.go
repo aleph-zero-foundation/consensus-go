@@ -1227,10 +1227,10 @@ func testLongTimeUndecidedStrategy() error {
 					logger,
 				)
 
-				for tu := ordering.DecideTiming(); tu != nil && tu.TimingUnit().Level() < int(startLevel)-1; {
-					tu = ordering.DecideTiming()
+				for tu := ordering.NextRound(); tu != nil && tu.TimingUnit().Level() < int(startLevel)-1; {
+					tu = ordering.NextRound()
 				}
-				if timingRound := ordering.DecideTiming(); timingRound != nil && timingRound.TimingUnit().Level() >= startLevel {
+				if timingRound := ordering.NextRound(); timingRound != nil && timingRound.TimingUnit().Level() >= startLevel {
 					timingUnit := timingRound.TimingUnit()
 					fmt.Println("some dag already decided - error", "level:", timingUnit.Level(), "creator:", timingUnit.Creator())
 					errorsCount++
