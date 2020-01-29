@@ -58,11 +58,14 @@ func (e *enc) encodeUnit(unit gomel.BaseUnit) error {
 		_, err := e.Write(data)
 		return err
 	}
-	data := make([]byte, 2+64)
+	data := make([]byte, 2+8+64)
 	s := 0
 	creator := uint16(unit.Creator())
 	binary.LittleEndian.PutUint16(data[s:s+2], creator)
 	s += 2
+	epochID := uint64(unit.EpochID())
+	binary.LittleEndian.PutUint64(data[s:s+8], epochID)
+	s += 8
 	copy(data[s:s+64], unit.Signature())
 	_, err := e.Write(data)
 	if err != nil {

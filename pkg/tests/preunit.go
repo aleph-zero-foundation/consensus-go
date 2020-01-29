@@ -11,6 +11,7 @@ import (
 
 type preunit struct {
 	creator        uint16
+	epochID        gomel.EpochID
 	parentsHeights []int
 	signature      gomel.Signature
 	crown          gomel.Crown
@@ -31,6 +32,10 @@ func NewPreunit(creator uint16, crown *gomel.Crown, data gomel.Data, rsData []by
 	pu.computeHash()
 
 	return pu
+}
+
+func (pu *preunit) EpochID() gomel.EpochID {
+	return pu.epochID
 }
 
 // RandomSourceData is the random source data embedded in this preunit.
@@ -79,6 +84,8 @@ func (pu *preunit) computeHash() {
 	creatorBytes := make([]byte, 2)
 	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
 	data.Write(creatorBytes)
+	epochID := pu.EpochID().Serialize()
+	data.Write(epochID)
 	data.Write(pu.data)
 	data.Write(pu.rsData)
 	heightBytes := make([]byte, 4)

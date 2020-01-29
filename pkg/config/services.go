@@ -10,19 +10,20 @@ import (
 
 // Config represents a complete configuration needed for a process to start.
 type Config struct {
-	NProc         uint16
-	Alert         *Alert
-	Sync          []*Sync
-	SyncSetup     []*Sync
-	Create        *Create
-	CreateSetup   *Create
-	Order         *Order
-	OrderSetup    *Order
-	MemLog        int
-	Setup         string
-	P2PPublicKeys []*p2p.PublicKey
-	P2PSecretKey  *p2p.SecretKey
-	PublicKeys    []gomel.PublicKey
+	NProc            uint16
+	Alert            *Alert
+	Sync             []*Sync
+	SyncSetup        []*Sync
+	Create           *Create
+	CreateSetup      *Create
+	Order            *Order
+	OrderSetup       *Order
+	MemLog           int
+	Setup            string
+	P2PPublicKeys    []*p2p.PublicKey
+	P2PSecretKey     *p2p.SecretKey
+	PublicKeys       []gomel.PublicKey
+	StartingPreblock gomel.PreblockID
 }
 
 // Alert represents a complete configuration needed for an alert system to start.

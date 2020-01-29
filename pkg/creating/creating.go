@@ -24,9 +24,9 @@ func getPredecessor(mu gomel.SlottedUnits, creator uint16) gomel.Unit {
 }
 
 // newDealingUnit creates a new preunit with the given creator and no parents.
-func newDealingUnit(creator, NProc uint16, data []byte, rs gomel.RandomSource) gomel.Preunit {
+func newDealingUnit(creator, NProc uint16, epochID gomel.EpochID, data []byte, rs gomel.RandomSource) gomel.Preunit {
 	rsData, _ := rs.DataToInclude(creator, make([]gomel.Unit, NProc), 0)
-	return NewPreunit(creator, gomel.EmptyCrown(NProc), data, rsData)
+	return NewPreunit(creator, epochID, gomel.EmptyCrown(NProc), data, rsData)
 }
 
 func makeConsistent(parents []gomel.Unit) {
@@ -90,7 +90,7 @@ func NewUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource, 
 	predecessor := getPredecessor(mu, creator)
 	// This is the first unit creator is creating, so it should be a dealing unit.
 	if predecessor == nil {
-		return newDealingUnit(creator, dag.NProc(), data, rs), 0, nil
+		return newDealingUnit(creator, dag.NProc(), dag.EpochID(), data, rs), 0, nil
 	}
 
 	parents := pickParents(dag, mu, predecessor, canSkipLevel)
@@ -104,5 +104,5 @@ func NewUnit(dag gomel.Dag, creator uint16, data []byte, rs gomel.RandomSource, 
 	if err != nil {
 		return nil, 0, err
 	}
-	return NewPreunit(creator, gomel.CrownFromParents(parents), data, rsData), level, nil
+	return NewPreunit(creator, dag.EpochID(), gomel.CrownFromParents(parents), data, rsData), level, nil
 }

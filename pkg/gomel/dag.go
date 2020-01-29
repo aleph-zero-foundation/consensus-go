@@ -7,6 +7,8 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
+import "encoding/binary"
+
 // UnitChecker is a function that performs a check on Unit before Prepare.
 type UnitChecker func(Unit) error
 
@@ -16,8 +18,13 @@ type UnitTransformer func(Unit) Unit
 // InsertHook is a function that performs some additional action on a unit before or after Insert.
 type InsertHook func(Unit)
 
+// EpochID is used as a unique identifier of an epoch.
+type EpochID uint64
+
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
+	// EpochID is a unique identifier of the epoch for this dag instance.
+	EpochID() EpochID
 	// DecodeParents returns a slice of parents of the given preunit, if the control hash matches.
 	DecodeParents(Preunit) ([]Unit, error)
 	// BuildUnit constructs a new unit from the preunit and the slice of parents.
@@ -86,4 +93,11 @@ func MaxView(dag Dag) []int {
 		return true
 	})
 	return heights
+}
+
+// Serialize serializes an instance of EpochID to a slice of bytes.
+func (id EpochID) Serialize() []byte {
+	var bytes [8]byte
+	binary.LittleEndian.PutUint64(bytes[:], uint64(id))
+	return bytes[:]
 }

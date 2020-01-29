@@ -2,6 +2,8 @@ package gomel
 
 // BaseUnit defines the most general interface for units.
 type BaseUnit interface {
+	// EpochID is used a unique identifier of a set of creators who participate in creation of a dag to which this unit belongs.
+	EpochID() EpochID
 	// Creator is the id of the process that created this unit.
 	Creator() uint16
 	// Signature of this unit.

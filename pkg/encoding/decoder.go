@@ -67,8 +67,9 @@ func (d *dec) decodeCrown() (*gomel.Crown, error) {
 // decodePreunit reads encoded data from the io.Reader and tries to decode it
 // as a preunit.
 func (d *dec) decodePreunit() (gomel.Preunit, error) {
-	uint16Buf := make([]byte, 2)
-	uint32Buf := make([]byte, 4)
+	uint64Buf := make([]byte, 8)
+	uint32Buf := uint64Buf[:4]
+	uint16Buf := uint32Buf[:2]
 	_, err := io.ReadFull(d, uint16Buf)
 	if err != nil {
 		return nil, err
@@ -77,6 +78,13 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 	if creator == math.MaxUint16 {
 		return nil, nil
 	}
+
+	_, err = io.ReadFull(d, uint64Buf)
+	if err != nil {
+		return nil, err
+	}
+	epochID := binary.LittleEndian.Uint64(uint64Buf)
+
 	signature := make([]byte, 64)
 	_, err = io.ReadFull(d, signature)
 	if err != nil {
@@ -114,7 +122,7 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 
-	result := creating.NewPreunit(creator, crown, unitData, rsData)
+	result := creating.NewPreunit(creator, gomel.EpochID(epochID), crown, unitData, rsData)
 	result.SetSignature(signature)
 	return result, nil
 }
