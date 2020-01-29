@@ -10,7 +10,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type enc struct {
+type encoder struct {
 	io.Writer
 }
 
@@ -26,12 +26,12 @@ type enc struct {
 //  8. Size of the random source data in bytes, 4 bytes.
 //  9. The random source data, as much as declared in 8.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
-func newEncoder(w io.Writer) encoder {
-	return &enc{w}
+func newEncoder(w io.Writer) *encoder {
+	return &encoder{w}
 }
 
 // encodeCrown encodes a crown and writes the encoded data to the io.Writer.
-func (e *enc) encodeCrown(crown *gomel.Crown) error {
+func (e *encoder) encodeCrown(crown *gomel.Crown) error {
 	nParents := uint16(len(crown.Heights))
 	data := make([]byte, 2+nParents*4+32)
 	binary.LittleEndian.PutUint16(data[:2], nParents)
@@ -50,8 +50,27 @@ func (e *enc) encodeCrown(crown *gomel.Crown) error {
 	return err
 }
 
+// encodeDagInfo encodes daginfo and writes the encoded data to the io.Writer.
+func (e *encoder) encodeDagInfo(info *gomel.DagInfo) error {
+	nProc := uint16(len(info.Heights))
+	data := make([]byte, 4+2+nProc*4)
+	binary.LittleEndian.PutUint32(data[:4], uint32(info.Epoch))
+	binary.LittleEndian.PutUint16(data[4:6], nProc)
+	s := 6
+	for _, h := range info.Heights {
+		if h == -1 {
+			binary.LittleEndian.PutUint32(data[s:s+4], math.MaxUint32)
+		} else {
+			binary.LittleEndian.PutUint32(data[s:s+4], uint32(h))
+		}
+		s += 4
+	}
+	_, err := e.Write(data)
+	return err
+}
+
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
-func (e *enc) encodeUnit(unit gomel.BaseUnit) error {
+func (e *encoder) encodeUnit(unit gomel.BaseUnit) error {
 	if unit == nil {
 		data := make([]byte, 2)
 		binary.LittleEndian.PutUint16(data, math.MaxUint16)
@@ -103,7 +122,7 @@ func (e *enc) encodeUnit(unit gomel.BaseUnit) error {
 	return nil
 }
 
-func (e *enc) encodeChunk(units []gomel.Unit) error {
+func (e *encoder) encodeChunk(units []gomel.Unit) error {
 	if len(units) > config.MaxUnitsInChunk {
 		return errors.New("chunk contains too many units")
 	}
@@ -120,7 +139,7 @@ func (e *enc) encodeChunk(units []gomel.Unit) error {
 	return nil
 }
 
-func (e *enc) encodeUint32(i uint32) error {
+func (e *encoder) encodeUint32(i uint32) error {
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, i)
 	_, err := e.Write(buf)

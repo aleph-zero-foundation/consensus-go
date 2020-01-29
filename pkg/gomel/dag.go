@@ -42,7 +42,7 @@ type Dag interface {
 	// GetByID returns the units associated with the given ID. There will be more than one only in the case of forks.
 	GetByID(uint64) []Unit
 	// IsQuorum checks if the given number of processes is enough to form a quorum.
-	IsQuorum(number uint16) bool
+	IsQuorum(uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
 	// AddCheck extends the list of UnitCheckers that are used during adding a unit.
@@ -69,21 +69,4 @@ func MinimalQuorum(nProcesses uint16) uint16 {
 // that the subset contains at least one honest process.
 func MinimalTrusted(nProcesses uint16) uint16 {
 	return nProcesses/3 + 1
-}
-
-// MaxView returns a slice of NProc integers containing, for each creator, the maximal height of a unit produced by that creator.
-func MaxView(dag Dag) []int {
-	maxes := dag.MaximalUnitsPerProcess()
-	heights := make([]int, 0, dag.NProc())
-	maxes.Iterate(func(units []Unit) bool {
-		h := -1
-		for _, u := range units {
-			if u.Height() > h {
-				h = u.Height()
-			}
-		}
-		heights = append(heights, h)
-		return true
-	})
-	return heights
 }

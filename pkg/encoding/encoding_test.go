@@ -145,11 +145,16 @@ var _ = Describe("Encoding/Decoding", func() {
 	Context("DagInfo", func() {
 		It("should be the same after encoding/decoding", func() {
 			info := gomel.MaxView(dag)
-
-			encoded := make([]byte, 4)
-			binary.LittleEndian.PutUint32(encoded[:], config.MaxUnitsInChunk+1)
-			_, err := ReceiveChunk(bytes.NewBuffer(encoded))
-			Expect(err).To(MatchError("chunk contains too many units"))
+			infos := []*gomel.DagInfo{info, info}
+			err := SendDagInfos(infos, network)
+			Expect(err).NotTo(HaveOccurred())
+			recv, err := ReceiveDagInfos(network)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(infos)).To(Equal(len(recv)))
+			Expect(info.Epoch).To(Equal(recv[0].Epoch))
+			Expect(info.Epoch).To(Equal(recv[1].Epoch))
+			Expect(info.Heights).To(Equal(recv[0].Heights))
+			Expect(info.Heights).To(Equal(recv[1].Heights))
 		})
 
 	})

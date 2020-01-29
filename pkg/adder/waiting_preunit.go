@@ -35,7 +35,7 @@ func (ad *adder) checkIfMissing(wp *waitingPreunit) {
 // accordingly. Additionally, returns maximal heights of dag.
 func (ad *adder) checkParents(wp *waitingPreunit) []int {
 	nProc := ad.dag.NProc()
-	maxHeights := gomel.MaxView(ad.dag)
+	maxHeights := gomel.MaxView(ad.dag).Heights
 	for creator, height := range wp.pu.View().Heights {
 		if height > maxHeights[creator] {
 			parentID := gomel.ID(height, uint16(creator), nProc)
