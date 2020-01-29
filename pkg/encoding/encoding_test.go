@@ -142,4 +142,15 @@ var _ = Describe("Encoding/Decoding", func() {
 		})
 
 	})
+	Context("DagInfo", func() {
+		It("should be the same after encoding/decoding", func() {
+			info := gomel.MaxView(dag)
+
+			encoded := make([]byte, 4)
+			binary.LittleEndian.PutUint32(encoded[:], config.MaxUnitsInChunk+1)
+			_, err := ReceiveChunk(bytes.NewBuffer(encoded))
+			Expect(err).To(MatchError("chunk contains too many units"))
+		})
+
+	})
 })
