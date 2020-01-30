@@ -3,7 +3,7 @@ package tcoin
 import (
 	"math/big"
 
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 func lagrange(points []int64, x int64) *big.Int {

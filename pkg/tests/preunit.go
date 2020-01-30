@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -15,12 +16,12 @@ type preunit struct {
 	signature      gomel.Signature
 	crown          gomel.Crown
 	hash           gomel.Hash
-	data           gomel.Data
+	data           core.Data
 	rsData         []byte
 }
 
 // NewPreunit creates a preunit.
-func NewPreunit(creator uint16, crown *gomel.Crown, data gomel.Data, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, crown *gomel.Crown, data core.Data, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		crown:     *crown,
@@ -39,7 +40,7 @@ func (pu *preunit) RandomSourceData() []byte {
 }
 
 // Data returns data embedded in this preunit.
-func (pu *preunit) Data() gomel.Data {
+func (pu *preunit) Data() core.Data {
 	return pu.data
 }
 

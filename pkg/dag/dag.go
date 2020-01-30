@@ -30,7 +30,7 @@ func New(n uint16) gomel.Dag {
 
 // IsQuorum checks if the given number of processes forms a quorum amongst all processes.
 func (dag *dag) IsQuorum(number uint16) bool {
-	return gomel.IsQuorum(dag.nProcesses, number)
+	return number >= gomel.MinimalQuorum(dag.nProcesses)
 }
 
 // NProc returns the number of processes which use the dag.

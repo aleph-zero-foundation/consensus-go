@@ -45,7 +45,7 @@ func LevelFromParents(parents []Unit) int {
 			level = p.Level()
 		}
 	}
-	if IsQuorum(nProc, onLevel) {
+	if onLevel >= MinimalQuorum(nProc) {
 		level++
 	}
 	return level
