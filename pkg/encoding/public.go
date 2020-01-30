@@ -24,21 +24,38 @@ func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	return decoder.decodePreunit()
 }
 
-// EncodeCrown encodes a crown to a slice of bytes.
-func EncodeCrown(crown *gomel.Crown) ([]byte, error) {
-	var buf bytes.Buffer
-	encoder := newEncoder(&buf)
-	err := encoder.encodeCrown(crown)
+// SendDagInfos encodes a slice of daginfos to writer.
+func SendDagInfos(infos []*gomel.DagInfo, w io.Writer) error {
+	enc := newEncoder(w)
+	err := enc.encodeUint32(uint32(len(infos)))
+	if err != nil {
+		return err
+	}
+	for _, info := range infos {
+		err = enc.encodeDagInfo(info)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ReceiveDagInfos decodes daginfo from the given data.
+func ReceiveDagInfos(r io.Reader) ([]*gomel.DagInfo, error) {
+	dec := newDecoder(r)
+	n, err := dec.decodeUint32()
 	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
-}
-
-// DecodeCrown checks decodes the given data into crown. Complementary to EncodeCrown.
-func DecodeCrown(data []byte) (*gomel.Crown, error) {
-	decoder := newDecoder(bytes.NewReader(data))
-	return decoder.decodeCrown()
+	infos := make([]*gomel.DagInfo, n)
+	for i := range infos {
+		info, err := dec.decodeDagInfo()
+		if err != nil {
+			return nil, err
+		}
+		infos[i] = info
+	}
+	return infos, nil
 }
 
 // SendUnit writes encoded unit to writer.
