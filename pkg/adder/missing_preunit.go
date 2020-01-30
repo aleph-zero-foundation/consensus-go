@@ -41,13 +41,13 @@ func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
 		}
 		return
 	}
-	nProc := ad.dag.NProc()
+	epoch := wp.pu.EpochID()
 	toRequest := make([]uint64, 0, 8)
 	var mp *missingPreunit
 	now := time.Now()
 	for creator, height := range wp.pu.View().Heights {
 		for h := height; h > maxHeights[creator]; h-- {
-			id := gomel.ID(h, uint16(creator), nProc)
+			id := gomel.ID(h, uint16(creator), epoch)
 			if _, waiting := ad.waitingByID[id]; !waiting {
 				if _, ok := ad.missing[id]; !ok {
 					mp = newMissing()

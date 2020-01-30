@@ -81,11 +81,9 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 // computeHash computes the preunit's hash value and saves it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
-	creatorBytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
-	data.Write(creatorBytes)
-	epochID := pu.EpochID().Serialize()
-	data.Write(epochID)
+	idBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(idBytes, gomel.UnitID(pu))
+	data.Write(idBytes)
 	data.Write(pu.data)
 	data.Write(pu.rsData)
 	heightBytes := make([]byte, 4)

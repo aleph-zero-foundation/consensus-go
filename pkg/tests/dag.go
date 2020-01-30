@@ -195,7 +195,7 @@ func (dag *Dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 
 // GetByID returns all the units associated with the given ID.
 func (dag *Dag) GetByID(id uint64) []gomel.Unit {
-	height, creator := gomel.DecodeID(id, dag.NProc())
+	height, creator, _ := gomel.DecodeID(id)
 	dag.RLock()
 	defer dag.RUnlock()
 	if height >= len(dag.unitsByHeight) {

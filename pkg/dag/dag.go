@@ -80,7 +80,10 @@ func (dag *dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 }
 
 func (dag *dag) GetByID(id uint64) []gomel.Unit {
-	height, creator := gomel.DecodeID(id, dag.NProc())
+	height, creator, epoch := gomel.DecodeID(id)
+	if epoch != dag.EpochID() {
+		return nil
+	}
 	fiber, err := dag.heightUnits.getFiber(height)
 	if err != nil {
 		return nil
