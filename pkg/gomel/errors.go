@@ -5,20 +5,6 @@ import (
 	"strings"
 )
 
-// WrongEpochError is used in case we receive a unit that was not created during current dag's epoch.
-type WrongEpochError struct {
-	msg string
-}
-
-// NewWrongEpochError constructs WrongEpochError from a given msg.
-func NewWrongEpochError(msg string) *WrongEpochError {
-	return &WrongEpochError{msg: msg}
-}
-
-func (e *WrongEpochError) Error() string {
-	return e.msg
-}
-
 // DataError represents incorrect data received from a process.
 // Indicates a problem with the process providing the data.
 type DataError struct {

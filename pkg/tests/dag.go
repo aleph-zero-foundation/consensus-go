@@ -42,27 +42,27 @@ func newDag(nProc uint16) *Dag {
 	return newDag
 }
 
-// EpochID Ihatelinter
+// EpochID implementation
 func (dag *Dag) EpochID() gomel.EpochID {
 	return dag.epochID
 }
 
-// AddCheck Ihatelinter
+// AddCheck implementation
 func (dag *Dag) AddCheck(check gomel.UnitChecker) {
 	dag.checks = append(dag.checks, check)
 }
 
-// AddTransform Ihatelinter
+// AddTransform implementation
 func (dag *Dag) AddTransform(trans gomel.UnitTransformer) {
 	dag.transforms = append(dag.transforms, trans)
 }
 
-// BeforeInsert Ihatelinter
+// BeforeInsert implementation
 func (dag *Dag) BeforeInsert(hook gomel.InsertHook) {
 	dag.preInsert = append(dag.preInsert, hook)
 }
 
-// AfterInsert Ihatelinter
+// AfterInsert implementation
 func (dag *Dag) AfterInsert(hook gomel.InsertHook) {
 	dag.postInsert = append(dag.postInsert, hook)
 }

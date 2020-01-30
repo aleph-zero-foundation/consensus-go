@@ -220,7 +220,7 @@ func (ad *adder) checkCorrectness(pu gomel.Preunit) error {
 		return gomel.NewDataError("invalid creator")
 	}
 	if pu.EpochID() != ad.dag.EpochID() {
-		return gomel.NewWrongEpochError(
+		return gomel.NewDataError(
 			fmt.Sprintf("invalid EpochID - expected %d, but received %d instead", ad.dag.EpochID(), pu.EpochID()),
 		)
 	}
