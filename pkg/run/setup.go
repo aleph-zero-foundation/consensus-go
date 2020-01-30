@@ -82,6 +82,12 @@ func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog
 		return
 	}
 	head := units[len(units)-1]
+	if head == nil {
+		panic("coin's head is nil")
+	}
+	if head.Level() != conf.OrderSetup.OrderStartLevel {
+		panic("wrong level of the coin's head")
+	}
 	rsCh <- rs.GetCoin(head.Creator())
 
 	for _, u := range units {

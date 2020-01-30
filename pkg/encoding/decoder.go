@@ -11,7 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type dec struct {
+type decoder struct {
 	io.Reader
 }
 
@@ -28,12 +28,12 @@ type dec struct {
 //  9. The random source data, as much as declared in 8.
 // All integer values are encoded as 16 or 32 bit unsigned ints.
 // It is guaranteed to read only as much data as needed.
-func newDecoder(r io.Reader) decoder {
-	return &dec{r}
+func newDecoder(r io.Reader) *decoder {
+	return &decoder{r}
 }
 
 // decodeCrown reads encoded data from the io.Reader and tries to decode it as a crown.
-func (d *dec) decodeCrown() (*gomel.Crown, error) {
+func (d *decoder) decodeCrown() (*gomel.Crown, error) {
 	uint16Buf := make([]byte, 2)
 	uint32Buf := make([]byte, 4)
 
@@ -64,9 +64,40 @@ func (d *dec) decodeCrown() (*gomel.Crown, error) {
 	return gomel.NewCrown(heights, controlHash), nil
 }
 
-// decodePreunit reads encoded data from the io.Reader and tries to decode it
-// as a preunit.
-func (d *dec) decodePreunit() (gomel.Preunit, error) {
+func (d *decoder) decodeDagInfo() (*gomel.DagInfo, error) {
+	uint16Buf := make([]byte, 2)
+	uint32Buf := make([]byte, 4)
+
+	_, err := io.ReadFull(d, uint32Buf)
+	if err != nil {
+		return nil, err
+	}
+	epoch := binary.LittleEndian.Uint32(uint32Buf)
+
+	_, err = io.ReadFull(d, uint16Buf)
+	if err != nil {
+		return nil, err
+	}
+	nProc := binary.LittleEndian.Uint16(uint16Buf)
+
+	heights := make([]int, nProc)
+	for i := range heights {
+		_, err = io.ReadFull(d, uint32Buf)
+		if err != nil {
+			return nil, err
+		}
+		h := binary.LittleEndian.Uint32(uint32Buf)
+		if h == math.MaxUint32 {
+			heights[i] = -1
+		} else {
+			heights[i] = int(h)
+		}
+	}
+	return &gomel.DagInfo{int(epoch), heights}, nil
+}
+
+// decodePreunit reads encoded data from the io.Reader and tries to decode it as a preunit.
+func (d *decoder) decodePreunit() (gomel.Preunit, error) {
 	uint64Buf := make([]byte, 8)
 	uint32Buf := uint64Buf[:4]
 	uint16Buf := uint32Buf[:2]
@@ -127,7 +158,7 @@ func (d *dec) decodePreunit() (gomel.Preunit, error) {
 	return result, nil
 }
 
-func (d *dec) decodeChunk() ([]gomel.Preunit, error) {
+func (d *decoder) decodeChunk() ([]gomel.Preunit, error) {
 	k, err := d.decodeUint32()
 	if err != nil {
 		return nil, err
@@ -145,7 +176,7 @@ func (d *dec) decodeChunk() ([]gomel.Preunit, error) {
 	return result, nil
 }
 
-func (d *dec) decodeUint32() (uint32, error) {
+func (d *decoder) decodeUint32() (uint32, error) {
 	buf := make([]byte, 4)
 	_, err := io.ReadFull(d, buf)
 	if err != nil {
