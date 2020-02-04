@@ -72,17 +72,14 @@ func (e *encoder) encodeDagInfo(info *gomel.DagInfo) error {
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
 func (e *encoder) encodeUnit(unit gomel.BaseUnit) error {
 	if unit == nil {
-		data := make([]byte, 2)
-		binary.LittleEndian.PutUint16(data, math.MaxUint16)
+		data := make([]byte, 8)
+		binary.LittleEndian.PutUint64(data, math.MaxUint64)
 		_, err := e.Write(data)
 		return err
 	}
-	data := make([]byte, 2+64)
-	s := 0
-	creator := uint16(unit.Creator())
-	binary.LittleEndian.PutUint16(data[s:s+2], creator)
-	s += 2
-	copy(data[s:s+64], unit.Signature())
+	data := make([]byte, 8+64)
+	binary.LittleEndian.PutUint64(data[:8], gomel.UnitID(unit))
+	copy(data[8:8+64], unit.Signature())
 	_, err := e.Write(data)
 	if err != nil {
 		return err

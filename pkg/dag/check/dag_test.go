@@ -12,11 +12,16 @@ import (
 
 type preunitMock struct {
 	creator   uint16
+	epochID   gomel.EpochID
 	signature gomel.Signature
 	hash      gomel.Hash
 	crown     gomel.Crown
 	data      gomel.Data
 	rsData    []byte
+}
+
+func (pu *preunitMock) EpochID() gomel.EpochID {
+	return pu.epochID
 }
 
 func (pu *preunitMock) RandomSourceData() []byte {
@@ -464,6 +469,15 @@ var _ = Describe("Dag", func() {
 						validUnit.SetHash(4)
 						err := adder.AddUnit(validUnit, validUnit.Creator())
 						Expect(err).NotTo(HaveOccurred())
+					})
+				})
+				Describe("adding a unit with different EpochID", func() {
+					It("should return an error", func() {
+						pu := newPreunitMock(0, []int{0, 0, 0, -1}, []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash, &gomel.Hash{}})
+						pu.SetHash(4)
+						pu.epochID = 101
+						err := adder.AddUnit(pu, pu.Creator())
+						Expect(err).To(HaveOccurred())
 					})
 				})
 			})

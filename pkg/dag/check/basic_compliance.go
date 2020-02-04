@@ -9,10 +9,13 @@ import (
 //  2. A unit has to have a predecessor or have all parents nil.
 //  3. A unit is a prime unit.
 func BasicCompliance(dag gomel.Dag) {
-	dag.AddCheck(func(u gomel.Unit) error { return checkBasicCorrectness(u, dag.NProc()) })
+	dag.AddCheck(func(u gomel.Unit) error { return checkBasicCorrectness(u, dag.NProc(), dag.EpochID()) })
 }
 
-func checkBasicCorrectness(u gomel.Unit, nProc uint16) error {
+func checkBasicCorrectness(u gomel.Unit, nProc uint16, epochID gomel.EpochID) error {
+	if u.EpochID() != epochID {
+		return gomel.NewComplianceError("invalid EpochID")
+	}
 	if len(u.Parents()) != int(nProc) {
 		return gomel.NewComplianceError("Wrong number of parents")
 	}

@@ -1,6 +1,7 @@
 package adder
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -217,6 +218,11 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 func (ad *adder) checkCorrectness(pu gomel.Preunit) error {
 	if pu.Creator() >= ad.dag.NProc() {
 		return gomel.NewDataError("invalid creator")
+	}
+	if pu.EpochID() != ad.dag.EpochID() {
+		return gomel.NewDataError(
+			fmt.Sprintf("invalid EpochID - expected %d, but received %d instead", ad.dag.EpochID(), pu.EpochID()),
+		)
 	}
 	if ad.keys != nil && !ad.keys[pu.Creator()].Verify(pu) {
 		return gomel.NewDataError("invalid signature")

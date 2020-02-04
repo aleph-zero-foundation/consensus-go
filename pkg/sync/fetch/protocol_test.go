@@ -46,7 +46,6 @@ func missingParents(preunit gomel.Preunit, maxUnits gomel.SlottedUnits) []uint64
 	unitIDs := []uint64{}
 	requiredHeights := preunit.View().Heights
 	curCreator := uint16(0)
-	nProc := uint16(len(requiredHeights))
 	maxUnits.Iterate(func(units []gomel.Unit) bool {
 		highest := -1
 		for _, u := range units {
@@ -56,7 +55,7 @@ func missingParents(preunit gomel.Preunit, maxUnits gomel.SlottedUnits) []uint64
 		}
 		highest++
 		for highest <= requiredHeights[curCreator] {
-			unitIDs = append(unitIDs, gomel.ID(highest, curCreator, nProc))
+			unitIDs = append(unitIDs, gomel.ID(highest, curCreator, preunit.EpochID()))
 			highest++
 		}
 		curCreator++

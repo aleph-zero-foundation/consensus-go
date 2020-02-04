@@ -11,6 +11,7 @@ import (
 
 type preunit struct {
 	creator   uint16
+	epochID   gomel.EpochID
 	signature gomel.Signature
 	hash      gomel.Hash
 	crown     gomel.Crown
@@ -19,15 +20,20 @@ type preunit struct {
 }
 
 // NewPreunit constructs a a new preunit with given parents and creator id.
-func NewPreunit(creator uint16, crown *gomel.Crown, data gomel.Data, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, epochID gomel.EpochID, crown *gomel.Crown, data gomel.Data, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator: creator,
+		epochID: epochID,
 		crown:   *crown,
 		data:    data,
 		rsData:  rsData,
 	}
 	pu.computeHash()
 	return pu
+}
+
+func (pu *preunit) EpochID() gomel.EpochID {
+	return pu.epochID
 }
 
 // RandomSourceData embedded in the preunit.
@@ -73,9 +79,9 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 // computeHash computes the preunit's hash value and saves it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
-	creatorBytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
-	data.Write(creatorBytes)
+	idBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(idBytes, gomel.UnitID(pu))
+	data.Write(idBytes)
 	data.Write(pu.data)
 	data.Write(pu.rsData)
 	heightBytes := make([]byte, 4)

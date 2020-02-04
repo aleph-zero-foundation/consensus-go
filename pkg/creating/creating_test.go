@@ -191,4 +191,17 @@ var _ = Describe("Creating", func() {
 			})
 		})
 	})
+	Describe("creating respect dag's EpochID", func() {
+		It("should return a unit with valid EpochID", func() {
+			dagID := gomel.EpochID(7)
+			dag, _ := tests.NewTestDagFactoryWithEpochID(dagID).CreateDag(4)
+			rs := tests.NewTestRandomSource()
+			rs.Bind(dag)
+			pu, _, err := NewUnit(dag, 0, []byte{}, rs, true)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dag.EpochID()).To(Equal(dagID))
+			Expect(pu.EpochID()).To(Equal(dagID))
+		})
+	})
 })

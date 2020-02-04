@@ -13,10 +13,14 @@ type DataSource <-chan Data
 // DataSink is an output for the data to sort.
 type DataSink chan<- Data
 
+// PreblockID is a type allowing us to uniquely identify each Preblock.
+type PreblockID uint64
+
 // Preblock is a set of Data objects from units contained in one block (timing round).
 type Preblock struct {
-	data        []Data
-	randomBytes []byte
+	ID          PreblockID
+	Data        []Data
+	RandomBytes []byte
 }
 
 // PreblockSink is an output of the aleph protocol.
@@ -39,7 +43,12 @@ type BlockSink chan<- *Block
 
 // NewPreblock constructs a preblock from given data and randomBytes.
 func NewPreblock(data []Data, randomBytes []byte) *Preblock {
-	return &Preblock{data, randomBytes}
+	return &Preblock{Data: data, RandomBytes: randomBytes}
+}
+
+// NewPreblockWithID constructs a preblock from given PreblockID, data and randomBytes.
+func NewPreblockWithID(preblockID PreblockID, data []Data, randomBytes []byte) *Preblock {
+	return &Preblock{ID: preblockID, Data: data, RandomBytes: randomBytes}
 }
 
 // ToBlock creates a block from a given preblock.
@@ -59,5 +68,5 @@ func ToPreblock(round []Unit) *Preblock {
 		data = append(data, u.Data())
 	}
 	randomBytes := round[len(round)-1].RandomSourceData()[:bn256.SignatureLength]
-	return &Preblock{data, randomBytes}
+	return NewPreblock(data, randomBytes)
 }

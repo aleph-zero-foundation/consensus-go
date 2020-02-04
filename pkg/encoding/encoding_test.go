@@ -111,9 +111,9 @@ var _ = Describe("Encoding/Decoding", func() {
 		Context("on a unit with too much data", func() {
 			It("should return an error", func() {
 				nProc := 0
-				// creator, signature, nParents, parentsHeights, controlHash, data length
-				encoded := make([]byte, 2+64+(2+4*nProc+32)+4)
-				dataLenStartOffset := 2 + 64 + (2 + 4*nProc + 32)
+				// creator, epochID, signature, nParents, parentsHeights, controlHash, data length
+				encoded := make([]byte, 2+8+64+(2+4*nProc+32)+4)
+				dataLenStartOffset := 2 + 8 + 64 + (2 + 4*nProc + 32)
 				binary.LittleEndian.PutUint32(encoded[dataLenStartOffset:], config.MaxDataBytesPerUnit+1)
 				_, err := DecodePreunit(encoded)
 				Expect(err).To(MatchError("maximal allowed data size in a preunit exceeded"))
@@ -122,9 +122,9 @@ var _ = Describe("Encoding/Decoding", func() {
 		Context("on a unit with too long random source data", func() {
 			It("should return an error", func() {
 				nProc := 0
-				// creator, signature, nParents, parentsHeights, controlHash, data length, random source data length
-				encoded := make([]byte, 2+64+2+4*nProc+32+4+4)
-				rsDataLenStartOffset := 2 + 64 + 2 + 4*nProc + 32 + 4
+				// creator, epochID, signature, nParents, parentsHeights, controlHash, data length, random source data length
+				encoded := make([]byte, 2+8+64+2+4*nProc+32+4+4)
+				rsDataLenStartOffset := 2 + 8 + 64 + 2 + 4*nProc + 32 + 4
 				binary.LittleEndian.PutUint32(encoded[rsDataLenStartOffset:], config.MaxRandomSourceDataBytesPerUnit+1)
 				_, err := DecodePreunit(encoded)
 				Expect(err).To(MatchError("maximal allowed random source data size in a preunit exceeded"))

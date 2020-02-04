@@ -6,6 +6,7 @@ import (
 
 type unit struct {
 	creator   uint16
+	epochID   gomel.EpochID
 	height    int
 	level     int
 	version   int
@@ -16,6 +17,10 @@ type unit struct {
 	signature gomel.Signature
 	data      gomel.Data
 	rsData    []byte
+}
+
+func (u *unit) EpochID() gomel.EpochID {
+	return u.epochID
 }
 
 func (u *unit) Floor(pid uint16) []gomel.Unit {

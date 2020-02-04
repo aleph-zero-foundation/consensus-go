@@ -7,6 +7,7 @@ import (
 
 type dag struct {
 	nProcesses  uint16
+	epochID     gomel.EpochID
 	units       *unitBag
 	primeUnits  *fiberMap
 	heightUnits *fiberMap
@@ -21,11 +22,16 @@ type dag struct {
 func New(n uint16) gomel.Dag {
 	return &dag{
 		nProcesses:  n,
+		epochID:     gomel.EpochID(0),
 		units:       newUnitBag(),
 		primeUnits:  newFiberMap(n, 10),
 		heightUnits: newFiberMap(n, 10),
 		maxUnits:    newSlottedUnits(n),
 	}
+}
+
+func (dag *dag) EpochID() gomel.EpochID {
+	return dag.epochID
 }
 
 // IsQuorum checks if the given number of processes forms a quorum amongst all processes.
@@ -74,7 +80,10 @@ func (dag *dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 }
 
 func (dag *dag) GetByID(id uint64) []gomel.Unit {
-	height, creator := gomel.DecodeID(id, dag.NProc())
+	height, creator, epoch := gomel.DecodeID(id)
+	if epoch != dag.EpochID() {
+		return nil
+	}
 	fiber, err := dag.heightUnits.getFiber(height)
 	if err != nil {
 		return nil

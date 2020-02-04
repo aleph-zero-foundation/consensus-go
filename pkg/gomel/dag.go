@@ -16,8 +16,13 @@ type UnitTransformer func(Unit) Unit
 // InsertHook is a function that performs some additional action on a unit before or after Insert.
 type InsertHook func(Unit)
 
+// EpochID is used as a unique identifier of an epoch.
+type EpochID uint32
+
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
+	// EpochID is a unique identifier of the epoch for this dag instance.
+	EpochID() EpochID
 	// DecodeParents returns a slice of parents of the given preunit, if the control hash matches.
 	DecodeParents(Preunit) ([]Unit, error)
 	// BuildUnit constructs a new unit from the preunit and the slice of parents.

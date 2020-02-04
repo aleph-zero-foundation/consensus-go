@@ -98,16 +98,18 @@ func (d *decoder) decodeDagInfo() (*gomel.DagInfo, error) {
 
 // decodePreunit reads encoded data from the io.Reader and tries to decode it as a preunit.
 func (d *decoder) decodePreunit() (gomel.Preunit, error) {
-	uint16Buf := make([]byte, 2)
-	uint32Buf := make([]byte, 4)
-	_, err := io.ReadFull(d, uint16Buf)
+	uint64Buf := make([]byte, 8)
+	uint32Buf := uint64Buf[:4]
+	_, err := io.ReadFull(d, uint64Buf)
 	if err != nil {
 		return nil, err
 	}
-	creator := binary.LittleEndian.Uint16(uint16Buf)
-	if creator == math.MaxUint16 {
+	id := binary.LittleEndian.Uint64(uint64Buf)
+	if id == math.MaxUint64 {
 		return nil, nil
 	}
+	_, creator, epoch := gomel.DecodeID(id)
+
 	signature := make([]byte, 64)
 	_, err = io.ReadFull(d, signature)
 	if err != nil {
@@ -145,7 +147,7 @@ func (d *decoder) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 
-	result := creating.NewPreunit(creator, crown, unitData, rsData)
+	result := creating.NewPreunit(creator, epoch, crown, unitData, rsData)
 	result.SetSignature(signature)
 	return result, nil
 }

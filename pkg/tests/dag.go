@@ -15,6 +15,7 @@ import (
 type Dag struct {
 	sync.RWMutex
 	nProcesses uint16
+	epochID    gomel.EpochID
 	primeUnits []gomel.SlottedUnits
 	// maximalHeight is the maximalHeight of a unit created per process
 	maximalHeight []int
@@ -41,22 +42,27 @@ func newDag(nProc uint16) *Dag {
 	return newDag
 }
 
-// AddCheck Ihatelinter
+// EpochID implementation
+func (dag *Dag) EpochID() gomel.EpochID {
+	return dag.epochID
+}
+
+// AddCheck implementation
 func (dag *Dag) AddCheck(check gomel.UnitChecker) {
 	dag.checks = append(dag.checks, check)
 }
 
-// AddTransform Ihatelinter
+// AddTransform implementation
 func (dag *Dag) AddTransform(trans gomel.UnitTransformer) {
 	dag.transforms = append(dag.transforms, trans)
 }
 
-// BeforeInsert Ihatelinter
+// BeforeInsert implementation
 func (dag *Dag) BeforeInsert(hook gomel.InsertHook) {
 	dag.preInsert = append(dag.preInsert, hook)
 }
 
-// AfterInsert Ihatelinter
+// AfterInsert implementation
 func (dag *Dag) AfterInsert(hook gomel.InsertHook) {
 	dag.postInsert = append(dag.postInsert, hook)
 }
@@ -189,7 +195,7 @@ func (dag *Dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
 
 // GetByID returns all the units associated with the given ID.
 func (dag *Dag) GetByID(id uint64) []gomel.Unit {
-	height, creator := gomel.DecodeID(id, dag.NProc())
+	height, creator, _ := gomel.DecodeID(id)
 	dag.RLock()
 	defer dag.RUnlock()
 	if height >= len(dag.unitsByHeight) {
