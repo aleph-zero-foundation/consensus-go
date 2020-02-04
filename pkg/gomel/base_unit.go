@@ -1,5 +1,7 @@
 package gomel
 
+import "gitlab.com/alephledger/core-go/pkg/core"
+
 // BaseUnit defines the most general interface for units.
 type BaseUnit interface {
 	// EpochID is used a unique identifier of a set of creators who participate in creation of a dag to which this unit belongs.
@@ -15,7 +17,7 @@ type BaseUnit interface {
 	// View returns the crown of the dag below the unit.
 	View() *Crown
 	// Data is the slice of data contained in the unit.
-	Data() Data
+	Data() core.Data
 	// RandomSourceData is data contained in the unit needed to maintain
 	// the common random source among processes.
 	RandomSourceData() []byte

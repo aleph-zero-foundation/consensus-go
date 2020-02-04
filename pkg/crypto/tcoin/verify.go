@@ -4,7 +4,7 @@ import (
 	"crypto/subtle"
 	"math/big"
 
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 // VerifyCoinShare verifies whether the given coin share is correct.

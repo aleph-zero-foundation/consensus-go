@@ -2,6 +2,7 @@ package unit
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 type freeUnit struct {
@@ -12,7 +13,7 @@ type freeUnit struct {
 	hash      gomel.Hash
 	parents   []gomel.Unit
 	crown     gomel.Crown
-	data      gomel.Data
+	data      core.Data
 	rsData    []byte
 	height    int
 	level     int
@@ -42,7 +43,7 @@ func (u *freeUnit) RandomSourceData() []byte {
 	return u.rsData
 }
 
-func (u *freeUnit) Data() gomel.Data {
+func (u *freeUnit) Data() core.Data {
 	return u.data
 }
 

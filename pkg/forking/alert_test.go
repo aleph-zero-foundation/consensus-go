@@ -10,14 +10,15 @@ import (
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	. "gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/rmc"
+	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 var _ = Describe("Alert", func() {
@@ -63,7 +64,7 @@ var _ = Describe("Alert", func() {
 	StopHandling := func() {
 		atomic.StoreInt64(&stop, 1)
 		wg.Wait()
-		tests.CloseNetwork(netservs)
+		ctests.CloseNetwork(netservs)
 	}
 
 	BeforeEach(func() {
@@ -79,7 +80,7 @@ var _ = Describe("Alert", func() {
 		alerters = make([]gomel.Alerter, nProc)
 		dags = make([]gomel.Dag, nProc)
 		rss = make([]gomel.RandomSource, nProc)
-		netservs = tests.NewNetwork(int(nProc))
+		netservs = ctests.NewNetwork(int(nProc))
 		stop = 0
 		for i := range dags {
 			dags[i] = dag.New(nProc)
