@@ -1,10 +1,12 @@
 package gomel
 
-// LinearOrdering is an interface for establishing a linear order of units.
-type LinearOrdering interface {
+// Extender extend a partial order to linear order and produces rounds of ordered units..
+type Extender interface {
 	// NextRound tries to pick a next timing unit and returns a suspended computation responsible for ordering units
 	// for that round. Returns nil if it cannot be decided yet.
 	NextRound() TimingRound
+	// Close the extender. No further data will be accepted.
+	Close()
 }
 
 // TimingRound represents a particular round of voting and associated ordering of units.
