@@ -7,6 +7,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+// default template returns Config with default values.
 func defaultTemplate() Config {
 	return &conf{
 		CreateDelay:    500 * time.Millisecond,
@@ -23,7 +24,8 @@ func defaultTemplate() Config {
 	}
 }
 
-func generate(m *Member, c *Committee) Config {
+// newConfig return a Config with default values together with Member and Committee data.
+func newConfig(m *Member, c *Committee) Config {
 	cnf := defaultTemplate()
 	cnf.Pid = m.Pid
 	cnf.NProc = uint16(len(c.PublicKeys))
@@ -36,24 +38,26 @@ func generate(m *Member, c *Committee) Config {
 	return cnf
 }
 
-func addSetup(cnf Config) Config {
+func addSetupConf(cnf Config) Config {
 	cnf.CanSkipLevel = false
 	cnf.OrderStartLevel = 6
 	cnf.Checks = append(cnf.Checks, check.NoLevelSkipping, check.NoForks)
 	return cnf
 }
 
-func addMain(cnf Config) Config {
+func addRegularConf(cnf Config) Config {
 	cnf.CanSkipLevel = true
 	cnf.OrderStartLevel = 0
 	cnf.Checks = append(cnf.Checks, check.NoSelfForkingEvidence, check.ForkerMuting)
 	return cnf
 }
 
+// NewSetup returns a Config for setup phase given Member and Committee data.
 func NewSetup(m *Member, c *Committee) Config {
-	return addSetup(generate(m, c))
+	return addSetupConf(newConfig(m, c))
 }
 
-func NewMain(m *Member, c *Committee) Config {
-	return addMain(generate(m, c))
+// New returns a Config for regular consensus run from the given Member and Committee data.
+func New(m *Member, c *Committee) Config {
+	return addRegularConf(newConfig(m, c))
 }

@@ -9,6 +9,7 @@ import (
 )
 
 // Config represents a complete configuration needed for a process to start.
+// Exported type is a pointer type to make sure that we always deal with only one underlying struct.
 type Config *conf
 
 type conf struct {
