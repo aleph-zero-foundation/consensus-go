@@ -16,7 +16,7 @@ const (
 
 var _ = Describe("Ordering", func() {
 	var (
-		ordering gomel.LinearOrdering
+		ordering gomel.Extender
 		dag      gomel.Dag
 		rs       gomel.RandomSource
 		err      error

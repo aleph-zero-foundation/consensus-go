@@ -1,40 +1,150 @@
-// Package linear implements the algorithm for deciding the linear order for units in a dag.
+// Package linear implements the algorithm for extending partial dag order into linear order.
 package linear
 
 import (
-	"sort"
+	"sync"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// Ordering is an implementation of LinearOrdering interface.
-type ordering struct {
-	lastDecideResult bool
-	orderStartLevel  int
-	crpFixedPrefix   uint16
+// shallbedone: take this from config?
+const firstDecidingRound = 3
+
+// Extender is a component working on a dag that extends a partial order of units defined by dag to a linear order.
+// Extender reacts every time a new unit is inserted into the underlying dag. It tries to pick next timing unit.
+// If successful, Extender collects all the units belonging to that timing round, and linearly orders them.
+type Extender struct {
 	dag              gomel.Dag
 	randomSource     gomel.RandomSource
-	currentTU        gomel.Unit
-	lastTUs          []gomel.Unit
+	conf             config.Config
 	decider          *superMajorityDecider
+	output           chan []gomel.Unit
+	trigger          chan struct{}
+	timingRounds     chan *timingRound
+	lastTUs          []gomel.Unit
+	currentTU        gomel.Unit
+	lastDecideResult bool
+	wg               sync.WaitGroup
 	log              zerolog.Logger
 }
 
-// NewOrdering creates an Ordering wrapper around a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, orderStartLevel int, crpFixedPrefix uint16, log zerolog.Logger) gomel.LinearOrdering {
-
+// NewExtender constructs an extender working on the given dag and sending rounds of ordered units to the given output.
+func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, output chan []gomel.Unit, log zerolog.Logger) *Extender {
 	stdDecider := newSuperMajorityDecider(dag, rs)
+	ext := &Extender{
+		dag:          dag,
+		randomSource: rs,
+		conf:         conf,
+		output:       output,
+		decider:      stdDecider,
+		trigger:      make(chan struct{}, 1),
+		timingRounds: make(chan *timingRound, 10),
+		lastTUs:      make([]gomel.Unit, stdDecider.firstRoundZeroForCommonVote),
+		log:          log,
+	}
 
-	return &ordering{
-		dag:             dag,
-		randomSource:    rs,
-		orderStartLevel: orderStartLevel,
-		crpFixedPrefix:  crpFixedPrefix,
-		lastTUs:         make([]gomel.Unit, stdDecider.firstRoundZeroForCommonVote),
-		decider:         stdDecider,
-		log:             log,
+	notify := func(_ gomel.Unit) {
+		select {
+		case ext.trigger <- struct{}{}:
+		default:
+		}
+	}
+	ext.conf.AfterInsert = append(conf.AfterInsert, notify)
+
+	ext.wg.Add(2)
+	go ext.timingUnitDecider()
+	go ext.roundSorter()
+
+	return ext
+}
+
+// Close stops the extender.
+func (ext *Extender) Close() {
+	close(ext.trigger)
+	ext.wg.Wait()
+}
+
+// timingUnitDecider tries to pick the next timing unit after receiving notification on trigger channel.
+// For each picked timing unit, it sends a timingRound object to timingRounds channel.
+func (ext *Extender) timingUnitDecider() {
+	defer ext.wg.Done()
+	for range ext.trigger {
+		round := ext.nextRound()
+		for round != nil {
+			ext.timingRounds <- round
+			round = ext.nextRound()
+		}
+	}
+	close(ext.timingRounds)
+}
+
+// roundSorter picks information about newly picked timing unit from the timingRounds channel,
+// finds all units belonging to their timing round and establishes linear order on them.
+// Sends slices of ordered units to output.
+func (ext *Extender) roundSorter() {
+	defer ext.wg.Done()
+	for round := range ext.timingRounds {
+		units := round.OrderedUnits()
+		ext.output <- units
+		for _, u := range units {
+			if u.Creator() == ext.conf.Pid {
+				ext.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
+			}
+		}
+		ext.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
+	}
+}
+
+// nextRound tries to pick the next timing unit. Returns nil if it cannot be decided yet.
+func (ext *Extender) nextRound() *timingRound {
+	if ext.lastDecideResult {
+		ext.lastDecideResult = false
+		ext.decider = newSuperMajorityDecider(ext.dag, ext.randomSource)
+	}
+
+	dagMaxLevel := dagMaxLevel(ext.dag)
+	if dagMaxLevel < ext.conf.OrderStartLevel {
+		return nil
+	}
+
+	level := ext.conf.OrderStartLevel
+	if ext.currentTU != nil {
+		level = ext.currentTU.Level() + 1
+	}
+	if dagMaxLevel < level+firstDecidingRound {
+		return nil
+	}
+
+	previousTU := ext.currentTU
+	decided := false
+	ext.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
+		decision, decidedOn := ext.decider.decideUnitIsPopular(uc, dagMaxLevel)
+		if decision == popular {
+			ext.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagMaxLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
+
+			ext.lastTUs = ext.lastTUs[1:]
+			ext.lastTUs = append(ext.lastTUs, ext.currentTU)
+			ext.currentTU = uc
+			ext.decider = nil
+			ext.lastDecideResult = true
+
+			decided = true
+			return false
+		}
+		if decision == undecided {
+			return false
+		}
+		return true
+	})
+	if !decided {
+		return nil
+	}
+	return &timingRound{
+		currentTU: ext.currentTU,
+		lastTUs:   ext.lastTUs,
 	}
 }
 
@@ -50,152 +160,4 @@ func dagMaxLevel(dag gomel.Dag) int {
 		return true
 	})
 	return maxLevel
-}
-
-// DecideTiming tries to pick the next timing unit. Returns nil if it cannot be decided yet.
-func (o *ordering) NextRound() gomel.TimingRound {
-	if o.lastDecideResult {
-		o.lastDecideResult = false
-		o.decider = newSuperMajorityDecider(o.dag, o.randomSource)
-	}
-
-	dagMaxLevel := dagMaxLevel(o.dag)
-	if dagMaxLevel < o.orderStartLevel {
-		return nil
-	}
-
-	level := o.orderStartLevel
-	if o.currentTU != nil {
-		level = o.currentTU.Level() + 1
-	}
-	if dagMaxLevel < level+firstDecidingRound {
-		return nil
-	}
-
-	previousTU := o.currentTU
-	decided := false
-	o.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
-		decision, decidedOn := o.decider.decideUnitIsPopular(uc, dagMaxLevel)
-		if decision == popular {
-			o.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagMaxLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
-
-			o.lastTUs = o.lastTUs[1:]
-			o.lastTUs = append(o.lastTUs, o.currentTU)
-			o.currentTU = uc
-			o.decider = nil
-			o.lastDecideResult = true
-
-			decided = true
-			return false
-		}
-		if decision == undecided {
-			return false
-		}
-		return true
-	})
-	if !decided {
-		return nil
-	}
-	return &timingRound{
-		currentTU: o.currentTU,
-		lastTUs:   o.lastTUs,
-	}
-}
-
-type timingRound struct {
-	currentTU gomel.Unit
-	lastTUs   []gomel.Unit
-}
-
-func (tr *timingRound) TimingUnit() gomel.Unit {
-	return tr.currentTU
-}
-
-// NOTE we can prove that comparing with last k timing units, where k is the first round for which the deterministic
-// common vote is zero, is enough to verify if a unit was already ordered. Since the common vote for round k is 0,
-// every unit on level tu.Level()+k must be above a timing unit tu, otherwise some unit would decide 0 for it.
-func checkIfAlreadyOrdered(u gomel.Unit, prevTUs []gomel.Unit) bool {
-	if prevTU := prevTUs[len(prevTUs)-1]; prevTU == nil || u.Level() > prevTU.Level() {
-		return false
-	}
-	for it := len(prevTUs) - 1; it >= 0; it-- {
-		if gomel.Above(prevTUs[it], u) {
-			return true
-		}
-	}
-	return false
-}
-
-// getAntichainLayers for a given timing unit tu, returns all the units in its timing round
-// divided into layers.
-// 0-th layer is formed by minimal units in this timing round.
-// 1-st layer is formed by minimal units when the 0th layer is removed.
-// etc.
-func getAntichainLayers(tu gomel.Unit, prevTUs []gomel.Unit) [][]gomel.Unit {
-	unitToLayer := make(map[gomel.Hash]int)
-	seenUnits := make(map[gomel.Hash]bool)
-	result := [][]gomel.Unit{}
-
-	var dfs func(u gomel.Unit)
-	dfs = func(u gomel.Unit) {
-		seenUnits[*u.Hash()] = true
-		minLayerBelow := -1
-		for _, uParent := range u.Parents() {
-			if uParent == nil {
-				continue
-			}
-			if checkIfAlreadyOrdered(uParent, prevTUs) {
-				continue
-			}
-			if !seenUnits[*uParent.Hash()] {
-				dfs(uParent)
-			}
-			if unitToLayer[*uParent.Hash()] > minLayerBelow {
-				minLayerBelow = unitToLayer[*uParent.Hash()]
-			}
-		}
-		uLayer := minLayerBelow + 1
-		unitToLayer[*u.Hash()] = uLayer
-		if len(result) <= uLayer {
-			result = append(result, []gomel.Unit{u})
-		} else {
-			result[uLayer] = append(result[uLayer], u)
-		}
-	}
-	dfs(tu)
-	return result
-}
-
-func mergeLayers(layers [][]gomel.Unit) []gomel.Unit {
-	var totalXOR gomel.Hash
-	for i := range layers {
-		for _, u := range layers[i] {
-			totalXOR.XOREqual(u.Hash())
-		}
-	}
-	// tiebreaker is a map from units to its tiebreaker value
-	tiebreaker := make(map[gomel.Hash]*gomel.Hash)
-	for l := range layers {
-		for _, u := range layers[l] {
-			tiebreaker[*u.Hash()] = gomel.XOR(&totalXOR, u.Hash())
-		}
-	}
-
-	sortedUnits := []gomel.Unit{}
-
-	for l := range layers {
-		sort.Slice(layers[l], func(i, j int) bool {
-			tbi := tiebreaker[*layers[l][i].Hash()]
-			tbj := tiebreaker[*layers[l][j].Hash()]
-			return tbi.LessThan(tbj)
-		})
-		sortedUnits = append(sortedUnits, layers[l]...)
-	}
-	return sortedUnits
-}
-
-func (tr *timingRound) OrderedUnits() []gomel.Unit {
-	layers := getAntichainLayers(tr.currentTU, tr.lastTUs)
-	sortedUnits := mergeLayers(layers)
-	return sortedUnits
 }
