@@ -2,6 +2,7 @@
 package dag
 
 import (
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -13,20 +14,22 @@ type dag struct {
 	heightUnits *fiberMap
 	maxUnits    gomel.SlottedUnits
 	checks      []gomel.UnitChecker
-	transforms  []gomel.UnitTransformer
 	preInsert   []gomel.InsertHook
 	postInsert  []gomel.InsertHook
 }
 
 // New constructs a dag for a given number of processes.
-func New(n uint16) gomel.Dag {
+func New(conf config.Config, epochID gomel.EpochID) gomel.Dag {
 	return &dag{
-		nProcesses:  n,
-		epochID:     gomel.EpochID(0),
+		nProcesses:  conf.NProc,
+		epochID:     epochID,
 		units:       newUnitBag(),
-		primeUnits:  newFiberMap(n, 10),
-		heightUnits: newFiberMap(n, 10),
-		maxUnits:    newSlottedUnits(n),
+		primeUnits:  newFiberMap(conf.NProc, 10),
+		heightUnits: newFiberMap(conf.NProc, 10),
+		maxUnits:    newSlottedUnits(conf.NProc),
+		checks:      conf.Checks,
+		preInsert:   conf.BeforeInsert,
+		postInsert:  conf.AfterInsert,
 	}
 }
 

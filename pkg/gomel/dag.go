@@ -9,18 +9,6 @@ package gomel
 
 import "gitlab.com/alephledger/core-go/pkg/crypto"
 
-// UnitChecker is a function that performs a check on Unit before Prepare.
-type UnitChecker func(Unit) error
-
-// UnitTransformer is a function that transforms a unit after it passed all the checks and Prepare.
-type UnitTransformer func(Unit) Unit
-
-// InsertHook is a function that performs some additional action on a unit before or after Insert.
-type InsertHook func(Unit)
-
-// EpochID is used as a unique identifier of an epoch.
-type EpochID uint32
-
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
 	// EpochID is a unique identifier of the epoch for this dag instance.
@@ -52,23 +40,15 @@ type Dag interface {
 	IsQuorum(uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
-	// AddCheck extends the list of UnitCheckers that are used during adding a unit.
-	AddCheck(UnitChecker)
-	// AddTranform extends the list of UnitTransformers that are used during adding a unit.
-	AddTransform(UnitTransformer)
-	// BeforeInsert adds an action to perform before insert.
-	BeforeInsert(InsertHook)
-	// AfterInsert adds an action to perform after insert.
-	AfterInsert(InsertHook)
 }
 
 // MinimalQuorum is the minimal possible size of a subset forming a quorum within nProcesses.
 func MinimalQuorum(nProcesses uint16) uint16 {
-	return uint16(crypto.MinimalQuorum(int(nProcesses)))
+	return crypto.MinimalQuorum(nProcesses)
 }
 
 // MinimalTrusted is the minimal size of a subset of nProcesses, that guarantees
 // that the subset contains at least one honest process.
 func MinimalTrusted(nProcesses uint16) uint16 {
-	return uint16(crypto.MinimalTrusted(int(nProcesses)))
+	return crypto.MinimalTrusted(nProcesses)
 }
