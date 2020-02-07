@@ -21,7 +21,7 @@ type Extender struct {
 	randomSource     gomel.RandomSource
 	conf             config.Config
 	decider          *superMajorityDecider
-	output           chan []gomel.Unit
+	output           chan<- []gomel.Unit
 	trigger          chan struct{}
 	timingRounds     chan *timingRound
 	lastTUs          []gomel.Unit
@@ -32,7 +32,7 @@ type Extender struct {
 }
 
 // NewExtender constructs an extender working on the given dag and sending rounds of ordered units to the given output.
-func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, output chan []gomel.Unit, log zerolog.Logger) *Extender {
+func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, output chan<- []gomel.Unit, log zerolog.Logger) *Extender {
 	stdDecider := newSuperMajorityDecider(dag, rs)
 	ext := &Extender{
 		dag:          dag,

@@ -39,7 +39,7 @@ func generateSyncConfig(conf *Params, m *Member, c *Committee) []*Sync {
 
 // GenerateConfig translates the configuration and committee information into a process config.
 func (conf *Params) GenerateConfig(m *Member, c *Committee) Config {
-	cnf := NewMain(m, c)
+	cnf := New(m, c)
 	cnf.CreateDelay = time.Duration(conf.CreateDelay * float32(time.Second))
 	cnf.LogLevel = conf.LogLevel
 	cnf.Alert = generateAlertConfig(conf, m, c)
