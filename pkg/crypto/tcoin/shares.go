@@ -60,10 +60,10 @@ func (c *Coin) Toss() int {
 }
 
 // CreateCoinShare creates a CoinShare for given process and nonce.
-func (tc *ThresholdCoin) CreateCoinShare(nonce int) *CoinShare {
+func (tc *ThresholdCoin) CreateCoinShare(nonce int64) *CoinShare {
 	return &CoinShare{
 		owner: tc.owner,
-		sgn:   tc.sk.Sign(big.NewInt(int64(nonce)).Bytes()),
+		sgn:   tc.sk.Sign(big.NewInt(nonce).Bytes()),
 	}
 }
 
