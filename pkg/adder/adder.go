@@ -3,21 +3,15 @@ package adder
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 const (
-	//
 	channelLength = 32
-	// gossipAbove is the number of missing units above which gossip is triggered instead of fetch.
-	gossipAbove = 50
-	// request a missing unit again only after fetchInterval has passed since the last try.
-	fetchInterval = 2 * time.Second
 )
 
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with
@@ -30,83 +24,71 @@ const (
 // d) Transform
 // e) Insert
 type adder struct {
-	dag            gomel.Dag
-	alert          gomel.Alerter
-	handlers       []gomel.ErrorHandler
-	keys           []gomel.PublicKey
-	ready          []chan *waitingPreunit
-	waiting        map[gomel.Hash]*waitingPreunit
-	waitingByID    map[uint64]*waitingPreunit
-	missing        map[uint64]*missingPreunit
-	requestFetch   gomel.RequestFetch
-	requestGossip  gomel.RequestGossip
-	gossipRequests chan<- uint16
-	mx             sync.Mutex
-	wg             sync.WaitGroup
-	quit           int64
-	log            zerolog.Logger
+	dag         gomel.Dag
+	alert       gomel.Alerter
+	conf        config.Config
+	syncer      gomel.Syncer
+	ready       []chan *waitingPreunit
+	waiting     map[gomel.Hash]*waitingPreunit
+	waitingByID map[uint64]*waitingPreunit
+	missing     map[uint64]*missingPreunit
+	active      bool
+	rmx         sync.RWMutex
+	mx          sync.Mutex
+	wg          sync.WaitGroup
+	log         zerolog.Logger
 }
 
-// New constructs a new adder that uses the given set of public keys to verify correctness of incoming preunits.
-// Returns twice the same object implementing both gomel.Adder and gomel.Service.
-// Passing nil as keys disables signature checking.
-func New(dag gomel.Dag, alert gomel.Alerter, keys []gomel.PublicKey, log zerolog.Logger) (gomel.Adder, gomel.Service) {
-	ready := make([]chan *waitingPreunit, dag.NProc())
-	for i := range ready {
-		ready[i] = make(chan *waitingPreunit, channelLength)
-	}
+// New constructs a new adder.
+func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Alerter, log zerolog.Logger) gomel.Adder {
 	ad := &adder{
 		dag:         dag,
 		alert:       alert,
-		keys:        keys,
-		ready:       ready,
+		conf:        conf,
+		syncer:      syncer,
+		ready:       make([]chan *waitingPreunit, dag.NProc()),
 		waiting:     make(map[gomel.Hash]*waitingPreunit),
 		waitingByID: make(map[uint64]*waitingPreunit),
 		missing:     make(map[uint64]*missingPreunit),
+		active:      true,
 		log:         log,
 	}
-	return ad, ad
-}
-
-func (ad *adder) AddErrorHandler(eh gomel.ErrorHandler) {
-	ad.handlers = append(ad.handlers, eh)
-}
-
-func (ad *adder) SetFetch(tf gomel.RequestFetch) {
-	ad.requestFetch = tf
-}
-
-func (ad *adder) SetGossip(tg gomel.RequestGossip) {
-	ad.requestGossip = tg
-}
-
-// AddUnit checks basic correctness of a preunit and then adds it to the buffer zone.
-// Does not block - this method returns when the preunit is added to the waiting preunits.
-// The returned error can be:
-//   DataError - if creator or signature are wrong
-//   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
-//   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
-func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
-	ad.log.Debug().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.AddUnitStarted)
-	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
-		return gomel.NewDuplicateUnit(u)
+	for i := range ad.ready {
+		if uint16(i) == ad.conf.Pid {
+			continue
+		}
+		ad.ready[i] = make(chan *waitingPreunit, channelLength)
+		go func(ch chan *waitingPreunit) {
+			defer ad.wg.Done()
+			for wp := range ch {
+				ad.handleReady(wp)
+			}
+		}(ad.ready[i])
+		ad.wg.Add(1)
 	}
-	err := ad.checkCorrectness(pu)
-	if err != nil {
-		return err
-	}
-	ad.mx.Lock()
-	defer ad.mx.Unlock()
-	return ad.addToWaiting(pu, source)
+	ad.log.Info().Msg(logging.ServiceStarted)
+	return ad
 }
 
-// AddUnits checks basic correctness of a given slice of preunits and then adds them to the buffer zone.
+// Close stops the adder.
+func (ad *adder) Close() {
+	ad.rmx.Lock()
+	ad.active = false
+	ad.rmx.Unlock()
+	for _, c := range ad.ready {
+		close(c)
+	}
+	ad.wg.Wait()
+	ad.log.Info().Msg(logging.ServiceStopped)
+}
+
+// AddPreunits checks basic correctness of a given slice of preunits and then adds them to the buffer zone.
 // Does not block - this method returns when all preunits are added to the waiting preunits (or rejected due to signature or duplication).
 // Returned AggregateError can have the following members:
 //   DataError - if creator or signature are wrong
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
 //   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
-func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.AggregateError {
+func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnitsStarted)
 	errors := make([]error, len(preunits))
 	hashes := make([]*gomel.Hash, len(preunits))
@@ -136,41 +118,18 @@ func (ad *adder) AddUnits(preunits []gomel.Preunit, source uint16) *gomel.Aggreg
 		}
 		errors[i] = ad.addToWaiting(pu, source)
 	}
-	return gomel.NewAggregateError(errors)
-}
-
-// Start the adding workers.
-func (ad *adder) Start() error {
-	ad.wg.Add(int(ad.dag.NProc()))
-	for i := range ad.ready {
-		go func(i int) {
-			defer ad.wg.Done()
-			for wp := range ad.ready[i] {
-				ad.handleReady(wp)
-			}
-		}(i)
-	}
-	ad.log.Info().Msg(logging.ServiceStarted)
-	return nil
-}
-
-// Stop the adding workers.
-func (ad *adder) Stop() {
-	atomic.StoreInt64(&ad.quit, 1)
-	for _, c := range ad.ready {
-		close(c)
-	}
-	ad.wg.Wait()
-	ad.log.Info().Msg(logging.ServiceStopped)
+	return errors
 }
 
 // sendIfReady checks if a waitingPreunit is ready (has no waiting or missing parents).
 // If yes, the preunit is sent to the channel corresponding to its dedicated worker.
 // Atomic flag prevents send on a closed channel after Stop().
 func (ad *adder) sendIfReady(wp *waitingPreunit) {
-	if wp.waitingParents == 0 && wp.missingParents == 0 && atomic.LoadInt64(&ad.quit) == 0 {
-		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(logging.PreunitReady)
+	ad.rmx.RLock()
+	defer ad.rmx.RUnlock()
+	if wp.waitingParents == 0 && wp.missingParents == 0 && ad.active {
 		ad.ready[wp.pu.Creator()] <- wp
+		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(logging.PreunitReady)
 	}
 }
 
@@ -224,7 +183,7 @@ func (ad *adder) checkCorrectness(pu gomel.Preunit) error {
 			fmt.Sprintf("invalid EpochID - expected %d, but received %d instead", ad.dag.EpochID(), pu.EpochID()),
 		)
 	}
-	if ad.keys != nil && !ad.keys[pu.Creator()].Verify(pu) {
+	if !ad.conf.PublicKeys[pu.Creator()].Verify(pu) {
 		return gomel.NewDataError("invalid signature")
 	}
 	return nil
@@ -256,7 +215,7 @@ func (ad *adder) handleCheckError(err error, u gomel.Unit, source uint16) error 
 		return nil
 	}
 	err = ad.alert.ResolveMissingCommitment(err, u, source)
-	for _, handler := range ad.handlers {
+	for _, handler := range ad.conf.CheckHandlers {
 		if err == nil {
 			return nil
 		}

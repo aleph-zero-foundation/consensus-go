@@ -4,10 +4,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-const (
-	firstDecidingRound = 3
-)
-
 type superMajorityDecider struct {
 	*unanimousVoter
 }

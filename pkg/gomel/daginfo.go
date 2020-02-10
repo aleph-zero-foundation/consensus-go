@@ -2,7 +2,7 @@ package gomel
 
 // DagInfo contains information about heights of the most recent units in a Dag.
 type DagInfo struct {
-	Epoch   int
+	Epoch   EpochID
 	Heights []int
 }
 
@@ -21,7 +21,7 @@ func MaxView(dag Dag) *DagInfo {
 		return true
 	})
 	return &DagInfo{
-		Epoch:   0, // SHALL BE DONE!
+		Epoch:   dag.EpochID(),
 		Heights: heights,
 	}
 }
