@@ -14,24 +14,24 @@ import (
 	"strings"
 )
 
-var _ = Describe("Configuration", func() {
+var _ = Describe("Params", func() {
 	Describe("json configuration", func() {
-		Describe("Store and Load Configuration", func() {
-			It("should return same Configuration", func() {
-				config := NewDefaultConfiguration()
+		Describe("Store and Load Params", func() {
+			It("should return same Params", func() {
+				config := NewDefaultParams()
 				config.LevelLimit = 10000
 				configCopy := config
 
 				// store configuration using a buffer
 				var buf bytes.Buffer
-				err := NewJSONConfigWriter().StoreConfiguration(&buf, &config)
+				err := NewJSONConfigWriter().StoreParams(&buf, &config)
 				Expect(err).NotTo(HaveOccurred())
 
 				// load the configuration from the buffer
-				var newConfiguration Configuration
-				err = NewJSONConfigLoader().LoadConfiguration(&buf, &newConfiguration)
+				var newParams Params
+				err = NewJSONConfigLoader().LoadParams(&buf, &newParams)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(newConfiguration).To(Equal(configCopy))
+				Expect(newParams).To(Equal(configCopy))
 			})
 		})
 
@@ -40,8 +40,8 @@ var _ = Describe("Configuration", func() {
 				jsonConfig := "{\"LevelLimit\": 1000}"
 				configStream := strings.NewReader(jsonConfig)
 
-				var config Configuration
-				err := NewJSONConfigLoader().LoadConfiguration(configStream, &config)
+				var config Params
+				err := NewJSONConfigLoader().LoadParams(configStream, &config)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -51,8 +51,8 @@ var _ = Describe("Configuration", func() {
 				jsonConfig := "{\"BlaBla\": 1000}"
 				configStream := strings.NewReader(jsonConfig)
 
-				var config Configuration
-				err := NewJSONConfigLoader().LoadConfiguration(configStream, &config)
+				var config Params
+				err := NewJSONConfigLoader().LoadParams(configStream, &config)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -62,8 +62,8 @@ var _ = Describe("Configuration", func() {
 				jsonConfig := "adasdjiojoi  a{ aaa/"
 				configStream := strings.NewReader(jsonConfig)
 
-				var config Configuration
-				err := NewJSONConfigLoader().LoadConfiguration(configStream, &config)
+				var config Params
+				err := NewJSONConfigLoader().LoadParams(configStream, &config)
 				Expect(err).To(HaveOccurred())
 			})
 		})

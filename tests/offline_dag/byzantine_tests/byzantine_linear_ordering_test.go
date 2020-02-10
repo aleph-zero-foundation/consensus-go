@@ -1202,7 +1202,7 @@ func testLongTimeUndecidedStrategy() error {
 	startLevel := 1
 	crp := func(int) uint16 { return 1 }
 
-	configurations := make([]config.Configuration, nProcesses)
+	configurations := make([]config.Params, nProcesses)
 	for pid := range configurations {
 		configurations[pid] = conf
 	}
@@ -1213,7 +1213,7 @@ func testLongTimeUndecidedStrategy() error {
 		longTimeUndecidedStrategy(&startLevel, initialVotingRound, numberOfDeterministicRounds, crp)
 
 	checkIfUndecidedVerifier :=
-		func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
+		func(dags []gomel.Dag, pids []uint16, configs []config.Params, rss []gomel.RandomSource) error {
 			fmt.Println("starting the undecided checker")
 
 			logger, _ := logging.NewLogger("stdout", conf.LogLevel, 100000, false)

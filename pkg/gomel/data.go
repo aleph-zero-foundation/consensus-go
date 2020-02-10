@@ -5,6 +5,8 @@ import (
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
+//shallbedone: should that be here?
+
 // ToPreblock extracts preblock from a given timing round.
 // It assumes that
 // 1. given slice of units forms a timing round,

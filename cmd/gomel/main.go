@@ -44,8 +44,8 @@ func getCommittee(filename string) (*config.Committee, error) {
 	return config.LoadCommittee(file)
 }
 
-func getConfiguration(filename string) (*config.Configuration, error) {
-	var result config.Configuration
+func getConfiguration(filename string) (*config.Params, error) {
+	var result config.Params
 	if filename == "" {
 		result = config.NewDefaultConfiguration()
 		return &result, nil
