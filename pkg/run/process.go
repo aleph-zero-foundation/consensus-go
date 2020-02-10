@@ -68,9 +68,7 @@ func newPreblockService(orderedUnits chan []gomel.Unit, ps gomel.PreblockSink) g
 						return
 					}
 					select {
-					case ps <- func(continuation func(*gomel.Preblock)) {
-						continuation(gomel.ToPreblock(round))
-					}:
+					case ps <- gomel.ToPreblock(round):
 					case <-stopService:
 						return
 					}

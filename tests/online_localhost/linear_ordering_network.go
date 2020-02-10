@@ -119,7 +119,7 @@ func createAndStartProcess(
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(10)
 	tds.Start()
-	ps := make(chan func(func(*gomel.Preblock)))
+	ps := make(chan *gomel.Preblock)
 	// Reading and ignoring all the preblocks.
 	go func() {
 		for range ps {
