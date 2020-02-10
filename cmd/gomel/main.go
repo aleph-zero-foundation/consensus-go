@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"sync"
 	"syscall"
 	"time"
 
@@ -171,8 +172,11 @@ func main() {
 	tds := tests.NewDataSource(300 * conf.Txpu)
 	tds.Start()
 	ps := make(chan *gomel.Preblock)
+	var wait sync.WaitGroup
+	wait.Add(1)
 	// Reading and ignoring all the preblocks.
 	go func() {
+		defer wait.Done()
 		for range ps {
 		}
 	}()
@@ -181,12 +185,16 @@ func main() {
 
 	setupErrors := make(chan error)
 	mainServiceErrors := make(chan error)
+	wait.Add(1)
 	go func() {
+		defer wait.Done()
 		for err := range setupErrors {
 			panic("error in setup: " + err.Error())
 		}
 	}()
+	wait.Add(1)
 	go func() {
+		defer wait.Done()
 		for err := range mainServiceErrors {
 			panic("error in main service: " + err.Error())
 		}
@@ -209,6 +217,7 @@ func main() {
 
 	tds.Stop()
 	close(ps)
+	wait.Wait()
 
 	if options.memProfFilename != "" {
 		f, err := os.Create(options.memProfFilename)

@@ -121,12 +121,17 @@ func createAndStartProcess(
 	tds.Start()
 	ps := make(chan *gomel.Preblock)
 	// Reading and ignoring all the preblocks.
+	var wait sync.WaitGroup
+	wait.Add(1)
 	go func() {
+		defer wait.Done()
 		for range ps {
 		}
 	}()
 
 	go func() {
+		defer finished.Done()
+
 		setupError := make(chan error, 1)
 		mainError := make(chan error, 1)
 		go func() {
@@ -162,9 +167,9 @@ func createAndStartProcess(
 		close(mainError)
 
 		dags[id] = dag
-		finished.Done()
 		tds.Stop()
 		close(ps)
+		wait.Wait()
 	}()
 	return nil
 }
