@@ -33,7 +33,7 @@ type Creator func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs go
 type AddingHandler func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error
 
 // DagVerifier is a type of a function that is responsible for verifying if a given list of dags is in valid state.
-type DagVerifier func([]gomel.Dag, []uint16, []config.Configuration, []gomel.RandomSource) error
+type DagVerifier func([]gomel.Dag, []uint16, []config.Params, []gomel.RandomSource) error
 
 // TestingRoutine describes a strategy for performing a test on a given set of dags.
 type TestingRoutine struct {
@@ -258,9 +258,9 @@ func GenerateKeys(nProcesses int) ([]gomel.PublicKey, []gomel.PrivateKey) {
 }
 
 // NewDefaultConfigurations creates a slice of a given size containing default configurations.
-func NewDefaultConfigurations(nProcesses int) []config.Configuration {
+func NewDefaultConfigurations(nProcesses int) []config.Params {
 	defaultConfig := config.NewDefaultConfiguration()
-	configs := make([]config.Configuration, nProcesses)
+	configs := make([]config.Params, nProcesses)
 	for pid := range configs {
 		configs[pid] = defaultConfig
 	}
@@ -332,7 +332,7 @@ func NewEachInSequenceUnitCreator(unitFactory Creator) UnitCreator {
 	}
 }
 
-func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
+func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
@@ -355,7 +355,7 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Configurati
 	return units
 }
 
-func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
+func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 
@@ -379,7 +379,7 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Configura
 	return units
 }
 
-func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
+func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 		dag.MaximalUnitsPerProcess().Iterate(func(forks []gomel.Unit) bool {
@@ -416,7 +416,7 @@ func dagLevel(dag gomel.Dag) int {
 // ComposeVerifiers composes provided verifiers into a single verifier. Created verifier fails immediately after it discovers a failure of one of
 // its verifiers.
 func ComposeVerifiers(verifiers ...DagVerifier) DagVerifier {
-	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Configuration, rss []gomel.RandomSource) error {
+	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Params, rss []gomel.RandomSource) error {
 		for _, verifier := range verifiers {
 			if err := verifier(dags, pids, generalConfigs, rss); err != nil {
 				return err
@@ -440,8 +440,8 @@ func ComposeAdders(adders ...AddingHandler) AddingHandler {
 	}
 }
 
-func verifyUnitsUsingOrdering(ordering func(gomel.Dag, uint16, config.Configuration, gomel.RandomSource) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) DagVerifier {
-	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Configuration, rss []gomel.RandomSource) error {
+func verifyUnitsUsingOrdering(ordering func(gomel.Dag, uint16, config.Params, gomel.RandomSource) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) DagVerifier {
+	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Params, rss []gomel.RandomSource) error {
 		if len(dags) < 2 {
 			return nil
 		}
@@ -478,7 +478,7 @@ func VerifyTimingUnits() DagVerifier {
 	prevLevel := -1
 	return verifyUnitsUsingOrdering(
 
-		func(dag gomel.Dag, pid uint16, generalConfig config.Configuration, rs gomel.RandomSource) chan gomel.Unit {
+		func(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
 			prevLevel = -1
 			return getAllTimingUnits(dag, pid, generalConfig, rs)
 		},
@@ -541,7 +541,7 @@ func NewDefaultVerifier() func([]gomel.Dag, []gomel.PrivateKey) DagVerifier {
 
 // NewNoOpVerifier returns a DagVerifier that does not check provided dags and immediately answers that they are correct.
 func NewNoOpVerifier() DagVerifier {
-	return func([]gomel.Dag, []uint16, []config.Configuration, []gomel.RandomSource) error {
+	return func([]gomel.Dag, []uint16, []config.Params, []gomel.RandomSource) error {
 		fmt.Println("No verification step")
 		return nil
 	}
@@ -576,7 +576,7 @@ func (*testRandomSource) DataToInclude(uint16, []gomel.Unit, int) ([]byte, error
 func Test(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	configurations []config.Configuration,
+	configurations []config.Params,
 	testingRoutine *TestingRoutine,
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
@@ -596,7 +596,7 @@ func Test(
 func TestUsingTestRandomSource(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	configurations []config.Configuration,
+	configurations []config.Params,
 	testingRoutine *TestingRoutine,
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
@@ -621,7 +621,7 @@ func MakeStandardDag(nProc uint16) gomel.Dag {
 func TestUsingRandomSourceProvider(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	configurations []config.Configuration,
+	configurations []config.Params,
 	rssProvider func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag),
 	testingRoutine *TestingRoutine,
 ) error {

@@ -12,30 +12,30 @@ const (
 	MaxUnitsInChunk = 1e6
 )
 
-// SyncConfiguration represents parameters for a synchronization service.
-type SyncConfiguration struct {
+// SyncParams represents parameters for a synchronization service.
+type SyncParams struct {
 	// Type describes the service type.
 	Type string
 	// Params holds additional parameters needed by a service of a given type.
 	Params map[string]string
 }
 
-// Configuration represents project-wide configuration.
-type Configuration struct {
+// Params represents a set of process parameters adjustable via JSON config files.
+type Params struct {
 	// Whether a process is allowed not to create a unit at a level.
 	CanSkipLevel bool
 
 	// Delay after attempting to create a new unit, before another attempt is made.
 	CreateDelay float32
 
-	// Configurations for synchronization services during the setup phase.
-	SyncSetup []SyncConfiguration
+	// Params for synchronization services during the setup phase.
+	SyncSetup []SyncParams
 
 	// Name of the setup procedure.
 	Setup string
 
-	// Configurations for synchronization services during the main protocol operation.
-	Sync []SyncConfiguration
+	// Params for synchronization services during the main protocol operation.
+	Sync []SyncParams
 
 	// The number of transactions included in a unit.
 	// Currently only simulated by including random bytes depending on this number.
@@ -64,30 +64,30 @@ type Configuration struct {
 	CRPFixedPrefix uint16
 }
 
-// NewDefaultConfiguration returns default set of parameters.
-func NewDefaultConfiguration() Configuration {
-	syncConf := []SyncConfiguration{SyncConfiguration{
+// NewDefaultParams returns default set of parameters.
+func NewDefaultParams() Params {
+	syncConf := []SyncParams{SyncParams{
 		Type:   "multicast",
 		Params: map[string]string{"network": "pers", "timeout": "2s"},
-	}, SyncConfiguration{
+	}, SyncParams{
 		Type:   "gossip",
 		Params: map[string]string{"nIn": "20", "nOut": "15", "nIdle": "1", "timeout": "2s"},
 	},
 	}
 
-	syncSetupConf := []SyncConfiguration{SyncConfiguration{
+	syncSetupConf := []SyncParams{SyncParams{
 		Type:   "rmc",
 		Params: map[string]string{"network": "pers", "timeout": "2s"},
-	}, SyncConfiguration{
+	}, SyncParams{
 		Type:   "fetch",
 		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
-	}, SyncConfiguration{
+	}, SyncParams{
 		Type:   "gossip",
 		Params: map[string]string{"nIn": "20", "nOut": "15", "nIdle": "1", "timeout": "2s"},
 	},
 	}
 
-	result := Configuration{
+	result := Params{
 
 		CanSkipLevel: true,
 

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func generateAlertConfig(conf *Configuration, m *Member, c *Committee) *Alert {
+func generateAlertConfig(conf *Params, m *Member, c *Committee) *Alert {
 	addresses := c.Addresses[len(c.Addresses)-1]
 	timeout := 2 * time.Second
 	return &Alert{
@@ -20,7 +20,7 @@ func generateAlertConfig(conf *Configuration, m *Member, c *Committee) *Alert {
 	}
 }
 
-func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*Sync {
+func generateSyncConfig(conf *Params, m *Member, c *Committee) []*Sync {
 	nTypes := len(conf.Sync)
 	syncConfs := make([]*Sync, nTypes)
 	for i := range syncConfs {
@@ -38,7 +38,7 @@ func generateSyncConfig(conf *Configuration, m *Member, c *Committee) []*Sync {
 }
 
 // GenerateConfig translates the configuration and committee information into a process config.
-func (conf *Configuration) GenerateConfig(m *Member, c *Committee) Config {
+func (conf *Params) GenerateConfig(m *Member, c *Committee) Config {
 	cnf := NewMain(m, c)
 	cnf.CreateDelay = time.Duration(conf.CreateDelay * float32(time.Second))
 	cnf.LogLevel = conf.LogLevel

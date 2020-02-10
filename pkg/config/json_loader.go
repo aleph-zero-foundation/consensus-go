@@ -9,21 +9,21 @@ import (
 	"reflect"
 )
 
-// ConfigurationLoader is an abstraction for parsing configurations from a given io.Reader instance.
-type ConfigurationLoader interface {
-	// LoadConfiguration parses an instance of the Configuration type using a given instance of io.Reader.
-	LoadConfiguration(io.Reader, *Configuration) error
+// ParamsLoader is an abstraction for parsing configurations from a given io.Reader instance.
+type ParamsLoader interface {
+	// LoadParams parses an instance of the Params type using a given instance of io.Reader.
+	LoadParams(io.Reader, *Params) error
 }
 
-// ConfigurationWriter is an abstraction for storing configurations using a given instance of io.Writer.
-type ConfigurationWriter interface {
-	// StoreConfiguration outputs a representation of the Configuration using the provided io.Writer.
-	StoreConfiguration(io.Writer, *Configuration) error
+// ParamsWriter is an abstraction for storing configurations using a given instance of io.Writer.
+type ParamsWriter interface {
+	// StoreParams outputs a representation of the Params using the provided io.Writer.
+	StoreParams(io.Writer, *Params) error
 }
 
 type jsonConfigLoader struct{}
 
-func (l jsonConfigLoader) LoadConfiguration(reader io.Reader, config *Configuration) error {
+func (l jsonConfigLoader) LoadParams(reader io.Reader, config *Params) error {
 	if config == nil {
 		return gomel.NewConfigError("config parameter is nil")
 	}
@@ -35,7 +35,7 @@ func (l jsonConfigLoader) LoadConfiguration(reader io.Reader, config *Configurat
 	if err != nil {
 		return err
 	}
-	// check if the provided JSON representation has the same number of fields as the Configuration type
+	// check if the provided JSON representation has the same number of fields as the Params type
 	var parsedJSON map[string]interface{}
 	err = json.NewDecoder(&buffer).Decode(&parsedJSON)
 	if err != nil {
@@ -47,18 +47,18 @@ func (l jsonConfigLoader) LoadConfiguration(reader io.Reader, config *Configurat
 	return nil
 }
 
-func (l jsonConfigLoader) StoreConfiguration(writer io.Writer, config *Configuration) error {
+func (l jsonConfigLoader) StoreParams(writer io.Writer, config *Params) error {
 	return json.NewEncoder(writer).Encode(*config)
 }
 
-// NewJSONConfigLoader returns a new instance of the ConfigurationLoader type that expects that the provided configuration
+// NewJSONConfigLoader returns a new instance of the ParamsLoader type that expects that the provided configuration
 // is stored using the JSON format.
-func NewJSONConfigLoader() ConfigurationLoader {
+func NewJSONConfigLoader() ParamsLoader {
 	return jsonConfigLoader{}
 }
 
-// NewJSONConfigWriter returns a new instance of the ConfigurationWriter type that stores the configuration using the JSON
+// NewJSONConfigWriter returns a new instance of the ParamsWriter type that stores the configuration using the JSON
 // format.
-func NewJSONConfigWriter() ConfigurationWriter {
+func NewJSONConfigWriter() ParamsWriter {
 	return jsonConfigLoader{}
 }
