@@ -3,12 +3,12 @@ package tests
 import (
 	"crypto/rand"
 
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 // TestDataSource is a data source for testing without proper data source.
 type TestDataSource struct {
-	dataSource chan gomel.Data
+	dataSource chan core.Data
 	blockSize  int
 	exitChan   chan struct{}
 }
@@ -17,7 +17,7 @@ type TestDataSource struct {
 // to the channel random slices of data of given size.
 func NewDataSource(blockSize int) *TestDataSource {
 	exitChan := make(chan struct{})
-	dataSource := make(chan gomel.Data)
+	dataSource := make(chan core.Data)
 	return &TestDataSource{
 		dataSource,
 		blockSize,
@@ -26,7 +26,7 @@ func NewDataSource(blockSize int) *TestDataSource {
 }
 
 // DataSource returns gomel.DataSource object from the TestDataSource.
-func (tds *TestDataSource) DataSource() gomel.DataSource {
+func (tds *TestDataSource) DataSource() core.DataSource {
 	return tds.dataSource
 }
 

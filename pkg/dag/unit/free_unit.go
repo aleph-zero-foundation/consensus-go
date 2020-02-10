@@ -2,16 +2,18 @@ package unit
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 type freeUnit struct {
 	nProc     uint16
 	creator   uint16
+	epochID   gomel.EpochID
 	signature gomel.Signature
 	hash      gomel.Hash
 	parents   []gomel.Unit
 	crown     gomel.Crown
-	data      gomel.Data
+	data      core.Data
 	rsData    []byte
 	height    int
 	level     int
@@ -23,6 +25,7 @@ func New(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 	u := &freeUnit{
 		nProc:     uint16(len(parents)),
 		creator:   pu.Creator(),
+		epochID:   pu.EpochID(),
 		signature: pu.Signature(),
 		crown:     *pu.View(),
 		hash:      *pu.Hash(),
@@ -40,12 +43,16 @@ func (u *freeUnit) RandomSourceData() []byte {
 	return u.rsData
 }
 
-func (u *freeUnit) Data() gomel.Data {
+func (u *freeUnit) Data() core.Data {
 	return u.data
 }
 
 func (u *freeUnit) Creator() uint16 {
 	return u.creator
+}
+
+func (u *freeUnit) EpochID() gomel.EpochID {
+	return u.epochID
 }
 
 func (u *freeUnit) Signature() gomel.Signature {

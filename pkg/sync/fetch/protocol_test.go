@@ -10,10 +10,11 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 type testServer interface {
@@ -46,7 +47,6 @@ func missingParents(preunit gomel.Preunit, maxUnits gomel.SlottedUnits) []uint64
 	unitIDs := []uint64{}
 	requiredHeights := preunit.View().Heights
 	curCreator := uint16(0)
-	nProc := uint16(len(requiredHeights))
 	maxUnits.Iterate(func(units []gomel.Unit) bool {
 		highest := -1
 		for _, u := range units {
@@ -56,7 +56,7 @@ func missingParents(preunit gomel.Preunit, maxUnits gomel.SlottedUnits) []uint64
 		}
 		highest++
 		for highest <= requiredHeights[curCreator] {
-			unitIDs = append(unitIDs, gomel.ID(highest, curCreator, nProc))
+			unitIDs = append(unitIDs, gomel.ID(highest, curCreator, preunit.EpochID()))
 			highest++
 		}
 		curCreator++
@@ -83,7 +83,7 @@ var _ = Describe("Protocol", func() {
 	)
 
 	BeforeEach(func() {
-		netservs = tests.NewNetwork(10)
+		netservs = ctests.NewNetwork(10)
 	})
 
 	JustBeforeEach(func() {
@@ -94,7 +94,7 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustAfterEach(func() {
-		tests.CloseNetwork(netservs)
+		ctests.CloseNetwork(netservs)
 	})
 
 	Describe("with only two participants", func() {

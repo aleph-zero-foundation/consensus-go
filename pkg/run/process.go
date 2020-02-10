@@ -11,11 +11,12 @@ import (
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/services/alert"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
-	"gitlab.com/alephledger/consensus-go/pkg/services/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 type closureService struct {
@@ -52,7 +53,7 @@ func start(services ...gomel.Service) error {
 	return nil
 }
 
-func newPreblockService(orderedUnits chan []gomel.Unit, ps gomel.PreblockSink) gomel.Service {
+func newPreblockService(orderedUnits chan []gomel.Unit, ps core.PreblockSink) gomel.Service {
 	var stopService, serviceFinished chan struct{}
 	return newClosureService(
 		func() error {
@@ -115,8 +116,8 @@ func BeaconSetup(
 
 func newConsensus(
 	conf config.Config,
-	ds gomel.DataSource,
-	ps gomel.PreblockSink,
+	ds core.DataSource,
+	ps core.PreblockSink,
 	rsSource <-chan func(gomel.Dag) gomel.RandomSource,
 	createdDag chan<- gomel.Dag,
 	log zerolog.Logger,
@@ -167,8 +168,8 @@ func newConsensus(
 				adr, adderService :=
 					adder.New(dag, alerter, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
-				orderService :=
-					order.NewService(
+				extender :=
+					linear.NewExtender(
 						dag,
 						rs,
 						conf.Order,
@@ -202,7 +203,7 @@ func newConsensus(
 					alertService,
 					adderService,
 					createService,
-					orderService,
+					extender,
 					memlogService,
 					syncService,
 					preblockService,
@@ -212,7 +213,7 @@ func newConsensus(
 					fatalError <- err
 					return
 				}
-				defer stop(adderService, createService, orderService, memlogService, preblockService)
+				defer stop(adderService, createService, extender, memlogService, preblockService)
 
 				select {
 				case <-dagFinished:
@@ -234,8 +235,8 @@ func newConsensus(
 // NewConsensus returns a service that starts all main components of gomel capable of producing a stream of ordered Preblocks.
 func NewConsensus(
 	conf config.Config,
-	ds gomel.DataSource,
-	ps gomel.PreblockSink,
+	ds core.DataSource,
+	ps core.PreblockSink,
 	rsSource <-chan func(gomel.Dag) gomel.RandomSource,
 	log zerolog.Logger,
 	fatalError chan error,
@@ -247,8 +248,8 @@ func NewConsensus(
 // Process creates an default instance of the Orderer service using provided configuration.
 func Process(
 	conf config.Config,
-	ds gomel.DataSource,
-	ps gomel.PreblockSink,
+	ds core.DataSource,
+	ps core.PreblockSink,
 	createdDag chan<- gomel.Dag,
 	setupLog zerolog.Logger,
 	log zerolog.Logger,

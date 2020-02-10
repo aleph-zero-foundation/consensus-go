@@ -111,9 +111,9 @@ var _ = Describe("Encoding/Decoding", func() {
 		Context("on a unit with too much data", func() {
 			It("should return an error", func() {
 				nProc := 0
-				// creator, signature, nParents, parentsHeights, controlHash, data length
-				encoded := make([]byte, 2+64+(2+4*nProc+32)+4)
-				dataLenStartOffset := 2 + 64 + (2 + 4*nProc + 32)
+				// creator, epochID, signature, nParents, parentsHeights, controlHash, data length
+				encoded := make([]byte, 2+8+64+(2+4*nProc+32)+4)
+				dataLenStartOffset := 2 + 8 + 64 + (2 + 4*nProc + 32)
 				binary.LittleEndian.PutUint32(encoded[dataLenStartOffset:], config.MaxDataBytesPerUnit+1)
 				_, err := DecodePreunit(encoded)
 				Expect(err).To(MatchError("maximal allowed data size in a preunit exceeded"))
@@ -122,9 +122,9 @@ var _ = Describe("Encoding/Decoding", func() {
 		Context("on a unit with too long random source data", func() {
 			It("should return an error", func() {
 				nProc := 0
-				// creator, signature, nParents, parentsHeights, controlHash, data length, random source data length
-				encoded := make([]byte, 2+64+2+4*nProc+32+4+4)
-				rsDataLenStartOffset := 2 + 64 + 2 + 4*nProc + 32 + 4
+				// creator, epochID, signature, nParents, parentsHeights, controlHash, data length, random source data length
+				encoded := make([]byte, 2+8+64+2+4*nProc+32+4+4)
+				rsDataLenStartOffset := 2 + 8 + 64 + 2 + 4*nProc + 32 + 4
 				binary.LittleEndian.PutUint32(encoded[rsDataLenStartOffset:], config.MaxRandomSourceDataBytesPerUnit+1)
 				_, err := DecodePreunit(encoded)
 				Expect(err).To(MatchError("maximal allowed random source data size in a preunit exceeded"))
@@ -139,6 +139,22 @@ var _ = Describe("Encoding/Decoding", func() {
 				_, err := ReceiveChunk(bytes.NewBuffer(encoded))
 				Expect(err).To(MatchError("chunk contains too many units"))
 			})
+		})
+
+	})
+	Context("DagInfo", func() {
+		It("should be the same after encoding/decoding", func() {
+			info := gomel.MaxView(dag)
+			infos := []*gomel.DagInfo{info, info}
+			err := SendDagInfos(infos, network)
+			Expect(err).NotTo(HaveOccurred())
+			recv, err := ReceiveDagInfos(network)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(infos)).To(Equal(len(recv)))
+			Expect(info.Epoch).To(Equal(recv[0].Epoch))
+			Expect(info.Epoch).To(Equal(recv[1].Epoch))
+			Expect(info.Heights).To(Equal(recv[0].Heights))
+			Expect(info.Heights).To(Equal(recv[1].Heights))
 		})
 
 	})

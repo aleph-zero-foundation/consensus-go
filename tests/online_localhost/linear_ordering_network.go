@@ -10,13 +10,14 @@ import (
 	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
@@ -119,7 +120,7 @@ func createAndStartProcess(
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(10)
 	tds.Start()
-	ps := make(chan *gomel.Preblock)
+	ps := make(chan *core.Preblock)
 	// Reading and ignoring all the preblocks.
 	var wait sync.WaitGroup
 	wait.Add(1)

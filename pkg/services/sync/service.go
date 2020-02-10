@@ -9,16 +9,16 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/network/persistent"
-	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
-	"gitlab.com/alephledger/consensus-go/pkg/network/udp"
-	rmcbox "gitlab.com/alephledger/consensus-go/pkg/rmc"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/rmc"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/network/persistent"
+	"gitlab.com/alephledger/core-go/pkg/network/tcp"
+	"gitlab.com/alephledger/core-go/pkg/network/udp"
+	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
 type service struct {
@@ -56,7 +56,7 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 		}
 
 		lg := log.With().Int(logging.Service, logNames[c.Type]).Logger()
-		netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices, lg)
+		netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices)
 		if err != nil {
 			return nil, err
 		}
@@ -152,22 +152,22 @@ func valid(configs []*config.Sync) error {
 }
 
 // Return network.Server of the type indicated by "net". If needed, append a corresponding service to the given slice. Defaults to "tcp".
-func getNetServ(net string, localAddress string, remoteAddresses []string, services []gomel.Service, log zerolog.Logger) (network.Server, []gomel.Service, error) {
+func getNetServ(net string, localAddress string, remoteAddresses []string, services []gomel.Service) (network.Server, []gomel.Service, error) {
 	switch net {
 	case "udp":
-		netserv, err := udp.NewServer(localAddress, remoteAddresses, log)
+		netserv, err := udp.NewServer(localAddress, remoteAddresses)
 		if err != nil {
 			return nil, services, err
 		}
 		return netserv, services, nil
 	case "pers":
-		netserv, service, err := persistent.NewServer(localAddress, remoteAddresses, log)
+		netserv, service, err := persistent.NewServer(localAddress, remoteAddresses)
 		if err != nil {
 			return nil, services, err
 		}
 		return netserv, append(services, service), nil
 	default:
-		netserv, err := tcp.NewServer(localAddress, remoteAddresses, log)
+		netserv, err := tcp.NewServer(localAddress, remoteAddresses)
 		if err != nil {
 			return nil, services, err
 		}

@@ -10,10 +10,11 @@ import (
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 type testServer interface {
@@ -73,11 +74,11 @@ var _ = Describe("Protocol", func() {
 
 	BeforeEach(func() {
 		// Length 2 because the tests below only check communication between the first two processes.
-		netservs = tests.NewNetwork(2)
+		netservs = ctests.NewNetwork(2)
 	})
 
 	AfterEach(func() {
-		tests.CloseNetwork(netservs)
+		ctests.CloseNetwork(netservs)
 	})
 
 	JustBeforeEach(func() {

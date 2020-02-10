@@ -7,9 +7,6 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// Hash is a type storing hash values, usually used to identify units.
-type Hash [32]byte
-
 // Short returns a shortened version of the hash for easy viewing.
 func (h *Hash) Short() string {
 	return base64.StdEncoding.EncodeToString(h[:8])

@@ -11,15 +11,23 @@ type DagFactory interface {
 	CreateDag(nProc uint16) (gomel.Dag, gomel.Adder)
 }
 
-type testDagFactory struct{}
+type testDagFactory struct {
+	epochID gomel.EpochID
+}
 
 // NewTestDagFactory returns a factory for creating test dags.
 func NewTestDagFactory() DagFactory {
 	return testDagFactory{}
 }
 
-func (testDagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
+// NewTestDagFactoryWithEpochID returns a factory for creating test dags.
+func NewTestDagFactoryWithEpochID(id gomel.EpochID) DagFactory {
+	return testDagFactory{id}
+}
+
+func (tdf testDagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
 	dag := newDag(nProc)
+	dag.epochID = tdf.epochID
 	adder := NewAdder(dag)
 	return dag, adder
 }

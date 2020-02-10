@@ -6,21 +6,23 @@ import (
 	"math"
 
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"golang.org/x/crypto/sha3"
 )
 
 type preunit struct {
 	creator        uint16
+	epochID        gomel.EpochID
 	parentsHeights []int
 	signature      gomel.Signature
 	crown          gomel.Crown
 	hash           gomel.Hash
-	data           gomel.Data
+	data           core.Data
 	rsData         []byte
 }
 
 // NewPreunit creates a preunit.
-func NewPreunit(creator uint16, crown *gomel.Crown, data gomel.Data, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, crown *gomel.Crown, data core.Data, rsData []byte) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		crown:     *crown,
@@ -33,13 +35,17 @@ func NewPreunit(creator uint16, crown *gomel.Crown, data gomel.Data, rsData []by
 	return pu
 }
 
+func (pu *preunit) EpochID() gomel.EpochID {
+	return pu.epochID
+}
+
 // RandomSourceData is the random source data embedded in this preunit.
 func (pu *preunit) RandomSourceData() []byte {
 	return pu.rsData
 }
 
 // Data returns data embedded in this preunit.
-func (pu *preunit) Data() gomel.Data {
+func (pu *preunit) Data() core.Data {
 	return pu.data
 }
 
@@ -76,9 +82,9 @@ func (pu *preunit) SetSignature(sig gomel.Signature) {
 // computeHash computes the preunit's hash value and saves it in the corresponding field.
 func (pu *preunit) computeHash() {
 	var data bytes.Buffer
-	creatorBytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(creatorBytes, pu.creator)
-	data.Write(creatorBytes)
+	idBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(idBytes, gomel.UnitID(pu))
+	data.Write(idBytes)
 	data.Write(pu.data)
 	data.Write(pu.rsData)
 	heightBytes := make([]byte, 4)

@@ -10,11 +10,11 @@ import (
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
-	"gitlab.com/alephledger/consensus-go/pkg/services/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
 )
 
@@ -92,7 +92,7 @@ func beaconSetup(conf config.Config, rsCh chan<- func(gomel.Dag) gomel.RandomSou
 			var adr gomel.Adder
 			adr, adderService = adder.New(dag, gomel.NopAlerter(), conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
-			orderService := order.NewService(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+			extender := linear.NewExtender(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 
 			syncService, err = sync.NewService(dag, adr, conf.SyncSetup, log)
 			if err != nil {
@@ -104,7 +104,7 @@ func beaconSetup(conf config.Config, rsCh chan<- func(gomel.Dag) gomel.RandomSou
 
 			memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
-			err = start(adderService, createService, orderService, memlogService, syncService)
+			err = start(adderService, createService, extender, memlogService, syncService)
 			if err != nil {
 				log.Error().Str("where", "setup.start").Msg(err.Error())
 				return err
@@ -113,7 +113,7 @@ func beaconSetup(conf config.Config, rsCh chan<- func(gomel.Dag) gomel.RandomSou
 			go func() {
 				defer close(serviceStopped)
 				defer func() {
-					stop(createService, orderService, memlogService)
+					stop(createService, extender, memlogService)
 					close(orderedUnits)
 					close(dagFinished)
 				}()

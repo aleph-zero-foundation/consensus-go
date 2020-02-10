@@ -7,8 +7,8 @@ import (
 	"math/big"
 	"sync"
 
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 // NewGlobal returns a GlobalThresholdCoin based on given slice of coefficients.

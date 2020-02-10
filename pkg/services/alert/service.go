@@ -12,9 +12,9 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/network"
-	"gitlab.com/alephledger/consensus-go/pkg/network/tcp"
-	"gitlab.com/alephledger/consensus-go/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/network/tcp"
+	"gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
 type service struct {
@@ -29,7 +29,7 @@ type service struct {
 // NewService constructs an alerting service for the given dag with the given configuration.
 func NewService(dag gomel.Dag, conf *config.Alert, log zerolog.Logger) (gomel.Alerter, gomel.Service, error) {
 	rmc := rmc.New(conf.Pubs, conf.Priv)
-	netserv, err := tcp.NewServer(conf.LocalAddress, conf.RemoteAddresses, log)
+	netserv, err := tcp.NewServer(conf.LocalAddress, conf.RemoteAddresses)
 	if err != nil {
 		return nil, nil, err
 	}

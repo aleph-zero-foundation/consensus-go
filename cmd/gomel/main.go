@@ -18,6 +18,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 func getMember(filename string) (*config.Member, error) {
@@ -44,8 +45,8 @@ func getCommittee(filename string) (*config.Committee, error) {
 	return config.LoadCommittee(file)
 }
 
-func getConfiguration(filename string) (*config.Configuration, error) {
-	var result config.Configuration
+func getConfiguration(filename string) (*config.Params, error) {
+	var result config.Params
 	if filename == "" {
 		result = config.NewDefaultConfiguration()
 		return &result, nil
@@ -171,7 +172,7 @@ func main() {
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(300 * conf.Txpu)
 	tds.Start()
-	ps := make(chan *gomel.Preblock)
+	ps := make(chan *core.Preblock)
 	var wait sync.WaitGroup
 	wait.Add(1)
 	// Reading and ignoring all the preblocks.

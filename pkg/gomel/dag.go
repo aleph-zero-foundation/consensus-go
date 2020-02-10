@@ -7,17 +7,12 @@
 //  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
-// UnitChecker is a function that performs a check on Unit before Prepare.
-type UnitChecker func(Unit) error
-
-// UnitTransformer is a function that transforms a unit after it passed all the checks and Prepare.
-type UnitTransformer func(Unit) Unit
-
-// InsertHook is a function that performs some additional action on a unit before or after Insert.
-type InsertHook func(Unit)
+import "gitlab.com/alephledger/core-go/pkg/crypto"
 
 // Dag is the main data structure of the Aleph consensus protocol. It is built of units partially ordered by "is-parent-of" relation.
 type Dag interface {
+	// EpochID is a unique identifier of the epoch for this dag instance.
+	EpochID() EpochID
 	// DecodeParents returns a slice of parents of the given preunit, if the control hash matches.
 	DecodeParents(Preunit) ([]Unit, error)
 	// BuildUnit constructs a new unit from the preunit and the slice of parents.
@@ -42,48 +37,18 @@ type Dag interface {
 	// GetByID returns the units associated with the given ID. There will be more than one only in the case of forks.
 	GetByID(uint64) []Unit
 	// IsQuorum checks if the given number of processes is enough to form a quorum.
-	IsQuorum(number uint16) bool
+	IsQuorum(uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
-	// AddCheck extends the list of UnitCheckers that are used during adding a unit.
-	AddCheck(UnitChecker)
-	// AddTranform extends the list of UnitTransformers that are used during adding a unit.
-	AddTransform(UnitTransformer)
-	// BeforeInsert adds an action to perform before insert.
-	BeforeInsert(InsertHook)
-	// AfterInsert adds an action to perform after insert.
-	AfterInsert(InsertHook)
-}
-
-// IsQuorum checks if subsetSize forms a quorum amongst all nProcesses.
-func IsQuorum(nProcesses, subsetSize uint16) bool {
-	return 3*subsetSize >= 2*nProcesses
 }
 
 // MinimalQuorum is the minimal possible size of a subset forming a quorum within nProcesses.
 func MinimalQuorum(nProcesses uint16) uint16 {
-	return nProcesses - nProcesses/3
+	return crypto.MinimalQuorum(nProcesses)
 }
 
 // MinimalTrusted is the minimal size of a subset of nProcesses, that guarantees
 // that the subset contains at least one honest process.
 func MinimalTrusted(nProcesses uint16) uint16 {
-	return nProcesses/3 + 1
-}
-
-// MaxView returns a slice of NProc integers containing, for each creator, the maximal height of a unit produced by that creator.
-func MaxView(dag Dag) []int {
-	maxes := dag.MaximalUnitsPerProcess()
-	heights := make([]int, 0, dag.NProc())
-	maxes.Iterate(func(units []Unit) bool {
-		h := -1
-		for _, u := range units {
-			if u.Height() > h {
-				h = u.Height()
-			}
-		}
-		heights = append(heights, h)
-		return true
-	})
-	return heights
+	return crypto.MinimalTrusted(nProcesses)
 }

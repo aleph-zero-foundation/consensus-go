@@ -45,7 +45,7 @@ func LevelFromParents(parents []Unit) int {
 			level = p.Level()
 		}
 	}
-	if IsQuorum(nProc, onLevel) {
+	if onLevel >= MinimalQuorum(nProc) {
 		level++
 	}
 	return level
@@ -89,16 +89,6 @@ func MaximalByPid(parents []Unit, pid uint16) []Unit {
 		}
 	}
 	return maximal
-}
-
-// HasForkingEvidence checks whether the unit is sufficient evidence of the given creator forking,
-// i.e. it is above two units created by creator that share a predecessor.
-func HasForkingEvidence(u Unit, creator uint16) bool {
-	if Dealing(u) {
-		return false
-	}
-	f := u.Floor(creator)
-	return len(f) > 1 || (len(f) == 1 && !Equal(f[0], u.Parents()[creator]))
 }
 
 // Prime checks whether the given unit is a prime unit.

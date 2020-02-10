@@ -36,7 +36,7 @@ func (dag *dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 
 func (dag *dag) Check(u gomel.Unit) error {
 	for _, check := range dag.checks {
-		if err := check(u); err != nil {
+		if err := check(u, dag); err != nil {
 			return err
 		}
 	}
@@ -44,11 +44,7 @@ func (dag *dag) Check(u gomel.Unit) error {
 }
 
 func (dag *dag) Transform(u gomel.Unit) gomel.Unit {
-	u = unit.Prepared(u, dag)
-	for _, trans := range dag.transforms {
-		u = trans(u)
-	}
-	return u
+	return unit.Prepared(u, dag)
 }
 
 func (dag *dag) Insert(u gomel.Unit) {
@@ -64,22 +60,6 @@ func (dag *dag) Insert(u gomel.Unit) {
 	for _, hook := range dag.postInsert {
 		hook(u)
 	}
-}
-
-func (dag *dag) AddCheck(check gomel.UnitChecker) {
-	dag.checks = append(dag.checks, check)
-}
-
-func (dag *dag) AddTransform(trans gomel.UnitTransformer) {
-	dag.transforms = append(dag.transforms, trans)
-}
-
-func (dag *dag) BeforeInsert(hook gomel.InsertHook) {
-	dag.preInsert = append(dag.preInsert, hook)
-}
-
-func (dag *dag) AfterInsert(hook gomel.InsertHook) {
-	dag.postInsert = append(dag.postInsert, hook)
 }
 
 func (dag *dag) addPrime(u gomel.Unit) {

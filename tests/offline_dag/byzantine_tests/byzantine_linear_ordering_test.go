@@ -40,6 +40,7 @@ func newForkWithDifferentData(preunit gomel.Preunit) gomel.Preunit {
 	data := generateFreshData(preunit.Data())
 	return creating.NewPreunit(
 		preunit.Creator(),
+		preunit.EpochID(),
 		preunit.View(),
 		data,
 		preunit.RandomSourceData(),
@@ -77,7 +78,7 @@ func createForkUsingNewUnit() forker {
 			return nil, err
 		}
 
-		return preunitFromParents(pu.Creator(), puParents, freshData, rsData), nil
+		return preunitFromParents(pu.Creator(), pu.EpochID(), puParents, freshData, rsData), nil
 	}
 }
 
@@ -162,7 +163,7 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 		if err != nil {
 			return nil, err
 		}
-		return preunitFromParents(preunit.Creator(), sortedParents, freshData, rsData), nil
+		return preunitFromParents(preunit.Creator(), preunit.EpochID(), sortedParents, freshData, rsData), nil
 	}
 }
 
@@ -1045,7 +1046,7 @@ func subsetSizesOfLowerLevelBasedOnCommonVote(vote bool, nProc uint16) (ones, ze
 	return nonByzantineProcesses, maxNumberOfByzantineProcesses
 }
 
-func preunitFromParents(creator uint16, parents []gomel.Unit, data []byte, rsData []byte) gomel.Preunit {
+func preunitFromParents(creator uint16, epochID gomel.EpochID, parents []gomel.Unit, data []byte, rsData []byte) gomel.Preunit {
 	nProc := len(parents)
 	heights := make([]int, nProc)
 	hashes := make([]*gomel.Hash, nProc)
@@ -1058,11 +1059,11 @@ func preunitFromParents(creator uint16, parents []gomel.Unit, data []byte, rsDat
 			hashes[i] = p.Hash()
 		}
 	}
-	return creating.NewPreunit(creator, gomel.NewCrown(heights, gomel.CombineHashes(hashes)), data, rsData)
+	return creating.NewPreunit(creator, epochID, gomel.NewCrown(heights, gomel.CombineHashes(hashes)), data, rsData)
 }
 
 func unitToPreunit(unit gomel.Unit) gomel.Preunit {
-	return preunitFromParents(unit.Creator(), unit.Parents(), unit.Data(), unit.RandomSourceData())
+	return preunitFromParents(unit.Creator(), unit.EpochID(), unit.Parents(), unit.Data(), unit.RandomSourceData())
 }
 
 // this function assumes that it is possible to create a new level, i.e. there are enough candidates on lower level
@@ -1201,7 +1202,7 @@ func testLongTimeUndecidedStrategy() error {
 	startLevel := 1
 	crp := func(int) uint16 { return 1 }
 
-	configurations := make([]config.Configuration, nProcesses)
+	configurations := make([]config.Params, nProcesses)
 	for pid := range configurations {
 		configurations[pid] = conf
 	}
@@ -1212,7 +1213,7 @@ func testLongTimeUndecidedStrategy() error {
 		longTimeUndecidedStrategy(&startLevel, initialVotingRound, numberOfDeterministicRounds, crp)
 
 	checkIfUndecidedVerifier :=
-		func(dags []gomel.Dag, pids []uint16, configs []config.Configuration, rss []gomel.RandomSource) error {
+		func(dags []gomel.Dag, pids []uint16, configs []config.Params, rss []gomel.RandomSource) error {
 			fmt.Println("starting the undecided checker")
 
 			logger, _ := logging.NewLogger("stdout", conf.LogLevel, 100000, false)

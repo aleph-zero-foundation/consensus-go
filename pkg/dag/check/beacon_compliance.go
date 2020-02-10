@@ -5,29 +5,17 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// PrimeOnlyNoSkipping returns a version of the dag that checks whether every unit is a prime unit,
-// and no process creates a unit of level n>0 without creating a unit of level n-1.
-// To ensure that it is sufficient to check whether height = level for every unit.
-func PrimeOnlyNoSkipping(dag gomel.Dag) {
-	dag.AddCheck(checkPrimeOnlyNoSkipping)
-}
-
-func checkPrimeOnlyNoSkipping(u gomel.Unit) error {
+// NoLevelSkipping ensures that no process creates a unit of level n>0 without creating a unit of level n-1.
+// To check that it is sufficient to test whether height = level for every unit.
+func NoLevelSkipping(u gomel.Unit, _ gomel.Dag) error {
 	if u.Level() != u.Height() {
 		return gomel.NewComplianceError("the level of the unit is different than its height")
 	}
 	return nil
 }
 
-type noForkUnit struct {
-	gomel.Unit
-}
-
-func (u *noForkUnit) AboveWithinProc(v gomel.Unit) bool {
-	return u.Creator() == v.Creator() && u.Height() >= v.Height()
-}
-
-func checkNoForks(dag gomel.Dag, u gomel.Unit) error {
+// NoForks ensures that forked units are not added to the dag.
+func NoForks(u gomel.Unit, dag gomel.Dag) error {
 	maxes := dag.MaximalUnitsPerProcess().Get(u.Creator())
 	if len(maxes) == 0 {
 		return nil
@@ -38,10 +26,4 @@ func checkNoForks(dag gomel.Dag, u gomel.Unit) error {
 		return gomel.NewComplianceError("the unit is a fork")
 	}
 	return nil
-}
-
-// NoForks returns a dag that will error on adding a fork.
-func NoForks(dag gomel.Dag) {
-	dag.AddCheck(func(u gomel.Unit) error { return checkNoForks(dag, u) })
-	dag.AddTransform(func(u gomel.Unit) gomel.Unit { return &noForkUnit{u} })
 }

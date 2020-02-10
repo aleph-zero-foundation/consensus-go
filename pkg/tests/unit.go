@@ -2,10 +2,12 @@ package tests
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 type unit struct {
 	creator   uint16
+	epochID   gomel.EpochID
 	height    int
 	level     int
 	version   int
@@ -14,8 +16,12 @@ type unit struct {
 	parents   []gomel.Unit
 	floor     [][]gomel.Unit
 	signature gomel.Signature
-	data      gomel.Data
+	data      core.Data
 	rsData    []byte
+}
+
+func (u *unit) EpochID() gomel.EpochID {
+	return u.epochID
 }
 
 func (u *unit) Floor(pid uint16) []gomel.Unit {
@@ -26,7 +32,7 @@ func (u *unit) RandomSourceData() []byte {
 	return u.rsData
 }
 
-func (u *unit) Data() gomel.Data {
+func (u *unit) Data() core.Data {
 	return u.data
 }
 

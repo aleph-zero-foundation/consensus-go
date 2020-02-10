@@ -46,7 +46,6 @@ func (p *server) In() {
 	defer p.peerManager.done(pid)
 
 	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
-	conn.SetLogger(log)
 	log.Info().Msg(logging.SyncStarted)
 	nProc := p.dag.NProc()
 
@@ -183,7 +182,6 @@ func (p *server) Out() {
 	}
 
 	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
-	conn.SetLogger(log)
 	log.Info().Msg(logging.SyncStarted)
 	nProc := p.dag.NProc()
 	maxSnapshot := dagMaxSnapshot(p.dag)

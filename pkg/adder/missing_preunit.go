@@ -35,19 +35,13 @@ func (ad *adder) registerMissing(id uint64, wp *waitingPreunit) {
 // fetchMissing is called on a freshly created waitingPreunit that has some missing parents.
 // Sends a signal to trigger fetch or gossip.
 func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
-	if ad.requestFetch == nil {
-		if ad.requestGossip != nil {
-			ad.requestGossip(wp.source)
-		}
-		return
-	}
-	nProc := ad.dag.NProc()
+	epoch := wp.pu.EpochID()
 	toRequest := make([]uint64, 0, 8)
 	var mp *missingPreunit
 	now := time.Now()
 	for creator, height := range wp.pu.View().Heights {
 		for h := height; h > maxHeights[creator]; h-- {
-			id := gomel.ID(h, uint16(creator), nProc)
+			id := gomel.ID(h, uint16(creator), epoch)
 			if _, waiting := ad.waitingByID[id]; !waiting {
 				if _, ok := ad.missing[id]; !ok {
 					mp = newMissing()
@@ -55,18 +49,18 @@ func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
 				} else {
 					mp = ad.missing[id]
 				}
-				if now.Sub(mp.requested) > fetchInterval {
+				if now.Sub(mp.requested) > ad.conf.FetchInterval {
 					toRequest = append(toRequest, id)
 					mp.requested = now
 				}
 			}
 		}
-		if ad.requestGossip != nil && len(toRequest) > gossipAbove {
-			ad.requestGossip(wp.source)
+		if len(toRequest) > ad.conf.GossipAbove {
+			ad.syncer.RequestGossip(wp.source)
 			return
 		}
 	}
 	if len(toRequest) > 0 {
-		ad.requestFetch(wp.source, toRequest)
+		ad.syncer.RequestFetch(wp.source, toRequest)
 	}
 }

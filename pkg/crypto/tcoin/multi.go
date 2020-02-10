@@ -1,7 +1,7 @@
 package tcoin
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 )
 
 // CreateMulticoin generates a multiCoin for the given ThresholdCoins
