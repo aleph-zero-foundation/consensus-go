@@ -27,10 +27,20 @@ func New(conf config.Config, epochID gomel.EpochID) gomel.Dag {
 		primeUnits:  newFiberMap(conf.NProc, 10),
 		heightUnits: newFiberMap(conf.NProc, 10),
 		maxUnits:    newSlottedUnits(conf.NProc),
-		checks:      conf.Checks,
-		preInsert:   conf.BeforeInsert,
-		postInsert:  conf.AfterInsert,
+		checks:      append([]gomel.UnitChecker(nil), conf.Checks...),
 	}
+}
+
+func (dag *dag) AddCheck(check gomel.UnitChecker) {
+	dag.checks = append(dag.checks, check)
+}
+
+func (dag *dag) BeforeInsert(hook gomel.InsertHook) {
+	dag.preInsert = append(dag.preInsert, hook)
+}
+
+func (dag *dag) AfterInsert(hook gomel.InsertHook) {
+	dag.postInsert = append(dag.postInsert, hook)
 }
 
 func (dag *dag) EpochID() gomel.EpochID {

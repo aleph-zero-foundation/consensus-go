@@ -40,6 +40,12 @@ type Dag interface {
 	IsQuorum(uint16) bool
 	// NProc returns the number of processes that shares this dag.
 	NProc() uint16
+	// AddCheck extends the list of UnitCheckers that are used by this dag during adding a unit.
+	AddCheck(UnitChecker)
+	// BeforeInsert adds an action to perform before insert.
+	BeforeInsert(InsertHook)
+	// AfterInsert adds an action to perform after insert.
+	AfterInsert(InsertHook)
 }
 
 // MinimalQuorum is the minimal possible size of a subset forming a quorum within nProcesses.
