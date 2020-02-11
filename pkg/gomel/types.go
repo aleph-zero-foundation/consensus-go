@@ -14,6 +14,3 @@ type UnitChecker func(Unit, Dag) error
 
 // InsertHook is a function that performs some additional action on a unit before or after Insert.
 type InsertHook func(Unit)
-
-// RSFactory produces RandomSource for the given dag
-type RSFactory func(Dag) RandomSource
