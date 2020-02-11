@@ -1,7 +1,7 @@
 package run
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/rs/zerolog"
 
@@ -10,27 +10,51 @@ import (
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/services/create"
-	"gitlab.com/alephledger/consensus-go/pkg/services/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
 )
 
 // coinSetup deals a coin. Running a process with this setup
 // is equivalent to the version without a setup phase.
-func coinSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
-	pid := conf.Create.Pid
-	nProc := conf.NProc
+func coinSetup(conf config.Config, rsCh chan<- func(gomel.Dag) gomel.RandomSource, log zerolog.Logger, fatalError chan error) (gomel.Service, error) {
+	var stopService, serviceStopped chan struct{}
 
-	shareProviders := make(map[uint16]bool)
-	for i := uint16(0); i < nProc; i++ {
-		shareProviders[i] = true
-	}
+	return newClosureService(
+		func() error {
+			stopService = make(chan struct{})
+			serviceStopped = make(chan struct{})
 
-	rsCh <- coin.NewFixedCoin(nProc, pid, 1234, shareProviders)
-	close(rsCh)
+			go func() {
+				defer close(serviceStopped)
+
+				pid := conf.Create.Pid
+				nProc := conf.NProc
+
+				shareProviders := make(map[uint16]bool)
+				for i := uint16(0); i < nProc; i++ {
+					shareProviders[i] = true
+				}
+				select {
+				case rsCh <- func(dag gomel.Dag) gomel.RandomSource {
+					coin := coin.NewFixedCoin(nProc, pid, 1234, shareProviders)
+					coin.Bind(dag)
+					return coin
+				}:
+				case <-stopService:
+				}
+			}()
+
+			return nil
+		},
+		func() {
+			close(stopService)
+			<-serviceStopped
+		},
+	), nil
 }
 
 func makeBeaconDag(nProc uint16) gomel.Dag {
@@ -43,66 +67,100 @@ func makeBeaconDag(nProc uint16) gomel.Dag {
 }
 
 // beaconSetup is the setup described in the whitepaper.
-func beaconSetup(conf config.Config, rsCh chan<- gomel.RandomSource, log zerolog.Logger) {
-	defer close(rsCh)
-	dagFinished := make(chan struct{})
-	// orderedUnits is a channel shared between orderer and validator
-	// orderer sends ordered rounds to the channel
-	orderedUnits := make(chan []gomel.Unit, 10)
+func beaconSetup(conf config.Config, rsCh chan<- func(gomel.Dag) gomel.RandomSource, log zerolog.Logger, fatalError chan error) (gomel.Service, error) {
+	var adderService, syncService gomel.Service
 
-	dag := makeBeaconDag(conf.NProc)
-	rs, err := beacon.New(conf.Create.Pid, conf.P2PPublicKeys, conf.P2PSecretKey)
-	if err != nil {
-		log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
-	}
-	rs.Bind(dag)
+	var stopService, serviceStopped chan struct{}
 
-	adr, adderService := adder.New(dag, gomel.NopAlerter(), conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
+	return newClosureService(
+		func() error {
+			stopService = make(chan struct{})
+			serviceStopped = make(chan struct{})
+			dagFinished := make(chan struct{})
+			// orderedUnits is a channel shared between orderer and validator
+			// orderer sends ordered rounds to the channel
+			orderedUnits := make(chan []gomel.Unit, 10)
 
-	orderService := order.NewService(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
+			dag := makeBeaconDag(conf.NProc)
+			rs, err := beacon.New(conf.Create.Pid, conf.P2PPublicKeys, conf.P2PSecretKey)
+			if err != nil {
+				log.Error().Str("where", "setup.beacon.New").Msg(err.Error())
+				return err
+			}
+			rs.Bind(dag)
 
-	syncService, err := sync.NewService(dag, adr, conf.SyncSetup, log)
-	if err != nil {
-		log.Error().Str("where", "setup.sync").Msg(err.Error())
-		return
-	}
+			var adr gomel.Adder
+			adr, adderService = adder.New(dag, gomel.NopAlerter(), conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
 
-	createService := create.NewService(dag, adr, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
+			extender := linear.NewExtender(dag, rs, conf.OrderSetup, orderedUnits, log.With().Int(logging.Service, logging.OrderService).Logger())
 
-	memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
+			syncService, err = sync.NewService(dag, adr, conf.SyncSetup, log)
+			if err != nil {
+				log.Error().Str("where", "setup.sync").Msg(err.Error())
+				return err
+			}
 
-	err = start(adderService, createService, orderService, memlogService, syncService)
-	if err != nil {
-		log.Error().Str("where", "setup.start").Msg(err.Error())
-		return
-	}
+			createService := create.NewService(dag, adr, rs, conf.CreateSetup, dagFinished, nil, log.With().Int(logging.Service, logging.CreateService).Logger())
 
-	units, ok := <-orderedUnits
-	if !ok || len(units) == 0 {
-		return
-	}
-	head := units[len(units)-1]
-	if head == nil {
-		panic("coin's head is nil")
-	}
-	if head.Level() != conf.OrderSetup.OrderStartLevel {
-		panic("wrong level of the coin's head")
-	}
-	rsCh <- rs.GetCoin(head.Creator())
+			memlogService := logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
-	for _, u := range units {
-		log.Info().Int(logging.Service, logging.ValidateService).Uint16(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
-	}
-	// Read and ignore the rest of orderedUnits
-	go func() {
-		for range orderedUnits {
-		}
-	}()
+			err = start(adderService, createService, extender, memlogService, syncService)
+			if err != nil {
+				log.Error().Str("where", "setup.start").Msg(err.Error())
+				return err
+			}
 
-	// We need to figure out a condition for stopping the setup phase syncs
-	// For now just syncing for some time
-	stop(createService, orderService, memlogService)
-	time.Sleep(10 * time.Second)
-	stop(syncService, adderService)
-	<-dagFinished
+			go func() {
+				defer close(serviceStopped)
+				defer func() {
+					stop(createService, extender, memlogService)
+					close(orderedUnits)
+					close(dagFinished)
+				}()
+
+				var units []gomel.Unit
+				select {
+				case units = <-orderedUnits:
+				case <-stopService:
+					return
+				}
+				if len(units) == 0 {
+					log.Error().Msg("setup failed: ordering service returned an empty list")
+					return
+				}
+				head := units[len(units)-1]
+				if head.Level() != conf.OrderSetup.OrderStartLevel {
+					msg := fmt.Sprintf(
+						"setup failed: ordering service returned a head from a wrong level: expected %d, received %d",
+						conf.OrderSetup.OrderStartLevel,
+						head.Level(),
+					)
+					log.Error().Msg(msg)
+					fatalError <- err
+					return
+				}
+				select {
+				case rsCh <- func(dag gomel.Dag) gomel.RandomSource {
+					coin := rs.GetCoin(head.Creator())
+					coin.Bind(dag)
+					return coin
+				}:
+				case <-stopService:
+					return
+				}
+
+				for _, u := range units {
+					log.Info().Int(logging.Service, logging.ValidateService).Uint16(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.DataValidated)
+				}
+			}()
+
+			return nil
+		},
+
+		func() {
+			close(stopService)
+			<-serviceStopped
+			stop(syncService, adderService)
+		},
+	), nil
 }

@@ -66,7 +66,7 @@ func (s *service) Start() error {
 		defer s.wg.Done()
 		for atomic.LoadInt64(&s.quit) == 0 {
 			if !s.createUnit() {
-				close(s.dagFinished)
+				s.dagFinished <- struct{}{}
 				return
 			}
 			<-s.ticker.C

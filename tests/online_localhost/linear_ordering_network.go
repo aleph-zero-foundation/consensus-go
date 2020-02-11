@@ -83,6 +83,7 @@ func createAndStartProcess(
 	p2pPubKeys []*p2p.PublicKey,
 	p2pSecKey *p2p.SecretKey,
 	maxLevel int,
+	dagFinished *sync.WaitGroup,
 	finished *sync.WaitGroup,
 	dags []gomel.Dag,
 ) error {
@@ -101,16 +102,17 @@ func createAndStartProcess(
 	}
 	defaultAppConfig := config.NewDefaultConfiguration()
 	defaultAppConfig.OrderStartLevel = 6
+	defaultAppConfig.LogHuman = true
 	config := defaultAppConfig.GenerateConfig(&member, &committee)
 	// set stop condition for a process
 	config.Create.MaxLevel = int(maxLevel)
 
-	setupLog, err := logging.NewLogger("setup_log"+strconv.Itoa(int(id))+".log", 0, 100000, false)
+	setupLog, err := logging.NewLogger("setup_log"+strconv.Itoa(int(id))+".log", 0, 100000, defaultAppConfig.LogHuman)
 	if err != nil {
 		return err
 	}
 
-	log, err := logging.NewLogger("log"+strconv.Itoa(int(id))+".log", 0, 100000, false)
+	log, err := logging.NewLogger("log"+strconv.Itoa(int(id))+".log", 0, 100000, defaultAppConfig.LogHuman)
 	if err != nil {
 		return err
 	}
@@ -120,21 +122,55 @@ func createAndStartProcess(
 	tds.Start()
 	ps := make(chan *core.Preblock)
 	// Reading and ignoring all the preblocks.
+	var wait sync.WaitGroup
+	wait.Add(1)
 	go func() {
+		defer wait.Done()
 		for range ps {
 		}
 	}()
 
 	go func() {
-		dag, err := run.Process(config, tds.DataSource(), ps, setupLog, log)
+		defer finished.Done()
+
+		setupError := make(chan error, 1)
+		mainError := make(chan error, 1)
+		go func() {
+			for err := range setupError {
+				panic("error in setup service: " + err.Error())
+			}
+		}()
+		go func() {
+			for err := range mainError {
+				panic("error in main dag service: " + err.Error())
+			}
+		}()
+
+		createdDag := make(chan gomel.Dag)
+		mainService, err := run.Process(config, tds.DataSource(), ps, createdDag, setupLog, log, setupError, mainError)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 			panic(err)
 		}
+		err = mainService.Start()
+		if err != nil {
+			log.Err(err).Msg("failed to initialize a service")
+			panic(err)
+		}
+		dag := <-createdDag
+
+		dagFinished.Done()
+		dagFinished.Wait()
+
+		mainService.Stop()
+
+		close(setupError)
+		close(mainError)
+
 		dags[id] = dag
-		finished.Done()
 		tds.Stop()
 		close(ps)
+		wait.Wait()
 	}()
 	return nil
 }
@@ -250,9 +286,11 @@ func main() {
 	dags := make([]gomel.Dag, int(*testSize))
 
 	var allDone sync.WaitGroup
+	var dagsFinished sync.WaitGroup
+	dagsFinished.Add(len(addresses))
 	for id := range addresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, setupFetchAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *maxLevel, &allDone, dags)
+		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, setupFetchAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *maxLevel, &dagsFinished, &allDone, dags)
 		if err != nil {
 			panic(err)
 		}

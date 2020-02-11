@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"sync"
 	"syscall"
 	"time"
 
@@ -172,21 +173,52 @@ func main() {
 	tds := tests.NewDataSource(300 * conf.Txpu)
 	tds.Start()
 	ps := make(chan *core.Preblock)
+	var wait sync.WaitGroup
+	wait.Add(1)
 	// Reading and ignoring all the preblocks.
 	go func() {
+		defer wait.Done()
 		for range ps {
 		}
 	}()
 
-	fmt.Fprintf(os.Stdout, "Starting process...\n")
+	fmt.Fprintln(os.Stdout, "Starting process...")
 
-	var dag gomel.Dag
-	dag, err = run.Process(processConfig, tds.DataSource(), ps, setupLog, log)
+	setupErrors := make(chan error)
+	mainServiceErrors := make(chan error)
+	wait.Add(1)
+	go func() {
+		defer wait.Done()
+		for err := range setupErrors {
+			panic("error in setup: " + err.Error())
+		}
+	}()
+	wait.Add(1)
+	go func() {
+		defer wait.Done()
+		for err := range mainServiceErrors {
+			panic("error in main service: " + err.Error())
+		}
+	}()
+
+	createdDag := make(chan gomel.Dag)
+
+	dagService, err := run.Process(processConfig, tds.DataSource(), ps, createdDag, setupLog, log, setupErrors, mainServiceErrors)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 	}
+	err = dagService.Start()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Main service died with %s.\n", err.Error())
+	}
+	dag := <-createdDag
+	dagService.Stop()
+	close(setupErrors)
+	close(mainServiceErrors)
+
 	tds.Stop()
 	close(ps)
+	wait.Wait()
 
 	if options.memProfFilename != "" {
 		f, err := os.Create(options.memProfFilename)
