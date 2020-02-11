@@ -46,14 +46,6 @@ func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, outpu
 		log:          log,
 	}
 
-	notify := func(_ gomel.Unit) {
-		select {
-		case ext.trigger <- struct{}{}:
-		default:
-		}
-	}
-	ext.conf.AfterInsert = append(conf.AfterInsert, notify)
-
 	ext.wg.Add(2)
 	go ext.timingUnitDecider()
 	go ext.roundSorter()
@@ -67,15 +59,23 @@ func (ext *Extender) Close() {
 	ext.wg.Wait()
 }
 
+// Notify Extender to attempt choosing next timing units.
+func (ext *Extender) Notify() {
+	select {
+	case ext.trigger <- struct{}{}:
+	default:
+	}
+}
+
 // timingUnitDecider tries to pick the next timing unit after receiving notification on trigger channel.
 // For each picked timing unit, it sends a timingRound object to timingRounds channel.
 func (ext *Extender) timingUnitDecider() {
 	defer ext.wg.Done()
 	for range ext.trigger {
-		round := ext.nextRound()
+		round := ext.NextRound()
 		for round != nil {
 			ext.timingRounds <- round
-			round = ext.nextRound()
+			round = ext.NextRound()
 		}
 	}
 	close(ext.timingRounds)
@@ -98,8 +98,8 @@ func (ext *Extender) roundSorter() {
 	}
 }
 
-// nextRound tries to pick the next timing unit. Returns nil if it cannot be decided yet.
-func (ext *Extender) nextRound() *timingRound {
+// NextRound tries to pick the next timing unit. Returns nil if it cannot be decided yet.
+func (ext *Extender) NextRound() *timingRound {
 	if ext.lastDecideResult {
 		ext.lastDecideResult = false
 		ext.decider = newSuperMajorityDecider(ext.dag, ext.randomSource)
