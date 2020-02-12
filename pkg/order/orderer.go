@@ -15,13 +15,13 @@ const (
 )
 
 type orderer struct {
-	current      *epoch
-	previous     *epoch
 	conf         config.Config
 	syncer       gomel.Syncer
 	rsf          gomel.RandomSourceFactory
 	alert        gomel.Alerter
 	ps           core.PreblockSink
+	current      *epoch
+	previous     *epoch
 	unitBelt     chan gomel.Unit
 	orderedUnits chan []gomel.Unit
 	mx           sync.RWMutex
@@ -30,10 +30,12 @@ type orderer struct {
 }
 
 // NewOrderer TODO
-func NewOrderer(conf config.Config, syncer gomel.Syncer, ps core.PreblockSink) gomel.Orderer {
+func NewOrderer(conf config.Config, syncer gomel.Syncer, rsf gomel.RandomSourceFactory, alert gomel.Alerter, ps core.PreblockSink) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
 		syncer:       syncer,
+		rsf:          rsf,
+		alert:        alert,
 		ps:           ps,
 		unitBelt:     make(chan gomel.Unit, beltSize),
 		orderedUnits: make(chan []gomel.Unit, 10),
@@ -41,7 +43,12 @@ func NewOrderer(conf config.Config, syncer gomel.Syncer, ps core.PreblockSink) g
 	return ord
 }
 
-func (ord *orderer) Start() error { return nil }
+func (ord *orderer) Start() error {
+	ord.wg.Add(1)
+	go ord.preblockMaker()
+	return nil
+}
+
 func (ord *orderer) Stop() {
 	close(ord.orderedUnits)
 	ord.wg.Wait()
@@ -149,7 +156,6 @@ func (ord *orderer) Delta(info *gomel.DagInfo) []gomel.Unit {
 		return ord.current.unitsAbove(info.Heights)
 	}
 	if info.Epoch == ord.previous.id {
-		result := ord.previous.unitsAbove(info.Heights)
 		return append(ord.previous.unitsAbove(info.Heights), ord.current.allUnits()...)
 	}
 	return ord.current.allUnits()
