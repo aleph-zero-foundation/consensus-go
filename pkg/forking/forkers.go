@@ -64,6 +64,10 @@ func (fp *forkingProof) forkerID() uint16 {
 	return fp.pu.Creator()
 }
 
+func (fp *forkingProof) epochID() uint16 {
+	return fp.pu.EpochID()
+}
+
 // splitEncoding returns the encoded proof in two parts, first the proof itself, then the commitment
 func (fp *forkingProof) splitEncoding() ([]byte, []byte) {
 	encoded := fp.marshal()

@@ -4,7 +4,7 @@
 // and another unit created by the same process, which is the maximal unit created by this process that we can use as a direct parent.
 // This last unit might be nil. This proof is then reliably multicast to all other processes.
 //
-// When we want to add a unit created by a known forker to our dag, we need a proof that it is below a unit that someone used as
+// When we want to add a unit created by a known forker to our orderer, we need a proof that it is below a unit that someone used as
 // the third unit in their alert. For this purpose we use commitments. Commitments either refer to a raised alert directly by id,
 // or prove that a unit is a predecessor of a unit to which we have a commitment.
 package forking
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -47,7 +48,7 @@ func missingCommitment(msg string) *noCommitment {
 type alertHandler struct {
 	myPid       uint16
 	nProc       uint16
-	dag         gomel.Dag
+	orderer     gomel.Orderer
 	keys        []gomel.PublicKey
 	rmc         *rmc.RMC
 	netserv     network.Server
@@ -58,21 +59,20 @@ type alertHandler struct {
 }
 
 // NewAlertHandler for raising and handling commitments.
-func NewAlertHandler(myPid uint16, dag gomel.Dag, keys []gomel.PublicKey, rmc *rmc.RMC, netserv network.Server, timeout time.Duration, log zerolog.Logger) gomel.Alerter {
-	nProc := uint16(len(keys))
+func NewAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, netserv network.Server, log zerolog.Logger) gomel.Alerter {
 	al := &alertHandler{
-		myPid:       myPid,
-		nProc:       nProc,
-		dag:         dag,
-		keys:        keys,
+		myPid:       conf.Pid,
+		nProc:       conf.NProc,
+		orderer:     orderer,
+		keys:        conf.Alert.PublicKeys,
 		rmc:         rmc,
 		netserv:     netserv,
-		timeout:     timeout,
+		timeout:     conf.Alert.Timeout,
 		commitments: newCommitBase(),
-		locks:       make([]sync.Mutex, nProc),
+		locks:       make([]sync.Mutex, conf.NProc),
 		log:         log,
 	}
-	dag.AddCheck(al.checkCommitment)
+	config.AddCheck(conf, al.checkCommitment)
 	return al
 }
 
@@ -102,7 +102,7 @@ func (a *alertHandler) HandleIncoming(conn network.Connection, wg *sync.WaitGrou
 
 // acceptFinished alert. If this is the first alert pertaining this forker we are aware of, this method also raises our own alert.
 func (a *alertHandler) acceptFinished(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
-	forker, _, err := a.decodeAlertID(id, pid)
+	forker, _, _, err := a.decodeAlertID(id, pid)
 	if err != nil {
 		log.Error().Str("where", "alertHandler.acceptFinished.decodeAlertID").Msg(err.Error())
 		return
@@ -122,7 +122,7 @@ func (a *alertHandler) acceptFinished(id uint64, pid uint16, conn network.Connec
 	a.Lock(forker)
 	defer a.Unlock(forker)
 	if a.commitments.getByParties(a.myPid, pid) == nil {
-		maxes := a.dag.MaximalUnitsPerProcess().Get(forker)
+		maxes := a.orderer.MaxUnits().Get(forker)
 		if len(maxes) == 0 {
 			proof.replaceCommit(nil)
 		} else {
@@ -175,7 +175,7 @@ func (a *alertHandler) produceCommitmentFor(unit gomel.Unit) (commitment, error)
 	if pu == nil {
 		return nil, errors.New("we did not commit to anything")
 	}
-	commUnit := a.dag.GetUnit(pu.Hash())
+	commUnit := a.orderer.GetUnit(pu.Hash())
 	if commUnit == nil {
 		return nil, errors.New("we do not have the unit we committed to")
 	}
@@ -219,9 +219,9 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 		log.Error().Str("where", "alertHandler.handleCommitmentRequest.ReadFull").Msg(err.Error())
 		return
 	}
-	unit := a.dag.GetUnit(&requested)
+	unit := a.orderer.GetUnit(&requested)
 	if unit == nil {
-		log.Error().Str("where", "alertHandler.handleCommitmentRequest.Get").Msg("no commitment for unit not in dag")
+		log.Error().Str("where", "alertHandler.handleCommitmentRequest.Get").Msg("no commitment for unit not in orderer")
 		return
 	}
 	// We always want to send one commitment more if we can, so that we send the parents' hashes to add unit.
@@ -324,7 +324,7 @@ func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 		log.Error().Str("where", "alertHandler.RequestCommitment.acquireCommitments").Msg(err.Error())
 		return err
 	}
-	_, raiser, _ := a.decodeAlertID(comms[0].rmcID(), 0)
+	_, raiser, _, _ := a.decodeAlertID(comms[0].rmcID(), 0)
 	data, err := a.rmc.AcceptFinished(comms[0].rmcID(), raiser, conn)
 	if err != nil {
 		log.Error().Str("where", "alertHandler.RequestCommitment.AcceptFinished").Msg(err.Error())
@@ -343,7 +343,7 @@ func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 // acceptAlert and, if it is correct, sign it. In this case, if this is the first time we learn about this process forking,
 // also raise our own alert afterwards.
 func (a *alertHandler) acceptAlert(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
-	forker, _, err := a.decodeAlertID(id, pid)
+	forker, _, _, err := a.decodeAlertID(id, pid)
 	if err != nil {
 		log.Error().Str("where", "alertHandler.acceptAlert.decodeAlertID").Msg(err.Error())
 		return
@@ -374,7 +374,7 @@ func (a *alertHandler) acceptAlert(id uint64, pid uint16, conn network.Connectio
 	a.Lock(forker)
 	defer a.Unlock(forker)
 	if a.commitments.getByParties(a.myPid, pid) == nil {
-		maxes := a.dag.MaximalUnitsPerProcess().Get(forker)
+		maxes := a.orderer.MaxUnits().Get(forker)
 		if len(maxes) == 0 {
 			proof.replaceCommit(nil)
 		} else {
@@ -410,7 +410,7 @@ func (a *alertHandler) raiseAlert(proof *forkingProof) {
 	}
 	wg := &sync.WaitGroup{}
 	gathering := &sync.WaitGroup{}
-	id := a.alertID(proof.forkerID())
+	id := a.alertID(proof.forkerID(), proof.epochID())
 	data := proof.marshal()
 	for pid := uint16(0); pid < a.nProc; pid++ {
 		if pid == a.myPid || pid == proof.forkerID() {
@@ -425,19 +425,27 @@ func (a *alertHandler) raiseAlert(proof *forkingProof) {
 	a.commitments.add(comm, a.myPid, proof.forkerID())
 }
 
-func (a *alertHandler) alertID(forker uint16) uint64 {
-	return uint64(forker) + uint64(a.myPid)*uint64(a.nProc)
+// alertID encodes a triplet (raiser, forker, epoch) of (uint16, uint16, uint32) as uint64
+func (a *alertHandler) alertID(forker uint16, epochID gomel.EpochID) uint64 {
+	result := uint64(a.myPid)
+	result += uint64(forker) << 16
+	result += uint64(epochID) << 32
+	return result
 }
 
-func (a *alertHandler) decodeAlertID(id uint64, pid uint16) (uint16, uint16, error) {
-	forker, raiser := uint16(id%uint64(a.nProc)), uint16(id/uint64(a.nProc))
+// decodeAlertID decodes id to a triplet (raiser, forker, epoch)
+func (a *alertHandler) decodeAlertID(id uint64, pid uint16) (uint16, uint16, gomel.EpochID, error) {
+	raiser := uint16(id & (1<<16 - 1))
+	id >>= 16
+	forker := uint16(id & (1<<16 - 1))
+	epochID := gomel.EpochID(id >> 16)
 	if raiser != pid {
-		return forker, raiser, errors.New("decoded id does not match provided id")
+		return forker, raiser, epochID, errors.New("decoded pid does not match provided pid")
 	}
 	if raiser == forker {
-		return forker, raiser, errors.New("cannot commit to own fork")
+		return forker, raiser, epochID, errors.New("cannot commit to own fork")
 	}
-	return forker, raiser, nil
+	return forker, raiser, epochID, nil
 }
 
 // sendAlert to the given pid. Keeps trying until it succeeds or the whole RMC finishes successfully.
@@ -557,7 +565,7 @@ func (a *alertHandler) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preun
 	if cu == nil {
 		return nil, gomel.NewComplianceError("unit built on noncommitted parent")
 	}
-	u := a.dag.GetUnit(cu.Hash())
+	u := a.orderer.GetUnit(cu.Hash())
 	if u == nil {
 		return nil, missingCommitment("no committed unit needed for disambiguation")
 	}
@@ -607,7 +615,7 @@ func (a *alertHandler) handleForkerUnit(u gomel.Unit) bool {
 	if a.IsForker(creator) {
 		return true
 	}
-	maxes := a.dag.MaximalUnitsPerProcess().Get(creator)
+	maxes := a.orderer.MaxUnits().Get(creator)
 	if len(maxes) == 0 {
 		return false
 	}
@@ -657,7 +665,7 @@ func (a *alertHandler) NewFork(u, v gomel.Preunit) {
 		return
 	}
 
-	maxes := a.dag.MaximalUnitsPerProcess().Get(u.Creator())
+	maxes := a.orderer.MaxUnits().Get(u.Creator())
 	// There can be only one unit in maxes, since its creator is not a forker.
 	var max gomel.Unit
 	if len(maxes) > 0 {
