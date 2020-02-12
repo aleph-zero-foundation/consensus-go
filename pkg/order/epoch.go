@@ -37,6 +37,5 @@ func (ep *epoch) close() {
 	ep.extender.Close()
 }
 
-func (ep *epoch) addPreunits(source uint16, preunits ...gomel.Preunit) {
-	ep.adder.AddPreunits(source, preunits...)
-}
+func (ep *epoch) unitsAbove(heights []int) []gomel.Unit {}
+func (ep *epoch) allUnits() []gomel.Unit                {}
