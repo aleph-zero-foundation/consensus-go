@@ -37,5 +37,12 @@ func (ep *epoch) close() {
 	ep.extender.Close()
 }
 
-func (ep *epoch) unitsAbove(heights []int) []gomel.Unit {}
-func (ep *epoch) allUnits() []gomel.Unit                {}
+func (ep *epoch) unitsAbove(heights []int) []gomel.Unit {
+	//TODO
+	return nil
+}
+
+func (ep *epoch) allUnits() []gomel.Unit {
+	//TODO
+	return nil
+}
