@@ -13,7 +13,7 @@ import (
 var _ = Describe("Tcoin", func() {
 	var (
 		n, t, dealer uint16
-		nonce        int
+		nonce        int64
 		tcs          []*ThresholdCoin
 		coinShares   []*CoinShare
 		sKeys        []*p2p.SecretKey

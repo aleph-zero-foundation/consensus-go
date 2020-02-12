@@ -58,13 +58,13 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 			continue
 		}
 		ad.ready[i] = make(chan *waitingPreunit, channelLength)
+		ad.wg.Add(1)
 		go func(ch chan *waitingPreunit) {
 			defer ad.wg.Done()
 			for wp := range ch {
 				ad.handleReady(wp)
 			}
 		}(ad.ready[i])
-		ad.wg.Add(1)
 	}
 	ad.log.Info().Msg(logging.ServiceStarted)
 	return ad
@@ -214,12 +214,5 @@ func (ad *adder) handleCheckError(err error, u gomel.Unit, source uint16) error 
 	if err == nil {
 		return nil
 	}
-	err = ad.alert.ResolveMissingCommitment(err, u, source)
-	for _, handler := range ad.conf.CheckHandlers {
-		if err == nil {
-			return nil
-		}
-		err = handler(err, u, source)
-	}
-	return err
+	return ad.alert.ResolveMissingCommitment(err, u, source)
 }

@@ -24,9 +24,6 @@ type conf struct {
 	GossipAbove     int
 	FetchInterval   time.Duration
 	Checks          []gomel.UnitChecker
-	CheckHandlers   []gomel.ErrorHandler
-	BeforeInsert    []gomel.InsertHook
-	AfterInsert     []gomel.InsertHook
 	// log
 	LogFile        string
 	LogLevel       int
@@ -67,4 +64,9 @@ type Sync struct {
 	Params          map[string]string
 	Pubs            []*bn256.VerificationKey
 	Priv            *bn256.SecretKey
+}
+
+// AddCheck adds a unit checker to the given Config.
+func AddCheck(c Config, check gomel.UnitChecker) {
+	c.Checks = append(c.Checks, check)
 }

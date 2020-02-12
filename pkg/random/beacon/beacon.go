@@ -10,6 +10,7 @@ package beacon
 import (
 	"errors"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
@@ -26,9 +27,14 @@ const (
 	sharesLevel    = 8
 )
 
+func nonce(level int) int64 {
+	return int64(level)
+}
+
 // Beacon is a struct representing the beacon random source.
 type Beacon struct {
 	pid        uint16
+	conf       config.Config
 	dag        gomel.Dag
 	multicoins []*tcoin.ThresholdCoin
 	tcoins     []*tcoin.ThresholdCoin
@@ -45,8 +51,6 @@ type Beacon struct {
 	// hash of a unit => the share for the i-th tcoin contained in the unit
 	shares       []*random.SyncCSMap
 	polyVerifier bn256.PolyVerifier
-	pKeys        []*p2p.PublicKey
-	sKey         *p2p.SecretKey
 	p2pKeys      []encrypt.SymmetricKey
 }
 
@@ -62,39 +66,37 @@ func (v *vote) isCorrect() bool {
 }
 
 // New returns a RandomSource using a beacon.
-func New(pid uint16, pKeys []*p2p.PublicKey, sKey *p2p.SecretKey) (*Beacon, error) {
-	p2pKeys, err := p2p.Keys(sKey, pKeys, pid)
+func New(conf config.Config) (*Beacon, error) {
+	p2pKeys, err := p2p.Keys(conf.P2PSecretKey, conf.P2PPublicKeys, conf.Pid)
 	if err != nil {
 		return nil, err
 	}
-
-	return &Beacon{
-		pid:     pid,
-		pKeys:   pKeys,
-		sKey:    sKey,
-		p2pKeys: p2pKeys,
-	}, nil
-}
-
-// Bind the beacon with the given dag.
-func (b *Beacon) Bind(dag gomel.Dag) {
-	n := dag.NProc()
-	b.dag = dag
-	b.multicoins = make([]*tcoin.ThresholdCoin, n)
-	b.votes = make([][]*vote, n)
-	b.shareProviders = make([]map[uint16]bool, n)
-	b.subcoins = make([]map[uint16]bool, n)
-	b.tcoins = make([]*tcoin.ThresholdCoin, n)
-	b.shares = make([]*random.SyncCSMap, n)
-	b.polyVerifier = bn256.NewPolyVerifier(int(n), int(gomel.MinimalTrusted(n)))
-
-	for i := uint16(0); i < dag.NProc(); i++ {
-		b.votes[i] = make([]*vote, dag.NProc())
+	b := &Beacon{
+		pid:            conf.Pid,
+		conf:           conf,
+		multicoins:     make([]*tcoin.ThresholdCoin, conf.NProc),
+		tcoins:         make([]*tcoin.ThresholdCoin, conf.NProc),
+		votes:          make([][]*vote, conf.NProc),
+		shareProviders: make([]map[uint16]bool, conf.NProc),
+		subcoins:       make([]map[uint16]bool, conf.NProc),
+		shares:         make([]*random.SyncCSMap, conf.NProc),
+		polyVerifier:   bn256.NewPolyVerifier(int(conf.NProc), int(gomel.MinimalTrusted(conf.NProc))),
+		p2pKeys:        p2pKeys,
+	}
+	for i := 0; i < int(conf.NProc); i++ {
+		b.votes[i] = make([]*vote, conf.NProc)
 		b.shares[i] = random.NewSyncCSMap()
 		b.subcoins[i] = make(map[uint16]bool)
 	}
+	return b, nil
+}
+
+// NewRandomSource allows using this instance of Beacon as a RandomSource by binding the provided dag to it.
+func (b *Beacon) NewRandomSource(dag gomel.Dag) gomel.RandomSource {
 	dag.AddCheck(b.checkCompliance)
 	dag.BeforeInsert(b.update)
+	b.dag = dag
+	return b
 }
 
 // RandomBytes returns a sequence of random bits for a given unit.
@@ -132,7 +134,7 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 	return coin.RandomBytes()
 }
 
-func (b *Beacon) checkCompliance(u gomel.Unit) error {
+func (b *Beacon) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
 		tc, _, err := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
@@ -145,29 +147,29 @@ func (b *Beacon) checkCompliance(u gomel.Unit) error {
 		return nil
 	}
 	if u.Level() == votingLevel {
-		votes, err := unmarshallVotes(u.RandomSourceData(), b.dag.NProc())
+		votes, err := unmarshallVotes(u.RandomSourceData(), b.conf.NProc)
 		if err != nil {
 			return err
 		}
 
-		err = validateVotes(b, u, votes)
+		err = b.validateVotes(u, votes)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 	if u.Level() >= sharesLevel {
-		shares, err := unmarshallShares(u.RandomSourceData(), b.dag.NProc())
+		shares, err := unmarshallShares(u.RandomSourceData(), b.conf.NProc)
 		if err != nil {
 			return err
 		}
-		for pid := uint16(0); pid < b.dag.NProc(); pid++ {
+		for pid := uint16(0); pid < b.conf.NProc; pid++ {
 			if b.votes[u.Creator()][pid] != nil && b.votes[u.Creator()][pid].isCorrect() {
 				if shares[pid] == nil {
 					return errors.New("missing share")
 				}
 				// This verification is slow
-				if !b.tcoins[pid].VerifyCoinShare(shares[pid], u.Level()) {
+				if !b.tcoins[pid].VerifyCoinShare(shares[pid], nonce(u.Level())) {
 					return errors.New("invalid share")
 				}
 			}
@@ -182,7 +184,7 @@ func (b *Beacon) update(u gomel.Unit) {
 		tcEncoded := u.RandomSourceData()
 		tc, okSecretKey, _ := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
 		if !okSecretKey {
-			secret := p2p.NewSharedSecret(b.sKey, b.pKeys[u.Creator()])
+			secret := p2p.NewSharedSecret(b.conf.P2PSecretKey, b.conf.P2PPublicKeys[u.Creator()])
 			b.votes[b.pid][u.Creator()] = &vote{
 				proof: &secret,
 			}
@@ -192,13 +194,13 @@ func (b *Beacon) update(u gomel.Unit) {
 		b.tcoins[u.Creator()] = tc
 	}
 	if u.Level() == votingLevel {
-		votes, _ := unmarshallVotes(u.RandomSourceData(), b.dag.NProc())
+		votes, _ := unmarshallVotes(u.RandomSourceData(), b.conf.NProc)
 		for pid, vote := range votes {
 			b.votes[u.Creator()][pid] = vote
 		}
 	}
 	if u.Level() == multicoinLevel {
-		coinsApprovedBy := make([]uint16, b.dag.NProc())
+		coinsApprovedBy := make([]uint16, b.conf.NProc)
 		nBelowUOnVotingLevel := uint16(0)
 		providers := make(map[uint16]bool)
 		votingUnits := unitsOnLevel(b.dag, votingLevel)
@@ -207,7 +209,7 @@ func (b *Beacon) update(u gomel.Unit) {
 			if gomel.Above(u, v) {
 				providers[v.Creator()] = true
 				nBelowUOnVotingLevel++
-				for pid := uint16(0); pid < b.dag.NProc(); pid++ {
+				for pid := uint16(0); pid < b.conf.NProc; pid++ {
 					if b.votes[v.Creator()][pid] != nil && b.votes[v.Creator()][pid].isCorrect() {
 						coinsApprovedBy[pid]++
 					}
@@ -215,7 +217,7 @@ func (b *Beacon) update(u gomel.Unit) {
 			}
 		}
 		coinsToMerge := []*tcoin.ThresholdCoin{}
-		for pid := uint16(0); pid < b.dag.NProc(); pid++ {
+		for pid := uint16(0); pid < b.conf.NProc; pid++ {
 			if coinsApprovedBy[pid] == nBelowUOnVotingLevel {
 				coinsToMerge = append(coinsToMerge, b.tcoins[pid])
 				b.subcoins[u.Creator()][pid] = true
@@ -225,7 +227,7 @@ func (b *Beacon) update(u gomel.Unit) {
 		b.shareProviders[u.Creator()] = providers
 	}
 	if u.Level() >= sharesLevel {
-		shares, _ := unmarshallShares(u.RandomSourceData(), b.dag.NProc())
+		shares, _ := unmarshallShares(u.RandomSourceData(), b.conf.NProc)
 		for pid := range shares {
 			if shares[pid] != nil {
 				b.shares[pid].Add(u.Hash(), shares[pid])
@@ -234,9 +236,9 @@ func (b *Beacon) update(u gomel.Unit) {
 	}
 }
 
-func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
+func (b *Beacon) validateVotes(u gomel.Unit, votes []*vote) error {
 	dealingUnits := unitsOnLevel(b.dag, dealingLevel)
-	createdDealing := make([]bool, b.dag.NProc())
+	createdDealing := make([]bool, b.conf.NProc)
 	for _, v := range dealingUnits {
 		shouldVote := gomel.Above(u, v)
 		if shouldVote && votes[v.Creator()] == nil {
@@ -246,7 +248,7 @@ func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 			return errors.New("vote on dealing unit not below the unit")
 		}
 		if shouldVote && !votes[v.Creator()].isCorrect() {
-			if !verifyWrongSecretKeyProof(b, u.Creator(), v.Creator(), *votes[v.Creator()].proof) {
+			if !b.verifyWrongSecretKeyProof(u.Creator(), v.Creator(), *votes[v.Creator()].proof) {
 				return errors.New("the provided proof is incorrect")
 			}
 		}
@@ -260,8 +262,8 @@ func validateVotes(b *Beacon, u gomel.Unit, votes []*vote) error {
 	return nil
 }
 
-func verifyWrongSecretKeyProof(b *Beacon, prover, suspect uint16, proof p2p.SharedSecret) bool {
-	if !p2p.VerifySharedSecret(b.pKeys[prover], b.pKeys[suspect], proof) {
+func (b *Beacon) verifyWrongSecretKeyProof(prover, suspect uint16, proof p2p.SharedSecret) bool {
+	if !p2p.VerifySharedSecret(b.conf.P2PPublicKeys[prover], b.conf.P2PPublicKeys[suspect], proof) {
 		return false
 	}
 	key, err := p2p.Key(proof)
@@ -275,7 +277,7 @@ func verifyWrongSecretKeyProof(b *Beacon, prover, suspect uint16, proof p2p.Shar
 // with the given creator and set of parents.
 func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
 	if level == dealingLevel {
-		nProc := b.dag.NProc()
+		nProc := b.conf.NProc
 		gtc := tcoin.NewRandomGlobal(nProc, gomel.MinimalTrusted(nProc))
 		tc, err := gtc.Encrypt(b.p2pKeys)
 		if err != nil {
@@ -287,10 +289,10 @@ func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) 
 		return marshallVotes(b.votes[b.pid]), nil
 	}
 	if level >= sharesLevel {
-		cses := make([]*tcoin.CoinShare, b.dag.NProc())
-		for pid := uint16(0); pid < b.dag.NProc(); pid++ {
+		cses := make([]*tcoin.CoinShare, b.conf.NProc)
+		for pid := uint16(0); pid < b.conf.NProc; pid++ {
 			if b.votes[creator][pid] != nil && b.votes[creator][pid].isCorrect() {
-				cses[pid] = b.tcoins[pid].CreateCoinShare(level)
+				cses[pid] = b.tcoins[pid].CreateCoinShare(nonce(level))
 			}
 		}
 		return marshallShares(cses), nil
@@ -300,8 +302,8 @@ func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) 
 
 // GetCoin returns a coin random source obtained by using this beacon.
 // Head should be the creator of a timing unit chosen on the 6th level.
-func (b *Beacon) GetCoin(head uint16) gomel.RandomSource {
-	return coin.New(b.dag.NProc(), b.pid, b.multicoins[head], b.shareProviders[head])
+func (b *Beacon) GetCoin(head uint16) gomel.RandomSourceFactory {
+	return coin.NewFactory(b.pid, b.multicoins[head], b.shareProviders[head])
 }
 
 // unitsOnLevel returns all the prime units in the dag on a given level

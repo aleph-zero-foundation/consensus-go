@@ -8,13 +8,13 @@ import (
 )
 
 // VerifyCoinShare verifies whether the given coin share is correct.
-func (tc *ThresholdCoin) VerifyCoinShare(share *CoinShare, nonce int) bool {
-	return tc.vks[share.owner].Verify(share.sgn, big.NewInt(int64(nonce)).Bytes())
+func (tc *ThresholdCoin) VerifyCoinShare(share *CoinShare, nonce int64) bool {
+	return tc.vks[share.owner].Verify(share.sgn, big.NewInt(nonce).Bytes())
 }
 
 // VerifyCoin verifies whether the given coin is correct.
-func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int) bool {
-	return tc.globalVK.Verify(c.sgn, big.NewInt(int64(nonce)).Bytes())
+func (tc *ThresholdCoin) VerifyCoin(c *Coin, nonce int64) bool {
+	return tc.globalVK.Verify(c.sgn, big.NewInt(nonce).Bytes())
 }
 
 // PolyVerify uses the given polyVerifier to verify if the vks form
