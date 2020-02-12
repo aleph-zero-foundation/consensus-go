@@ -72,7 +72,7 @@ func (d *decoder) decodeDagInfo() (*gomel.DagInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	epoch := binary.LittleEndian.Uint32(uint32Buf)
+	epoch := gomel.EpochID(binary.LittleEndian.Uint32(uint32Buf))
 
 	_, err = io.ReadFull(d, uint16Buf)
 	if err != nil {
@@ -93,7 +93,7 @@ func (d *decoder) decodeDagInfo() (*gomel.DagInfo, error) {
 			heights[i] = int(h)
 		}
 	}
-	return &gomel.DagInfo{int(epoch), heights}, nil
+	return &gomel.DagInfo{epoch, heights}, nil
 }
 
 // decodePreunit reads encoded data from the io.Reader and tries to decode it as a preunit.
