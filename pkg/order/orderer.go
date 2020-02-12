@@ -51,6 +51,8 @@ func (ord *orderer) Start() error {
 
 func (ord *orderer) Stop() {
 	close(ord.orderedUnits)
+	ord.previous.close()
+	ord.current.close()
 	ord.wg.Wait()
 }
 
@@ -82,7 +84,6 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
 		ep.adder.AddPreunits(source, preunits[:end]...) //TODO handle error
 		preunits = preunits[end:]
 	}
-
 }
 
 // UnitsByID allows to access units present in the orderer using their ids.
