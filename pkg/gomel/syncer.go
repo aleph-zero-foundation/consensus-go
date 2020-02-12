@@ -8,6 +8,4 @@ type Syncer interface {
 	RequestFetch(uint16, []uint64)
 	// Multicast the unit.
 	Multicast(Unit)
-	// SetOrderer binds the Syncer with the given Orderer.
-	SetOrderer(Orderer)
 }

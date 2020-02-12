@@ -18,7 +18,7 @@ type orderer struct {
 	conf         config.Config
 	syncer       gomel.Syncer
 	rsf          gomel.RandomSourceFactory
-	alert        gomel.Alerter
+	alerter      gomel.Alerter
 	ps           core.PreblockSink
 	current      *epoch
 	previous     *epoch
@@ -30,17 +30,23 @@ type orderer struct {
 }
 
 // NewOrderer TODO
-func NewOrderer(conf config.Config, syncer gomel.Syncer, rsf gomel.RandomSourceFactory, alert gomel.Alerter, ps core.PreblockSink) gomel.Orderer {
+func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ps core.PreblockSink) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
-		syncer:       syncer,
 		rsf:          rsf,
-		alert:        alert,
 		ps:           ps,
 		unitBelt:     make(chan gomel.Unit, beltSize),
 		orderedUnits: make(chan []gomel.Unit, 10),
 	}
 	return ord
+}
+
+func (ord *orderer) SetAlerter(alerter gomel.Alerter) {
+	ord.alerter = alerter
+}
+
+func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
+	ord.syncer = syncer
 }
 
 func (ord *orderer) Start() error {

@@ -63,8 +63,8 @@ func NewAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 	al := &alertHandler{
 		myPid:       conf.Pid,
 		nProc:       conf.NProc,
-		orderer:     orderer,
 		keys:        conf.Alert.PublicKeys,
+		orderer:     orderer,
 		rmc:         rmc,
 		netserv:     netserv,
 		timeout:     conf.Alert.Timeout,
@@ -72,7 +72,7 @@ func NewAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 		locks:       make([]sync.Mutex, conf.NProc),
 		log:         log,
 	}
-	config.AddCheck(conf, al.checkCommitment)
+	// TODO add checks to orderer
 	return al
 }
 
@@ -102,7 +102,7 @@ func (a *alertHandler) HandleIncoming(conn network.Connection, wg *sync.WaitGrou
 
 // acceptFinished alert. If this is the first alert pertaining this forker we are aware of, this method also raises our own alert.
 func (a *alertHandler) acceptFinished(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
-	forker, _, _, err := a.decodeAlertID(id, pid)
+	forker, _, epochID, err := a.decodeAlertID(id, pid)
 	if err != nil {
 		log.Error().Str("where", "alertHandler.acceptFinished.decodeAlertID").Msg(err.Error())
 		return
@@ -122,7 +122,7 @@ func (a *alertHandler) acceptFinished(id uint64, pid uint16, conn network.Connec
 	a.Lock(forker)
 	defer a.Unlock(forker)
 	if a.commitments.getByParties(a.myPid, pid) == nil {
-		maxes := a.orderer.MaxUnits().Get(forker)
+		maxes := a.orderer.MaxUnits(epochID).Get(forker)
 		if len(maxes) == 0 {
 			proof.replaceCommit(nil)
 		} else {
@@ -175,7 +175,7 @@ func (a *alertHandler) produceCommitmentFor(unit gomel.Unit) (commitment, error)
 	if pu == nil {
 		return nil, errors.New("we did not commit to anything")
 	}
-	commUnit := a.orderer.GetUnit(pu.Hash())
+	commUnit := a.orderer.UnitsByHash(pu.Hash())[0]
 	if commUnit == nil {
 		return nil, errors.New("we do not have the unit we committed to")
 	}
@@ -219,7 +219,7 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 		log.Error().Str("where", "alertHandler.handleCommitmentRequest.ReadFull").Msg(err.Error())
 		return
 	}
-	unit := a.orderer.GetUnit(&requested)
+	unit := a.orderer.UnitsByHash(&requested)[0]
 	if unit == nil {
 		log.Error().Str("where", "alertHandler.handleCommitmentRequest.Get").Msg("no commitment for unit not in orderer")
 		return
@@ -343,7 +343,7 @@ func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 // acceptAlert and, if it is correct, sign it. In this case, if this is the first time we learn about this process forking,
 // also raise our own alert afterwards.
 func (a *alertHandler) acceptAlert(id uint64, pid uint16, conn network.Connection, log zerolog.Logger) {
-	forker, _, _, err := a.decodeAlertID(id, pid)
+	forker, _, epochID, err := a.decodeAlertID(id, pid)
 	if err != nil {
 		log.Error().Str("where", "alertHandler.acceptAlert.decodeAlertID").Msg(err.Error())
 		return
@@ -374,7 +374,7 @@ func (a *alertHandler) acceptAlert(id uint64, pid uint16, conn network.Connectio
 	a.Lock(forker)
 	defer a.Unlock(forker)
 	if a.commitments.getByParties(a.myPid, pid) == nil {
-		maxes := a.orderer.MaxUnits().Get(forker)
+		maxes := a.orderer.MaxUnits(epochID).Get(forker)
 		if len(maxes) == 0 {
 			proof.replaceCommit(nil)
 		} else {
@@ -565,7 +565,7 @@ func (a *alertHandler) Disambiguate(possibleParents []gomel.Unit, pu gomel.Preun
 	if cu == nil {
 		return nil, gomel.NewComplianceError("unit built on noncommitted parent")
 	}
-	u := a.orderer.GetUnit(cu.Hash())
+	u := a.orderer.UnitsByHash(cu.Hash())[0]
 	if u == nil {
 		return nil, missingCommitment("no committed unit needed for disambiguation")
 	}
@@ -603,7 +603,7 @@ func (a *alertHandler) Unlock(pid uint16) {
 }
 
 // checkCommitment checks if the given unit was produced by forker and, if this is the case, whether it has required commitment.
-func (a *alertHandler) checkCommitment(u gomel.Unit) error {
+func (a *alertHandler) checkCommitment(u gomel.Unit, _ gomel.Dag) error {
 	if a.handleForkerUnit(u) && !a.hasCommitmentTo(u) {
 		return missingCommitment("missing commitment to fork")
 	}
@@ -615,7 +615,7 @@ func (a *alertHandler) handleForkerUnit(u gomel.Unit) bool {
 	if a.IsForker(creator) {
 		return true
 	}
-	maxes := a.orderer.MaxUnits().Get(creator)
+	maxes := a.orderer.MaxUnits(u.EpochID()).Get(creator)
 	if len(maxes) == 0 {
 		return false
 	}
@@ -654,7 +654,7 @@ func (a *alertHandler) ResolveMissingCommitment(e error, u gomel.BaseUnit, sourc
 
 // NewFork takes two preunits that prove that a fork happened, produces a forking proof and raises an alert.
 func (a *alertHandler) NewFork(u, v gomel.Preunit) {
-	if u.Creator() != v.Creator() || u.Height() != v.Height() {
+	if u.Creator() != v.Creator() || u.Height() != v.Height() || u.EpochID() != v.EpochID() {
 		return
 	}
 
@@ -665,7 +665,7 @@ func (a *alertHandler) NewFork(u, v gomel.Preunit) {
 		return
 	}
 
-	maxes := a.orderer.MaxUnits().Get(u.Creator())
+	maxes := a.orderer.MaxUnits(u.EpochID()).Get(u.Creator())
 	// There can be only one unit in maxes, since its creator is not a forker.
 	var max gomel.Unit
 	if len(maxes) > 0 {
