@@ -6,15 +6,13 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/order"
 	"gitlab.com/alephledger/consensus-go/pkg/services/alert"
-	"gitlab.com/alephledger/consensus-go/pkg/services/create"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
@@ -114,12 +112,11 @@ func BeaconSetup(
 	return setup(conf, randomSourceSink, setupLog, fatalError)
 }
 
-func newConsensus(
+func NewConsensus(
 	conf config.Config,
 	ds core.DataSource,
 	ps core.PreblockSink,
-	rsSource <-chan func(gomel.Dag) gomel.RandomSource,
-	createdDag chan<- gomel.Dag,
+	rsSource <-chan gomel.RandomSourceFactory,
 	log zerolog.Logger,
 	fatalError chan error,
 ) (gomel.Service, error) {
@@ -135,78 +132,46 @@ func newConsensus(
 			go func() {
 				defer close(serviceStopped)
 
-				dagFinished := make(chan struct{})
-				defer close(dagFinished)
 				// orderedUnits is a channel shared between orderer and validator
 				// orderer sends ordered rounds to the channel
 				orderedUnits := make(chan []gomel.Unit, 10)
 				defer close(orderedUnits)
-				dag := makeStandardDag(conf.NProc)
-				defer func() {
-					createdDag <- dag
-				}()
 
-				var rsProvider func(gomel.Dag) gomel.RandomSource
+				var rsf gomel.RandomSourceFactory
 				select {
-				case rsProvider = <-rsSource:
+				case rsf = <-rsSource:
 				case <-stopService:
 					return
 				}
-				rs := rsProvider(dag)
-				log.Info().Msg(logging.GotRandomSource)
+				log.Info().Msg(logging.GotRandomSourceFactory)
 
-				var err error
-				var alerter gomel.Alerter
-				alerter, alertService, err =
-					alert.NewService(dag, conf.Alert, log.With().Int(logging.Service, logging.AlertService).Logger())
+				orderer := order.NewOrderer(conf, rsf, ps)
+
+				alerter, alertService, err :=
+					alert.NewService(conf, orderer, log.With().Int(logging.Service, logging.AlertService).Logger())
 				if err != nil {
-					log.Err(err).Msg("main service's initialization failed")
+					log.Err(err).Msg("initialization of the alerter service failed")
 					fatalError <- err
 					return
 				}
+				orderer.SetAlerter(alerter)
 
-				adr, adderService :=
-					adder.New(dag, alerter, conf.PublicKeys, log.With().Int(logging.Service, logging.AdderService).Logger())
-
-				extender :=
-					linear.NewExtender(
-						dag,
-						rs,
-						conf.Order,
-						orderedUnits,
-						log.With().Int(logging.Service, logging.OrderService).Logger(),
-					)
-
-				syncService, err = sync.NewService(dag, adr, conf.Sync, log)
+				// TODO: should logger be instantiated as in alerter?
+				syncer, syncService, err = sync.NewService(conf, orderer, log)
 				if err != nil {
 					log.Err(err).Msg("initialization of the sync service failed")
 					fatalError <- err
 					return
 				}
-
-				createService :=
-					create.NewService(
-						dag,
-						adr,
-						rs,
-						conf.Create,
-						dagFinished,
-						ds,
-						log.With().Int(logging.Service, logging.CreateService).Logger())
+				orderer.SetSyncer(syncer)
 
 				memlogService :=
 					logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
-				preblockService := newPreblockService(orderedUnits, ps)
-
 				err = start(
 					alertService,
-					adderService,
-					createService,
-					extender,
 					memlogService,
 					syncService,
-					preblockService,
 				)
 				if err != nil {
 					log.Err(err).Msg("failed to start main services")
@@ -230,19 +195,6 @@ func newConsensus(
 			stop(alertService, syncService)
 		},
 	), nil
-}
-
-// NewConsensus returns a service that starts all main components of gomel capable of producing a stream of ordered Preblocks.
-func NewConsensus(
-	conf config.Config,
-	ds core.DataSource,
-	ps core.PreblockSink,
-	rsSource <-chan func(gomel.Dag) gomel.RandomSource,
-	log zerolog.Logger,
-	fatalError chan error,
-) (gomel.Service, error) {
-	createdDag := make(chan gomel.Dag, 1)
-	return newConsensus(conf, ds, ps, rsSource, createdDag, log, fatalError)
 }
 
 // Process creates an default instance of the Orderer service using provided configuration.

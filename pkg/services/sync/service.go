@@ -37,9 +37,9 @@ var logNames = map[string]int{
 // NewService creates a new syncing service and the function for multicasting units.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log zerolog.Logger) (gomel.Service, error) {
+func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Syncer, gomel.Service, error) {
 	if err := valid(configs); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pid := configs[0].Pid
 	s := &service{
@@ -52,13 +52,13 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 
 		timeout, err := time.ParseDuration(c.Params["timeout"])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		lg := log.With().Int(logging.Service, logNames[c.Type]).Logger()
 		netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		switch c.Type {
@@ -71,11 +71,11 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 		case "gossip":
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			nIn, err := strconv.Atoi(c.Params["nIn"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			nIdle, err := strconv.Atoi(c.Params["nIdle"])
 			if err != nil {
@@ -88,21 +88,21 @@ func NewService(dag gomel.Dag, adder gomel.Adder, configs []*config.Sync, log ze
 		case "fetch":
 			nOut, err := strconv.Atoi(c.Params["nOut"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			nIn, err := strconv.Atoi(c.Params["nIn"])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			server, trigger := fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
 			s.servers[i] = server
 			adder.SetFetch(trigger)
 
 		default:
-			return nil, gomel.NewConfigError("unknown sync type: " + c.Type)
+			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
 		}
 	}
-	return s, nil
+	return nil, s, nil
 }
 
 func (s *service) Start() error {
