@@ -72,7 +72,7 @@ func NewAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 		locks:       make([]sync.Mutex, conf.NProc),
 		log:         log,
 	}
-	// TODO add checks to orderer
+	config.AddCheck(conf, al.checkCommitment)
 	return al
 }
 

@@ -64,7 +64,7 @@ func (fp *forkingProof) forkerID() uint16 {
 	return fp.pu.Creator()
 }
 
-func (fp *forkingProof) epochID() uint16 {
+func (fp *forkingProof) epochID() gomel.EpochID {
 	return fp.pu.EpochID()
 }
 
