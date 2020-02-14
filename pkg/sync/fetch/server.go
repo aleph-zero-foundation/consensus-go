@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/core-go/pkg/network"
@@ -16,8 +18,7 @@ import (
 
 type server struct {
 	pid      uint16
-	dag      gomel.Dag
-	adder    gomel.Adder
+	orderer  gomel.Orderer
 	netserv  network.Server
 	requests chan Request
 	syncIds  []uint32
@@ -29,13 +30,12 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn int) (sync.Server, gomel.RequestFetch) {
-	nProc := int(dag.NProc())
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger, nOut, nIn int, timeout time.Duration) (sync.Server, sync.RequestFetch) {
+	nProc := int(conf.NProc)
 	requests := make(chan Request, nProc)
 	s := &server{
-		pid:      pid,
-		dag:      dag,
-		adder:    adder,
+		pid:      conf.Pid,
+		orderer:  orderer,
 		netserv:  netserv,
 		requests: requests,
 		syncIds:  make([]uint32, nProc),

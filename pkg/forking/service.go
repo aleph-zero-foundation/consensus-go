@@ -1,5 +1,4 @@
-// Package alert implements a service for raising alerts and using them to restrict addition to the dag.
-package alert
+package forking
 
 import (
 	"sync"
@@ -9,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
@@ -18,7 +16,7 @@ import (
 )
 
 type service struct {
-	alert   gomel.Alerter
+	*alertHandler
 	netserv network.Server
 	timeout time.Duration
 	listens sync.WaitGroup
@@ -27,20 +25,20 @@ type service struct {
 }
 
 // NewService constructs an alerting service for the given dag with the given configuration.
-func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Alerter, gomel.Service, error) {
+func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Alerter, error) {
 	rmc := rmc.New(conf.Alert.Pubs, conf.Alert.Priv)
 	netserv, err := tcp.NewServer(conf.Alert.LocalAddress, conf.Alert.RemoteAddresses)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	a := forking.NewAlertHandler(conf, orderer, rmc, netserv, log)
+	a := newAlertHandler(conf, orderer, rmc, netserv, log)
 	s := &service{
-		alert:   a,
-		netserv: netserv,
-		timeout: conf.Alert.Timeout,
-		log:     log,
+		alertHandler: a,
+		netserv:      netserv,
+		timeout:      conf.Alert.Timeout,
+		log:          log,
 	}
-	return a, s, nil
+	return s, nil
 }
 
 func (s *service) Start() error {
@@ -65,6 +63,9 @@ func (s *service) handleConns() {
 		}
 		conn.TimeoutAfter(s.timeout)
 		s.listens.Add(1)
-		go s.alert.HandleIncoming(conn, &s.listens)
+		go func() {
+			defer s.listens.Done()
+			s.HandleIncoming(conn)
+		}()
 	}
 }

@@ -3,47 +3,44 @@ package multicast
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 )
 
-func (p *server) In() {
-	conn, err := p.netserv.Listen(p.timeout)
+func (s *server) In() {
+	conn, err := s.netserv.Listen(s.timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
+	conn.TimeoutAfter(s.timeout)
 
 	preunit, err := encoding.ReceivePreunit(conn)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
+		s.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
 		return
 	}
-	if add.Unit(p.adder, preunit, preunit.Creator(), "multicast.in", p.log) {
-		p.log.Info().Int(logging.Height, preunit.Height()).Uint16(logging.Creator, preunit.Creator()).Msg(logging.AddedBCUnit)
-	}
+	s.orderer.AddPreunits(preunit.Creator(), preunit)
 }
 
-func (p *server) Out(pid uint16) {
-	r, ok := <-p.requests[pid]
+func (s *server) Out(pid uint16) {
+	r, ok := <-s.requests[pid]
 	if !ok {
 		return
 	}
-	conn, err := p.netserv.Dial(pid, p.timeout)
+	conn, err := s.netserv.Dial(pid, s.timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
+	conn.TimeoutAfter(s.timeout)
 	_, err = conn.Write(r.encUnit)
 	if err != nil {
-		p.log.Error().Str("where", "multicast.out.sendUnit").Msg(err.Error())
+		s.log.Error().Str("where", "multicast.out.sendUnit").Msg(err.Error())
 		return
 	}
 	err = conn.Flush()
 	if err != nil {
-		p.log.Error().Str("where", "multicast.out.flush").Msg(err.Error())
+		s.log.Error().Str("where", "multicast.out.flush").Msg(err.Error())
 		return
 	}
-	p.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, pid).Msg(logging.UnitBroadcasted)
+	s.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, pid).Msg(logging.UnitBroadcasted)
 }

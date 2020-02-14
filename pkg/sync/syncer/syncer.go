@@ -21,7 +21,10 @@ import (
 	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
-type service struct {
+type syncer struct {
+	gossip      sync.Gossip
+	fetch       sync.Fetch
+	mCast       sync.Multicast
 	servers     []sync.Server
 	subservices []gomel.Service
 	log         zerolog.Logger
@@ -34,14 +37,14 @@ var logNames = map[string]int{
 	"fetch":     logging.FetchService,
 }
 
-// NewService creates a new syncing service and the function for multicasting units.
+// New creates a new syncer.
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
-func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Syncer, gomel.Service, error) {
+func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Syncer, error) {
+	configs := conf.Sync
 	if err := valid(configs); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	pid := configs[0].Pid
 	s := &service{
 		servers: make([]sync.Server, len(configs)),
 		log:     log.With().Int(logging.Service, logging.SyncService).Logger(),
@@ -52,21 +55,21 @@ func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (
 
 		timeout, err := time.ParseDuration(c.Params["timeout"])
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		lg := log.With().Int(logging.Service, logNames[c.Type]).Logger()
 		netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		switch c.Type {
 		case "multicast":
-			s.servers[i] = multicast.NewServer(pid, dag, adder, netserv, timeout, lg)
+			s.servers[i], s.mcast = multicast.NewServer(conf, orderer, netserv, timeout, lg)
 
 		case "rmc":
-			s.servers[i] = rmc.NewServer(pid, dag, adder, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
+			s.servers[i], s.mcast = rmc.NewServer(conf, orderer, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
 
 		case "gossip":
 			nOut, err := strconv.Atoi(c.Params["nOut"])
@@ -81,9 +84,9 @@ func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (
 			if err != nil {
 				nIdle = 0
 			}
-			server, trigger := gossip.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn, nIdle)
+			server, trigger := gossip.NewServer(conf, orderer, netserv, timeout, lg, nOut, nIn, nIdle)
 			s.servers[i] = server
-			adder.SetGossip(trigger)
+			s.reqGossip = trigger
 
 		case "fetch":
 			nOut, err := strconv.Atoi(c.Params["nOut"])
@@ -94,15 +97,15 @@ func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (
 			if err != nil {
 				return nil, nil, err
 			}
-			server, trigger := fetch.NewServer(pid, dag, adder, netserv, timeout, lg, nOut, nIn)
+			server, trigger := fetch.NewServer(conf, orderer, netserv, timeout, lg, nOut, nIn)
 			s.servers[i] = server
-			adder.SetFetch(trigger)
+			s.reqFetch = trigger
 
 		default:
-			return nil, nil, gomel.NewConfigError("unknown sync type: " + c.Type)
+			return nil, gomel.NewConfigError("unknown sync type: " + c.Type)
 		}
 	}
-	return nil, s, nil
+	return s, nil
 }
 
 func (s *service) Start() error {
@@ -129,6 +132,18 @@ func (s *service) Stop() {
 		service.Stop()
 	}
 	s.log.Info().Msg(logging.ServiceStopped)
+}
+
+func (s *service) RequestGossip(pid uint16) {
+	s.gossip(pid)
+}
+
+func (s *service) RequestFetch(pid uint16, UnitIDs []uint64) {
+	s.fetch(pid, UnitIDs)
+}
+
+func (s *servce) Multicast(u gomel.Unit) {
+	s.mcast(u)
 }
 
 // Checks if the list of configs is valid, that means there is only one multicasting server.

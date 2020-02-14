@@ -59,7 +59,7 @@ type alertHandler struct {
 }
 
 // NewAlertHandler for raising and handling commitments.
-func NewAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, netserv network.Server, log zerolog.Logger) gomel.Alerter {
+func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, netserv network.Server, log zerolog.Logger) *alertHandler {
 	al := &alertHandler{
 		myPid:       conf.Pid,
 		nProc:       conf.NProc,
@@ -77,8 +77,7 @@ func NewAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 }
 
 // HandleIncoming connection, either accepting an alert or responding to a commitment request.
-func (a *alertHandler) HandleIncoming(conn network.Connection, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (a *alertHandler) HandleIncoming(conn network.Connection) {
 	defer conn.Close()
 	pid, id, msgType, err := rmc.AcceptGreeting(conn)
 	if err != nil {

@@ -3,7 +3,6 @@ package fetch
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
@@ -19,7 +18,7 @@ func (p *server) In() {
 		p.log.Error().Str("where", "fetch.in.greeting").Msg(err.Error())
 		return
 	}
-	if pid >= p.dag.NProc() {
+	if pid >= uint16(len(p.syncIds)) {
 		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
 		return
 	}
@@ -31,7 +30,7 @@ func (p *server) In() {
 		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
 		return
 	}
-	units := getUnits(p.dag, unitIDs)
+	units := p.orderer.UnitsByID(unitIDs)
 	if err != nil {
 		log.Error().Str("where", "fetch.in.getUnits").Msg(err.Error())
 		return

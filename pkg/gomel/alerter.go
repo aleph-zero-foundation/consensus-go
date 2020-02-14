@@ -8,6 +8,7 @@ import (
 
 // Alerter is responsible for raising alerts about forks and handling communication about commitments in case of fork.
 type Alerter interface {
+	Service
 	// NewFork raises an alert about newly detected fork.
 	NewFork(Preunit, Preunit)
 	// HandleIncoming handles the incoming connection and signals the provided WaitGroup when done.
@@ -33,6 +34,8 @@ func NopAlerter() Alerter {
 
 type nopAl struct{}
 
+func (*nopAl) Start() error                                                 { return nil }
+func (*nopAl) Stop()                                                        {}
 func (*nopAl) NewFork(Preunit, Preunit)                                     {}
 func (*nopAl) HandleIncoming(network.Connection, *sync.WaitGroup)           {}
 func (*nopAl) Disambiguate([]Unit, Preunit) (Unit, error)                   { return nil, nil }
