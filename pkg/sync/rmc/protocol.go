@@ -8,43 +8,42 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/sync/add"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
-func (p *server) multicast(unit gomel.Unit) {
+func (s *server) multicast(unit gomel.Unit) {
 	id := gomel.UnitID(unit)
 	data, err := encoding.EncodeUnit(unit)
 	if err != nil {
-		p.log.Error().Str("where", "rmcServer.Send.EncodeUnit").Msg(err.Error())
+		s.log.Error().Str("where", "rmcServer.Send.EncodeUnit").Msg(err.Error())
 		return
 	}
-	p.multicastInProgress.Lock()
-	signedBy := p.getCommitteeSignatures(data, id)
-	p.multicastInProgress.Unlock()
+	s.multicastInProgress.Lock()
+	signedBy := s.getCommitteeSignatures(data, id)
+	s.multicastInProgress.Unlock()
 	for pid, isSigned := range signedBy {
 		if isSigned {
 			go func(pid uint16) {
-				err := p.sendProof(pid, id)
+				err := s.sendProof(pid, id)
 				if err != nil {
-					p.log.Error().Str("where", "rmcServer.SendProof").Msg(err.Error())
+					s.log.Error().Str("where", "rmcServer.SendProof").Msg(err.Error())
 				}
 			}(uint16(pid))
 		}
 	}
 }
 
-func (p *server) sendProof(receipient uint16, id uint64) error {
-	conn, err := p.netserv.Dial(receipient, p.timeout)
+func (s *server) sendProof(receipient uint16, id uint64) error {
+	conn, err := s.netserv.Dial(receipient, s.timeout)
 	if err != nil {
 		return err
 	}
-	err = rmcbox.Greet(conn, p.pid, id, sendProof)
+	err = rmcbox.Greet(conn, s.pid, id, sendProof)
 	if err != nil {
 		return err
 	}
-	err = p.state.SendProof(id, conn)
+	err = s.state.SendProof(id, conn)
 	if err != nil {
 		return err
 	}
@@ -60,16 +59,16 @@ func (p *server) sendProof(receipient uint16, id uint64) error {
 // It blocks until it gathers at least quorum signatures.
 // It returns nProc boolean values in a slice, i-th value indicates
 // weather the i-th process signed the data or not.
-func (p *server) getCommitteeSignatures(data []byte, id uint64) []bool {
-	signedBy := make([]bool, p.dag.NProc())
+func (s *server) getCommitteeSignatures(data []byte, id uint64) []bool {
+	signedBy := make([]bool, s.nProc)
 	gathering := &sync.WaitGroup{}
-	for pid := uint16(0); pid < p.dag.NProc(); pid++ {
-		if pid == p.pid {
+	for pid := uint16(0); pid < s.nProc; pid++ {
+		if pid == s.pid {
 			continue
 		}
 		gathering.Add(1)
 		go func(pid uint16) {
-			signedBy[pid] = p.getMemberSignature(data, id, pid, gathering)
+			signedBy[pid] = s.getMemberSignature(data, id, pid, gathering)
 		}(pid)
 	}
 	gathering.Wait()
@@ -80,17 +79,17 @@ func (p *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 // It retries until it gets a signature, or there are at least quorum signatures for this rmc-id
 // gathered from different recipients.
 // It returns whether it got a signature or not.
-func (p *server) getMemberSignature(data []byte, id uint64, receipient uint16, gathering *sync.WaitGroup) bool {
+func (s *server) getMemberSignature(data []byte, id uint64, receipient uint16, gathering *sync.WaitGroup) bool {
 	defer gathering.Done()
-	log := p.log.With().Uint16(logging.PID, receipient).Uint64(logging.OSID, id).Logger()
-	for p.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&p.quit) == 0 {
-		conn, err := p.netserv.Dial(receipient, p.timeout)
+	log := s.log.With().Uint16(logging.PID, receipient).Uint64(logging.OSID, id).Logger()
+	for s.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&s.quit) == 0 {
+		conn, err := s.netserv.Dial(receipient, s.timeout)
 		if err != nil {
 			continue
 		}
-		conn.TimeoutAfter(p.timeout)
+		conn.TimeoutAfter(s.timeout)
 		log.Info().Msg(logging.SyncStarted)
-		err = p.attemptGather(conn, data, id, receipient)
+		err = s.attemptGather(conn, data, id, receipient)
 		if err == nil {
 			log.Info().Msg(logging.SyncCompleted)
 			return true
@@ -100,13 +99,13 @@ func (p *server) getMemberSignature(data []byte, id uint64, receipient uint16, g
 	return false
 }
 
-func (p *server) attemptGather(conn network.Connection, data []byte, id uint64, receipient uint16) error {
+func (s *server) attemptGather(conn network.Connection, data []byte, id uint64, receipient uint16) error {
 	defer conn.Close()
-	err := rmcbox.Greet(conn, p.pid, id, sendData)
+	err := rmcbox.Greet(conn, s.pid, id, sendData)
 	if err != nil {
 		return err
 	}
-	err = p.state.SendData(id, data, conn)
+	err = s.state.SendData(id, data, conn)
 	if err != nil {
 		return err
 	}
@@ -114,20 +113,20 @@ func (p *server) attemptGather(conn network.Connection, data []byte, id uint64, 
 	if err != nil {
 		return err
 	}
-	_, err = p.state.AcceptSignature(id, receipient, conn)
+	_, err = s.state.AcceptSignature(id, receipient, conn)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (p *server) sendProve(conn network.Connection, id uint64) error {
+func (s *server) sendProve(conn network.Connection, id uint64) error {
 	defer conn.Close()
-	err := rmcbox.Greet(conn, p.pid, id, sendProof)
+	err := rmcbox.Greet(conn, s.pid, id, sendProof)
 	if err != nil {
 		return err
 	}
-	err = p.state.SendProof(id, conn)
+	err = s.state.SendProof(id, conn)
 	if err != nil {
 		return err
 	}
@@ -138,43 +137,43 @@ func (p *server) sendProve(conn network.Connection, id uint64) error {
 	return nil
 }
 
-func (p *server) in() {
-	conn, err := p.netserv.Listen(p.timeout)
+func (s *server) in() {
+	conn, err := s.netserv.Listen(s.timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
+	conn.TimeoutAfter(s.timeout)
 
 	pid, id, msgType, err := rmcbox.AcceptGreeting(conn)
 	if err != nil {
-		p.log.Error().Str("where", "rmc.in.AcceptGreeting").Msg(err.Error())
+		s.log.Error().Str("where", "rmc.in.AcceptGreeting").Msg(err.Error())
 		return
 	}
-	log := p.log.With().Uint16(logging.PID, pid).Uint64(logging.ISID, id).Logger()
+	log := s.log.With().Uint16(logging.PID, pid).Uint64(logging.ISID, id).Logger()
 	log.Info().Msg(logging.SyncStarted)
 
 	switch msgType {
 	case sendData:
-		p.acceptData(id, pid, conn, log)
+		s.acceptData(id, pid, conn, log)
 	case sendProof:
-		if p.acceptProof(id, conn, log) {
-			pu, err := encoding.DecodePreunit(p.state.Data(id))
+		if s.acceptProof(id, conn, log) {
+			pu, err := encoding.DecodePreunit(s.state.Data(id))
 			if err != nil {
 				log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 				return
 			}
-			add.Unit(p.adder, pu, pu.Creator(), "rmc.in", log)
+			s.orderer.AddPreunits(pu.Creator(), pu)
 		}
 	case requestFinished:
-		err := p.state.SendFinished(id, conn)
+		err := s.state.SendFinished(id, conn)
 		if err != nil {
-			p.log.Error().Str("where", "rmc.in.SendFinished").Msg(err.Error())
+			s.log.Error().Str("where", "rmc.in.SendFinished").Msg(err.Error())
 			return
 		}
 		err = conn.Flush()
 		if err != nil {
-			p.log.Error().Str("where", "rmc.in.Flush4").Msg(err.Error())
+			s.log.Error().Str("where", "rmc.in.Flush4").Msg(err.Error())
 			return
 		}
 
@@ -182,8 +181,8 @@ func (p *server) in() {
 	log.Info().Msg(logging.SyncCompleted)
 }
 
-func (p *server) acceptProof(id uint64, conn network.Connection, log zerolog.Logger) bool {
-	err := p.state.AcceptProof(id, conn)
+func (s *server) acceptProof(id uint64, conn network.Connection, log zerolog.Logger) bool {
+	err := s.state.AcceptProof(id, conn)
 	if err != nil {
 		log.Error().Str("where", "rmc.acceptProof.AcceptProof").Msg(err.Error())
 		return false
@@ -191,8 +190,8 @@ func (p *server) acceptProof(id uint64, conn network.Connection, log zerolog.Log
 	return true
 }
 
-func (p *server) acceptData(id uint64, sender uint16, conn network.Connection, log zerolog.Logger) {
-	data, err := p.state.AcceptData(id, sender, conn)
+func (s *server) acceptData(id uint64, sender uint16, conn network.Connection, log zerolog.Logger) {
+	data, err := s.state.AcceptData(id, sender, conn)
 	if err != nil {
 		log.Error().Str("where", "rmc.in.AcceptData").Msg(err.Error())
 		return
@@ -206,7 +205,7 @@ func (p *server) acceptData(id uint64, sender uint16, conn network.Connection, l
 		log.Error().Str("what", "wrong preunit id").Msg(err.Error())
 		return
 	}
-	err = p.state.SendSignature(id, conn)
+	err = s.state.SendSignature(id, conn)
 	if err != nil {
 		log.Error().Str("where", "rmc.in.SendSignature").Msg(err.Error())
 		return

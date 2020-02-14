@@ -56,13 +56,3 @@ func receiveRequests(conn network.Connection) ([]uint64, error) {
 	}
 	return result, nil
 }
-
-// getUnits returns as many units with the given IDs as it can.
-func getUnits(dag gomel.Dag, unitIDs []uint64) []gomel.Unit {
-	result := []gomel.Unit{}
-	for _, id := range unitIDs {
-		units := dag.GetByID(id)
-		result = append(result, units...)
-	}
-	return result
-}

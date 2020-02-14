@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -23,8 +24,8 @@ const (
 // server is a multicast server
 type server struct {
 	pid                 uint16
-	dag                 gomel.Dag
-	adder               gomel.Adder
+	nProc               uint16
+	orderer             gomel.Orderer
 	netserv             network.Server
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
@@ -35,12 +36,12 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) gsync.Server {
-	nProc := int(dag.NProc())
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, state *rmcbox.RMC, timeout time.Duration, log zerolog.Logger) (gsync.Server, gsync.Multicast) {
+	nProc := int(conf.NProc)
 	s := &server{
-		pid:     pid,
-		dag:     dag,
-		adder:   adder,
+		pid:     conf.Pid,
+		nProc:   conf.NProc,
+		orderer: orderer,
 		netserv: netserv,
 		state:   state,
 		timeout: timeout,
@@ -48,10 +49,8 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 		quit:    0,
 	}
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
-	dag.AddCheck(s.finishedRMC)
-	dag.AfterInsert(s.send)
-	adder.AddErrorHandler(s.checkErrorHandler)
-	return s
+	config.AddCheck(conf, s.finishedRMC)
+	return s, s.send
 }
 
 // Start starts worker pools
@@ -75,14 +74,14 @@ func (s *server) send(unit gomel.Unit) {
 	}
 }
 
-func (s *server) finishedRMC(u gomel.Unit) error {
+func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 	if u.Creator() == s.pid {
 		// We trust our own units.
 		return nil
 	}
 	rmcID := gomel.UnitID(u)
 	if s.state.Status(rmcID) != rmcbox.Finished {
-		return &unfinishedRMC{}
+		return s.fetchFinished(u, u.Creator())
 	}
 	pu, err := encoding.DecodePreunit(s.state.Data(rmcID))
 	if err != nil {
@@ -118,15 +117,6 @@ func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
 		return gomel.NewComplianceError(rmcMismatch)
 	}
 	return nil
-}
-
-func (s *server) checkErrorHandler(err error, u gomel.Unit, source uint16) error {
-	switch err.(type) {
-	case *unfinishedRMC:
-		return s.fetchFinished(u, source)
-	default:
-		return err
-	}
 }
 
 const rmcMismatch = "unit differs from successfully RMCd unit"

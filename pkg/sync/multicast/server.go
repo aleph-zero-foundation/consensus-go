@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -30,8 +31,7 @@ type request struct {
 
 type server struct {
 	pid      uint16
-	dag      gomel.Dag
-	adder    gomel.Adder
+	orderer  gomel.Orderer
 	netserv  network.Server
 	requests []chan request
 	outPool  sync.WorkerPool
@@ -42,16 +42,14 @@ type server struct {
 }
 
 // NewServer returns a server that runs the multicast protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger) sync.Server {
-	nProc := int(dag.NProc())
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, timeout time.Duration, log zerolog.Logger) (sync.Server, sync.Multicast) {
+	nProc := int(conf.NProc)
 	requests := make([]chan request, nProc)
 	for i := 0; i < nProc; i++ {
 		requests[i] = make(chan request, requestSize)
 	}
 	s := &server{
-		pid:      pid,
-		dag:      dag,
-		adder:    adder,
+		pid:      conf.Pid,
 		netserv:  netserv,
 		requests: requests,
 		timeout:  timeout,
@@ -59,8 +57,7 @@ func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Ser
 	}
 	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.Out)
 	s.inPool = sync.NewPool(inPoolSize*nProc, s.In)
-	dag.AfterInsert(s.send)
-	return s
+	return s, s.send
 }
 
 func (s *server) Start() {

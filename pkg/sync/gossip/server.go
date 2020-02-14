@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/core-go/pkg/network"
@@ -14,8 +15,7 @@ import (
 
 type server struct {
 	pid         uint16
-	dag         gomel.Dag
-	adder       gomel.Adder
+	orderer     gomel.Orderer
 	netserv     network.Server
 	peerManager *peerManager
 	syncIds     []uint32
@@ -26,14 +26,14 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(pid uint16, dag gomel.Dag, adder gomel.Adder, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn, nIdle int) (sync.Server, gomel.RequestGossip) {
-	nProc := int(dag.NProc())
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn, nIdle int) (sync.Server, sync.RequestGossip) {
+	pid := conf.Pid
+	nProc := int(conf.NProc)
 	s := &server{
 		pid:         pid,
-		dag:         dag,
-		adder:       adder,
+		orderer:     orderer,
 		netserv:     netserv,
-		peerManager: newPeerManager(dag.NProc(), pid, nIdle),
+		peerManager: newPeerManager(conf.NProc, pid, nIdle),
 		syncIds:     make([]uint32, nProc),
 		timeout:     timeout,
 		log:         log,
