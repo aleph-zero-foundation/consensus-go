@@ -14,10 +14,10 @@ type Orderer interface {
 	// MaxUnits returns maximal units per process for the given epoch. Returns nil if epoch not known.
 	MaxUnits(EpochID) SlottedUnits
 	// GetInfo returns DagInfo of the newest epoch.
-	GetInfo() *DagInfo
+	GetInfo() [2]*DagInfo
 	// Delta returns all the units present in orderer that are above heights indicated by provided DagInfo.
 	// That includes also all units from newer epochs.
-	Delta(*DagInfo) []Unit
+	Delta([2]*DagInfo) []Unit
 	// SetAlerter binds the given Alerter to this orderer
 	SetAlerter(Alerter)
 	// SetSyncer binds the given Syncer to this orderer
