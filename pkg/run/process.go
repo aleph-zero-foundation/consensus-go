@@ -9,10 +9,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	dagutils "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
+	"gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/order"
-	"gitlab.com/alephledger/consensus-go/pkg/services/alert"
 	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
@@ -147,8 +147,8 @@ func NewConsensus(
 
 				orderer := order.NewOrderer(conf, rsf, ps)
 
-				alerter, alertService, err :=
-					alert.NewService(conf, orderer, log.With().Int(logging.Service, logging.AlertService).Logger())
+				alerter, err :=
+					forking.NewAlertService(conf, orderer, log.With().Int(logging.Service, logging.AlertService).Logger())
 				if err != nil {
 					log.Err(err).Msg("initialization of the alerter service failed")
 					fatalError <- err
@@ -157,7 +157,7 @@ func NewConsensus(
 				orderer.SetAlerter(alerter)
 
 				// TODO: should logger be instantiated as in alerter?
-				syncer, syncService, err = sync.NewService(conf, orderer, log)
+				syncer, err = sync.NewService(conf, orderer, log)
 				if err != nil {
 					log.Err(err).Msg("initialization of the sync service failed")
 					fatalError <- err
@@ -169,9 +169,9 @@ func NewConsensus(
 					logging.NewService(conf.MemLog, log.With().Int(logging.Service, logging.MemLogService).Logger())
 
 				err = start(
-					alertService,
+					alerter,
 					memlogService,
-					syncService,
+					syncer,
 				)
 				if err != nil {
 					log.Err(err).Msg("failed to start main services")
@@ -192,7 +192,7 @@ func NewConsensus(
 		func() {
 			close(stopService)
 			<-serviceStopped
-			stop(alertService, syncService)
+			stop(alerter, syncer)
 		},
 	), nil
 }
