@@ -135,14 +135,15 @@ func (s *service) Stop() {
 }
 
 func (s *service) RequestGossip(pid uint16) {
-	s.reqGossip(pid)
+	s.gossip(pid)
 }
 
 func (s *service) RequestFetch(pid uint16, UnitIDs []uint64) {
-	s.reqFetch(pid, UnitIDs)
+	s.fetch(pid, UnitIDs)
 }
 
 func (s *servce) Multicast(u gomel.Unit) {
+	s.mcast(u)
 }
 
 // Checks if the list of configs is valid, that means there is only one multicasting server.

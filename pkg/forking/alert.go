@@ -77,8 +77,7 @@ func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 }
 
 // HandleIncoming connection, either accepting an alert or responding to a commitment request.
-func (a *alertHandler) HandleIncoming(conn network.Connection, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (a *alertHandler) HandleIncoming(conn network.Connection) {
 	defer conn.Close()
 	pid, id, msgType, err := rmc.AcceptGreeting(conn)
 	if err != nil {
