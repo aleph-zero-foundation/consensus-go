@@ -36,6 +36,13 @@ func (cf *coinFactory) NewRandomSource(dag gomel.Dag) gomel.RandomSource {
 	return newCoin(cf.pid, dag, cf.tc, cf.shareProvider)
 }
 
+func (cf *coinFactory) DealingData(epoch gomel.EpochID) ([]byte, error) {
+	if cf.shareProvider[cf.pid] {
+		return cf.tc.CreateCoinShare(nonce(0, epoch)).Marshal(), nil
+	}
+	return nil, nil
+}
+
 func nonce(level int, epoch gomel.EpochID) int64 {
 	return int64(epoch)<<16 + int64(level)
 }
@@ -174,32 +181,23 @@ func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 // If the shares don't combine to the correct random bytes for previous level
 // it returns an error. This means that someone had included a wrong coin share
 // and we should start an alert.
-func (c *coin) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
-	if parents[creator] == nil {
-		if c.shareProvider[creator] {
-			return c.tc.CreateCoinShare(nonce(level, c.dag.EpochID())).Marshal(), nil
+func (c *coin) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) {
+	var rb []byte
+	if rbl := c.randomBytes.Get(level - 1); rbl != nil {
+		rb = make([]byte, bn256.SignatureLength)
+		copy(rb, rbl)
+	} else {
+		var err error
+		rb, err = c.combineShares(level - 1)
+		if err != nil {
+			return nil, err
 		}
-		return nil, nil
+		c.randomBytes.AppendOrIgnore(level-1, rb)
 	}
-	if parents[creator].Level() != level {
-		var rb []byte
-		if rbl := c.randomBytes.Get(level - 1); rbl != nil {
-			rb = make([]byte, bn256.SignatureLength)
-			copy(rb, rbl)
-		} else {
-			var err error
-			rb, err = c.combineShares(level - 1)
-			if err != nil {
-				return nil, err
-			}
-			c.randomBytes.AppendOrIgnore(level-1, rb)
-		}
-		if c.shareProvider[creator] {
-			rb = append(rb, c.tc.CreateCoinShare(nonce(level, c.dag.EpochID())).Marshal()...)
-		}
-		return rb, nil
+	if c.shareProvider[c.pid] {
+		rb = append(rb, c.tc.CreateCoinShare(nonce(level, c.dag.EpochID())).Marshal()...)
 	}
-	return nil, nil
+	return rb, nil
 }
 
 func (c *coin) combineShares(level int) ([]byte, error) {
