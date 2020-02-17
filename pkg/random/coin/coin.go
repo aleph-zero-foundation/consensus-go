@@ -175,9 +175,8 @@ func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 }
 
 // DataToInclude returns data which should be included in a unit
-// with the given creator and set of parents.
-// If the unit is the first unit on its level (>0) the coin shares
-// from the previous level will be combined.
+// with the given level and set of parents.
+// The coin shares from the previous level will be combined.
 // If the shares don't combine to the correct random bytes for previous level
 // it returns an error. This means that someone had included a wrong coin share
 // and we should start an alert.
