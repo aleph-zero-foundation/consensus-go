@@ -1,8 +1,8 @@
 package dag
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/unit"
 )
 
 func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
