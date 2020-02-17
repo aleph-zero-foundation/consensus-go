@@ -21,6 +21,7 @@ func defaultTemplate() Config {
 		LogBuffer:      100000,
 		LogMemInterval: 10,
 		Checks:         []gomel.UnitChecker{check.BasicCorrectness, check.ParentConsistency},
+		Timeout:        2 * time.Second,
 	}
 }
 
@@ -35,6 +36,12 @@ func newConfig(m *Member, c *Committee) Config {
 	cnf.RMCPrivateKey = m.RMCSecretKey
 	cnf.P2PPublicKeys = c.P2PPublicKeys
 	cnf.P2PSecretKey = m.P2PSecretKey
+	cnf.RMCAddresses = c.RMCAddresses
+	cnf.GossipAddresses = c.Addresses["gossip"]
+	cnf.FetchAddresses = c.Addresses["fetch"]
+	cnf.MCastAddresses = c.Addresses["mcast"]
+	cnf.GossipWorkers = []int{1, 1, 1}
+	cnf.FetchWorkers = []int{int(cnf.NProc) / 2, int(cnf.NProc) / 4}
 	return cnf
 }
 

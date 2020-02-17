@@ -43,8 +43,8 @@ type conf struct {
 	GossipAddresses []string
 	FetchAddresses  []string
 	MCastAddresses  []string
-	GossipWorkers   []int
-	FetchWorkers    []int
+	GossipWorkers   []int // nIn, nOut, nIdle
+	FetchWorkers    []int // nIn, nOut
 }
 
 // AddCheck adds a unit checker to the given Config.
