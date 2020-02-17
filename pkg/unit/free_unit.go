@@ -6,99 +6,48 @@ import (
 )
 
 type freeUnit struct {
-	creator   uint16
-	epochID   gomel.EpochID
-	signature gomel.Signature
-	hash      gomel.Hash
-	parents   []gomel.Unit
-	crown     gomel.Crown
-	data      core.Data
-	rsData    []byte
-	height    int
-	level     int
-	floor     map[uint16][]gomel.Unit
+	gomel.Preunit
+	parents []gomel.Unit
+	level   int
+	floor   map[uint16][]gomel.Unit
 }
 
-// New creates a new freeUnit based on the given preunit and a list of parents.
-func New(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
+// New constructs a new freeUnit with given set of parents and signs it with provided private key.
+func New(creator uint16, epoch gomel.EpochID, parents []gomel.Unit, level int, data core.Data, rsData []byte, pk gomel.PrivateKey) gomel.Unit {
+	crown := gomel.CrownFromParents(parents)
+	height := crown.Heights[creator] + 1
+	id := gomel.ID(height, creator, epoch)
+	hash := ComputeHash(id, crown, data, rsData)
+	signature := pk.Sign(hash)
 	u := &freeUnit{
-		creator:   pu.Creator(),
-		epochID:   pu.EpochID(),
-		signature: pu.Signature(),
-		crown:     *pu.View(),
-		hash:      *pu.Hash(),
-		parents:   parents,
-		data:      pu.Data(),
-		rsData:    pu.RandomSourceData(),
+		Preunit: &preunit{creator, epoch, height, signature, hash, crown, data, rsData},
+		parents: parents,
+		level:   level,
 	}
-	u.computeHeight()
-	u.computeLevel()
 	u.computeFloor()
 	return u
 }
 
-func (u *freeUnit) RandomSourceData() []byte {
-	return u.rsData
-}
-
-func (u *freeUnit) Data() core.Data {
-	return u.data
-}
-
-func (u *freeUnit) Creator() uint16 {
-	return u.creator
-}
-
-func (u *freeUnit) EpochID() gomel.EpochID {
-	return u.epochID
-}
-
-func (u *freeUnit) Signature() gomel.Signature {
-	return u.signature
-}
-
-func (u *freeUnit) Hash() *gomel.Hash {
-	return &u.hash
-}
-
-func (u *freeUnit) View() *gomel.Crown {
-	return &u.crown
+// FromPreunit creates a new freeUnit based on the given preunit and a list of parents.
+func FromPreunit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
+	u := &freeUnit{
+		Preunit: pu,
+		parents: parents,
+		level:   gomel.LevelFromParents(parents),
+	}
+	u.computeFloor()
+	return u
 }
 
 func (u *freeUnit) Parents() []gomel.Unit {
 	return u.parents
 }
 
-func (u *freeUnit) Height() int {
-	if u.height == -1 {
-		u.computeHeight()
-	}
-	return u.height
-}
-
-func (u *freeUnit) computeHeight() {
-	if gomel.Dealing(u) {
-		u.height = 0
-	} else {
-		u.height = gomel.Predecessor(u).Height() + 1
-	}
-}
-
 func (u *freeUnit) Level() int {
-	if u.level == -1 {
-		u.computeLevel()
-	}
 	return u.level
 }
 
-func (u *freeUnit) computeLevel() {
-	u.level = gomel.LevelFromParents(u.parents)
-}
-
 func (u *freeUnit) Floor(pid uint16) []gomel.Unit {
-	if u.floor == nil {
-		u.computeFloor()
-	}
 	if fl, ok := u.floor[pid]; ok {
 		return fl
 	}
@@ -108,9 +57,22 @@ func (u *freeUnit) Floor(pid uint16) []gomel.Unit {
 	return u.parents[pid:(pid + 1)]
 }
 
+func (u *freeUnit) AboveWithinProc(v gomel.Unit) bool {
+	if u.Creator() != v.Creator() {
+		return false
+	}
+	var w gomel.Unit
+	for w = u; w != nil && w.Height() > v.Height(); w = gomel.Predecessor(w) {
+	}
+	if w == nil {
+		return false
+	}
+	return *w.Hash() == *v.Hash()
+}
+
 func (u *freeUnit) computeFloor() {
 	u.floor = make(map[uint16][]gomel.Unit)
-	if u.parents[u.creator] == nil { // this is a dealing unit
+	if gomel.Dealing(u) {
 		return
 	}
 	for pid := uint16(0); pid < uint16(len(u.parents)); pid++ {

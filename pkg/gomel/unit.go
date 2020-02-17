@@ -93,12 +93,10 @@ func MaximalByPid(parents []Unit, pid uint16) []Unit {
 
 // Predecessor of a unit is one of its parents, the one created by the same process as the given unit.
 func Predecessor(u Unit) Unit {
+	if u.Parents() == nil {
+		return nil
+	}
 	return u.Parents()[u.Creator()]
-}
-
-// Dealing checks if u is a dealing unit.
-func Dealing(u Unit) bool {
-	return Predecessor(u) == nil
 }
 
 // BelowAny checks whether u is below any of the units in us.

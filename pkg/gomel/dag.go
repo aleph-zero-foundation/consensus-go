@@ -19,9 +19,7 @@ type Dag interface {
 	BuildUnit(Preunit, []Unit) Unit
 	// Check runs on the given unit a series of UnitChechers added to the dag with AddCheck.
 	Check(Unit) error
-	// Transform takes the unit that passed Check and returns a new version of it that was modified to fit the dag.
-	Transform(Unit) Unit
-	// Insert puts into the dag a unit that was previously prepared by Prepare.
+	// Insert puts a unit into the dag.
 	Insert(Unit)
 	// PrimeUnits returns all prime units on a given level of the dag.
 	PrimeUnits(int) SlottedUnits

@@ -2,7 +2,7 @@ package gomel
 
 import "gitlab.com/alephledger/core-go/pkg/core"
 
-// Preunit defines the is the most general interface for units. It describes unit "in a vacuum", without references to its parents.
+// Preunit defines the most general interface for units. It describes unit "in a vacuum", without references to its parents.
 type Preunit interface {
 	// EpochID is used a unique identifier of a set of creators who participate in creation of a dag to which this unit belongs.
 	EpochID() EpochID
@@ -52,4 +52,9 @@ func UnitID(u Preunit) uint64 {
 // Equal checks if two units are the same.
 func Equal(u, v Preunit) bool {
 	return u.Creator() == v.Creator() && u.Height() == v.Height() && u.EpochID() == v.EpochID() && *u.Hash() == *v.Hash()
+}
+
+// Dealing checks if u is a dealing unit.
+func Dealing(u Preunit) bool {
+	return u.Height() == 0
 }

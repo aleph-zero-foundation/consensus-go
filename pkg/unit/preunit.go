@@ -13,6 +13,7 @@ import (
 type preunit struct {
 	creator   uint16
 	epochID   gomel.EpochID
+	height    int
 	signature gomel.Signature
 	hash      *gomel.Hash
 	crown     *gomel.Crown
@@ -29,6 +30,7 @@ func NewPreunit(id uint64, crown *gomel.Crown, data core.Data, rsData []byte, si
 	pu := &preunit{
 		creator:   creator,
 		epochID:   epoch,
+		height:    h,
 		signature: signature,
 		crown:     crown,
 		data:      data,
@@ -59,7 +61,7 @@ func (pu *preunit) Creator() uint16 {
 
 // Height of the preunit.
 func (pu *preunit) Height() int {
-	return pu.crown.Heights[pu.creator] + 1
+	return pu.height
 }
 
 // Signature of the preunit.
@@ -77,7 +79,7 @@ func (pu *preunit) View() *gomel.Crown {
 	return pu.crown
 }
 
-// ComputeHash computes the preunit's hash value and saves it in the corresponding field.
+// ComputeHash calculates the value of unit's hash based on provided data.
 func ComputeHash(id uint64, crown *gomel.Crown, data core.Data, rsData []byte) *gomel.Hash {
 	var buf bytes.Buffer
 	idBytes := make([]byte, 8)

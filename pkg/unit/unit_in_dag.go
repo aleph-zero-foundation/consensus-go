@@ -13,13 +13,23 @@ type unitInDag struct {
 	forkingHeight int
 }
 
-// Prepared transforms the given unit into unitInDag and computes forking height.
+// Embed transforms the given unit into unitInDag and computes forking height.
 // The returned unit overrides AboveWithinProc method to use that forking height.
-// NOTE: wrapping such a unit with any other unit wrapper will render forking height unaccessible.
-func Prepared(u gomel.Unit, dag gomel.Dag) gomel.Unit {
+func Embed(u gomel.Unit, dag gomel.Dag) gomel.Unit {
 	result := &unitInDag{u, math.MaxInt32}
 	result.computeForkingHeight(dag)
 	return result
+}
+
+func (u *unitInDag) AboveWithinProc(v gomel.Unit) bool {
+	if u.Height() < v.Height() || u.Creator() != v.Creator() {
+		return false
+	}
+	if vInDag, ok := v.(*unitInDag); ok && v.Height() <= commonForkingHeight(u, vInDag) {
+		return true
+	}
+	// Either we have a fork or a different type of unit, either way no optimization is possible.
+	return u.Unit.AboveWithinProc(v)
 }
 
 func (u *unitInDag) computeForkingHeight(dag gomel.Dag) {
@@ -53,4 +63,11 @@ func (u *unitInDag) computeForkingHeight(dag gomel.Dag) {
 			}
 		}
 	}
+}
+
+func commonForkingHeight(u, v *unitInDag) int {
+	if u.forkingHeight < v.forkingHeight {
+		return u.forkingHeight
+	}
+	return v.forkingHeight
 }
