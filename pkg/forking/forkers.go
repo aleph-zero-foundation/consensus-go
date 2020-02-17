@@ -43,15 +43,15 @@ func (fp *forkingProof) marshal() []byte {
 func (fp *forkingProof) unmarshal(data []byte) (*forkingProof, error) {
 	reader := bytes.NewReader(data)
 	var err error
-	fp.pu, err = encoding.ReceivePreunit(reader)
+	fp.pu, err = encoding.ReadPreunit(reader)
 	if err != nil {
 		return nil, err
 	}
-	fp.pv, err = encoding.ReceivePreunit(reader)
+	fp.pv, err = encoding.ReadPreunit(reader)
 	if err != nil {
 		return nil, err
 	}
-	fp.pcommit, err = encoding.ReceivePreunit(reader)
+	fp.pcommit, err = encoding.ReadPreunit(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func (fp *forkingProof) epochID() gomel.EpochID {
 func (fp *forkingProof) splitEncoding() ([]byte, []byte) {
 	encoded := fp.marshal()
 	reader := bytes.NewReader(encoded)
-	encoding.ReceivePreunit(reader)
-	encoding.ReceivePreunit(reader)
+	encoding.ReadPreunit(reader)
+	encoding.ReadPreunit(reader)
 	proofOnly := encoded[:len(encoded)-reader.Len()]
 	commitOnly := encoded[len(encoded)-reader.Len():]
 	return proofOnly, commitOnly

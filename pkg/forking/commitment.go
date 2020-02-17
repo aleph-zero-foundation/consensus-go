@@ -275,7 +275,7 @@ func acquireCommitments(r io.Reader) ([]commitment, error) {
 		return nil, err
 	}
 	rmcID := binary.LittleEndian.Uint64(buf)
-	pu, err := encoding.ReceivePreunit(mr)
+	pu, err := encoding.ReadPreunit(mr)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +285,7 @@ func acquireCommitments(r io.Reader) ([]commitment, error) {
 		encoded: mr.getMemory(),
 	}
 	result := []commitment{comm}
-	pu, err = encoding.ReceivePreunit(mr)
+	pu, err = encoding.ReadPreunit(mr)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func acquireCommitments(r io.Reader) ([]commitment, error) {
 			return nil, err
 		}
 		result = append(result, comm)
-		pu, err = encoding.ReceivePreunit(mr)
+		pu, err = encoding.ReadPreunit(mr)
 		if err != nil {
 			return nil, err
 		}

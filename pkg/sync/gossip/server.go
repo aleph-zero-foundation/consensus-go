@@ -14,6 +14,7 @@ import (
 )
 
 type server struct {
+	nProc       uint16
 	pid         uint16
 	orderer     gomel.Orderer
 	netserv     network.Server
@@ -30,6 +31,7 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 	pid := conf.Pid
 	nProc := int(conf.NProc)
 	s := &server{
+		nProc:       nProc,
 		pid:         pid,
 		orderer:     orderer,
 		netserv:     netserv,

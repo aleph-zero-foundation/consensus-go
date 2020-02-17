@@ -24,15 +24,11 @@ func DecodePreunit(data []byte) (gomel.Preunit, error) {
 	return decoder.decodePreunit()
 }
 
-// SendDagInfos encodes a slice of daginfos to writer.
-func SendDagInfos(infos []*gomel.DagInfo, w io.Writer) error {
+// WriteDagInfos encodes a slice of DagInfos to writer.
+func WriteDagInfos(infos [2]*gomel.DagInfo, w io.Writer) error {
 	enc := newEncoder(w)
-	err := enc.encodeUint32(uint32(len(infos)))
-	if err != nil {
-		return err
-	}
 	for _, info := range infos {
-		err = enc.encodeDagInfo(info)
+		err := enc.encodeDagInfo(info)
 		if err != nil {
 			return err
 		}
@@ -40,41 +36,37 @@ func SendDagInfos(infos []*gomel.DagInfo, w io.Writer) error {
 	return nil
 }
 
-// ReceiveDagInfos decodes daginfo from the given data.
-func ReceiveDagInfos(r io.Reader) ([]*gomel.DagInfo, error) {
+// ReadDagInfos decodes a list of DagInfo instances from the given stream.
+func ReadDagInfos(r io.Reader) ([2]*gomel.DagInfo, error) {
+	var infos [2]*gomel.DagInfo
 	dec := newDecoder(r)
-	n, err := dec.decodeUint32()
-	if err != nil {
-		return nil, err
-	}
-	infos := make([]*gomel.DagInfo, n)
 	for i := range infos {
 		info, err := dec.decodeDagInfo()
 		if err != nil {
-			return nil, err
+			return infos, err
 		}
 		infos[i] = info
 	}
 	return infos, nil
 }
 
-// SendUnit writes encoded unit to writer.
-func SendUnit(unit gomel.Unit, w io.Writer) error {
+// WriteUnit writes encoded unit to writer.
+func WriteUnit(unit gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeUnit(unit)
 }
 
-// ReceivePreunit decodes a preunit from reader.
-func ReceivePreunit(r io.Reader) (gomel.Preunit, error) {
+// ReadPreunit decodes a preunit from reader.
+func ReadPreunit(r io.Reader) (gomel.Preunit, error) {
 	return newDecoder(r).decodePreunit()
 }
 
-// SendChunk encodes units and writes them to writer.
-func SendChunk(units []gomel.Unit, w io.Writer) error {
+// WriteChunk encodes units and writes them to writer.
+func WriteChunk(units []gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeChunk(units)
 }
 
-// ReceiveChunk decodes slice of preunit antichains from reader.
-func ReceiveChunk(r io.Reader) ([]gomel.Preunit, error) {
+// ReadChunk decodes slice of preunit antichains from reader.
+func ReadChunk(r io.Reader) ([]gomel.Preunit, error) {
 	return newDecoder(r).decodeChunk()
 }
 

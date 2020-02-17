@@ -63,6 +63,9 @@ func (s *service) handleConns() {
 		}
 		conn.TimeoutAfter(s.timeout)
 		s.listens.Add(1)
-		go s.HandleIncoming(conn, &s.listens)
+		go func() {
+			defer s.listens.Done()
+			s.HandleIncoming(conn)
+		}()
 	}
 }
