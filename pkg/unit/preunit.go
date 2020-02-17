@@ -1,4 +1,4 @@
-package creating
+package unit
 
 import (
 	"bytes"
@@ -14,22 +14,27 @@ type preunit struct {
 	creator   uint16
 	epochID   gomel.EpochID
 	signature gomel.Signature
-	hash      gomel.Hash
-	crown     gomel.Crown
+	hash      *gomel.Hash
+	crown     *gomel.Crown
 	data      core.Data
 	rsData    []byte
 }
 
-// NewPreunit constructs a a new preunit with given parents and creator id.
-func NewPreunit(creator uint16, epochID gomel.EpochID, crown *gomel.Crown, data core.Data, rsData []byte) gomel.Preunit {
-	pu := &preunit{
-		creator: creator,
-		epochID: epochID,
-		crown:   *crown,
-		data:    data,
-		rsData:  rsData,
+// NewPreunit constructs new preunit from the provided data.
+func NewPreunit(id uint64, crown *gomel.Crown, data core.Data, rsData []byte, signature gomel.Signature) gomel.Preunit {
+	h, creator, epoch := gomel.DecodeID(id)
+	if h != crown.Heights[creator]+1 {
+		panic("Inconsistent height information in preunit id and crown")
 	}
-	pu.computeHash()
+	pu := &preunit{
+		creator:   creator,
+		epochID:   epoch,
+		signature: signature,
+		crown:     crown,
+		data:      data,
+		rsData:    rsData,
+	}
+	pu.hash = ComputeHash(id, crown, data, rsData)
 	return pu
 }
 
@@ -64,36 +69,33 @@ func (pu *preunit) Signature() gomel.Signature {
 
 // Hash of the preunit.
 func (pu *preunit) Hash() *gomel.Hash {
-	return &pu.hash
+	return pu.hash
 }
 
 // View returns crown consisting all the parents of the unit.
 func (pu *preunit) View() *gomel.Crown {
-	return &pu.crown
+	return pu.crown
 }
 
-// SetSignature sets the signature of the preunit.
-func (pu *preunit) SetSignature(sig gomel.Signature) {
-	pu.signature = sig
-}
-
-// computeHash computes the preunit's hash value and saves it in the corresponding field.
-func (pu *preunit) computeHash() {
-	var data bytes.Buffer
+// ComputeHash computes the preunit's hash value and saves it in the corresponding field.
+func ComputeHash(id uint64, crown *gomel.Crown, data core.Data, rsData []byte) *gomel.Hash {
+	var buf bytes.Buffer
 	idBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(idBytes, gomel.UnitID(pu))
-	data.Write(idBytes)
-	data.Write(pu.data)
-	data.Write(pu.rsData)
+	binary.LittleEndian.PutUint64(idBytes, id)
+	buf.Write(idBytes)
+	buf.Write(data)
+	buf.Write(rsData)
 	heightBytes := make([]byte, 4)
-	for _, h := range pu.crown.Heights {
+	for _, h := range crown.Heights {
 		if h == -1 {
 			binary.LittleEndian.PutUint32(heightBytes, math.MaxUint32)
 		} else {
 			binary.LittleEndian.PutUint32(heightBytes, uint32(h))
 		}
-		data.Write(heightBytes)
+		buf.Write(heightBytes)
 	}
-	data.Write(pu.crown.ControlHash[:])
-	sha3.ShakeSum128(pu.hash[:], data.Bytes())
+	buf.Write(crown.ControlHash[:])
+	result := &gomel.Hash{}
+	sha3.ShakeSum128(result[:], buf.Bytes())
+	return result
 }

@@ -7,8 +7,8 @@ import (
 	"math"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/unit"
 )
 
 type decoder struct {
@@ -108,7 +108,6 @@ func (d *decoder) decodePreunit() (gomel.Preunit, error) {
 	if id == math.MaxUint64 {
 		return nil, nil
 	}
-	_, creator, epoch := gomel.DecodeID(id)
 
 	signature := make([]byte, 64)
 	_, err = io.ReadFull(d, signature)
@@ -147,7 +146,7 @@ func (d *decoder) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 
-	result := creating.NewPreunit(creator, epoch, crown, unitData, rsData, signature)
+	result := unit.NewPreunit(id, crown, unitData, rsData, signature)
 	return result, nil
 }
 
