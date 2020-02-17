@@ -55,7 +55,7 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		timeout:  timeout,
 		log:      log,
 	}
-	s.outPool = sync.NewPerPidPool(dag.NProc(), outPoolSize, s.Out)
+	s.outPool = sync.NewPerPidPool(conf.NProc, outPoolSize, s.Out)
 	s.inPool = sync.NewPool(inPoolSize*nProc, s.In)
 	return s, s.send
 }

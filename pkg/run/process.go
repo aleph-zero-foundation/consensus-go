@@ -99,17 +99,7 @@ func BeaconSetup(
 	randomSourceSink chan<- func(gomel.Dag) gomel.RandomSource,
 	fatalError chan error,
 ) (gomel.Service, error) {
-	var setup func(config.Config, chan<- func(gomel.Dag) gomel.RandomSource, zerolog.Logger, chan error) (gomel.Service, error)
-	if conf.Setup == "coin" {
-		setup = coinSetup
-	}
-	if conf.Setup == "beacon" {
-		setup = beaconSetup
-	}
-	if setup == nil {
-		return nil, errors.New("unknown type of setup procedure: " + conf.Setup)
-	}
-	return setup(conf, randomSourceSink, setupLog, fatalError)
+	return beaconSetup(conf, randomSourceSink, setupLog, fatalError)
 }
 
 func NewConsensus(

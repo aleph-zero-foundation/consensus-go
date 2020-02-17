@@ -30,7 +30,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger, nOut, nIn int, timeout time.Duration) (sync.Server, sync.RequestFetch) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger, nOut, nIn int, timeout time.Duration) (sync.Server, sync.Fetch) {
 	nProc := int(conf.NProc)
 	requests := make(chan Request, nProc)
 	s := &server{

@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/network"
 )
 

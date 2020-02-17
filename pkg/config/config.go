@@ -40,9 +40,13 @@ type conf struct {
 	// sync
 	Timeout         time.Duration
 	RMCAddresses    []string
+	RMCNetType      string
 	GossipAddresses []string
+	GossipNetType   string
 	FetchAddresses  []string
+	FetchNetType    string
 	MCastAddresses  []string
+	MCastNetType    string
 	GossipWorkers   []int // nIn, nOut, nIdle
 	FetchWorkers    []int // nIn, nOut
 }
