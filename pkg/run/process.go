@@ -13,7 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/order"
-	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/syncer"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
@@ -156,8 +156,7 @@ func NewConsensus(
 				}
 				orderer.SetAlerter(alerter)
 
-				// TODO: should logger be instantiated as in alerter?
-				syncer, err = sync.NewService(conf, orderer, log)
+				syncer, err = syncer.New(conf, orderer, log)
 				if err != nil {
 					log.Err(err).Msg("initialization of the sync service failed")
 					fatalError <- err

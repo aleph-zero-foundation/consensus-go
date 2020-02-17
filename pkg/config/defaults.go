@@ -7,7 +7,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// default template returns Config with default values.
+// default template returns Config for consensus with default values.
 func defaultTemplate() Config {
 	return &conf{
 		CreateDelay:    500 * time.Millisecond,
