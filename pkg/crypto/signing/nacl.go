@@ -35,8 +35,8 @@ func (pub *publicKey) Encode() string {
 }
 
 // Sign takes the hash of a given preunit and returns its signature produced using the private key from the receiver.
-func (priv *privateKey) Sign(pu gomel.Preunit) gomel.Signature {
-	return sign.Sign(nil, pu.Hash()[:], priv.data)[:sign.Overhead]
+func (priv *privateKey) Sign(h *gomel.Hash) gomel.Signature {
+	return sign.Sign(nil, h[:], priv.data)[:sign.Overhead]
 }
 
 func (priv *privateKey) Encode() string {
