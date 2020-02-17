@@ -284,7 +284,7 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 // RequestCommitment to the given preunit, from pid.
 // The other party might reply indicating that they were not aware of the fork.
 // In this case we send the finished alert, in a separate communication.
-func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
+func (a *alertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 	log := a.log.With().Uint16(logging.PID, pid).Logger()
 	conn, err := a.netserv.Dial(pid, a.timeout)
 	if err != nil {
@@ -298,7 +298,7 @@ func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 		log.Error().Str("where", "alertHandler.RequestCommitment.Greet").Msg(err.Error())
 		return err
 	}
-	_, err = conn.Write(bu.Hash()[:])
+	_, err = conn.Write(pu.Hash()[:])
 	if err != nil {
 		log.Error().Str("where", "alertHandler.RequestCommitment.Write").Msg(err.Error())
 		return err
@@ -315,7 +315,7 @@ func (a *alertHandler) RequestCommitment(bu gomel.BaseUnit, pid uint16) error {
 		return err
 	}
 	if buf[0] == 1 {
-		a.sendFinished(bu.Creator(), pid)
+		a.sendFinished(pu.Creator(), pid)
 		return errors.New("peer was unaware of forker")
 	}
 	comms, err := acquireCommitments(conn)
@@ -636,11 +636,11 @@ func (a *alertHandler) handleForkerUnit(u gomel.Unit) bool {
 }
 
 // ResolveMissingCommitment checks if the given error is about missing commitment and tries to resolve it.
-func (a *alertHandler) ResolveMissingCommitment(e error, u gomel.BaseUnit, source uint16) error {
+func (a *alertHandler) ResolveMissingCommitment(e error, pu gomel.Preunit, source uint16) error {
 	if e != nil {
 		switch e.(type) {
 		case *noCommitment:
-			err := a.RequestCommitment(u, source)
+			err := a.RequestCommitment(pu, source)
 			if err != nil {
 				return err
 			}

@@ -6,7 +6,6 @@ import (
 )
 
 type freeUnit struct {
-	nProc     uint16
 	creator   uint16
 	epochID   gomel.EpochID
 	signature gomel.Signature
@@ -23,7 +22,6 @@ type freeUnit struct {
 // New creates a new freeUnit based on the given preunit and a list of parents.
 func New(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 	u := &freeUnit{
-		nProc:     uint16(len(parents)),
 		creator:   pu.Creator(),
 		epochID:   pu.EpochID(),
 		signature: pu.Signature(),
@@ -115,7 +113,7 @@ func (u *freeUnit) computeFloor() {
 	if u.parents[u.creator] == nil { // this is a dealing unit
 		return
 	}
-	for pid := uint16(0); pid < u.nProc; pid++ {
+	for pid := uint16(0); pid < uint16(len(u.parents)); pid++ {
 		maximal := gomel.MaximalByPid(u.parents, pid)
 		if len(maximal) > 1 || (len(maximal) == 1 && !gomel.Equal(maximal[0], u.parents[pid])) {
 			u.floor[pid] = maximal

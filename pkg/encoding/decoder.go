@@ -147,8 +147,7 @@ func (d *decoder) decodePreunit() (gomel.Preunit, error) {
 		return nil, err
 	}
 
-	result := creating.NewPreunit(creator, epoch, crown, unitData, rsData)
-	result.SetSignature(signature)
+	result := creating.NewPreunit(creator, epoch, crown, unitData, rsData, signature)
 	return result, nil
 }
 

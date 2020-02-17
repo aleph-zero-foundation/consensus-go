@@ -70,7 +70,7 @@ func (e *encoder) encodeDagInfo(info *gomel.DagInfo) error {
 }
 
 // EncodeUnit encodes a unit and writes the encoded data to the io.Writer.
-func (e *encoder) encodeUnit(unit gomel.BaseUnit) error {
+func (e *encoder) encodeUnit(unit gomel.Preunit) error {
 	if unit == nil {
 		data := make([]byte, 8)
 		binary.LittleEndian.PutUint64(data, math.MaxUint64)

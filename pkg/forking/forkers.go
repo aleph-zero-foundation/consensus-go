@@ -16,7 +16,7 @@ type forkingProof struct {
 	encoded         []byte
 }
 
-func newForkingProof(u, v, max gomel.BaseUnit) *forkingProof {
+func newForkingProof(u, v, max gomel.Preunit) *forkingProof {
 	if *u.Hash() == *v.Hash() {
 		return nil
 	}
