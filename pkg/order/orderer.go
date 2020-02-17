@@ -140,32 +140,46 @@ func (ord *orderer) MaxUnits(epoch gomel.EpochID) gomel.SlottedUnits {
 
 // GetInfo returns DagInfo of the dag from the most recent epoch.
 // TODO this could potentially be counterproductive, as we gossip only about our most recent epoch.
-// That means just after switching to a new epoch due to "external proof", we immediately abandon the
-// previous epoch, even though we might still benefit from one last gossip to help us produce last timing units.
-// A potential solution would be to access the last-produced-preblock-epoch variable kept by preblockMaker() and
-// gossip also about "previous" if we haven't produced any preblock from "current".
-func (ord *orderer) GetInfo() *gomel.DagInfo {
+//   That means just after switching to a new epoch due to "external proof", we immediately abandon the
+//   previous epoch, even though we might still benefit from one last gossip to help us produce last timing units.
+//   A potential solution would be to access the last-produced-preblock-epoch variable kept by preblockMaker() and
+//   gossip also about "previous" if we haven't produced any preblock from "current".
+// TODO: don't always include previous info. Come up with heuristics for that.
+func (ord *orderer) GetInfo() [2]*gomel.DagInfo {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
-	return gomel.MaxView(ord.current.dag)
+	var result [2]*gomel.DagInfo
+	if ord.previous != nil {
+		result[0] = gomel.MaxView(ord.previous.dag)
+	}
+	if ord.current != nil {
+		result[1] = gomel.MaxView(ord.current.dag)
+	}
+	return result
 }
 
 // Delta returns all units present in the orderer that are newer than units
 // described by the given DagInfo. This includes all units from the epoch given
 // by the DagInfo above provided heights as well as ALL units from newer epochs.
-func (ord *orderer) Delta(info *gomel.DagInfo) []gomel.Unit {
+func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
-	if info.Epoch > ord.current.id {
-		return nil
+
+	var result []gomel.Unit
+	deltaResolver := func(dagInfo *gomel.DagInfo) {
+		if dagInfo.Epoch == ord.previous.id {
+			result = append(result, ord.previous.unitsAbove(dagInfo.Heights)...)
+		}
+		if dagInfo.Epoch == ord.current.id {
+			result = append(result, ord.current.unitsAbove(dagInfo.Heights)...)
+		}
 	}
-	if info.Epoch == ord.current.id {
-		return ord.current.unitsAbove(info.Heights)
+	deltaResolver(info[0])
+	deltaResolver(info[1])
+	if info[0].Epoch < ord.current.id && info[1].Epoch < ord.current.id {
+		result = append(result, ord.current.allUnits()...)
 	}
-	if info.Epoch == ord.previous.id {
-		return append(ord.previous.unitsAbove(info.Heights), ord.current.allUnits()...)
-	}
-	return ord.current.allUnits()
+	return result
 }
 
 func (ord *orderer) getEpoch(epoch gomel.EpochID) *epoch {
