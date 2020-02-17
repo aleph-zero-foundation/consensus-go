@@ -315,3 +315,28 @@ func (dag *Dag) getPrimeUnitsOnLevel(level int) []gomel.Unit {
 	}
 	return result
 }
+
+func CollectUnits(dag gomel.Dag) map[gomel.Unit]bool {
+	seenUnits := make(map[gomel.Unit]bool)
+	var dfs func(u gomel.Unit)
+	dfs = func(u gomel.Unit) {
+		seenUnits[u] = true
+		for _, uParent := range u.Parents() {
+			if uParent == nil {
+				continue
+			}
+			if !seenUnits[uParent] {
+				dfs(uParent)
+			}
+		}
+	}
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+		for _, u := range units {
+			if !seenUnits[u] {
+				dfs(u)
+			}
+		}
+		return true
+	})
+	return seenUnits
+}

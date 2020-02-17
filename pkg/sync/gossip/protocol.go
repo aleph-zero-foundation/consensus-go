@@ -18,12 +18,12 @@ import (
 		6. Add the received units to the dag.
 */
 func (p *server) In() {
-	conn, err := p.netserv.Listen(p.conf.Timeout)
+	conn, err := p.netserv.Listen(p.timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.conf.Timeout)
+	conn.TimeoutAfter(p.timeout)
 
 	// receive a handshake
 	pid, sid, err := handshake.AcceptGreeting(conn)
@@ -31,7 +31,7 @@ func (p *server) In() {
 		p.log.Error().Str("where", "gossip.in.greeting").Msg(err.Error())
 		return
 	}
-	if pid >= p.conf.NProc {
+	if pid >= p.nProc {
 		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
 		return
 	}
@@ -110,12 +110,12 @@ func (p *server) Out() {
 	}
 	defer p.peerManager.done(remotePid)
 
-	conn, err := p.netserv.Dial(remotePid, p.conf.Timeout)
+	conn, err := p.netserv.Dial(remotePid, p.timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.conf.Timeout)
+	conn.TimeoutAfter(p.timeout)
 
 	// handshake
 	sid := p.syncIds[remotePid]

@@ -22,8 +22,9 @@ const (
 
 // server is a multicast server
 type server struct {
-	conf                config.Config
-	orderer             gomel.Orderer
+	pid                 uint16
+	nProc               uint16
+	adder               gomel.UnitsAdder
 	netserv             network.Server
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
@@ -33,11 +34,12 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (gsync.Server, gsync.Multicast) {
+func NewServer(conf config.Config, adder gomel.UnitsAdder, netserv network.Server, timeout time.Duration, log zerolog.Logger) (gsync.Server, gsync.Multicast) {
 	nProc := int(conf.NProc)
 	s := &server{
-		conf:    conf,
-		orderer: orderer,
+		pid:     conf.Pid,
+		nProc:   conf.NProc,
+		adder:   adder,
 		netserv: netserv,
 		state:   rmcbox.New(conf.RMCPublicKeys, conf.RMCPrivateKey),
 		log:     log,

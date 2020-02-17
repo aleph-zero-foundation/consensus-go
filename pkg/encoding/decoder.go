@@ -73,6 +73,9 @@ func (d *decoder) decodeDagInfo() (*gomel.DagInfo, error) {
 		return nil, err
 	}
 	epoch := gomel.EpochID(binary.LittleEndian.Uint32(uint32Buf))
+	if epoch == math.MaxUint32 {
+		return nil, nil
+	}
 
 	_, err = io.ReadFull(d, uint16Buf)
 	if err != nil {
