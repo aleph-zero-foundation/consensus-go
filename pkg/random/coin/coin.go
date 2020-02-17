@@ -112,7 +112,7 @@ func (c *coin) RandomBytes(_ uint16, level int) []byte {
 }
 
 func (c *coin) update(u gomel.Unit) {
-	if gomel.Prime(u) && c.shareProvider[u.Creator()] {
+	if c.shareProvider[u.Creator()] {
 		cs := new(tcoin.CoinShare)
 		offset := bn256.SignatureLength
 		if gomel.Dealing(u) {
@@ -122,7 +122,7 @@ func (c *coin) update(u gomel.Unit) {
 		cs.Unmarshal(u.RandomSourceData()[offset:])
 		c.coinShares.Add(u.Hash(), cs)
 	}
-	if gomel.Prime(u) && !gomel.Dealing(u) {
+	if !gomel.Dealing(u) {
 		c.randomBytes.AppendOrIgnore(u.Level()-1, u.RandomSourceData()[:bn256.SignatureLength])
 	}
 }
@@ -138,7 +138,7 @@ func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 		return new(tcoin.CoinShare).Unmarshal(u.RandomSourceData())
 	}
 
-	if gomel.Prime(u) && !gomel.Dealing(u) {
+	if !gomel.Dealing(u) {
 		if len(u.RandomSourceData()) < bn256.SignatureLength {
 			return errors.New("random source data too short")
 		}

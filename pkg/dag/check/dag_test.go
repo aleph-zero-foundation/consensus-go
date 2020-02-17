@@ -138,7 +138,6 @@ var _ = Describe("Dag", func() {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 						Expect(result.Signature()).To(Equal(addedUnit.Signature()))
-						Expect(gomel.Prime(result)).To(BeTrue())
 					})
 				})
 				Context("When the dag already contains the unit", func() {
@@ -162,7 +161,6 @@ var _ = Describe("Dag", func() {
 						result := dag.GetUnit(addedUnit.Hash())
 						Expect(err).NotTo(HaveOccurred())
 						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
-						Expect(gomel.Prime(result)).To(BeTrue())
 						Expect(result.Parents()[result.Creator()]).To(BeNil())
 					})
 				})

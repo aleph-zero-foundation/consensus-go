@@ -152,7 +152,7 @@ func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u g
 					break
 				}
 			}
-			if v.Level() != u.Level()-1 || !gomel.Prime(v) {
+			if v.Level() != u.Level()-1 {
 				continue
 			}
 

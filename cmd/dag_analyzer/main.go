@@ -59,10 +59,7 @@ var nParentsOnTheSameLevel stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit
 }
 
 var isPrime stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit, _ int) int {
-	if gomel.Prime(u) {
-		return 1
-	}
-	return 0
+	return 1
 }
 
 func computeStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) *dagStats {

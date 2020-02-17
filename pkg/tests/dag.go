@@ -251,12 +251,10 @@ func updateDag(u gomel.Unit, dag *Dag) {
 		}
 		dag.primeUnits[0].Set(u.Creator(), append(dag.primeUnits[0].Get(u.Creator()), u))
 	} else {
-		if gomel.Prime(u) {
-			if len(dag.primeUnits) <= u.Level() {
-				dag.primeUnits = append(dag.primeUnits, newSlottedUnits(dag.nProcesses))
-			}
-			dag.primeUnits[u.Level()].Set(u.Creator(), append(dag.primeUnits[u.Level()].Get(u.Creator()), u))
+		if len(dag.primeUnits) <= u.Level() {
+			dag.primeUnits = append(dag.primeUnits, newSlottedUnits(dag.nProcesses))
 		}
+		dag.primeUnits[u.Level()].Set(u.Creator(), append(dag.primeUnits[u.Level()].Get(u.Creator()), u))
 		if len(dag.unitsByHeight) <= u.Height() {
 			dag.unitsByHeight = append(dag.unitsByHeight, newSlottedUnits(dag.nProcesses))
 		}

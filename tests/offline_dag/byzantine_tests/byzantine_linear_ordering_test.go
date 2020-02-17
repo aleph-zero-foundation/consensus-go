@@ -355,7 +355,7 @@ func newPrimeFloodingAdder(floodingLevel int, numberOfPrimes int, privKeys []gom
 					return false
 				}
 				val, ok := alreadyFlooded[unit.Creator()]
-				if ok && !val && unit.Level() >= floodingLevel && gomel.Prime(unit) {
+				if ok && !val && unit.Level() >= floodingLevel {
 					return true
 				}
 				return false
