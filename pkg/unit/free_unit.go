@@ -17,7 +17,7 @@ func New(creator uint16, epoch gomel.EpochID, parents []gomel.Unit, level int, d
 	crown := gomel.CrownFromParents(parents)
 	height := crown.Heights[creator] + 1
 	id := gomel.ID(height, creator, epoch)
-	hash := ComputeHash(id, crown, data, rsData)
+	hash := computeHash(id, crown, data, rsData)
 	signature := pk.Sign(hash)
 	u := &freeUnit{
 		Preunit: &preunit{creator, epoch, height, signature, hash, crown, data, rsData},

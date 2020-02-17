@@ -30,10 +30,6 @@ func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
 	return parents, nil
 }
 
-func (dag *dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
-	return unit.FromPreunit(pu, parents)
-}
-
 func (dag *dag) Check(u gomel.Unit) error {
 	for _, check := range dag.checks {
 		if err := check(u, dag); err != nil {

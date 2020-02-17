@@ -8,6 +8,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	"gitlab.com/alephledger/consensus-go/pkg/unit"
 )
 
 const (
@@ -151,12 +152,11 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	}
 
 	// 2. Build Unit
-	freeUnit := ad.dag.BuildUnit(wp.pu, parents)
-
-	ad.alert.Lock(freeUnit.Creator())
-	defer ad.alert.Unlock(freeUnit.Creator())
+	freeUnit := unit.FromPreunit(wp.pu, parents)
 
 	// 3. Check
+	ad.alert.Lock(freeUnit.Creator())
+	defer ad.alert.Unlock(freeUnit.Creator())
 	err = ad.handleCheckError(ad.dag.Check(freeUnit), freeUnit, wp.source)
 	if err != nil {
 		log.Error().Str("where", "Check").Msg(err.Error())
@@ -164,11 +164,8 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 		return
 	}
 
-	// 4. Transform
-	unitInDag := ad.dag.Transform(freeUnit)
-
-	// 5. Insert
-	ad.dag.Insert(unitInDag)
+	// 4. Insert
+	ad.dag.Insert(freeUnit)
 
 	log.Info().Msg(logging.UnitAdded)
 }

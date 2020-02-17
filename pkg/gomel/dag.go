@@ -15,8 +15,6 @@ type Dag interface {
 	EpochID() EpochID
 	// DecodeParents returns a slice of parents of the given preunit, if the control hash matches.
 	DecodeParents(Preunit) ([]Unit, error)
-	// BuildUnit constructs a new unit from the preunit and the slice of parents.
-	BuildUnit(Preunit, []Unit) Unit
 	// Check runs on the given unit a series of UnitChechers added to the dag with AddCheck.
 	Check(Unit) error
 	// Insert puts a unit into the dag.

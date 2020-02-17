@@ -36,7 +36,7 @@ func NewPreunit(id uint64, crown *gomel.Crown, data core.Data, rsData []byte, si
 		data:      data,
 		rsData:    rsData,
 	}
-	pu.hash = ComputeHash(id, crown, data, rsData)
+	pu.hash = computeHash(id, crown, data, rsData)
 	return pu
 }
 
@@ -80,7 +80,7 @@ func (pu *preunit) View() *gomel.Crown {
 }
 
 // ComputeHash calculates the value of unit's hash based on provided data.
-func ComputeHash(id uint64, crown *gomel.Crown, data core.Data, rsData []byte) *gomel.Hash {
+func computeHash(id uint64, crown *gomel.Crown, data core.Data, rsData []byte) *gomel.Hash {
 	var buf bytes.Buffer
 	idBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(idBytes, id)
