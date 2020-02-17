@@ -122,7 +122,7 @@ func parseCommitteeLine(line string) (string, string, string, string, map[string
 		case 'f':
 			addrs["fetch"] = addr[1:]
 		case 'g':
-			addrs["gosspi"] = addr[1:]
+			addrs["gossip"] = addr[1:]
 		case 'm':
 			addrs["mcast"] = addr[1:]
 		}
@@ -163,9 +163,9 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		c.P2PPublicKeys = append(c.P2PPublicKeys, p2pPublicKey)
 		c.RMCVerificationKeys = append(c.RMCVerificationKeys, verificationKey)
 		c.RMCAddresses = append(c.RMCAddresses, rmcAddr)
-		c.Addresses["gossip"] = append(c.Addresses["gossip"], syncAddrs["gossip"])
-		c.Addresses["fetch"] = append(c.Addresses["fetch"], syncAddrs["fetch"])
 		c.Addresses["mcast"] = append(c.Addresses["mcast"], syncAddrs["mcast"])
+		c.Addresses["fetch"] = append(c.Addresses["fetch"], syncAddrs["fetch"])
+		c.Addresses["gossip"] = append(c.Addresses["gossip"], syncAddrs["gossip"])
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -246,11 +246,14 @@ func StoreCommittee(w io.Writer, c *Committee) error {
 			return err
 		}
 		// store sync addresses
-		for j, syncType := range []string{"gossip", "fetch", "mcast"} {
+		for j, syncType := range []string{"mcast", "fetch", "gossip"} {
 			if j != 0 {
 				if _, err := io.WriteString(w, " "); err != nil {
 					return err
 				}
+			}
+			if _, err := io.WriteString(w, syncType[0:1]); err != nil {
+				return err
 			}
 			if _, err := io.WriteString(w, c.Addresses[syncType][i]); err != nil {
 				return err
