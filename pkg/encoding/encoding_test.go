@@ -26,9 +26,9 @@ var _ = Describe("Encoding/Decoding", func() {
 	Context("A dealing unit", func() {
 		It("should be encoded/decoded to a preunit representing the original unit", func() {
 			u := dag.PrimeUnits(0).Get(0)[0]
-			err := SendUnit(u, network)
+			err := WriteUnit(u, network)
 			Expect(err).NotTo(HaveOccurred())
-			pu, err := ReceivePreunit(network)
+			pu, err := ReadPreunit(network)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
@@ -46,9 +46,9 @@ var _ = Describe("Encoding/Decoding", func() {
 	Context("A non-dealing unit", func() {
 		It("should be encoded/decoded to a preunit representing the original unit", func() {
 			u := dag.MaximalUnitsPerProcess().Get(0)[0]
-			err := SendUnit(u, network)
+			err := WriteUnit(u, network)
 			Expect(err).NotTo(HaveOccurred())
-			pu, err := ReceivePreunit(network)
+			pu, err := ReadPreunit(network)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pu.Creator()).To(Equal(u.Creator()))
 			Expect(gomel.SigEq(pu.Signature(), u.Signature())).To(BeTrue())
@@ -73,10 +73,10 @@ var _ = Describe("Encoding/Decoding", func() {
 				})
 				// sending to a buffer
 				var buf bytes.Buffer
-				err := SendChunk(toSend, &buf)
+				err := WriteChunk(toSend, &buf)
 				Expect(err).NotTo(HaveOccurred())
 				// receiving
-				pus, err := ReceiveChunk(&buf)
+				pus, err := ReadChunk(&buf)
 				//checks
 				Expect(len(pus)).To(Equal(len(toSend)))
 				for _, pu := range pus {
@@ -95,10 +95,10 @@ var _ = Describe("Encoding/Decoding", func() {
 				}
 				// sending to a buffer
 				var buf bytes.Buffer
-				err := SendChunk(toSend, &buf)
+				err := WriteChunk(toSend, &buf)
 				Expect(err).NotTo(HaveOccurred())
 				// receiving
-				pus, err := ReceiveChunk(&buf)
+				pus, err := ReadChunk(&buf)
 				// checks
 				Expect(len(pus)).To(Equal(len(toSend)))
 				for h, pu := range pus {
@@ -131,12 +131,12 @@ var _ = Describe("Encoding/Decoding", func() {
 			})
 		})
 	})
-	Context("ReceiveChunk", func() {
+	Context("ReadChunk", func() {
 		Context("On a chunk with too many units", func() {
 			It("should return an error", func() {
 				encoded := make([]byte, 4)
 				binary.LittleEndian.PutUint32(encoded[:], config.MaxUnitsInChunk+1)
-				_, err := ReceiveChunk(bytes.NewBuffer(encoded))
+				_, err := ReadChunk(bytes.NewBuffer(encoded))
 				Expect(err).To(MatchError("chunk contains too many units"))
 			})
 		})

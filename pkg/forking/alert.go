@@ -258,9 +258,9 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 		log.Error().Str("where", "alertHandler.handleCommitmentRequest.Write").Msg(err.Error())
 		return
 	}
-	err = encoding.SendUnit(nil, conn)
+	err = encoding.WriteUnit(nil, conn)
 	if err != nil {
-		log.Error().Str("where", "alertHandler.handleCommitmentRequest.SendUnit").Msg(err.Error())
+		log.Error().Str("where", "alertHandler.handleCommitmentRequest.WriteUnit").Msg(err.Error())
 		return
 	}
 	err = conn.Flush()

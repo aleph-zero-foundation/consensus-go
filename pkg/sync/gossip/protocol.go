@@ -65,7 +65,7 @@ func (p *server) In() {
 	// 4. send units
 	units := p.orderer.Delta(theirDagInfo)
 	log.Debug().Msg(logging.SendUnits)
-	err = encoding.SendChunk(units, conn)
+	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.sendUnits").Msg(err.Error())
 		return
@@ -80,7 +80,7 @@ func (p *server) In() {
 
 	// 5. receive units
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, err := encoding.ReceiveChunk(conn)
+	theirPreunitsReceived, err := encoding.ReadChunk(conn)
 	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getPreunits").Msg(err.Error())
@@ -154,7 +154,7 @@ func (p *server) Out() {
 
 	// 4. receive units
 	log.Debug().Msg(logging.GetPreunits)
-	theirPreunitsReceived, err := encoding.ReceiveChunk(conn)
+	theirPreunitsReceived, err := encoding.ReadChunk(conn)
 	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.getPreunits").Msg(err.Error())
@@ -165,7 +165,7 @@ func (p *server) Out() {
 	// 5. send units
 	units := p.orderer.Delta(theirDagInfo)
 	log.Debug().Msg(logging.SendUnits)
-	err = encoding.SendChunk(units, conn)
+	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.sendUnits").Msg(err.Error())
 		return

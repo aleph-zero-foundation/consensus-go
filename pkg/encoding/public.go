@@ -50,23 +50,23 @@ func ReadDagInfos(r io.Reader) ([2]*gomel.DagInfo, error) {
 	return infos, nil
 }
 
-// SendUnit writes encoded unit to writer.
-func SendUnit(unit gomel.Unit, w io.Writer) error {
+// WriteUnit writes encoded unit to writer.
+func WriteUnit(unit gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeUnit(unit)
 }
 
-// ReceivePreunit decodes a preunit from reader.
-func ReceivePreunit(r io.Reader) (gomel.Preunit, error) {
+// ReadPreunit decodes a preunit from reader.
+func ReadPreunit(r io.Reader) (gomel.Preunit, error) {
 	return newDecoder(r).decodePreunit()
 }
 
-// SendChunk encodes units and writes them to writer.
-func SendChunk(units []gomel.Unit, w io.Writer) error {
+// WriteChunk encodes units and writes them to writer.
+func WriteChunk(units []gomel.Unit, w io.Writer) error {
 	return newEncoder(w).encodeChunk(units)
 }
 
-// ReceiveChunk decodes slice of preunit antichains from reader.
-func ReceiveChunk(r io.Reader) ([]gomel.Preunit, error) {
+// ReadChunk decodes slice of preunit antichains from reader.
+func ReadChunk(r io.Reader) ([]gomel.Preunit, error) {
 	return newDecoder(r).decodeChunk()
 }
 
