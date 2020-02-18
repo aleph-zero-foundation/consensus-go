@@ -63,11 +63,11 @@ func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 	al := &alertHandler{
 		myPid:       conf.Pid,
 		nProc:       conf.NProc,
-		keys:        conf.Alert.PublicKeys,
+		keys:        conf.PublicKeys,
 		orderer:     orderer,
 		rmc:         rmc,
 		netserv:     netserv,
-		timeout:     conf.Alert.Timeout,
+		timeout:     conf.Timeout,
 		commitments: newCommitBase(),
 		locks:       make([]sync.Mutex, conf.NProc),
 		log:         log,

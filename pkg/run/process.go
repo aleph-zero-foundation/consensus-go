@@ -13,7 +13,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/order"
-	"gitlab.com/alephledger/consensus-go/pkg/services/sync"
+	"gitlab.com/alephledger/consensus-go/pkg/sync/syncer"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
@@ -99,17 +99,7 @@ func BeaconSetup(
 	randomSourceSink chan<- func(gomel.Dag) gomel.RandomSource,
 	fatalError chan error,
 ) (gomel.Service, error) {
-	var setup func(config.Config, chan<- func(gomel.Dag) gomel.RandomSource, zerolog.Logger, chan error) (gomel.Service, error)
-	if conf.Setup == "coin" {
-		setup = coinSetup
-	}
-	if conf.Setup == "beacon" {
-		setup = beaconSetup
-	}
-	if setup == nil {
-		return nil, errors.New("unknown type of setup procedure: " + conf.Setup)
-	}
-	return setup(conf, randomSourceSink, setupLog, fatalError)
+	return beaconSetup(conf, randomSourceSink, setupLog, fatalError)
 }
 
 func NewConsensus(
@@ -156,8 +146,7 @@ func NewConsensus(
 				}
 				orderer.SetAlerter(alerter)
 
-				// TODO: should logger be instantiated as in alerter?
-				syncer, err = sync.NewService(conf, orderer, log)
+				syncer, err = syncer.New(conf, orderer, log)
 				if err != nil {
 					log.Err(err).Msg("initialization of the sync service failed")
 					fatalError <- err

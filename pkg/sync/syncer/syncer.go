@@ -41,8 +41,8 @@ var logNames = map[string]int{
 // Each config entry corresponds to a separate sync.Server.
 // The returned function should be called on units created by this process after they are added to the poset.
 func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Syncer, error) {
-	configs := conf.Sync
-	if err := valid(configs); err != nil {
+	err, configs := valid(conf)
+	if err != nil {
 		return nil, err
 	}
 	s := &service{
@@ -53,13 +53,13 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 	var netserv network.Server
 	for i, c := range configs {
 
-		timeout, err := time.ParseDuration(c.Params["timeout"])
+		timeout, err := conf.Timeout
 		if err != nil {
 			return nil, err
 		}
 
 		lg := log.With().Int(logging.Service, logNames[c.Type]).Logger()
-		netserv, s.subservices, err = getNetServ(c.Params["network"], c.LocalAddress, c.RemoteAddresses, s.subservices)
+		netserv, s.subservices, err = getNetServ(c.netType, c.addrs[conf.Pid], c.addrs, s.subservices)
 		if err != nil {
 			return nil, err
 		}
@@ -72,31 +72,13 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 			s.servers[i], s.mcast = rmc.NewServer(conf, orderer, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
 
 		case "gossip":
-			nOut, err := strconv.Atoi(c.Params["nOut"])
-			if err != nil {
-				return nil, nil, err
-			}
-			nIn, err := strconv.Atoi(c.Params["nIn"])
-			if err != nil {
-				return nil, nil, err
-			}
-			nIdle, err := strconv.Atoi(c.Params["nIdle"])
-			if err != nil {
-				nIdle = 0
-			}
+			nOut, nIn, nIdle := c.workers[0], c.workers[1], c.workers[2]
 			server, trigger := gossip.NewServer(conf, orderer, netserv, timeout, lg, nOut, nIn, nIdle)
 			s.servers[i] = server
 			s.reqGossip = trigger
 
 		case "fetch":
-			nOut, err := strconv.Atoi(c.Params["nOut"])
-			if err != nil {
-				return nil, nil, err
-			}
-			nIn, err := strconv.Atoi(c.Params["nIn"])
-			if err != nil {
-				return nil, nil, err
-			}
+			nOut, nIn := c.workers[0], c.workers[1]
 			server, trigger := fetch.NewServer(conf, orderer, netserv, timeout, lg, nOut, nIn)
 			s.servers[i] = server
 			s.reqFetch = trigger
@@ -134,36 +116,36 @@ func (s *service) Stop() {
 	s.log.Info().Msg(logging.ServiceStopped)
 }
 
-func (s *service) RequestGossip(pid uint16) {
-	s.gossip(pid)
-}
-
-func (s *service) RequestFetch(pid uint16, UnitIDs []uint64) {
-	s.fetch(pid, UnitIDs)
-}
-
-func (s *servce) Multicast(u gomel.Unit) {
-	s.mcast(u)
+type syncConf struct {
+	netType string
+	addrs   []string
+	workers []int
 }
 
 // Checks if the list of configs is valid, that means there is only one multicasting server.
-func valid(configs []*config.Sync) error {
-	if len(configs) == 0 {
-		return gomel.NewConfigError("empty sync configuration")
+func valid(conf config.Config) ([]syncConf, error) {
+	scs := []syncConf{}
+
+	// parse rmc configuration
+	if len(conf.RMCAddresses) != int(conf.NProc) {
+		return nil, gomel.NewConfigError("wrong number of rmc addresses")
 	}
-	mc := false
-	for i, c := range configs {
-		if c.Type == "multicast" || c.Type == "rmc" {
-			if mc {
-				return gomel.NewConfigError("multiple multicast servers defined")
-			}
-			mc = true
-			if i != 0 {
-				return gomel.NewConfigError("multicast sync servers need to be defined before any other servers")
-			}
-		}
+	scs = append(scs, syncConf{conf.RMCNetType, conf.RMCAddresses})
+	// parse mcast configuration
+	if len(conf.MCastAddresses) == int(conf.NProc) {
+		// we use only one type of multicast, so we drop rmc conf and use it for alerts
+		scs = syncConf{conf.MCastNetType, conf.MCastAddresses}
 	}
-	return nil
+	// parse gossip configuration
+	if len(conf.GossipAddresses) == int(conf.NProc) {
+		scs = append(scs, syncConf{conf.GossipNetType, conf.GossipAddresses, conf.GossipWorkers})
+	}
+	// parse fetch configuration
+	if len(conf.FetchAddresses) == int(conf.NProc) {
+		scs = append(syncConf{conf.FetchNetType, conf.FetchAddresses, conf.FetchWorkers})
+	}
+
+	return scs, nil
 }
 
 // Return network.Server of the type indicated by "net". If needed, append a corresponding service to the given slice. Defaults to "tcp".

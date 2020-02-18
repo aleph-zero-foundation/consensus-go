@@ -34,18 +34,17 @@ type Committee struct {
 	// Public keys of all committee members, ordered according to process ids.
 	PublicKeys []gomel.PublicKey
 
-	// Verification keys of all committee members use for RMC, ordered according to process ids.
-	RMCVerificationKeys []*bn256.VerificationKey
-
 	// PublicKeys of all committee members use for generating keys for p2p communication. Ordered according to process ids.
 	P2PPublicKeys []*p2p.PublicKey
 
-	// Addresses use for the setup phase, ordered as above.
-	SetupAddresses [][]string
+	// Verification keys of all committee members use for RMC, ordered according to process ids.
+	RMCVerificationKeys []*bn256.VerificationKey
 
-	// Addresses of all committee members, gathered in a list for all type of services in use and
-	// every entry in that list is ordered according to process ids.
-	Addresses [][]string
+	// RMCAddresses of all committee members
+	RMCAddresses []string
+
+	// Addresses of all committee members
+	Addresses map[string][]string
 }
 
 const malformedData = "malformed committee data"
@@ -97,47 +96,50 @@ func LoadMember(r io.Reader) (*Member, error) {
 	}, nil
 }
 
-func parseCommitteeLine(line string) (string, string, string, []string, []string, error) {
+func parseCommitteeLine(line string) (string, string, string, string, map[string]string, error) {
 	s := strings.Split(line, "|")
 
 	if len(s) < 5 {
-		return "", "", "", nil, nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|p2pPublicKey|setupAddresses|addresses")
+		return "", "", "", "", nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|p2pPublicKey|setupAddresses|addresses")
 	}
-	pk, vk, p2pPK, setupAddrs, addrs := s[0], s[1], s[2], s[3], s[4]
+	pk, p2pPK, vk, rmcAddrs, addrsList := s[0], s[1], s[2], s[3], s[4]
 	var errStrings []string
 	if len(pk) == 0 {
-		return "", "", "", nil, nil, errors.New(malformedData)
-	}
-	if len(vk) == 0 {
-		errStrings = append(errStrings, "verification key should be non-empty")
+		return "", "", "", "", nil, errors.New(malformedData)
 	}
 	if len(p2pPK) == 0 {
 		errStrings = append(errStrings, "p2p public key should be non-empty")
 	}
-	setupAddrsList, addrsList := []string{}, []string{}
-	if setupAddrs != "" {
-		setupAddrsList = strings.Split(setupAddrs, " ")
+	if len(vk) == 0 {
+		errStrings = append(errStrings, "verification key should be non-empty")
 	}
-	if addrs != "" {
-		addrsList = strings.Split(addrs, " ")
+	addrs := make(map[string]string)
+	for _, addr := range strings.Split(addrsList, " ") {
+		if len(addr) == 0 {
+			continue
+		}
+		switch addr[0] {
+		case 'f':
+			addrs["fetch"] = addr[1:]
+		case 'g':
+			addrs["gossip"] = addr[1:]
+		case 'm':
+			addrs["mcast"] = addr[1:]
+		}
 	}
 	if errStrings == nil {
-		return pk, vk, p2pPK, setupAddrsList, addrsList, nil
+		return pk, p2pPK, vk, rmcAddrs, addrs, nil
 	}
-	return "", "", "", nil, nil, fmt.Errorf(strings.Join(errStrings, "\n"))
+	return "", "", "", "", nil, fmt.Errorf(strings.Join(errStrings, "\n"))
 }
 
 // LoadCommittee loads the data from the given reader and creates a committee.
 func LoadCommittee(r io.Reader) (*Committee, error) {
 	scanner := bufio.NewScanner(r)
 
-	publicKeys := []gomel.PublicKey{}
-	verificationKeys := []*bn256.VerificationKey{}
-	p2pPublicKeys := []*p2p.PublicKey{}
-	sRemoteAddresses := [][]string{}
-	remoteAddresses := [][]string{}
+	c := &Committee{Addresses: make(map[string][]string)}
 	for scanner.Scan() {
-		pk, vk, p2pPK, setupAddresses, addresses, err := parseCommitteeLine(scanner.Text())
+		pk, p2pPK, vk, rmcAddr, syncAddrs, err := parseCommitteeLine(scanner.Text())
 		if err != nil {
 			return nil, err
 		}
@@ -147,44 +149,32 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 			return nil, err
 		}
 
-		verificationKey, err := bn256.DecodeVerificationKey(vk)
-		if err != nil {
-			return nil, err
-		}
-
 		p2pPublicKey, err := p2p.DecodePublicKey(p2pPK)
 		if err != nil {
 			return nil, err
 		}
 
-		publicKeys = append(publicKeys, publicKey)
-		verificationKeys = append(verificationKeys, verificationKey)
-		p2pPublicKeys = append(p2pPublicKeys, p2pPublicKey)
-		if len(remoteAddresses) == 0 {
-			sRemoteAddresses = make([][]string, len(setupAddresses))
-			remoteAddresses = make([][]string, len(addresses))
+		verificationKey, err := bn256.DecodeVerificationKey(vk)
+		if err != nil {
+			return nil, err
 		}
-		for i, address := range setupAddresses {
-			sRemoteAddresses[i] = append(sRemoteAddresses[i], address)
-		}
-		for i, address := range addresses {
-			remoteAddresses[i] = append(remoteAddresses[i], address)
-		}
+
+		c.PublicKeys = append(c.PublicKeys, publicKey)
+		c.P2PPublicKeys = append(c.P2PPublicKeys, p2pPublicKey)
+		c.RMCVerificationKeys = append(c.RMCVerificationKeys, verificationKey)
+		c.RMCAddresses = append(c.RMCAddresses, rmcAddr)
+		c.Addresses["mcast"] = append(c.Addresses["mcast"], syncAddrs["mcast"])
+		c.Addresses["fetch"] = append(c.Addresses["fetch"], syncAddrs["fetch"])
+		c.Addresses["gossip"] = append(c.Addresses["gossip"], syncAddrs["gossip"])
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	if len(publicKeys) < 4 {
+	if len(c.PublicKeys) < 4 {
 		return nil, errors.New(malformedData)
 	}
-	return &Committee{
-		PublicKeys:          publicKeys,
-		RMCVerificationKeys: verificationKeys,
-		P2PPublicKeys:       p2pPublicKeys,
-		Addresses:           remoteAddresses,
-		SetupAddresses:      sRemoteAddresses,
-	}, nil
+	return c, nil
 }
 
 // StoreMember writes the given member to the writer.
@@ -224,59 +214,52 @@ func StoreMember(w io.Writer, m *Member) error {
 	return nil
 }
 
-func store(w io.Writer, addresses [][]string, i int) error {
-	_, err := io.WriteString(w, "|")
-	if err != nil {
-		return err
-	}
-	for j := range addresses {
-		if j != 0 {
-			_, err = io.WriteString(w, " ")
-			if err != nil {
+// StoreCommittee writes the given committee to the writer.
+func StoreCommittee(w io.Writer, c *Committee) error {
+	for i := range c.PublicKeys {
+		// store public keys
+		if _, err := io.WriteString(w, c.PublicKeys[i].Encode()); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "|"); err != nil {
+			return err
+		}
+		// store p2p keys
+		if _, err := io.WriteString(w, c.P2PPublicKeys[i].Encode()); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "|"); err != nil {
+			return err
+		}
+		// store verification keys for RMC
+		if _, err := io.WriteString(w, c.RMCVerificationKeys[i].Encode()); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "|"); err != nil {
+			return err
+		}
+		// store addresses for RMC
+		if _, err := io.WriteString(w, c.RMCAddresses[i]); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "|"); err != nil {
+			return err
+		}
+		// store sync addresses
+		for j, syncType := range []string{"mcast", "fetch", "gossip"} {
+			if j != 0 {
+				if _, err := io.WriteString(w, " "); err != nil {
+					return err
+				}
+			}
+			if _, err := io.WriteString(w, syncType[0:1]); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(w, c.Addresses[syncType][i]); err != nil {
 				return err
 			}
 		}
-		_, err = io.WriteString(w, addresses[j][i])
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// StoreCommittee writes the given committee to the writer.
-func StoreCommittee(w io.Writer, c *Committee) error {
-	for i, pk := range c.PublicKeys {
-		_, err := io.WriteString(w, pk.Encode())
-		if err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "|")
-		if err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, c.RMCVerificationKeys[i].Encode())
-		if err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "|")
-		if err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, c.P2PPublicKeys[i].Encode())
-		if err != nil {
-			return err
-		}
-		err = store(w, c.SetupAddresses, i)
-		if err != nil {
-			return err
-		}
-		err = store(w, c.Addresses, i)
-		if err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "\n")
-		if err != nil {
+		if _, err := io.WriteString(w, "\n"); err != nil {
 			return err
 		}
 	}

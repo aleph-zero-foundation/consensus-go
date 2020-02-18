@@ -33,37 +33,22 @@ type conf struct {
 	// keys
 	PrivateKey    gomel.PrivateKey
 	PublicKeys    []gomel.PublicKey
-	RMCPrivateKey *bn256.SecretKey
-	RMCPublicKeys []*bn256.VerificationKey
 	P2PPublicKeys []*p2p.PublicKey
 	P2PSecretKey  *p2p.SecretKey
-	//shallbedone: remove these two to flatten config
-	Alert *Alert
-	Sync  []*Sync
-}
-
-// Alert represents a complete configuration needed for an alert system to start.
-// shallbedone: remove
-type Alert struct {
-	Pid             uint16
-	PublicKeys      []gomel.PublicKey
-	Pubs            []*bn256.VerificationKey
-	Priv            *bn256.SecretKey
-	LocalAddress    string
-	RemoteAddresses []string
+	RMCPrivateKey *bn256.SecretKey
+	RMCPublicKeys []*bn256.VerificationKey
+	// sync
 	Timeout         time.Duration
-}
-
-// Sync represents a complete configuration needed for a syncing service to start.
-// shallbedone: remove
-type Sync struct {
-	Type            string
-	Pid             uint16
-	LocalAddress    string
-	RemoteAddresses []string
-	Params          map[string]string
-	Pubs            []*bn256.VerificationKey
-	Priv            *bn256.SecretKey
+	RMCAddresses    []string
+	RMCNetType      string
+	GossipAddresses []string
+	GossipNetType   string
+	FetchAddresses  []string
+	FetchNetType    string
+	MCastAddresses  []string
+	MCastNetType    string
+	GossipWorkers   [3]int // nIn, nOut, nIdle
+	FetchWorkers    [2]int // nIn, nOut
 }
 
 // AddCheck adds a unit checker to the given Config.

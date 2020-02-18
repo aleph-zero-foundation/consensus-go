@@ -12,14 +12,6 @@ const (
 	MaxUnitsInChunk = 1e6
 )
 
-// SyncParams represents parameters for a synchronization service.
-type SyncParams struct {
-	// Type describes the service type.
-	Type string
-	// Params holds additional parameters needed by a service of a given type.
-	Params map[string]string
-}
-
 // Params represents a set of process parameters adjustable via JSON config files.
 type Params struct {
 	// Whether a process is allowed not to create a unit at a level.
@@ -28,14 +20,8 @@ type Params struct {
 	// Delay after attempting to create a new unit, before another attempt is made.
 	CreateDelay float32
 
-	// Params for synchronization services during the setup phase.
-	SyncSetup []SyncParams
-
 	// Name of the setup procedure.
 	Setup string
-
-	// Params for synchronization services during the main protocol operation.
-	Sync []SyncParams
 
 	// The number of transactions included in a unit.
 	// Currently only simulated by including random bytes depending on this number.
@@ -66,38 +52,13 @@ type Params struct {
 
 // NewDefaultParams returns default set of parameters.
 func NewDefaultParams() Params {
-	syncConf := []SyncParams{SyncParams{
-		Type:   "multicast",
-		Params: map[string]string{"network": "pers", "timeout": "2s"},
-	}, SyncParams{
-		Type:   "gossip",
-		Params: map[string]string{"nIn": "20", "nOut": "15", "nIdle": "1", "timeout": "2s"},
-	},
-	}
-
-	syncSetupConf := []SyncParams{SyncParams{
-		Type:   "rmc",
-		Params: map[string]string{"network": "pers", "timeout": "2s"},
-	}, SyncParams{
-		Type:   "fetch",
-		Params: map[string]string{"nIn": "20", "nOut": "15", "timeout": "2s"},
-	}, SyncParams{
-		Type:   "gossip",
-		Params: map[string]string{"nIn": "20", "nOut": "15", "nIdle": "1", "timeout": "2s"},
-	},
-	}
-
 	result := Params{
 
 		CanSkipLevel: true,
 
 		CreateDelay: 0.1,
 
-		SyncSetup: syncSetupConf,
-
 		Setup: "beacon",
-
-		Sync: syncConf,
 
 		Txpu: 1,
 
