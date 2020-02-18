@@ -27,7 +27,12 @@ func NewDataSource(blockSize int) *TestDataSource {
 
 // DataSource returns gomel.DataSource object from the TestDataSource.
 func (tds *TestDataSource) DataSource() core.DataSource {
-	return tds.dataSource
+	return tds
+}
+
+// GetData returns a single piece of data for a unit.
+func (tds *TestDataSource) GetData() core.Data {
+	return <-tds.dataSource
 }
 
 // Start starts generating and sending random bytes to the DataSource channel.

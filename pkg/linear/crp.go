@@ -63,7 +63,7 @@ func defaultPermutation(dag gomel.Dag, level int, pids []uint16) []gomel.Unit {
 	permutation := []gomel.Unit{}
 
 	for _, pid := range pids {
-		permutation = append(permutation, dag.PrimeUnits(level).Get(pid)...)
+		permutation = append(permutation, dag.UnitsOnLevel(level).Get(pid)...)
 	}
 
 	sort.Slice(permutation, func(i, j int) bool {
@@ -82,7 +82,7 @@ func randomPermutation(rs gomel.RandomSource, dag gomel.Dag, level int, pids []u
 			return nil, false
 		}
 		rbLen := len(randomBytes)
-		units := dag.PrimeUnits(level).Get(pid)
+		units := dag.UnitsOnLevel(level).Get(pid)
 		for _, u := range units {
 			randomBytes = append(randomBytes[:rbLen], (*u.Hash())[:]...)
 			priority[u] = make([]byte, 32)

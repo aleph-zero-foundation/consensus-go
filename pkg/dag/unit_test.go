@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	. "gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -12,7 +13,9 @@ import (
 type dagFactory struct{}
 
 func (dagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
-	dag := New(nProc)
+	cnf := config.Empty()
+	cnf.NProc = nProc
+	dag := New(cnf, gomel.EpochID(0))
 	adder := tests.NewAdder(dag)
 	return dag, adder
 }

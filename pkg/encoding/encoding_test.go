@@ -25,7 +25,7 @@ var _ = Describe("Encoding/Decoding", func() {
 	})
 	Context("A dealing unit", func() {
 		It("should be encoded/decoded to a preunit representing the original unit", func() {
-			u := dag.PrimeUnits(0).Get(0)[0]
+			u := dag.UnitsOnLevel(0).Get(0)[0]
 			err := WriteUnit(u, network)
 			Expect(err).NotTo(HaveOccurred())
 			pu, err := ReadPreunit(network)
@@ -67,7 +67,7 @@ var _ = Describe("Encoding/Decoding", func() {
 		Context("when an antichain of dealing units is being sent", func() {
 			It("should receive a slice containing a single slice of dealing preunits", func() {
 				toSend := []gomel.Unit{}
-				dag.PrimeUnits(0).Iterate(func(units []gomel.Unit) bool {
+				dag.UnitsOnLevel(0).Iterate(func(units []gomel.Unit) bool {
 					toSend = append(toSend, units[0])
 					return true
 				})
@@ -80,7 +80,7 @@ var _ = Describe("Encoding/Decoding", func() {
 				//checks
 				Expect(len(pus)).To(Equal(len(toSend)))
 				for _, pu := range pus {
-					Expect(pu.Hash()).To(Equal(dag.PrimeUnits(0).Get(pu.Creator())[0].Hash()))
+					Expect(pu.Hash()).To(Equal(dag.UnitsOnLevel(0).Get(pu.Creator())[0].Hash()))
 				}
 			})
 		})
@@ -145,7 +145,7 @@ var _ = Describe("Encoding/Decoding", func() {
 	Context("DagInfo", func() {
 		It("should be the same after encoding/decoding", func() {
 			info := gomel.MaxView(dag)
-			infos := []*gomel.DagInfo{info, info}
+			infos := [2]*gomel.DagInfo{info, info}
 			err := WriteDagInfos(infos, network)
 			Expect(err).NotTo(HaveOccurred())
 			recv, err := ReadDagInfos(network)

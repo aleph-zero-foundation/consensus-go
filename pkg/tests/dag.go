@@ -8,6 +8,7 @@ import (
 	"sort"
 	"sync"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -22,22 +23,23 @@ type Dag struct {
 	unitsByHeight []gomel.SlottedUnits
 	unitByHash    map[gomel.Hash]gomel.Unit
 	checks        []gomel.UnitChecker
-	transforms    []gomel.UnitTransformer
 	preInsert     []gomel.InsertHook
 	postInsert    []gomel.InsertHook
 }
 
-func newDag(nProc uint16) *Dag {
-	maxHeight := make([]int, nProc)
-	for pid := uint16(0); pid < nProc; pid++ {
+func newDag(cnf config.Config, epoch gomel.EpochID) *Dag {
+	maxHeight := make([]int, cnf.NProc)
+	for pid := uint16(0); pid < cnf.NProc; pid++ {
 		maxHeight[pid] = -1
 	}
 	newDag := &Dag{
-		nProcesses:    nProc,
+		nProcesses:    cnf.NProc,
+		epochID:       epoch,
 		primeUnits:    []gomel.SlottedUnits{},
 		unitsByHeight: []gomel.SlottedUnits{},
 		maximalHeight: maxHeight,
 		unitByHash:    make(map[gomel.Hash]gomel.Unit),
+		checks:        append([]gomel.UnitChecker(nil), cnf.Checks...),
 	}
 	return newDag
 }
@@ -50,11 +52,6 @@ func (dag *Dag) EpochID() gomel.EpochID {
 // AddCheck implementation
 func (dag *Dag) AddCheck(check gomel.UnitChecker) {
 	dag.checks = append(dag.checks, check)
-}
-
-// AddTransform implementation
-func (dag *Dag) AddTransform(trans gomel.UnitTransformer) {
-	dag.transforms = append(dag.transforms, trans)
 }
 
 // BeforeInsert implementation
@@ -111,19 +108,11 @@ func (dag *Dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
 // Check checks.
 func (dag *Dag) Check(u gomel.Unit) error {
 	for _, check := range dag.checks {
-		if err := check(u); err != nil {
+		if err := check(u, dag); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// Transform transforms.
-func (dag *Dag) Transform(u gomel.Unit) gomel.Unit {
-	for _, trans := range dag.transforms {
-		u = trans(u)
-	}
-	return u
 }
 
 // Insert the unit into the dag.
@@ -138,7 +127,7 @@ func (dag *Dag) Insert(u gomel.Unit) {
 }
 
 // PrimeUnits returns the prime units at the given level.
-func (dag *Dag) PrimeUnits(level int) gomel.SlottedUnits {
+func (dag *Dag) UnitsOnLevel(level int) gomel.SlottedUnits {
 	dag.RLock()
 	defer dag.RUnlock()
 	if level < len(dag.primeUnits) {
@@ -251,12 +240,10 @@ func updateDag(u gomel.Unit, dag *Dag) {
 		}
 		dag.primeUnits[0].Set(u.Creator(), append(dag.primeUnits[0].Get(u.Creator()), u))
 	} else {
-		if gomel.Prime(u) {
-			if len(dag.primeUnits) <= u.Level() {
-				dag.primeUnits = append(dag.primeUnits, newSlottedUnits(dag.nProcesses))
-			}
-			dag.primeUnits[u.Level()].Set(u.Creator(), append(dag.primeUnits[u.Level()].Get(u.Creator()), u))
+		if len(dag.primeUnits) <= u.Level() {
+			dag.primeUnits = append(dag.primeUnits, newSlottedUnits(dag.nProcesses))
 		}
+		dag.primeUnits[u.Level()].Set(u.Creator(), append(dag.primeUnits[u.Level()].Get(u.Creator()), u))
 		if len(dag.unitsByHeight) <= u.Height() {
 			dag.unitsByHeight = append(dag.unitsByHeight, newSlottedUnits(dag.nProcesses))
 		}

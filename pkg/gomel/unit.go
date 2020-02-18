@@ -1,8 +1,8 @@
 package gomel
 
-// Unit that belongs to the dag.
+// Unit is the main interface for unit that knows the list of its parents.
 type Unit interface {
-	BaseUnit
+	Preunit
 	// Parents of this unit.
 	Parents() []Unit
 	// Level of this unit in the dag, as defined in the Aleph protocol whitepaper.
@@ -91,20 +91,9 @@ func MaximalByPid(parents []Unit, pid uint16) []Unit {
 	return maximal
 }
 
-// Prime checks whether the given unit is a prime unit.
-func Prime(u Unit) bool {
-	p := Predecessor(u)
-	return (p == nil) || u.Level() > p.Level()
-}
-
 // Predecessor of a unit is one of its parents, the one created by the same process as the given unit.
 func Predecessor(u Unit) Unit {
 	return u.Parents()[u.Creator()]
-}
-
-// Dealing checks if u is a dealing unit.
-func Dealing(u Unit) bool {
-	return Predecessor(u) == nil
 }
 
 // BelowAny checks whether u is below any of the units in us.

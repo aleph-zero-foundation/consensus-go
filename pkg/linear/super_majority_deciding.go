@@ -22,7 +22,7 @@ func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel 
 		decision := undecided
 
 		commonVote := smd.lazyCommonVote(uc, level)
-		smd.dag.PrimeUnits(level).Iterate(func(primes []gomel.Unit) bool {
+		smd.dag.UnitsOnLevel(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
 				vDecision := smd.decide(uc, v)
 				if vDecision != undecided && vDecision == commonVote() {

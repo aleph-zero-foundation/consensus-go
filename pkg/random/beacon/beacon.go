@@ -311,7 +311,7 @@ func (b *Beacon) GetCoin(head uint16) gomel.RandomSourceFactory {
 // unitsOnLevel returns all the prime units in the dag on a given level
 func unitsOnLevel(dag gomel.Dag, level int) []gomel.Unit {
 	result := []gomel.Unit{}
-	su := dag.PrimeUnits(level)
+	su := dag.UnitsOnLevel(level)
 	if su != nil {
 		su.Iterate(func(units []gomel.Unit) bool {
 			if len(units) != 0 {

@@ -55,7 +55,7 @@ var _ = Describe("Coin", func() {
 		Context("that is a prime unit created by a share provider", func() {
 			Context("without random source data", func() {
 				It("should return an error", func() {
-					u := dag[0].PrimeUnits(2).Get(0)[0]
+					u := dag[0].UnitsOnLevel(2).Get(0)[0]
 					um := newUnitMock(u, []byte{})
 					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
@@ -63,8 +63,8 @@ var _ = Describe("Coin", func() {
 			})
 			Context("with inncorrect share", func() {
 				It("should return an error", func() {
-					u := dag[0].PrimeUnits(2).Get(0)[0]
-					v := dag[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].UnitsOnLevel(2).Get(0)[0]
+					v := dag[0].UnitsOnLevel(3).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
 					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
@@ -74,7 +74,7 @@ var _ = Describe("Coin", func() {
 		Context("on a unit not created by a share provider", func() {
 			Context("with random source data", func() {
 				It("should return an error", func() {
-					u := dag[0].PrimeUnits(2).Get(n - 1)[0]
+					u := dag[0].UnitsOnLevel(2).Get(n - 1)[0]
 					um := newUnitMock(u, []byte{1, 2, 3})
 					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())

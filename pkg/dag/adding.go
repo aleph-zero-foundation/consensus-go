@@ -1,8 +1,8 @@
 package dag
 
 import (
-	"gitlab.com/alephledger/consensus-go/pkg/dag/unit"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/unit"
 )
 
 func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
@@ -31,7 +31,7 @@ func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
 }
 
 func (dag *dag) BuildUnit(pu gomel.Preunit, parents []gomel.Unit) gomel.Unit {
-	return unit.New(pu, parents)
+	return unit.FromPreunit(pu, parents)
 }
 
 func (dag *dag) Check(u gomel.Unit) error {
@@ -43,18 +43,13 @@ func (dag *dag) Check(u gomel.Unit) error {
 	return nil
 }
 
-func (dag *dag) Transform(u gomel.Unit) gomel.Unit {
-	return unit.Prepared(u, dag)
-}
-
 func (dag *dag) Insert(u gomel.Unit) {
+	u = unit.Embed(u, dag)
 	for _, hook := range dag.preInsert {
 		hook(u)
 	}
 	dag.updateUnitsOnHeight(u)
-	if gomel.Prime(u) {
-		dag.addPrime(u)
-	}
+	dag.updateUnitsOnLevel(u)
 	dag.units.add(u)
 	dag.updateMaximal(u)
 	for _, hook := range dag.postInsert {
@@ -62,11 +57,11 @@ func (dag *dag) Insert(u gomel.Unit) {
 	}
 }
 
-func (dag *dag) addPrime(u gomel.Unit) {
-	if u.Level() >= dag.primeUnits.Len() {
-		dag.primeUnits.extendBy(10)
+func (dag *dag) updateUnitsOnLevel(u gomel.Unit) {
+	if u.Level() >= dag.levelUnits.Len() {
+		dag.levelUnits.extendBy(10)
 	}
-	su, _ := dag.primeUnits.getFiber(u.Level())
+	su, _ := dag.levelUnits.getFiber(u.Level())
 	creator := u.Creator()
 	oldPrimes := su.Get(creator)
 	primesByCreator := make([]gomel.Unit, len(oldPrimes), len(oldPrimes)+1)

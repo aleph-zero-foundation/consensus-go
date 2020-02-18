@@ -18,7 +18,7 @@ type PublicKey interface {
 // PrivateKey used for signing units.
 type PrivateKey interface {
 	// Sign computes and returns a signature of a preunit.
-	Sign(Preunit) Signature
+	Sign(*Hash) Signature
 	// Encode encodes the private key in base 64.
 	Encode() string
 }

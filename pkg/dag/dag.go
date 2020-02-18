@@ -10,7 +10,7 @@ type dag struct {
 	nProcesses  uint16
 	epochID     gomel.EpochID
 	units       *unitBag
-	primeUnits  *fiberMap
+	levelUnits  *fiberMap
 	heightUnits *fiberMap
 	maxUnits    gomel.SlottedUnits
 	checks      []gomel.UnitChecker
@@ -24,7 +24,7 @@ func New(conf config.Config, epochID gomel.EpochID) gomel.Dag {
 		nProcesses:  conf.NProc,
 		epochID:     epochID,
 		units:       newUnitBag(),
-		primeUnits:  newFiberMap(conf.NProc, 10),
+		levelUnits:  newFiberMap(conf.NProc, 10),
 		heightUnits: newFiberMap(conf.NProc, 10),
 		maxUnits:    newSlottedUnits(conf.NProc),
 		checks:      append([]gomel.UnitChecker(nil), conf.Checks...),
@@ -58,8 +58,8 @@ func (dag *dag) NProc() uint16 {
 }
 
 // PrimeUnits returns the prime units at the requested level, indexed by their creator ids.
-func (dag *dag) PrimeUnits(level int) gomel.SlottedUnits {
-	res, err := dag.primeUnits.getFiber(level)
+func (dag *dag) UnitsOnLevel(level int) gomel.SlottedUnits {
+	res, err := dag.levelUnits.getFiber(level)
 	if err != nil {
 		return newSlottedUnits(dag.nProcesses)
 	}

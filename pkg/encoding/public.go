@@ -8,7 +8,7 @@ import (
 )
 
 // EncodeUnit encodes a unit to a slice of bytes.
-func EncodeUnit(unit gomel.BaseUnit) ([]byte, error) {
+func EncodeUnit(unit gomel.Preunit) ([]byte, error) {
 	var buf bytes.Buffer
 	encoder := newEncoder(&buf)
 	err := encoder.encodeUnit(unit)

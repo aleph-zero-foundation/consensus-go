@@ -22,7 +22,7 @@ type preunit struct {
 }
 
 // NewPreunit creates a preunit.
-func NewPreunit(creator uint16, crown *gomel.Crown, data core.Data, rsData []byte) gomel.Preunit {
+func NewPreunit(creator uint16, crown *gomel.Crown, data core.Data, rsData []byte, priv gomel.PrivateKey) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
 		crown:     *crown,
@@ -31,7 +31,9 @@ func NewPreunit(creator uint16, crown *gomel.Crown, data core.Data, rsData []byt
 		rsData:    rsData,
 	}
 	pu.computeHash()
-
+	if priv != nil {
+		pu.signature = priv.Sign(pu.Hash())
+	}
 	return pu
 }
 

@@ -107,11 +107,7 @@ func (s *service) createUnit() bool {
 	}
 	added := <-s.added
 	if added != nil {
-		if gomel.Prime(added) {
-			s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
-		} else {
-			s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.UnitCreated)
-		}
+		s.log.Info().Int(logging.Lvl, added.Level()).Int(logging.Height, added.Height()).Msg(logging.PrimeUnitCreated)
 	}
 	return level < s.maxLevel
 }

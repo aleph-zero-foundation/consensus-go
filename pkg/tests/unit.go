@@ -20,6 +20,18 @@ type unit struct {
 	rsData    []byte
 }
 
+// FromPreunit makes a new test unit based on the given preunit and parents.
+func FromPreunit(pu gomel.Preunit, parents []gomel.Unit, dag gomel.Dag) gomel.Unit {
+	var u unit
+	u.parents = parents
+	// Setting height, creator, signature, version, hash
+	d := dag.(*Dag)
+	setBasicInfo(&u, d, pu)
+	setLevel(&u, d)
+	setFloor(&u, d)
+	return &u
+}
+
 func (u *unit) EpochID() gomel.EpochID {
 	return u.epochID
 }

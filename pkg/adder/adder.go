@@ -153,10 +153,9 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	// 2. Build Unit
 	freeUnit := ad.dag.BuildUnit(wp.pu, parents)
 
+	// 3. Check
 	ad.alert.Lock(freeUnit.Creator())
 	defer ad.alert.Unlock(freeUnit.Creator())
-
-	// 3. Check
 	err = ad.handleCheckError(ad.dag.Check(freeUnit), freeUnit, wp.source)
 	if err != nil {
 		log.Error().Str("where", "Check").Msg(err.Error())
@@ -164,11 +163,8 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 		return
 	}
 
-	// 4. Transform
-	unitInDag := ad.dag.Transform(freeUnit)
-
-	// 5. Insert
-	ad.dag.Insert(unitInDag)
+	// 4. Insert
+	ad.dag.Insert(freeUnit)
 
 	log.Info().Msg(logging.UnitAdded)
 }
