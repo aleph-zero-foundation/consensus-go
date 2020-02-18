@@ -47,8 +47,8 @@ type conf struct {
 	FetchNetType    string
 	MCastAddresses  []string
 	MCastNetType    string
-	GossipWorkers   []int // nIn, nOut, nIdle
-	FetchWorkers    []int // nIn, nOut
+	GossipWorkers   [3]int // nIn, nOut, nIdle
+	FetchWorkers    [2]int // nIn, nOut
 }
 
 // AddCheck adds a unit checker to the given Config.
