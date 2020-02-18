@@ -8,7 +8,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
-	"gitlab.com/alephledger/consensus-go/pkg/unit"
 )
 
 const (
@@ -152,7 +151,7 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	}
 
 	// 2. Build Unit
-	freeUnit := unit.FromPreunit(wp.pu, parents)
+	freeUnit := ad.dag.BuildUnit(wp.pu, parents)
 
 	// 3. Check
 	ad.alert.Lock(freeUnit.Creator())

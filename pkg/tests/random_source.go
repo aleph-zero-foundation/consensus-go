@@ -27,6 +27,6 @@ func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 }
 
 // ToInclude always returns nil.
-func (*testRandomSource) DataToInclude(uint16, []gomel.Unit, int) ([]byte, error) {
+func (*testRandomSource) DataToInclude([]gomel.Unit, int) ([]byte, error) {
 	return nil, nil
 }

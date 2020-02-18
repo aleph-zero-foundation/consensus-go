@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"time"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
@@ -12,14 +13,16 @@ import (
 //  nUnits     - number of units to include in the dag
 func CreateRandomNonForking(nProcesses, nUnits int) gomel.Dag {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	dag := newDag(uint16(nProcesses))
+	cnf := config.Empty()
+	cnf.NProc = uint16(nProcesses)
+	dag := newDag(cnf, gomel.EpochID(0))
 	adder := NewAdder(dag)
 	created := 0
 	for created < nUnits {
 		pid := uint16(r.Intn(nProcesses))
 		if dag.maximalHeight[pid] == -1 {
 			pu := NewPreunit(pid, gomel.EmptyCrown(uint16(nProcesses)), []byte{}, nil)
-			err := adder.AddUnit(pu, pu.Creator())
+			err := adder.AddPreunits(pu.Creator(), pu)[0]
 			if err == nil {
 				created++
 			}
@@ -36,7 +39,7 @@ func CreateRandomNonForking(nProcesses, nUnits int) gomel.Dag {
 				parentsHeights[i] = h
 			}
 			pu := NewPreunit(pid, gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), []byte{}, nil)
-			err := adder.AddUnit(pu, pu.Creator())
+			err := adder.AddPreunits(pu.Creator(), pu)[0]
 			if err == nil {
 				created++
 			}

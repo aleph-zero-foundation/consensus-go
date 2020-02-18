@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
@@ -18,7 +19,6 @@ type dagStats struct {
 	NParents               StatAggregated
 	PopularAfter           StatAggregated
 	NParentsOnTheSameLevel StatAggregated
-	IsPrime                StatAggregated
 }
 
 type stat func(dag gomel.Dag, u gomel.Unit, units []gomel.Unit, maxLevel int) int
@@ -58,10 +58,6 @@ var nParentsOnTheSameLevel stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit
 	return result
 }
 
-var isPrime stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit, _ int) int {
-	return 1
-}
-
 func computeStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) *dagStats {
 	return &dagStats{
 		NProc:                  dag.NProc(),
@@ -69,7 +65,6 @@ func computeStats(dag gomel.Dag, units []gomel.Unit, maxLevel int) *dagStats {
 		Level:                  aggregate(level, dag, units, maxLevel),
 		PopularAfter:           aggregate(popularAfter, dag, units, maxLevel),
 		NParentsOnTheSameLevel: aggregate(nParentsOnTheSameLevel, dag, units, maxLevel),
-		IsPrime:                aggregate(isPrime, dag, units, maxLevel),
 	}
 }
 
@@ -177,7 +172,9 @@ func main() {
 type dagFactory struct{}
 
 func (dagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
-	d := dag.New(nProc)
+	cnf := config.Empty()
+	cnf.NProc = nProc
+	d := dag.New(cnf, gomel.EpochID(0))
 	return d, tests.NewAdder(d)
 }
 

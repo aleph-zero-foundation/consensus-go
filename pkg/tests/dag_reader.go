@@ -36,7 +36,10 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, gomel.Adder, error) {
 		}
 		var puCreator, puHeight, puVersion int
 		parents := make([]*gomel.Hash, n)
-		parentsHeights := gomel.DealingHeights(n)
+		parentsHeights := make([]int, n)
+		for i := uint16(0); i < n; i++ {
+			parentsHeights[i] = -1
+		}
 		for i, t := range strings.Split(text, " ") {
 			var creator, height, version int
 
@@ -63,7 +66,7 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, gomel.Adder, error) {
 		pu := NewPreunit(uint16(puCreator), gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), unitData, nil)
 		txID++
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
-		err := adder.AddUnit(pu, pu.Creator())
+		err := adder.AddPreunits(pu.Creator(), pu)[0]
 		if err != nil {
 			return nil, nil, err
 		}

@@ -68,3 +68,8 @@ func NewSetup(m *Member, c *Committee) Config {
 func New(m *Member, c *Committee) Config {
 	return addRegularConf(newConfig(m, c))
 }
+
+// Empty returns an empty Config populated by zero-values.
+func Empty() Config {
+	return &conf{}
+}

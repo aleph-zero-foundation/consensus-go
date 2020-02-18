@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
@@ -26,8 +27,9 @@ func NewTestDagFactoryWithEpochID(id gomel.EpochID) DagFactory {
 }
 
 func (tdf testDagFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
-	dag := newDag(nProc)
-	dag.epochID = tdf.epochID
+	cnf := config.Empty()
+	cnf.NProc = nProc
+	dag := newDag(cnf, tdf.epochID)
 	adder := NewAdder(dag)
 	return dag, adder
 }
@@ -40,11 +42,13 @@ func NewTestDagFactoryWithChecks() DagFactory {
 type defaultChecksFactory struct{}
 
 func (defaultChecksFactory) CreateDag(nProc uint16) (gomel.Dag, gomel.Adder) {
-	dag := newDag(nProc)
-	check.BasicCompliance(dag)
-	check.ParentConsistency(dag)
-	check.NoSelfForkingEvidence(dag)
-	check.ForkerMuting(dag)
+	cnf := config.Empty()
+	cnf.NProc = nProc
+	dag := newDag(cnf, gomel.EpochID(0))
+	dag.AddCheck(check.BasicCorrectness)
+	dag.AddCheck(check.ParentConsistency)
+	dag.AddCheck(check.NoSelfForkingEvidence)
+	dag.AddCheck(check.ForkerMuting)
 	adder := NewAdder(dag)
 	return dag, adder
 }

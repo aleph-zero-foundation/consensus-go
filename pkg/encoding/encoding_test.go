@@ -145,7 +145,7 @@ var _ = Describe("Encoding/Decoding", func() {
 	Context("DagInfo", func() {
 		It("should be the same after encoding/decoding", func() {
 			info := gomel.MaxView(dag)
-			infos := []*gomel.DagInfo{info, info}
+			infos := [2]*gomel.DagInfo{info, info}
 			err := WriteDagInfos(infos, network)
 			Expect(err).NotTo(HaveOccurred())
 			recv, err := ReadDagInfos(network)

@@ -3,57 +3,44 @@ package tests
 import "gitlab.com/alephledger/consensus-go/pkg/gomel"
 
 type adder struct {
-	dag      gomel.Dag
-	handlers []gomel.ErrorHandler
+	dag gomel.Dag
 }
 
 // NewAdder creates a very simple adder for testing purposes.
 func NewAdder(dag gomel.Dag) gomel.Adder {
-	return &adder{dag, nil}
+	return &adder{dag}
 }
 
-func (ad *adder) SetGossip(gomel.RequestGossip) {}
-func (ad *adder) SetFetch(gomel.RequestFetch)   {}
+func (ad *adder) Close() {}
 
-func (ad *adder) AddErrorHandler(eh gomel.ErrorHandler) {
-	ad.handlers = append(ad.handlers, eh)
-}
-
-func (ad *adder) AddUnit(pu gomel.Preunit, source uint16) error {
-	parents, err := ad.dag.DecodeParents(pu)
-	if err != nil {
-		return err
-	}
-	freeUnit := ad.dag.BuildUnit(pu, parents)
-	err = ad.dag.Check(freeUnit)
-	if err != nil {
-		for _, handler := range ad.handlers {
-			if err = handler(err, freeUnit, source); err == nil {
-				break
-			}
-		}
-		if err != nil {
-			return err
-		}
-	}
-	unitInDag := ad.dag.Transform(freeUnit)
-	ad.dag.Insert(unitInDag)
-	return nil
-}
-
-func (ad *adder) AddUnits(pus []gomel.Preunit, source uint16) *gomel.AggregateError {
+func (ad *adder) AddPreunits(source uint16, pus ...gomel.Preunit) []error {
 	result := make([]error, len(pus))
 	for i, pu := range pus {
-		result[i] = ad.AddUnit(pu, source)
+		if pu.EpochID() != ad.dag.EpochID() {
+			result[i] = gomel.NewDataError("wrong epoch")
+			continue
+		}
+		parents, err := ad.dag.DecodeParents(pu)
+		if err != nil {
+			result[i] = err
+			continue
+		}
+		freeUnit := ad.dag.BuildUnit(pu, parents)
+		err = ad.dag.Check(freeUnit)
+		if err != nil {
+			result[i] = err
+			continue
+		}
+		ad.dag.Insert(freeUnit)
 	}
-	return gomel.NewAggregateError(result)
+	return result
 }
 
 // AddUnit adds a preunit to the given dag.
 func AddUnit(dag gomel.Dag, pu gomel.Preunit) (gomel.Unit, error) {
-	err := NewAdder(dag).AddUnit(pu, pu.Creator())
-	if err != nil {
-		return nil, err
+	err := NewAdder(dag).AddPreunits(pu.Creator(), pu)
+	if err[0] != nil {
+		return nil, err[0]
 	}
 	return dag.GetUnit(pu.Hash()), nil
 }
