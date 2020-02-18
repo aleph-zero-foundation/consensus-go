@@ -15,7 +15,6 @@ var _ = Describe("Signatures", func() {
 		pu   gomel.Preunit
 		pub  gomel.PublicKey
 		priv gomel.PrivateKey
-		sig  gomel.Signature
 	)
 
 	Describe("small", func() {
@@ -28,9 +27,7 @@ var _ = Describe("Signatures", func() {
 
 			BeforeEach(func() {
 				n := uint16(10)
-				pu = tests.NewPreunit(0, gomel.EmptyCrown(n), []byte{}, nil)
-				sig = priv.Sign(pu)
-				pu.SetSignature(sig)
+				pu = tests.NewPreunit(0, gomel.EmptyCrown(n), []byte{}, nil, priv)
 			})
 
 			It("Should return true when checking by hand", func() {
@@ -38,8 +35,7 @@ var _ = Describe("Signatures", func() {
 			})
 
 			It("Should return false for forged signature", func() {
-				sig[0]++
-				pu.SetSignature(sig)
+				pu.Signature()[0]++
 				Expect(pub.Verify(pu)).To(BeFalse())
 			})
 		})

@@ -79,7 +79,7 @@ func (pu *preunit) View() *gomel.Crown {
 	return pu.crown
 }
 
-// ComputeHash calculates the value of unit's hash based on provided data.
+// computeHash calculates the value of unit's hash based on provided data.
 func computeHash(id uint64, crown *gomel.Crown, data core.Data, rsData []byte) *gomel.Hash {
 	var buf bytes.Buffer
 	idBytes := make([]byte, 8)
