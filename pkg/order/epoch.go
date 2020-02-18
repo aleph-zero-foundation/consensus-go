@@ -15,6 +15,7 @@ type epoch struct {
 	adder    gomel.Adder
 	dag      gomel.Dag
 	extender *linear.Extender
+	rs       gomel.RandomSource
 }
 
 func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gomel.RandomSourceFactory, alert gomel.Alerter, unitBelt chan<- gomel.Unit, output chan<- []gomel.Unit, log zerolog.Logger) *epoch {
@@ -29,6 +30,7 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 		adder:    adr,
 		dag:      dg,
 		extender: ext,
+		rs:       rs,
 	}
 }
 
