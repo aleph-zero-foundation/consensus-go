@@ -277,7 +277,7 @@ var _ = Describe("Dag", func() {
 				})
 				It("Should not return any prime units", func() {
 					for l := 0; l < 10; l++ {
-						primeUnits := dag.PrimeUnits(l)
+						primeUnits := dag.UnitsOnLevel(l)
 						Expect(primeUnits).NotTo(BeNil())
 						for i := uint16(0); i < nProcesses; i++ {
 							Expect(len(primeUnits.Get(i))).To(BeZero())
@@ -301,7 +301,7 @@ var _ = Describe("Dag", func() {
 					}
 				})
 				It("Should return it as the only prime unit", func() {
-					primeUnits := dag.PrimeUnits(0)
+					primeUnits := dag.UnitsOnLevel(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
@@ -330,7 +330,7 @@ var _ = Describe("Dag", func() {
 					}
 				})
 				It("Should return both of them as the respective prime units", func() {
-					primeUnits := dag.PrimeUnits(0)
+					primeUnits := dag.UnitsOnLevel(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(len(primeUnits.Get(1))).To(Equal(1))
@@ -360,7 +360,7 @@ var _ = Describe("Dag", func() {
 					}
 				})
 				It("Should return both of them as the respective prime units", func() {
-					primeUnits := dag.PrimeUnits(0)
+					primeUnits := dag.UnitsOnLevel(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(2))
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[0][0].Hash()))
@@ -399,7 +399,7 @@ var _ = Describe("Dag", func() {
 				})
 
 				It("Should return the parents as the respective prime units on level 0 and top unit as a prime unit on level 1", func() {
-					primeUnits := dag.PrimeUnits(0)
+					primeUnits := dag.UnitsOnLevel(0)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(len(primeUnits.Get(0))).To(Equal(1))
 					Expect(len(primeUnits.Get(1))).To(Equal(1))
@@ -410,7 +410,7 @@ var _ = Describe("Dag", func() {
 					for i := uint16(3); i < nProcesses; i++ {
 						Expect(len(primeUnits.Get(i))).To(BeZero())
 					}
-					primeUnits = dag.PrimeUnits(1)
+					primeUnits = dag.UnitsOnLevel(1)
 					Expect(primeUnits).NotTo(BeNil())
 					Expect(primeUnits.Get(0)[0].Hash()).To(Equal(addFirst[1][0].Hash()))
 					for i := uint16(1); i < nProcesses; i++ {
@@ -443,7 +443,7 @@ var _ = Describe("Dag", func() {
 					})
 
 					It("Should return exactly two prime units at level 1 (processes 0, 1).", func() {
-						primeUnits := dag.PrimeUnits(1)
+						primeUnits := dag.UnitsOnLevel(1)
 						Expect(primeUnits).NotTo(BeNil())
 
 						Expect(len(primeUnits.Get(0))).To(Equal(1))

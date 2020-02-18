@@ -84,7 +84,7 @@ var _ = Describe("Creating", func() {
 					Expect(pu.Creator()).To(Equal(uint16(7)))
 					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
-						u := dag.PrimeUnits(0).Get(i)[0]
+						u := dag.UnitsOnLevel(0).Get(i)[0]
 						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes = append(hashes, u.Hash())
 					}
@@ -102,7 +102,7 @@ var _ = Describe("Creating", func() {
 					Expect(pu.Creator()).To(Equal(uint16(0)))
 					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
-						u := dag.PrimeUnits(0).Get(i)[0]
+						u := dag.UnitsOnLevel(0).Get(i)[0]
 						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes = append(hashes, u.Hash())
 					}
@@ -162,7 +162,7 @@ var _ = Describe("Creating", func() {
 					Expect(pu.Creator()).To(Equal(uint16(7)))
 					hashes := []*gomel.Hash{}
 					for i := uint16(0); i < dag.NProc(); i++ {
-						u := dag.PrimeUnits(0).Get(i)[0]
+						u := dag.UnitsOnLevel(0).Get(i)[0]
 						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes = append(hashes, u.Hash())
 					}
@@ -180,12 +180,12 @@ var _ = Describe("Creating", func() {
 					Expect(pu.Creator()).To(Equal(uint16(0)))
 					hashes := make([]*gomel.Hash, dag.NProc())
 					for i := uint16(1); i < dag.NProc(); i++ {
-						u := dag.PrimeUnits(1).Get(i)[0]
+						u := dag.UnitsOnLevel(1).Get(i)[0]
 						Expect(pu.View().Heights[i]).To(Equal(u.Height()))
 						hashes[i] = u.Hash()
 					}
-					Expect(pu.View().Heights[0]).To(Equal(dag.PrimeUnits(0).Get(0)[0].Height()))
-					hashes[0] = dag.PrimeUnits(0).Get(0)[0].Hash()
+					Expect(pu.View().Heights[0]).To(Equal(dag.UnitsOnLevel(0).Get(0)[0].Height()))
+					hashes[0] = dag.UnitsOnLevel(0).Get(0)[0].Hash()
 					Expect(pu.View().ControlHash).To(Equal(*gomel.CombineHashes(hashes)))
 				})
 			})

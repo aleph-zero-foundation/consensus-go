@@ -68,7 +68,7 @@ var _ = Describe("Beacon", func() {
 		})
 		Context("that are dealing, but without a tcoin included", func() {
 			It("Should return an error", func() {
-				u := dag[0].PrimeUnits(0).Get(0)[0]
+				u := dag[0].UnitsOnLevel(0).Get(0)[0]
 				um := newUnitMock(u, []byte{})
 				err := dag[0].Check(um)
 				Expect(err).To(HaveOccurred())
@@ -78,7 +78,7 @@ var _ = Describe("Beacon", func() {
 		Context("that are voting", func() {
 			Context("but have no votes", func() {
 				It("Should return an error", func() {
-					u := dag[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].UnitsOnLevel(3).Get(0)[0]
 					um := newUnitMock(u, []byte{})
 					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
@@ -87,7 +87,7 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("but have one vote missing", func() {
 				It("Should return an error", func() {
-					u := dag[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].UnitsOnLevel(3).Get(0)[0]
 					votes := u.RandomSourceData()
 					votes[0] = 0
 					um := newUnitMock(u, votes)
@@ -98,7 +98,7 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("but have an incorrect vote", func() {
 				It("Should return an error", func() {
-					u := dag[0].PrimeUnits(3).Get(0)[0]
+					u := dag[0].UnitsOnLevel(3).Get(0)[0]
 					votes := u.RandomSourceData()
 					votes[dag[0].NProc()-1] = 2
 					// preparing fake proof
@@ -120,7 +120,7 @@ var _ = Describe("Beacon", func() {
 		Context("that should contain shares", func() {
 			Context("Without random source data", func() {
 				It("Should return an error", func() {
-					u := dag[0].PrimeUnits(8).Get(0)[0]
+					u := dag[0].UnitsOnLevel(8).Get(0)[0]
 					um := newUnitMock(u, []byte{})
 					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
@@ -129,7 +129,7 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("With missing shares", func() {
 				It("Should return an error", func() {
-					u := dag[0].PrimeUnits(8).Get(0)[0]
+					u := dag[0].UnitsOnLevel(8).Get(0)[0]
 					shares := make([]byte, dag[0].NProc())
 					um := newUnitMock(u, shares)
 					err := dag[0].Check(um)
@@ -139,9 +139,9 @@ var _ = Describe("Beacon", func() {
 			})
 			Context("With incorrect shares", func() {
 				It("Should return an error", func() {
-					u := dag[0].PrimeUnits(8).Get(0)[0]
+					u := dag[0].UnitsOnLevel(8).Get(0)[0]
 					// taking shares of a unit of different level
-					v := dag[0].PrimeUnits(9).Get(0)[0]
+					v := dag[0].UnitsOnLevel(9).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
 					err := dag[0].Check(um)
 					Expect(err).To(HaveOccurred())
@@ -206,7 +206,7 @@ var _ = Describe("Beacon", func() {
 					if i == maliciousNode {
 						continue
 					}
-					tc, _, _ := tcoin.Decode(dag[pid].PrimeUnits(0).Get(i)[0].RandomSourceData(), i, pid, p2pKeys[pid][i])
+					tc, _, _ := tcoin.Decode(dag[pid].UnitsOnLevel(0).Get(i)[0].RandomSourceData(), i, pid, p2pKeys[pid][i])
 					subcoins = append(subcoins, tc)
 				}
 				multicoin := tcoin.CreateMulticoin(subcoins)

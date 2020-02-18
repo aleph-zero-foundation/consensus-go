@@ -127,7 +127,7 @@ func (dag *Dag) Insert(u gomel.Unit) {
 }
 
 // PrimeUnits returns the prime units at the given level.
-func (dag *Dag) PrimeUnits(level int) gomel.SlottedUnits {
+func (dag *Dag) UnitsOnLevel(level int) gomel.SlottedUnits {
 	dag.RLock()
 	defer dag.RUnlock()
 	if level < len(dag.primeUnits) {

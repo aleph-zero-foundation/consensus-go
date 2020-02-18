@@ -21,8 +21,8 @@ type Dag interface {
 	Check(Unit) error
 	// Insert puts a unit into the dag.
 	Insert(Unit)
-	// PrimeUnits returns all prime units on a given level of the dag.
-	PrimeUnits(int) SlottedUnits
+	// UnitsOnLevel returns all units on a given level of the dag.
+	UnitsOnLevel(int) SlottedUnits
 	// UnitsOnHeight returns all units on a given height of the dag.
 	UnitsOnHeight(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.

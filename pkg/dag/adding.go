@@ -49,7 +49,7 @@ func (dag *dag) Insert(u gomel.Unit) {
 		hook(u)
 	}
 	dag.updateUnitsOnHeight(u)
-	dag.addPrime(u)
+	dag.updateUnitsOnLevel(u)
 	dag.units.add(u)
 	dag.updateMaximal(u)
 	for _, hook := range dag.postInsert {
@@ -57,11 +57,11 @@ func (dag *dag) Insert(u gomel.Unit) {
 	}
 }
 
-func (dag *dag) addPrime(u gomel.Unit) {
-	if u.Level() >= dag.primeUnits.Len() {
-		dag.primeUnits.extendBy(10)
+func (dag *dag) updateUnitsOnLevel(u gomel.Unit) {
+	if u.Level() >= dag.levelUnits.Len() {
+		dag.levelUnits.extendBy(10)
 	}
-	su, _ := dag.primeUnits.getFiber(u.Level())
+	su, _ := dag.levelUnits.getFiber(u.Level())
 	creator := u.Creator()
 	oldPrimes := su.Get(creator)
 	primesByCreator := make([]gomel.Unit, len(oldPrimes), len(oldPrimes)+1)

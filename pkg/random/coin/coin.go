@@ -203,7 +203,7 @@ func (c *coin) combineShares(level int) ([]byte, error) {
 	shares := []*tcoin.CoinShare{}
 	shareCollected := make(map[uint16]bool)
 
-	su := c.dag.PrimeUnits(level)
+	su := c.dag.UnitsOnLevel(level)
 	if su == nil {
 		return nil, errors.New("no primes on a given level")
 	}
