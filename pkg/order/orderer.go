@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	beltSize = 1000
+	beltSize = 10000
 )
 
 type orderer struct {
@@ -53,15 +53,18 @@ func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
 }
 
 func (ord *orderer) Start() error {
-	ord.wg.Add(1)
+	ord.creator.newEpoch(gomel.EpochID(0), core.Data{})
+	ord.wg.Add(2)
+	go ord.creator.work()
 	go ord.preblockMaker()
 	return nil
 }
 
 func (ord *orderer) Stop() {
-	close(ord.orderedUnits)
 	ord.previous.close()
 	ord.current.close()
+	close(ord.orderedUnits)
+	close(ord.unitBelt)
 	ord.wg.Wait()
 }
 
