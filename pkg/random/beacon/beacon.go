@@ -114,7 +114,6 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 		// RandomBytes asked on too low level
 		return nil
 	}
-
 	shares := []*tcoin.CoinShare{}
 	units := unitsOnLevel(b.dag, level)
 	for _, u := range units {
@@ -273,25 +272,28 @@ func (b *Beacon) verifyWrongSecretKeyProof(prover, suspect uint16, proof p2p.Sha
 	return !b.tcoins[suspect].CheckSecretKey(prover, key)
 }
 
-// DataToInclude returns data which should be included in a unit
-// with the given creator and set of parents.
-func (b *Beacon) DataToInclude(creator uint16, parents []gomel.Unit, level int) ([]byte, error) {
-	if level == dealingLevel {
-		nProc := b.conf.NProc
-		gtc := tcoin.NewRandomGlobal(nProc, gomel.MinimalTrusted(nProc))
-		tc, err := gtc.Encrypt(b.p2pKeys)
-		if err != nil {
-			return nil, err
-		}
-		return tc.Encode(), nil
+// DealingData returns random source data that should be included in the dealing unit.
+func (b *Beacon) DealingData(epoch gomel.EpochID) ([]byte, error) {
+	if epoch != 0 {
+		return nil, errors.New("Beacon was asked for dealing data with non-zero epoch")
 	}
+	gtc := tcoin.NewRandomGlobal(b.conf.NProc, gomel.MinimalTrusted(b.conf.NProc))
+	tc, err := gtc.Encrypt(b.p2pKeys)
+	if err != nil {
+		return nil, err
+	}
+	return tc.Encode(), nil
+}
+
+// DataToInclude returns data which should be included in a unit with given parents and level.
+func (b *Beacon) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) {
 	if level == votingLevel {
 		return marshallVotes(b.votes[b.pid]), nil
 	}
 	if level >= sharesLevel {
 		cses := make([]*tcoin.CoinShare, b.conf.NProc)
 		for pid := uint16(0); pid < b.conf.NProc; pid++ {
-			if b.votes[creator][pid] != nil && b.votes[creator][pid].isCorrect() {
+			if b.votes[b.conf.Pid][pid] != nil && b.votes[b.conf.Pid][pid].isCorrect() {
 				cses[pid] = b.tcoins[pid].CreateCoinShare(nonce(level))
 			}
 		}
