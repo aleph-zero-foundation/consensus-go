@@ -31,6 +31,9 @@ type orderer struct {
 }
 
 // NewOrderer TODO
+//
+// Note: units on the unit belt does not have to appear in topological order,
+// but for a given creator they are ordered by ascending height.
 func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, ps core.PreblockSink, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
@@ -54,7 +57,6 @@ func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
 
 func (ord *orderer) Start() error {
 	ord.creator.newEpoch(gomel.EpochID(0), core.Data{})
-	ord.wg.Add(2)
 	go ord.creator.work()
 	go ord.preblockMaker()
 	return nil
@@ -69,6 +71,7 @@ func (ord *orderer) Stop() {
 }
 
 func (ord *orderer) preblockMaker() {
+	ord.wg.Add(1)
 	defer ord.wg.Done()
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
@@ -152,11 +155,6 @@ func (ord *orderer) MaxUnits(epoch gomel.EpochID) gomel.SlottedUnits {
 }
 
 // GetInfo returns DagInfo of the dag from the most recent epoch.
-// TODO this could potentially be counterproductive, as we gossip only about our most recent epoch.
-//   That means just after switching to a new epoch due to "external proof", we immediately abandon the
-//   previous epoch, even though we might still benefit from one last gossip to help us produce last timing units.
-//   A potential solution would be to access the last-produced-preblock-epoch variable kept by preblockMaker() and
-//   gossip also about "previous" if we haven't produced any preblock from "current".
 // TODO: don't always include previous info. Come up with heuristics for that.
 func (ord *orderer) GetInfo() [2]*gomel.DagInfo {
 	ord.mx.RLock()

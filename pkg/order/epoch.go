@@ -24,7 +24,11 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 	rs := rsf.NewRandomSource(dg)
 	ext := linear.NewExtender(dg, rs, conf, output, log)
 	dg.AfterInsert(func(_ gomel.Unit) { ext.Notify() })
-	dg.AfterInsert(func(u gomel.Unit) { unitBelt <- u })
+	dg.AfterInsert(func(u gomel.Unit) {
+		if u.Creator() != conf.Pid {
+			unitBelt <- u
+		}
+	})
 	return &epoch{
 		id:       id,
 		adder:    adr,

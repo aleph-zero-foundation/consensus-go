@@ -40,16 +40,17 @@ func newCreator(conf config.Config, ord *orderer, ds core.DataSource, unitBelt c
 }
 
 func (cr *creator) work() {
+	cr.ord.wg.Add(1)
 	defer cr.ord.wg.Done()
 	var parents []gomel.Unit
 	var level int
 	for u := range cr.unitBelt {
-		cr.updateCandidates(u)
+		cr.update(u)
 		if cr.level > cr.last.Level() { // we can create new unit
 			// Step 1: update candidates with all units waiting on the unit belt
 			n := len(cr.unitBelt)
 			for i := 0; i < n; i++ {
-				cr.updateCandidates(<-cr.unitBelt)
+				cr.update(<-cr.unitBelt)
 			}
 			if cr.level > cr.last.Level() {
 				// we need to check that again, in case epoch changed in Step 1.
@@ -68,24 +69,34 @@ func (cr *creator) work() {
 	}
 }
 
-// updateCandidates puts the provided unit in parent candidates provided that:
-// a) the creator is not frozen
-// b) the level is higher than the level of the previous candidate for that creator
-func (cr *creator) updateCandidates(u gomel.Unit) {
+// update takes a unit that has recently be added to the orderer and updates
+// creator internal state with information contained in that unit
+func (cr *creator) update(u gomel.Unit) {
+	// if unit's creator is known to be a forker we simply ignore it
 	if cr.frozen[u.Creator()] {
 		return
 	}
 
+	// if the unit is from a new epoch, switch to that epoch
+	// since units appear on the belt in order they were added to the dag
+	// the first unit from new epoch is always a witness unit
 	if u.EpochID() > cr.epoch {
-		// since units appear on the belt in order they were added to the dag
-		// the first unit from new epoch is always a dealing unit
+		if !witness(u) {
+			panic("creator received non-witness unit from new epoch")
+		}
 		cr.candidates = make([]gomel.Unit, cr.conf.NProc)
 		cr.maxLvl = -1
 		cr.onMaxLvl = 0
 		cr.newEpoch(u.EpochID(), u.Data())
 		return
 	}
+	cr.updateCandidates(u)
+	cr.updateShares(u)
+}
 
+// updateCandidates puts the provided unit in parent candidates provided that
+// the level is higher than the level of the previous candidate for that creator
+func (cr *creator) updateCandidates(u gomel.Unit) {
 	prev := cr.candidates[u.Creator()]
 	if prev == nil || prev.Level() < u.Level() {
 		cr.candidates[u.Creator()] = u
@@ -101,6 +112,10 @@ func (cr *creator) updateCandidates(u gomel.Unit) {
 			cr.level++
 		}
 	}
+}
+
+// updateShares extracts threshold signature shares from finishing units.
+func (cr *creator) updateShares(u gomel.Unit) {
 }
 
 // freezeParent tells the creator to stop updating parent candidates for the given pid.
@@ -131,9 +146,9 @@ func (cr *creator) getParentsForLevel(level int) []gomel.Unit {
 	return makeConsistent(result)
 }
 
-// createUnit creates a unit with the given parents, level, epoch and data. Assumes provided parameters
-// are consistent, that means level == gomel.LevelFromParents(parents) and epoch == parents[i].EpochID()
-// Inserts the new unit into orderer and updates local info about candidates
+// createUnit creates a unit with the given parents, level, and data. Assumes provided parameters
+// are consistent, that means level == gomel.LevelFromParents(parents) and cr.epoch == parents[i].EpochID()
+// Inserts the new unit into orderer and updates local info about candidates.
 func (cr *creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	rsData := cr.ord.rsData(level, parents, cr.epoch)
 	u := unit.New(cr.conf.Pid, cr.epoch, parents, level, data, rsData, cr.conf.PrivateKey)
