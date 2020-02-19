@@ -1,8 +1,9 @@
 package order
 
 import (
-	"github.com/rs/zerolog"
+	"sync"
 
+	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/unit"
@@ -15,13 +16,13 @@ type creator struct {
 	ds         core.DataSource
 	unitBelt   chan gomel.Unit
 	epoch      gomel.EpochID
-	last       gomel.Unit
 	candidates []gomel.Unit
 	maxLvl     int // max level of units in candidates
 	onMaxLvl   int // number of candidates on maxLvl
 	level      int // level of unit we could produce with current candidates
 	quorum     int
 	frozen     map[uint16]bool
+	mx         sync.Mutex
 	log        zerolog.Logger
 }
 
@@ -45,28 +46,34 @@ func (cr *creator) work() {
 	var parents []gomel.Unit
 	var level int
 	for u := range cr.unitBelt {
+		cr.mx.Lock()
 		cr.update(u)
-		if cr.level > cr.last.Level() { // we can create new unit
+		if cr.ready() {
 			// Step 1: update candidates with all units waiting on the unit belt
 			n := len(cr.unitBelt)
 			for i := 0; i < n; i++ {
 				cr.update(<-cr.unitBelt)
 			}
-			if cr.level > cr.last.Level() {
+			if cr.ready() {
 				// we need to check that again, in case epoch changed in Step 1.
 				// Step 2: pick parents and level depending on creating strategy
 				if cr.conf.CanSkipLevel {
 					level = cr.level
 					parents = cr.getParents()
 				} else {
-					level = cr.last.Level() + 1
+					level = cr.candidates[cr.conf.Pid].Level() + 1
 					parents = cr.getParentsForLevel(level)
 				}
 				// Step 3: create unit
 				cr.createUnit(parents, level, cr.ds.GetData())
 			}
 		}
+		cr.mx.Unlock()
 	}
+}
+
+func (cr *creator) ready() bool {
+	return cr.level > cr.candidates[cr.conf.Pid].Level()
 }
 
 // update takes a unit that has recently be added to the orderer and updates
@@ -84,14 +91,21 @@ func (cr *creator) update(u gomel.Unit) {
 		if !witness(u) {
 			panic("creator received non-witness unit from new epoch")
 		}
-		cr.candidates = make([]gomel.Unit, cr.conf.NProc)
-		cr.maxLvl = -1
-		cr.onMaxLvl = 0
 		cr.newEpoch(u.EpochID(), u.Data())
 		return
 	}
+
 	cr.updateCandidates(u)
 	cr.updateShares(u)
+}
+
+// resetCandidates resets the candidates and all related variables to the initial state
+// (a slice with NProc nils). This is useful when switching to a new epoch.
+func (cr *creator) resetCandidates() {
+	cr.candidates = make([]gomel.Unit, cr.conf.NProc)
+	cr.maxLvl = -1
+	cr.onMaxLvl = 0
+	cr.level = 0
 }
 
 // updateCandidates puts the provided unit in parent candidates provided that
@@ -112,16 +126,20 @@ func (cr *creator) updateCandidates(u gomel.Unit) {
 			cr.level++
 		}
 	}
+
 }
 
 // updateShares extracts threshold signature shares from finishing units.
 func (cr *creator) updateShares(u gomel.Unit) {
+	//TODO
 }
 
-// freezeParent tells the creator to stop updating parent candidates for the given pid.
+// freezeParent tells the creator to stop updating parent candidates for the given pid
+// and use the corresponding parent of our last created unit instead. Returns that parent.
 func (cr *creator) freezeParent(pid uint16) gomel.Unit {
-	// TODO this method is going to be called from outside. Needs to be protected with mutex!
-	u := cr.last.Parents()[pid]
+	cr.mx.Lock()
+	defer cr.mx.Unlock()
+	u := cr.candidates[cr.conf.Pid].Parents()[pid]
 	cr.candidates[pid] = u
 	cr.frozen[pid] = true
 	return u
