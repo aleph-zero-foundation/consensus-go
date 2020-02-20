@@ -14,8 +14,8 @@ type creator struct {
 	conf       config.Config
 	ord        *orderer
 	ds         core.DataSource
-	unitBelt   chan gomel.Unit
 	epoch      gomel.EpochID
+	epochDone  bool
 	candidates []gomel.Unit
 	maxLvl     int // max level of units in candidates
 	onMaxLvl   int // number of candidates on maxLvl
@@ -26,12 +26,11 @@ type creator struct {
 	log        zerolog.Logger
 }
 
-func newCreator(conf config.Config, ord *orderer, ds core.DataSource, unitBelt chan gomel.Unit, log zerolog.Logger) *creator {
+func newCreator(conf config.Config, ord *orderer, ds core.DataSource, log zerolog.Logger) *creator {
 	return &creator{
 		conf:       conf,
 		ord:        ord,
 		ds:         ds,
-		unitBelt:   unitBelt,
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
 		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
@@ -43,16 +42,18 @@ func newCreator(conf config.Config, ord *orderer, ds core.DataSource, unitBelt c
 func (cr *creator) work() {
 	cr.ord.wg.Add(1)
 	defer cr.ord.wg.Done()
+
 	var parents []gomel.Unit
 	var level int
-	for u := range cr.unitBelt {
+
+	for u := range cr.ord.unitBelt {
 		cr.mx.Lock()
 		cr.update(u)
 		if cr.ready() {
 			// Step 1: update candidates with all units waiting on the unit belt
-			n := len(cr.unitBelt)
+			n := len(cr.ord.unitBelt)
 			for i := 0; i < n; i++ {
-				cr.update(<-cr.unitBelt)
+				cr.update(<-cr.ord.unitBelt)
 			}
 			if cr.ready() {
 				// we need to check that again, in case epoch changed in Step 1.
@@ -65,22 +66,44 @@ func (cr *creator) work() {
 					parents = cr.getParentsForLevel(level)
 				}
 				// Step 3: create unit
-				cr.createUnit(parents, level, cr.ds.GetData())
+				cr.createUnit(parents, level, cr.getData(level))
 			}
 		}
 		cr.mx.Unlock()
 	}
 }
 
+// ready checks if the creator is ready to produce a new unit. Usually that means:
+// "do we have enough new candidates to produce a unit with level higher than the previous one?"
 func (cr *creator) ready() bool {
-	return cr.level > cr.candidates[cr.conf.Pid].Level()
+	return !cr.epochDone && cr.level > cr.candidates[cr.conf.Pid].Level()
+}
+
+func (cr *creator) getData(level int) core.Data {
+	if level < cr.conf.OrderStartLevel+cr.conf.EpochLength {
+		return cr.ds.GetData()
+	}
+	for {
+		select {
+		case timingUnit := <-cr.ord.proofs:
+			if timingUnit.EpochID() == cr.epoch {
+				cr.epochDone = true
+				// TODO
+				// produce share, convert to core.Data and return
+			}
+			continue
+		default:
+			break
+		}
+	}
+	return nil
 }
 
 // update takes a unit that has recently be added to the orderer and updates
 // creator internal state with information contained in that unit
 func (cr *creator) update(u gomel.Unit) {
-	// if unit's creator is known to be a forker we simply ignore it
-	if cr.frozen[u.Creator()] {
+	// if the unit is from an older epoch or unit's creator is known to be a forker, we simply ignore it
+	if cr.frozen[u.Creator()] || u.EpochID() < cr.epoch {
 		return
 	}
 
@@ -95,17 +118,16 @@ func (cr *creator) update(u gomel.Unit) {
 		return
 	}
 
-	cr.updateCandidates(u)
-	cr.updateShares(u)
-}
+	// if this is a finishing unit try to extract threshold signature share from it.
+	// If there are enough shares to produce the signature (and therefore a proof that
+	// the current epoch is finished) switch to a new epoch.
+	data := cr.updateShares(u)
+	if data != nil {
+		cr.newEpoch(cr.epoch+1, u.Data())
+		return
+	}
 
-// resetCandidates resets the candidates and all related variables to the initial state
-// (a slice with NProc nils). This is useful when switching to a new epoch.
-func (cr *creator) resetCandidates() {
-	cr.candidates = make([]gomel.Unit, cr.conf.NProc)
-	cr.maxLvl = -1
-	cr.onMaxLvl = 0
-	cr.level = 0
+	cr.updateCandidates(u)
 }
 
 // updateCandidates puts the provided unit in parent candidates provided that
@@ -126,11 +148,35 @@ func (cr *creator) updateCandidates(u gomel.Unit) {
 			cr.level++
 		}
 	}
+}
 
+// resetCandidates resets the candidates and all related variables to the initial state
+// (a slice with NProc nils). This is useful when switching to a new epoch.
+func (cr *creator) resetCandidates() {
+	cr.candidates = make([]gomel.Unit, cr.conf.NProc)
+	cr.maxLvl = -1
+	cr.onMaxLvl = 0
+	cr.level = 0
 }
 
 // updateShares extracts threshold signature shares from finishing units.
-func (cr *creator) updateShares(u gomel.Unit) {
+// If there are enough shares to combine, produce the signature and convert it to core.Data.
+func (cr *creator) updateShares(u gomel.Unit) core.Data {
+	if u.Level() >= cr.conf.OrderStartLevel+cr.conf.EpochLength {
+		// u is a finishing unit, that means it does not contain regular data
+		data := u.Data()
+		if len(data) > 0 {
+			// TODO
+			// Unmarshall Share from d and check correctness
+			// Put it in shares
+			// Try to combine
+			// If successful, marshall signature and return
+		}
+	}
+	return nil
+}
+
+func (cr *creator) resetShares() {
 	//TODO
 }
 
@@ -157,7 +203,7 @@ func (cr *creator) getParents() []gomel.Unit {
 func (cr *creator) getParentsForLevel(level int) []gomel.Unit {
 	result := make([]gomel.Unit, cr.conf.NProc)
 	for i, u := range cr.candidates {
-		for u.Level() >= level {
+		for u != nil && u.Level() >= level {
 			u = gomel.Predecessor(u)
 		}
 		result[i] = u
@@ -179,7 +225,9 @@ func (cr *creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 // newEpoch creates a dealing unit for the chosen epoch with the provided data.
 func (cr *creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epoch = epoch
+	cr.epochDone = false
 	cr.resetCandidates()
+	cr.resetShares()
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 

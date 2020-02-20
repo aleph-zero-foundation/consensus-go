@@ -24,6 +24,7 @@ type orderer struct {
 	previous     *epoch
 	creator      *creator
 	unitBelt     chan gomel.Unit
+	lastTiming   chan gomel.Unit // used to pass the last timing unit of the epoch to creator
 	orderedUnits chan []gomel.Unit
 	mx           sync.RWMutex
 	wg           sync.WaitGroup
@@ -40,10 +41,11 @@ func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataS
 		rsf:          rsf,
 		ps:           ps,
 		unitBelt:     make(chan gomel.Unit, beltSize),
+		lastTiming:   make(chan gomel.Unit, 10),
 		orderedUnits: make(chan []gomel.Unit, 10),
 		log:          log,
 	}
-	ord.creator = newCreator(conf, ord, ds, ord.unitBelt, log)
+	ord.creator = newCreator(conf, ord, ds, log)
 	return ord
 }
 
@@ -75,12 +77,17 @@ func (ord *orderer) preblockMaker() {
 	defer ord.wg.Done()
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
-		epoch := round[0].EpochID()
+		timingUnit := round[len(round)-1]
+		if timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
+			ord.lastTiming <- timingUnit
+		}
+		epoch := timingUnit.EpochID()
 		if epoch >= current {
 			ord.ps <- gomel.ToPreblock(round)
 		}
 		current = epoch
 	}
+	close(ord.lastTiming)
 }
 
 // AddPreunits sends preunits received from other committee members to their corresponding epochs.
@@ -94,7 +101,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
 		}
 		ep, newer := ord.getEpoch(epoch)
 		if newer {
-			if witness(preunits[0]) {
+			if witness(preunits[0], conf.ThresholdKey) {
 				ep = ord.newEpoch(epoch)
 			} else {
 				// TODO: don't do this if preunits[0] is too high
@@ -253,16 +260,7 @@ func (ord *orderer) rsData(level int, parents []gomel.Unit, epoch gomel.EpochID)
 	}
 	if err != nil {
 		ord.log.Error().Str("where", "orderer.rsData").Msg(err.Error())
-		return nil
+		return []byte{}
 	}
 	return result
-}
-
-// witness checks if the given preunit is a proof that a new epoch started.
-func witness(pu gomel.Preunit) bool {
-	if !gomel.Dealing(pu) {
-		return false
-	}
-	// TODO check threshold signature
-	return true
 }
