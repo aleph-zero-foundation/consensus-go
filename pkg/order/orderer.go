@@ -72,6 +72,10 @@ func (ord *orderer) Stop() {
 	ord.wg.Wait()
 }
 
+// preblockMaker waits for ordered round of units produced by Extenders and produces Preblocks based on them.
+// Since Extenders in multiple epochs can supply ordered rounds simultaneously, preblockMaker needs to ensure that
+// Preblocks are produced in ascending order with respect to epochs. For the last ordered round
+// of the epoch, the timing unit defining it is sent to the creator (to produce signature shares.)
 func (ord *orderer) preblockMaker() {
 	ord.wg.Add(1)
 	defer ord.wg.Done()
@@ -205,7 +209,7 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 func (ord *orderer) getEpoch(epoch gomel.EpochID) (*epoch, bool) {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
-	if epoch > ord.current.id {
+	if ord.current == nil || epoch > ord.current.id {
 		return nil, true
 	}
 	if epoch == ord.current.id {
@@ -217,11 +221,14 @@ func (ord *orderer) getEpoch(epoch gomel.EpochID) (*epoch, bool) {
 	return nil, false
 }
 
+// newEpoch creates and returns a new epoch object with the given EpochID. If such epoch already exists, returns it.
 func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 	ord.mx.Lock()
 	defer ord.mx.Unlock()
-	if epoch > ord.current.id {
-		ord.previous.close()
+	if ord.current == nil || epoch > ord.current.id {
+		if ord.previous != nil {
+			ord.previous.close()
+		}
 		ord.previous = ord.current
 		ord.current = newEpoch(epoch, ord.conf, ord.syncer, ord.rsf, ord.alerter, ord.unitBelt, ord.orderedUnits, ord.log)
 		return ord.current
@@ -235,16 +242,21 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 	return nil
 }
 
+// insert puts the provided unit directly into the corresponding epoch. If such epoch does not exist, creates it.
+// All correctness checks (witness, adder, dag checks) are skipped. This method is meant for our own units only.
 func (ord *orderer) insert(unit gomel.Unit) {
-	ep, newer := ord.getEpoch(unit.EpochID())
-	if newer {
-		ep = ord.newEpoch(unit.EpochID())
-	}
-	if ep != nil {
-		ep.dag.Insert(unit)
+	if unit.Creator() == ord.conf.Pid {
+		ep, newer := ord.getEpoch(unit.EpochID())
+		if newer {
+			ep = ord.newEpoch(unit.EpochID())
+		}
+		if ep != nil {
+			ep.dag.Insert(unit)
+		}
 	}
 }
 
+// rsData produces random source data for a unit with provided level, parents and epoch.
 func (ord *orderer) rsData(level int, parents []gomel.Unit, epoch gomel.EpochID) []byte {
 	var result []byte
 	var err error

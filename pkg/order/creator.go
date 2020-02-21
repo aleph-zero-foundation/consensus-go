@@ -41,6 +41,7 @@ func newCreator(conf config.Config, ord *orderer, ds core.DataSource, log zerolo
 	}
 }
 
+// work contains the main operatio
 func (cr *creator) work() {
 	cr.ord.wg.Add(1)
 	defer cr.ord.wg.Done()
@@ -115,17 +116,17 @@ func (cr *creator) getData(level int) core.Data {
 	return core.Data{}
 }
 
-// update takes a unit that has recently be added to the orderer and updates
-// creator internal state with information contained in that unit
+// update takes a unit that has recently been added to the orderer and updates
+// creator internal state with information contained in that unit.
 func (cr *creator) update(u gomel.Unit) {
 	// if the unit is from an older epoch or unit's creator is known to be a forker, we simply ignore it
 	if cr.frozen[u.Creator()] || u.EpochID() < cr.epoch {
 		return
 	}
 
-	// if the unit is from a new epoch, switch to that epoch
-	// since units appear on the belt in order they were added to the dag
-	// the first unit from new epoch is always a witness unit
+	// If the unit is from a new epoch, switch to that epoch.
+	// Since units appear on the belt in order they were added to the dag,
+	// the first unit from a new epoch is always a witness unit.
 	if u.EpochID() > cr.epoch {
 		if !witness(u, cr.conf.ThresholdKey) {
 			panic("creator received non-witness unit from new epoch")
@@ -134,7 +135,7 @@ func (cr *creator) update(u gomel.Unit) {
 		return
 	}
 
-	// if this is a finishing unit try to extract threshold signature share from it.
+	// If this is a finishing unit try to extract threshold signature share from it.
 	// If there are enough shares to produce the signature (and therefore a proof that
 	// the current epoch is finished) switch to a new epoch.
 	data := cr.updateShares(u)
@@ -147,8 +148,11 @@ func (cr *creator) update(u gomel.Unit) {
 }
 
 // updateCandidates puts the provided unit in parent candidates provided that
-// the level is higher than the level of the previous candidate for that creator
+// the level is higher than the level of the previous candidate for that creator.
 func (cr *creator) updateCandidates(u gomel.Unit) {
+	if u.EpochID() != cr.epoch {
+		return
+	}
 	prev := cr.candidates[u.Creator()]
 	if prev == nil || prev.Level() < u.Level() {
 		cr.candidates[u.Creator()] = u
@@ -176,8 +180,8 @@ func (cr *creator) resetCandidates() {
 }
 
 // updateShares extracts threshold signature shares from finishing units.
-// If there are enough shares to combine, produce the signature and convert it to core.Data.
-// Otherwise, nil is returned.
+// If there are enough shares to combine, it produces the signature and
+// converts it to core.Data. Otherwise, nil is returned.
 func (cr *creator) updateShares(u gomel.Unit) core.Data {
 	// ignore regular units and finishing units with empty data
 	if u.Level() < cr.conf.OrderStartLevel+cr.conf.EpochLength || len(u.Data()) == 0 {
@@ -201,6 +205,7 @@ func (cr *creator) updateShares(u gomel.Unit) core.Data {
 
 // freezeParent tells the creator to stop updating parent candidates for the given pid
 // and use the corresponding parent of our last created unit instead. Returns that parent.
+// TODO: this should be called when a fork is discovered and we need to produce commitment.
 func (cr *creator) freezeParent(pid uint16) gomel.Unit {
 	cr.mx.Lock()
 	defer cr.mx.Unlock()
@@ -233,7 +238,7 @@ func (cr *creator) getParentsForLevel(level int) []gomel.Unit {
 
 // createUnit creates a unit with the given parents, level, and data. Assumes provided parameters
 // are consistent, that means level == gomel.LevelFromParents(parents) and cr.epoch == parents[i].EpochID()
-// Inserts the new unit into orderer and updates local info about candidates.
+// Inserts the new unit into orderer and updates local info.
 func (cr *creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	rsData := cr.ord.rsData(level, parents, cr.epoch)
 	u := unit.New(cr.conf.Pid, cr.epoch, parents, level, data, rsData, cr.conf.PrivateKey)
@@ -241,7 +246,7 @@ func (cr *creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	cr.update(u)
 }
 
-// newEpoch creates a dealing unit for the chosen epoch with the provided data.
+// newEpoch switches the creator to a chosen epoch, resets candidates and shares and creates a dealing with the provided data.
 func (cr *creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epoch = epoch
 	cr.epochDone = false
@@ -250,8 +255,7 @@ func (cr *creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 
-// makeConsistent ensures that the set of parents follows "parent consistency rule".
-// Modifies the provided unit slice in place.
+// makeConsistent ensures that the set of parents follows "parent consistency rule". Modifies the provided unit slice in place.
 // Parent consistency rule means that unit's i-th parent cannot be lower (in a level sense) than
 // i-th parent of any other of that units parents. In other words, units seen from U "directly"
 // (as parents) cannot be below the ones seen "indirectly" (as parents of parents).

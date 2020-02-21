@@ -80,15 +80,19 @@ func decodeSignature(data core.Data) (*tss.Signature, []byte, error) {
 	return result, data[:proofLength], nil
 }
 
+// shareDB is a simple storage for threshold signature shares indexed by the message they sign.
 type shareDB struct {
-	tk   *tss.WeakThresholdKey
+	wtk  *tss.WeakThresholdKey
 	data map[string][]*tss.Share
 }
 
-func newShareDB(tk *tss.WeakThresholdKey) *shareDB {
-	return &shareDB{tk: tk, data: make(map[string][]*tss.Share)}
+// newShareDB constructs a storage for shares that uses the provided weak threshold key for combining shares.
+func newShareDB(wtk *tss.WeakThresholdKey) *shareDB {
+	return &shareDB{wtk: wtk, data: make(map[string][]*tss.Share)}
 }
 
+// add puts the share that signs msg to the storage. If there are enough shares (for that msg),
+// they are combined and the resulting signature is returned. Otherwise, returns nil.
 func (db *shareDB) add(share *tss.Share, msg []byte) *tss.Signature {
 	key := string(msg)
 	if shares, ok := db.data[key]; ok {
@@ -96,14 +100,15 @@ func (db *shareDB) add(share *tss.Share, msg []byte) *tss.Signature {
 	} else {
 		db.data[key] = []*tss.Share{share}
 	}
-	if len(db.data[key]) >= db.tk.Threshold() {
-		if sig, ok := db.tk.CombineShares(db.data[key]); ok {
+	if len(db.data[key]) >= db.wtk.Threshold() {
+		if sig, ok := db.wtk.CombineShares(db.data[key]); ok {
 			return sig
 		}
 	}
 	return nil
 }
 
+// reset empties the storage and brings it back to the initial state.
 func (db *shareDB) reset() {
 	db.data = make(map[string][]*tss.Share)
 }
