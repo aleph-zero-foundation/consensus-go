@@ -1,4 +1,4 @@
-package epochs
+package orderer
 
 import (
 	"github.com/rs/zerolog"

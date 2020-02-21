@@ -1,4 +1,4 @@
-package epochs
+package orderer
 
 import (
 	"sync"
@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
+	"gitlab.com/alephledger/consensus-go/pkg/creator"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
@@ -20,9 +21,9 @@ type orderer struct {
 	rsf          gomel.RandomSourceFactory
 	alerter      gomel.Alerter
 	ps           core.PreblockSink
+	creator      creator.Creator
 	current      *epoch
 	previous     *epoch
-	creator      *creator
 	unitBelt     chan gomel.Unit
 	lastTiming   chan gomel.Unit // used to pass the last timing unit of the epoch to creator
 	orderedUnits chan []gomel.Unit
@@ -45,7 +46,7 @@ func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataS
 		orderedUnits: make(chan []gomel.Unit, 10),
 		log:          log,
 	}
-	ord.creator = newCreator(conf, ord, ds, log)
+	ord.creator = creator.NewCreator(conf, ds, ord.insert, ord.rsData, log)
 	return ord
 }
 

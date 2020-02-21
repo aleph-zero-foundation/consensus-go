@@ -1,4 +1,4 @@
-package epochs
+package creator
 
 import (
 	"encoding/binary"
@@ -13,8 +13,8 @@ import (
 // This message is signed with a threshold signature.
 const proofLength = gomel.HashLength + 8
 
-// witness checks if the given preunit is a proof that a new epoch started.
-func witness(pu gomel.Preunit, tk *tss.WeakThresholdKey) bool {
+// EpochProof checks if the given preunit is a proof that a new epoch started.
+func EpochProof(pu gomel.Preunit, wtk *tss.WeakThresholdKey) bool {
 	if !gomel.Dealing(pu) {
 		return false
 	}
@@ -26,7 +26,7 @@ func witness(pu gomel.Preunit, tk *tss.WeakThresholdKey) bool {
 	if epoch+1 != pu.EpochID() {
 		return false
 	}
-	return tk.VerifySignature(sig, msg)
+	return wtk.VerifySignature(sig, msg)
 }
 
 // encodeProof produces encoded form of the proof that the current epoch ended.
