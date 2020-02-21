@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
+	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
+	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
 )
 
 // This could be encoded in a more optimal way.
@@ -77,26 +77,26 @@ func unmarshallVotes(data []byte, nProc uint16) ([]*vote, error) {
 // if this byte is 1, it is followed by
 // (2) the length of the marshalled share (2 bytes)
 // (3) the marshalled share (as much as declared in 2)
-func marshallShares(cses []*tcoin.CoinShare) []byte {
+func marshallShares(shs []*tss.Share) []byte {
 	var buf bytes.Buffer
-	for _, cs := range cses {
-		if cs == nil {
+	for _, sh := range shs {
+		if sh == nil {
 			buf.Write([]byte{0})
 		} else {
 			buf.Write([]byte{1})
-			csMarshalled := cs.Marshal()
-			binary.Write(&buf, binary.LittleEndian, uint16(len(csMarshalled)))
-			buf.Write(csMarshalled)
+			shMarshalled := sh.Marshal()
+			binary.Write(&buf, binary.LittleEndian, uint16(len(shMarshalled)))
+			buf.Write(shMarshalled)
 		}
 	}
 	return buf.Bytes()
 }
 
-func unmarshallShares(data []byte, nProc uint16) ([]*tcoin.CoinShare, error) {
-	shares := make([]*tcoin.CoinShare, nProc)
+func unmarshallShares(data []byte, nProc uint16) ([]*tss.Share, error) {
+	shares := make([]*tss.Share, nProc)
 	for pid := uint16(0); pid < nProc; pid++ {
 		if len(data) < 1 {
-			return nil, errors.New("cses wrongly encoded")
+			return nil, errors.New("shses wrongly encoded")
 		}
 		if data[0] == 0 {
 			shares[pid] = nil
@@ -104,20 +104,20 @@ func unmarshallShares(data []byte, nProc uint16) ([]*tcoin.CoinShare, error) {
 		} else if data[0] == 1 {
 			data = data[1:]
 			if len(data) < 2 {
-				return nil, errors.New("cses wrongly encoded")
+				return nil, errors.New("shses wrongly encoded")
 			}
-			csLen := binary.LittleEndian.Uint16(data[:2])
+			shsLen := binary.LittleEndian.Uint16(data[:2])
 			data = data[2:]
-			if len(data) < int(csLen) {
-				return nil, errors.New("cses wrongly encoded")
+			if len(data) < int(shsLen) {
+				return nil, errors.New("shses wrongly encoded")
 			}
-			cs := new(tcoin.CoinShare)
-			err := cs.Unmarshal(data[:csLen])
+			shs := new(tss.Share)
+			err := shs.Unmarshal(data[:shsLen])
 			if err != nil {
 				return nil, err
 			}
-			data = data[csLen:]
-			shares[pid] = cs
+			data = data[shsLen:]
+			shares[pid] = shs
 		}
 	}
 	return shares, nil

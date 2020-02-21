@@ -32,12 +32,12 @@ func NewFactory(pid uint16, wtkey *tss.WeakThresholdKey) gomel.RandomSourceFacto
 }
 
 func (cf *coinFactory) NewRandomSource(dag gomel.Dag) gomel.RandomSource {
-	return newCoin(cf.pid, dag, cf.wtc, cf.wtc.shareProviders)
+	return newCoin(cf.pid, dag, cf.wtkey, cf.wtkey.ShareProviders())
 }
 
 func (cf *coinFactory) DealingData(epoch gomel.EpochID) ([]byte, error) {
-	if cf.wtc.shareProviders[cf.pid] {
-		return cf.wtc.CreateShare(nonce(0, epoch)).Marshal(), nil
+	if cf.wtkey.ShareProviders()[cf.pid] {
+		return cf.wtkey.CreateShare(nonce(0, epoch)).Marshal(), nil
 	}
 	return nil, nil
 }
@@ -81,7 +81,7 @@ func NewSeededCoinFactory(nProc, pid uint16, seed int) gomel.RandomSourceFactory
 
 	coeffs := make([]*big.Int, threshold)
 	for i := uint16(0); i < threshold; i++ {
-		coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Orders)
+		coeffs[i] = big.NewInt(0).Rand(rnd, bn256.Order)
 	}
 
 	sKeys := make([]*p2p.SecretKey, nProc)
@@ -93,7 +93,7 @@ func NewSeededCoinFactory(nProc, pid uint16, seed int) gomel.RandomSourceFactory
 
 	p2pKeys, _ := p2p.Keys(sKeys[dealer], pKeys, dealer)
 
-	gtk := tss.NewGlobal(nProc, coeffs)
+	gtk := tss.New(nProc, coeffs)
 	tkEncrypted, _ := gtk.Encrypt(p2pKeys)
 	tk, _, _ := tss.Decode(tkEncrypted.Encode(), dealer, pid, p2pKeys[pid])
 
@@ -151,12 +151,12 @@ func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 				return errors.New("incorrect random bytes")
 			}
 		} else {
-			coin := new(tss.Coin)
+			coin := new(tss.Signature)
 			err := coin.Unmarshal(uRandomBytes)
 			if err != nil {
 				return err
 			}
-			if !c.wtk.Verify(coin, nonce(u.Level()-1, u.EpochID())) {
+			if !c.wtk.VerifySignature(coin, nonce(u.Level()-1, u.EpochID())) {
 				return errors.New("incorrect random bytes")
 			}
 		}
@@ -232,8 +232,8 @@ func (c *coin) combineShares(level int) ([]byte, error) {
 	if !ok {
 		return nil, errors.New("combining shares failed")
 	}
-	if !c.wtk.Verify(coin, nonce(level, c.dag.EpochID())) {
+	if !c.wtk.VerifySignature(coin, nonce(level, c.dag.EpochID())) {
 		return nil, errors.New("verification of coin failed")
 	}
-	return coin.RandomBytes(), nil
+	return coin.Marshal(), nil
 }

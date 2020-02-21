@@ -7,13 +7,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/creating"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
+	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
 )
 
 var _ = Describe("Beacon", func() {
@@ -66,13 +66,13 @@ var _ = Describe("Beacon", func() {
 				}
 			}
 		})
-		Context("that are dealing, but without a tcoin included", func() {
+		Context("that are dealing, but without a key included", func() {
 			It("Should return an error", func() {
 				u := dag[0].UnitsOnLevel(0).Get(0)[0]
 				um := newUnitMock(u, []byte{})
 				err := dag[0].Check(um)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(HavePrefix("Decoding tcoin failed")))
+				Expect(err).To(MatchError(HavePrefix("Decoding key failed")))
 			})
 		})
 		Context("that are voting", func() {
@@ -151,7 +151,7 @@ var _ = Describe("Beacon", func() {
 		})
 	})
 
-	Context("When a malicious process sends wrong tcoin to one of the processes", func() {
+	Context("When a malicious process sends wrong key to one of the processes", func() {
 		var maliciousNode uint16
 		BeforeEach(func() {
 			maliciousNode = uint16(2)
@@ -186,7 +186,7 @@ var _ = Describe("Beacon", func() {
 				}
 			}
 		})
-		It("Should produce a multicoin which is the sum of coins of honest nodes", func() {
+		It("Should produce a multikey which is the sum of keys of honest nodes", func() {
 			head := uint16(1)
 			expectedShareProviders := map[uint16]bool{}
 			for pid := uint16(0); pid < n; pid++ {
@@ -201,17 +201,17 @@ var _ = Describe("Beacon", func() {
 					continue
 				}
 				obtainedCoin := rs[pid].(*Beacon).GetCoin(head)
-				subcoins := []*tcoin.ThresholdCoin{}
+				subkeys := []*tss.ThresholdKey{}
 				for i := uint16(0); i < n; i++ {
 					if i == maliciousNode {
 						continue
 					}
-					tc, _, _ := tcoin.Decode(dag[pid].UnitsOnLevel(0).Get(i)[0].RandomSourceData(), i, pid, p2pKeys[pid][i])
-					subcoins = append(subcoins, tc)
+					tk, _, _ := tss.Decode(dag[pid].UnitsOnLevel(0).Get(i)[0].RandomSourceData(), i, pid, p2pKeys[pid][i])
+					subkeys = append(subkeys, tk)
 				}
-				multicoin := tcoin.CreateMulticoin(subcoins)
+				multikey := tss.CreateMultikey(subkeys)
 
-				expectedCoin := coin.New(n, pid, multicoin, expectedShareProviders)
+				expectedCoin := coin.New(n, pid, multikey, expectedShareProviders)
 				Expect(expectedCoin).To(Equal(obtainedCoin))
 			}
 		})

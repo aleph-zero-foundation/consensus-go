@@ -3,10 +3,10 @@ package coin_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/unit"
 )
 
 var _ = Describe("Coin", func() {
@@ -43,6 +43,7 @@ var _ = Describe("Coin", func() {
 		for level := 0; level < maxLevel; level++ {
 			for creator := uint16(0); creator < n; creator++ {
 				pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
+				pu, err := unit.NewPreunit()
 				Expect(err).NotTo(HaveOccurred())
 				for pid := uint16(0); pid < n; pid++ {
 					err = adder[pid].AddUnit(pu, pu.Creator())
