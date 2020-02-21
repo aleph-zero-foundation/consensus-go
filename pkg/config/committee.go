@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
 )
 
 // Member represents the private data about a committee member.
