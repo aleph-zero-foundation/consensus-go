@@ -58,11 +58,11 @@ type coin struct {
 }
 
 // newCoin returns a Coin RandomSource based on fixed thresholdCoin with the given set of share providerss.
-func newCoin(pid uint16, dag gomel.Dag, tcoin *tss.WeakThresholdKey, shareProviders map[uint16]bool) gomel.RandomSource {
+func newCoin(pid uint16, dag gomel.Dag, wtkey *tss.WeakThresholdKey, shareProviders map[uint16]bool) gomel.RandomSource {
 	c := &coin{
 		pid:            pid,
 		dag:            dag,
-		wtk:            tcoin,
+		wtk:            wtkey,
 		coinShares:     random.NewSyncCSMap(),
 		shareProviders: shareProviders,
 		randomBytes:    random.NewSyncBytesSlice(),

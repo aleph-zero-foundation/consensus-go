@@ -28,7 +28,7 @@ var _ = Describe("Coin", func() {
 		shareProviders map[uint16]bool
 		err            error
 		u              gomel.Unit
-		parents        []gomel.Unit
+		rsData         []byte
 	)
 	BeforeEach(func() {
 		n = 4
@@ -39,7 +39,6 @@ var _ = Describe("Coin", func() {
 		dags = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
 		rsf = make([]gomel.RandomSourceFactory, n)
-		parents = make([]gomel.Unit, n)
 		sks = make([]gomel.PrivateKey, n)
 		pks = make([]gomel.PublicKey, n)
 
@@ -69,19 +68,20 @@ var _ = Describe("Coin", func() {
 		for level := 0; level < maxLevel; level++ {
 			for creator := uint16(0); creator < n; creator++ {
 				// create a unit
+
+				parents := make([]gomel.Unit, n)
 				if level == 0 {
-					rsData, err := rsf[creator].DealingData(epoch)
+					rsData, err = rsf[creator].DealingData(epoch)
 					Expect(err).ToNot(HaveOccurred())
-					u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
 				} else {
 					for pid := uint16(0); pid < n; pid++ {
 						parents[pid] = dags[creator].UnitsOnLevel(level - 1).Get(pid)[0]
 					}
 					Expect(len(parents)).To(Equal(int(n)))
-					rsData, err := rs[creator].DataToInclude(parents, level)
+					rsData, err = rs[creator].DataToInclude(parents, level)
 					Expect(err).ToNot(HaveOccurred())
-					u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
 				}
+				u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
 				// add the unit to dags
 				for pid := uint16(0); pid < n; pid++ {
 					dags[pid].Insert(u)

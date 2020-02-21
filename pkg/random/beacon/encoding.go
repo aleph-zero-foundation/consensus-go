@@ -23,7 +23,7 @@ func marshallVotes(votes []*vote) []byte {
 	for _, v := range votes {
 		if v == nil {
 			buf.Write([]byte{0})
-		} else if v.isCorrect() == true {
+		} else if v.isCorrect() {
 			buf.Write([]byte{1})
 		} else {
 			buf.Write([]byte{2})
@@ -96,7 +96,7 @@ func unmarshallShares(data []byte, nProc uint16) ([]*tss.Share, error) {
 	shares := make([]*tss.Share, nProc)
 	for pid := uint16(0); pid < nProc; pid++ {
 		if len(data) < 1 {
-			return nil, errors.New("shses wrongly encoded")
+			return nil, errors.New("shares wrongly encoded")
 		}
 		if data[0] == 0 {
 			shares[pid] = nil
@@ -104,12 +104,12 @@ func unmarshallShares(data []byte, nProc uint16) ([]*tss.Share, error) {
 		} else if data[0] == 1 {
 			data = data[1:]
 			if len(data) < 2 {
-				return nil, errors.New("shses wrongly encoded")
+				return nil, errors.New("shares wrongly encoded")
 			}
 			shsLen := binary.LittleEndian.Uint16(data[:2])
 			data = data[2:]
 			if len(data) < int(shsLen) {
-				return nil, errors.New("shses wrongly encoded")
+				return nil, errors.New("shares wrongly encoded")
 			}
 			shs := new(tss.Share)
 			err := shs.Unmarshal(data[:shsLen])

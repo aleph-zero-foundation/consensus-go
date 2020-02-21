@@ -35,7 +35,7 @@ var _ = Describe("Beacon", func() {
 		p2pKeys  [][]encrypt.SymmetricKey
 		err      error
 		u        gomel.Unit
-		parents  []gomel.Unit
+		rsData   []byte
 	)
 
 	BeforeEach(func() {
@@ -46,7 +46,6 @@ var _ = Describe("Beacon", func() {
 		dags = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
 		rsf = make([]gomel.RandomSourceFactory, n)
-		parents = make([]gomel.Unit, n)
 		sks = make([]gomel.PrivateKey, n)
 		pks = make([]gomel.PublicKey, n)
 		sKeys = make([]*p2p.SecretKey, n)
@@ -69,9 +68,11 @@ var _ = Describe("Beacon", func() {
 			cnfs[pid].OrderStartLevel = 0
 			cnfs[pid].Checks = append(cnfs[pid].Checks, check.NoSelfForkingEvidence, check.ForkerMuting)
 			cnfs[pid].PrivateKey = sks[pid]
+			cnfs[pid].P2PSecretKey = sKeys[pid]
 		}
 		for pid := uint16(0); pid < n; pid++ {
 			cnfs[pid].PublicKeys = pks
+			cnfs[pid].P2PPublicKeys = pKeys
 			dags[pid] = dag.New(cnfs[pid], epoch)
 			rsf[pid], err = New(cnfs[pid])
 			Expect(err).NotTo(HaveOccurred())
@@ -82,23 +83,24 @@ var _ = Describe("Beacon", func() {
 		BeforeEach(func() {
 			// Generating very regular dag
 			for level := 0; level < maxLevel; level++ {
+				parents := make([]gomel.Unit, n)
 				for creator := uint16(0); creator < n; creator++ {
 					// create a unit
 					if level == 0 {
-						rsData, err := rsf[creator].DealingData(epoch)
+						rsData, err = rsf[creator].DealingData(epoch)
 						Expect(err).ToNot(HaveOccurred())
-						u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
 					} else {
 						for pid := uint16(0); pid < n; pid++ {
 							parents[pid] = dags[creator].UnitsOnLevel(level - 1).Get(pid)[0]
 						}
-						Expect(len(parents)).To(Equal(int(n)))
-						rsData, err := rs[creator].DataToInclude(parents, level)
+						rsData, err = rs[creator].DataToInclude(parents, level)
 						Expect(err).ToNot(HaveOccurred())
-						u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
 					}
+					u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
 					// add the unit to dags
 					for pid := uint16(0); pid < n; pid++ {
+						if level == 6 {
+						}
 						dags[pid].Insert(u)
 					}
 				}
@@ -162,7 +164,7 @@ var _ = Describe("Beacon", func() {
 					um := newUnitMock(u, []byte{})
 					err := dags[0].Check(um)
 					Expect(err).To(HaveOccurred())
-					Expect(err).To(MatchError("cses wrongly encoded"))
+					Expect(err).To(MatchError("shares wrongly encoded"))
 				})
 			})
 			Context("With missing shares", func() {
@@ -188,7 +190,6 @@ var _ = Describe("Beacon", func() {
 			})
 		})
 	})
-
 	Context("When a malicious process sends wrong key to one of the processes", func() {
 		var maliciousNode uint16
 		BeforeEach(func() {
@@ -214,10 +215,10 @@ var _ = Describe("Beacon", func() {
 					// create a unit
 					if level == 0 {
 					} else {
+						parents := make([]gomel.Unit, n)
 						for pid := uint16(0); pid < n; pid++ {
 							parents[pid] = dags[creator].UnitsOnLevel(level - 1).Get(pid)[0]
 						}
-						Expect(len(parents)).To(Equal(int(n)))
 						rsData, err := rs[creator].DataToInclude(parents, level)
 						Expect(err).ToNot(HaveOccurred())
 						u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
