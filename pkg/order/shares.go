@@ -1,4 +1,4 @@
-package order
+package epochs
 
 import (
 	"encoding/binary"
