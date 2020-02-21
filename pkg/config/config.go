@@ -6,6 +6,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
 )
 
 // Config represents a complete configuration needed for a process to start.
@@ -37,6 +38,7 @@ type conf struct {
 	P2PSecretKey  *p2p.SecretKey
 	RMCPrivateKey *bn256.SecretKey
 	RMCPublicKeys []*bn256.VerificationKey
+	ThresholdKey  *tss.WeakThresholdKey
 	// sync
 	Timeout         time.Duration
 	RMCAddresses    []string

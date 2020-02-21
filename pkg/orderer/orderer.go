@@ -21,7 +21,7 @@ type orderer struct {
 	rsf          gomel.RandomSourceFactory
 	alerter      gomel.Alerter
 	ps           core.PreblockSink
-	creator      creator.Creator
+	creator      *creator.Creator
 	current      *epoch
 	previous     *epoch
 	unitBelt     chan gomel.Unit
@@ -46,7 +46,7 @@ func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataS
 		orderedUnits: make(chan []gomel.Unit, 10),
 		log:          log,
 	}
-	ord.creator = creator.NewCreator(conf, ds, ord.insert, ord.rsData, log)
+	ord.creator = creator.New(conf, ds, ord.insert, ord.rsData, log)
 	return ord
 }
 
@@ -59,8 +59,7 @@ func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
 }
 
 func (ord *orderer) Start() error {
-	ord.creator.newEpoch(gomel.EpochID(0), core.Data{})
-	go ord.creator.work()
+	go ord.creator.Work(ord.unitBelt, ord.lastTiming, &ord.wg)
 	go ord.preblockMaker()
 	return nil
 }
@@ -106,7 +105,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
 		}
 		ep, newer := ord.getEpoch(epoch)
 		if newer {
-			if witness(preunits[0], conf.ThresholdKey) {
+			if creator.EpochProof(preunits[0], ord.conf.ThresholdKey) {
 				ep = ord.newEpoch(epoch)
 			} else {
 				// TODO: don't do this if preunits[0] is too high
@@ -244,7 +243,7 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 }
 
 // insert puts the provided unit directly into the corresponding epoch. If such epoch does not exist, creates it.
-// All correctness checks (witness, adder, dag checks) are skipped. This method is meant for our own units only.
+// All correctness checks (epoch proof, adder, dag checks) are skipped. This method is meant for our own units only.
 func (ord *orderer) insert(unit gomel.Unit) {
 	if unit.Creator() == ord.conf.Pid {
 		ep, newer := ord.getEpoch(unit.EpochID())

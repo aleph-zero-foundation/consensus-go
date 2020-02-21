@@ -52,13 +52,13 @@ func decodeProof(msg []byte) (int, uint16, gomel.EpochID, *gomel.Hash) {
 
 // encodeShare converts signature share and the signed message into Data that can be put into unit.
 func encodeShare(share *tss.Share, msg []byte) core.Data {
-	return core.Data(append(msg, share.Marshall()...))
+	return core.Data(append(msg, share.Marshal()...))
 }
 
 // decodeShare reads signature share and the signed message from Data contained in some unit.
 func decodeShare(data core.Data) (*tss.Share, []byte, error) {
 	result := new(tss.Share)
-	err := result.Unmarshall(data[proofLength:])
+	err := result.Unmarshal(data[proofLength:])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,13 +67,13 @@ func decodeShare(data core.Data) (*tss.Share, []byte, error) {
 
 // encodeSignature converts signature and the signed message into Data that can be put into unit.
 func encodeSignature(sig *tss.Signature, msg []byte) core.Data {
-	return core.Data(append(msg, sig.Marshall()...))
+	return core.Data(append(msg, sig.Marshal()...))
 }
 
 // decodeSignature reads signature and the signed message from Data contained in some unit.
 func decodeSignature(data core.Data) (*tss.Signature, []byte, error) {
 	result := new(tss.Signature)
-	err := result.Unmarshall(data[proofLength:])
+	err := result.Unmarshal(data[proofLength:])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,7 +100,7 @@ func (db *shareDB) add(share *tss.Share, msg []byte) *tss.Signature {
 	} else {
 		db.data[key] = []*tss.Share{share}
 	}
-	if len(db.data[key]) >= db.wtk.Threshold() {
+	if len(db.data[key]) >= int(db.wtk.Threshold()) {
 		if sig, ok := db.wtk.CombineShares(db.data[key]); ok {
 			return sig
 		}

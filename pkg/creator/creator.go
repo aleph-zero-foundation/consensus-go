@@ -23,7 +23,7 @@ type Creator struct {
 	onMaxLvl   int // number of candidates on maxLvl
 	level      int // level of unit we could produce with current candidates
 	quorum     int
-	shares     map[string]bool
+	shares     *shareDB
 	frozen     map[uint16]bool
 	mx         sync.Mutex
 	log        zerolog.Logger
@@ -33,24 +33,29 @@ type Creator struct {
 // send function is called on each created unit.
 // rsData provides random source data for the given level, parents and epoch.
 func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), rsData func(int, []gomel.Unit, gomel.EpochID) []byte, log zerolog.Logger) *Creator {
-	return &creator{
+	return &Creator{
 		conf:       conf,
 		ds:         dataSource,
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
 		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
-		shares:     newShareDB(),
+		shares:     newShareDB(conf.ThresholdKey),
 		frozen:     make(map[uint16]bool),
 		log:        log,
 	}
 }
 
-// work executes the main loop of the creator. Units appearing on the unit belt are examined and stored to
-// be used as parents of future units. If the creator is ready, a new unit is produced.
-// This method is stopped by closing the unit belt.
-func (cr *Creator) work(unitBelt, lastTiming <-chan gomel.Unit, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done()
+// Work executes the main loop of the creator. Units appearing on unitBelt are examined and stored to
+// be used as parents of future units. When there are enough new parents, a new unit is produced.
+// lastTiming is a channel on which the last timing unit of each epoch is expected to appear.
+// This method is stopped by closing unitBelt channel. A WaitGroup pointer can optionally be passed,
+// if waiting for the end of Work is needed.
+func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, wg *sync.WaitGroup) {
+	if wg != nil {
+		wg.Add(1)
+		defer wg.Done()
+	}
+	cr.newEpoch(gomel.EpochID(0), core.Data{})
 
 	var parents []gomel.Unit
 	var level int
@@ -132,10 +137,10 @@ func (cr *Creator) update(u gomel.Unit) {
 
 	// If the unit is from a new epoch, switch to that epoch.
 	// Since units appear on the belt in order they were added to the dag,
-	// the first unit from a new epoch is always a witness unit.
+	// the first unit from a new epoch is always a dealing unit.
 	if u.EpochID() > cr.epoch {
-		if !witness(u, cr.conf.ThresholdKey) {
-			panic("creator received non-witness unit from new epoch")
+		if !EpochProof(u, cr.conf.ThresholdKey) {
+			panic("creator received unit from new epoch without a correct proof")
 		}
 		cr.newEpoch(u.EpochID(), u.Data())
 		return
@@ -198,13 +203,13 @@ func (cr *Creator) updateShares(u gomel.Unit) core.Data {
 		cr.log.Error().Str("where", "creator.decodeShare").Msg(err.Error())
 		return nil
 	}
-	if !cr.conf.ThresholdKey.Verify(share, msg) {
+	if !cr.conf.ThresholdKey.VerifyShare(share, msg) {
 		cr.log.Error().Str("where", "creator.verifyShare").Msg(err.Error())
 		return nil
 	}
 	sig := cr.shares.add(share, msg)
 	if sig != nil {
-		return marshallSignature(sig, msg)
+		return encodeSignature(sig, msg)
 	}
 	return nil
 }
@@ -244,7 +249,6 @@ func (cr *Creator) getParentsForLevel(level int) []gomel.Unit {
 
 // createUnit creates a unit with the given parents, level, and data. Assumes provided parameters
 // are consistent, that means level == gomel.LevelFromParents(parents) and cr.epoch == parents[i].EpochID()
-// Inserts the new unit into orderer and updates local info.
 func (cr *Creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	rsData := cr.rsData(level, parents, cr.epoch)
 	u := unit.New(cr.conf.Pid, cr.epoch, parents, level, data, rsData, cr.conf.PrivateKey)
