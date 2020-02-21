@@ -1,5 +1,8 @@
 package gomel
 
+// HashLength is the size of hashes of units.
+const HashLength = 32
+
 // EpochID is used as a unique identifier of an epoch.
 type EpochID uint32
 
@@ -7,7 +10,7 @@ type EpochID uint32
 type Signature []byte
 
 // Hash is a type storing hash values, usually used to identify units.
-type Hash [32]byte
+type Hash [HashLength]byte
 
 // UnitChecker is a function that performs a check on Unit before Prepare.
 type UnitChecker func(Unit, Dag) error

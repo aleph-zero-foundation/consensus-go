@@ -21,6 +21,7 @@ type creator struct {
 	onMaxLvl   int // number of candidates on maxLvl
 	level      int // level of unit we could produce with current candidates
 	quorum     int
+	shares     map[string]bool
 	frozen     map[uint16]bool
 	mx         sync.Mutex
 	log        zerolog.Logger
@@ -34,6 +35,7 @@ func newCreator(conf config.Config, ord *orderer, ds core.DataSource, log zerolo
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
 		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
+		shares:     newShareDB(),
 		frozen:     make(map[uint16]bool),
 		log:        log,
 	}
@@ -75,28 +77,42 @@ func (cr *creator) work() {
 
 // ready checks if the creator is ready to produce a new unit. Usually that means:
 // "do we have enough new candidates to produce a unit with level higher than the previous one?"
+// Besides that, we stop producing units for the current epoch after creating a unit with signature share.
 func (cr *creator) ready() bool {
 	return !cr.epochDone && cr.level > cr.candidates[cr.conf.Pid].Level()
 }
 
+// getData produces a piece of data to be included in a unit on a given level.
+// For regular units the provided DataSource is used
+// For finishing units it's either nil or, if available, an encoded threshold signature share
+// of hash and id of the last timing unit (obtained from preblockMaker on lastTiming channel)
 func (cr *creator) getData(level int) core.Data {
 	if level < cr.conf.OrderStartLevel+cr.conf.EpochLength {
 		return cr.ds.GetData()
 	}
 	for {
+		// in a rare case there can be timing units from previous epochs left on lastTiming channel.
+		// the purpose of this loop is to drain and ignore them.
 		select {
-		case timingUnit := <-cr.ord.proofs:
+		case timingUnit := <-cr.ord.lastTiming:
+			if timingUnit.EpochID() < cr.epoch {
+				continue
+			}
 			if timingUnit.EpochID() == cr.epoch {
 				cr.epochDone = true
-				// TODO
-				// produce share, convert to core.Data and return
+				msg := encodeProof(timingUnit)
+				share := cr.conf.ThresholdKey.CreateShare(msg)
+				if share != nil {
+					return encodeShare(share, msg)
+				}
+				return core.Data{}
 			}
-			continue
+			panic("TIME TRAVEL ERROR: lastTiming received a unit from the future")
 		default:
 			break
 		}
 	}
-	return nil
+	return core.Data{}
 }
 
 // update takes a unit that has recently be added to the orderer and updates
@@ -111,7 +127,7 @@ func (cr *creator) update(u gomel.Unit) {
 	// since units appear on the belt in order they were added to the dag
 	// the first unit from new epoch is always a witness unit
 	if u.EpochID() > cr.epoch {
-		if !witness(u) {
+		if !witness(u, cr.conf.ThresholdKey) {
 			panic("creator received non-witness unit from new epoch")
 		}
 		cr.newEpoch(u.EpochID(), u.Data())
@@ -123,7 +139,7 @@ func (cr *creator) update(u gomel.Unit) {
 	// the current epoch is finished) switch to a new epoch.
 	data := cr.updateShares(u)
 	if data != nil {
-		cr.newEpoch(cr.epoch+1, u.Data())
+		cr.newEpoch(cr.epoch+1, data)
 		return
 	}
 
@@ -161,23 +177,26 @@ func (cr *creator) resetCandidates() {
 
 // updateShares extracts threshold signature shares from finishing units.
 // If there are enough shares to combine, produce the signature and convert it to core.Data.
+// Otherwise, nil is returned.
 func (cr *creator) updateShares(u gomel.Unit) core.Data {
-	if u.Level() >= cr.conf.OrderStartLevel+cr.conf.EpochLength {
-		// u is a finishing unit, that means it does not contain regular data
-		data := u.Data()
-		if len(data) > 0 {
-			// TODO
-			// Unmarshall Share from d and check correctness
-			// Put it in shares
-			// Try to combine
-			// If successful, marshall signature and return
-		}
+	// ignore regular units and finishing units with empty data
+	if u.Level() < cr.conf.OrderStartLevel+cr.conf.EpochLength || len(u.Data()) == 0 {
+		return nil
+	}
+	share, msg, err := decodeShare(u.Data())
+	if err != nil {
+		cr.log.Error().Str("where", "creator.decodeShare").Msg(err.Error())
+		return nil
+	}
+	if !cr.conf.ThresholdKey.Verify(share, msg) {
+		cr.log.Error().Str("where", "creator.verifyShare").Msg(err.Error())
+		return nil
+	}
+	sig := cr.shares.add(share, msg)
+	if sig != nil {
+		return marshallSignature(sig, msg)
 	}
 	return nil
-}
-
-func (cr *creator) resetShares() {
-	//TODO
 }
 
 // freezeParent tells the creator to stop updating parent candidates for the given pid
@@ -219,7 +238,7 @@ func (cr *creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	rsData := cr.ord.rsData(level, parents, cr.epoch)
 	u := unit.New(cr.conf.Pid, cr.epoch, parents, level, data, rsData, cr.conf.PrivateKey)
 	cr.ord.insert(u)
-	cr.updateCandidates(u)
+	cr.update(u)
 }
 
 // newEpoch creates a dealing unit for the chosen epoch with the provided data.
@@ -227,7 +246,7 @@ func (cr *creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epoch = epoch
 	cr.epochDone = false
 	cr.resetCandidates()
-	cr.resetShares()
+	cr.shares.reset()
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 
