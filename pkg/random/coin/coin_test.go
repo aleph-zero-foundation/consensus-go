@@ -3,10 +3,14 @@ package coin_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gitlab.com/alephledger/consensus-go/pkg/config"
+	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
+	"gitlab.com/alephledger/consensus-go/pkg/dag"
+	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/coin"
-	"gitlab.com/alephledger/consensus-go/pkg/tests"
 	"gitlab.com/alephledger/consensus-go/pkg/unit"
+	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
 var _ = Describe("Coin", func() {
@@ -14,19 +18,30 @@ var _ = Describe("Coin", func() {
 		n              uint16
 		maxLevel       int
 		seed           int
-		dag            []gomel.Dag
-		adder          []gomel.Adder
+		cnfs           []config.Config
+		epoch          gomel.EpochID
+		dags           []gomel.Dag
 		rs             []gomel.RandomSource
+		rsf            []gomel.RandomSourceFactory
+		sks            []gomel.PrivateKey
+		pks            []gomel.PublicKey
 		shareProviders map[uint16]bool
 		err            error
+		u              gomel.Unit
+		parents        []gomel.Unit
 	)
 	BeforeEach(func() {
 		n = 4
+		epoch = gomel.EpochID(0)
 		maxLevel = 7
 		seed = 2137
-		dag = make([]gomel.Dag, n)
-		adder = make([]gomel.Adder, n)
+		cnfs = make([]config.Config, n)
+		dags = make([]gomel.Dag, n)
 		rs = make([]gomel.RandomSource, n)
+		rsf = make([]gomel.RandomSourceFactory, n)
+		parents = make([]gomel.Unit, n)
+		sks = make([]gomel.PrivateKey, n)
+		pks = make([]gomel.PublicKey, n)
 
 		shareProviders = make(map[uint16]bool)
 		for i := uint16(0); i < gomel.MinimalQuorum(n); i++ {
@@ -34,50 +49,72 @@ var _ = Describe("Coin", func() {
 		}
 
 		for pid := uint16(0); pid < n; pid++ {
-			dag[pid], adder[pid], err = tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
+			pks[pid], sks[pid], err = signing.GenerateKeys()
 			Expect(err).NotTo(HaveOccurred())
-			rs[pid] = NewFixedCoin(n, pid, seed, shareProviders)
-			rs[pid].Bind(dag[pid])
+			cnfs[pid] = config.Empty()
+			cnfs[pid].Pid = pid
+			cnfs[pid].NProc = n
+			cnfs[pid].CanSkipLevel = true
+			cnfs[pid].OrderStartLevel = 0
+			cnfs[pid].Checks = append(cnfs[pid].Checks, check.NoSelfForkingEvidence, check.ForkerMuting)
+			cnfs[pid].PrivateKey = sks[pid]
+			dags[pid] = dag.New(cnfs[pid], epoch)
+			rsf[pid] = NewSeededCoinFactory(n, pid, seed, shareProviders)
+			rs[pid] = rsf[pid].NewRandomSource(dags[pid])
+		}
+		for pid := uint16(0); pid < n; pid++ {
+			cnfs[pid].PublicKeys = pks
 		}
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {
 			for creator := uint16(0); creator < n; creator++ {
-				pu, _, err := creating.NewUnit(dag[creator], creator, []byte{}, rs[creator], false)
-				pu, err := unit.NewPreunit()
-				Expect(err).NotTo(HaveOccurred())
+				// create a unit
+				if level == 0 {
+					rsData, err := rsf[creator].DealingData(epoch)
+					Expect(err).ToNot(HaveOccurred())
+					u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
+				} else {
+					for pid := uint16(0); pid < n; pid++ {
+						parents[pid] = dags[creator].UnitsOnLevel(level - 1).Get(pid)[0]
+					}
+					Expect(len(parents)).To(Equal(int(n)))
+					rsData, err := rs[creator].DataToInclude(parents, level)
+					Expect(err).ToNot(HaveOccurred())
+					u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
+				}
+				// add the unit to dags
 				for pid := uint16(0); pid < n; pid++ {
-					err = adder[pid].AddUnit(pu, pu.Creator())
-					Expect(err).NotTo(HaveOccurred())
+					dags[pid].Insert(u)
 				}
 			}
 		}
 	})
-	Describe("Adding a unit", func() {
-		Context("that is a prime unit created by a share provider", func() {
+	Describe("Checking a unit", func() {
+		Context("that was created by a share provider", func() {
 			Context("without random source data", func() {
 				It("should return an error", func() {
-					u := dag[0].UnitsOnLevel(2).Get(0)[0]
+					u = dags[0].UnitsOnLevel(2).Get(0)[0]
 					um := newUnitMock(u, []byte{})
-					err := dag[0].Check(um)
+					err := dags[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
 			Context("with inncorrect share", func() {
 				It("should return an error", func() {
-					u := dag[0].UnitsOnLevel(2).Get(0)[0]
-					v := dag[0].UnitsOnLevel(3).Get(0)[0]
+					u := dags[0].UnitsOnLevel(2).Get(0)[0]
+					v := dags[0].UnitsOnLevel(3).Get(0)[0]
 					um := newUnitMock(u, v.RandomSourceData())
-					err := dag[0].Check(um)
+					err := dags[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
-		Context("on a unit not created by a share provider", func() {
+		Context("that was not created by a share provider", func() {
 			Context("with random source data", func() {
 				It("should return an error", func() {
-					u := dag[0].UnitsOnLevel(2).Get(n - 1)[0]
+					u := dags[0].UnitsOnLevel(2).Get(n - 1)[0]
 					um := newUnitMock(u, []byte{1, 2, 3})
-					err := dag[0].Check(um)
+					err := dags[0].Check(um)
 					Expect(err).To(HaveOccurred())
 				})
 			})
