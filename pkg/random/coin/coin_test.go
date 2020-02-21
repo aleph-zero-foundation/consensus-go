@@ -58,12 +58,12 @@ var _ = Describe("Coin", func() {
 			cnfs[pid].OrderStartLevel = 0
 			cnfs[pid].Checks = append(cnfs[pid].Checks, check.NoSelfForkingEvidence, check.ForkerMuting)
 			cnfs[pid].PrivateKey = sks[pid]
-			dags[pid] = dag.New(cnfs[pid], epoch)
-			rsf[pid] = NewSeededCoinFactory(n, pid, seed, shareProviders)
-			rs[pid] = rsf[pid].NewRandomSource(dags[pid])
 		}
 		for pid := uint16(0); pid < n; pid++ {
 			cnfs[pid].PublicKeys = pks
+			dags[pid] = dag.New(cnfs[pid], epoch)
+			rsf[pid] = NewSeededCoinFactory(n, pid, seed, shareProviders)
+			rs[pid] = rsf[pid].NewRandomSource(dags[pid])
 		}
 		// Generating very regular dag
 		for level := 0; level < maxLevel; level++ {

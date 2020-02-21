@@ -30,17 +30,17 @@ const (
 
 func nonce(level int) []byte {
 	data := make([]byte, 2)
-	binary.LittleEndian.PutUint16(uint16(level))
+	binary.LittleEndian.PutUint16(data, uint16(level))
 	return data
 }
 
 // Beacon is a struct representing the beacon random source.
 type Beacon struct {
-	pid       uint16
-	conf      config.Config
-	dag       gomel.Dag
-	multikeys []*tss.ThresholdKey
-	tks       []*tss.ThresholdKey
+	pid  uint16
+	conf config.Config
+	dag  gomel.Dag
+	wtk  []*tss.WeakThresholdKey
+	tks  []*tss.ThresholdKey
 	// vote[i][j] is the vote of i-th process on the j-th tss
 	// it is nil when j-th dealing unit is not below
 	// the unit of i-th process on votingLevel
@@ -77,7 +77,7 @@ func New(conf config.Config) (*Beacon, error) {
 	b := &Beacon{
 		pid:            conf.Pid,
 		conf:           conf,
-		multikeys:      make([]*tss.ThresholdKey, conf.NProc),
+		wtk:            make([]*tss.WeakThresholdKey, conf.NProc),
 		tks:            make([]*tss.ThresholdKey, conf.NProc),
 		votes:          make([][]*vote, conf.NProc),
 		shareProviders: make([]map[uint16]bool, conf.NProc),
@@ -128,12 +128,12 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 			shares = append(shares, tss.SumShares(uShares))
 		}
 	}
-	coin, ok := b.multikeys[pid].CombineShares(shares)
+	coin, ok := b.wtk[pid].CombineShares(shares)
 	if !ok {
 		// Not enough shares
 		return nil
 	}
-	return coin.RandomBytes()
+	return coin.Marshal()
 }
 
 func (b *Beacon) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
@@ -225,7 +225,7 @@ func (b *Beacon) update(u gomel.Unit) {
 				b.subcoins[u.Creator()][pid] = true
 			}
 		}
-		b.multikeys[u.Creator()] = tss.CreateMultikey(coinsToMerge)
+		b.wtk[u.Creator()] = tss.CreateWTK(coinsToMerge, providers)
 		b.shareProviders[u.Creator()] = providers
 	}
 	if u.Level() >= sharesLevel {
@@ -280,7 +280,7 @@ func (b *Beacon) DealingData(epoch gomel.EpochID) ([]byte, error) {
 	if epoch != 0 {
 		return nil, errors.New("Beacon was asked for dealing data with non-zero epoch")
 	}
-	gtc := tss.NewRandomGlobal(b.conf.NProc, gomel.MinimalTrusted(b.conf.NProc))
+	gtc := tss.NewRandom(b.conf.NProc, gomel.MinimalTrusted(b.conf.NProc))
 	tc, err := gtc.Encrypt(b.p2pKeys)
 	if err != nil {
 		return nil, err
@@ -308,7 +308,7 @@ func (b *Beacon) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) 
 // GetCoin returns a coin random source obtained by using this beacon.
 // Head should be the creator of a timing unit chosen on the 6th level.
 func (b *Beacon) GetCoin(head uint16) gomel.RandomSourceFactory {
-	return coin.NewFactory(b.pid, b.multikeys[head], b.shareProviders[head])
+	return coin.NewFactory(b.pid, b.wtk[head])
 }
 
 // unitsOnLevel returns all the prime units in the dag on a given level
