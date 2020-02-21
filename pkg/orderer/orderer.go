@@ -1,6 +1,8 @@
+// Package orderer contains the main implementation of the gomel.Orderer interface.
 package orderer
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -24,7 +26,7 @@ type orderer struct {
 	creator      *creator.Creator
 	current      *epoch
 	previous     *epoch
-	unitBelt     chan gomel.Unit
+	unitBelt     chan gomel.Unit // Note: units on the unit belt does not have to appear in topological order
 	lastTiming   chan gomel.Unit // used to pass the last timing unit of the epoch to creator
 	orderedUnits chan []gomel.Unit
 	mx           sync.RWMutex
@@ -32,11 +34,8 @@ type orderer struct {
 	log          zerolog.Logger
 }
 
-// NewOrderer TODO
-//
-// Note: units on the unit belt does not have to appear in topological order,
-// but for a given creator they are ordered by ascending height.
-func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, ps core.PreblockSink, log zerolog.Logger) gomel.Orderer {
+// New constructs a new orderer instance using provided config, random source factory, data source, preblock sink, and logger.
+func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, ps core.PreblockSink, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
 		rsf:          rsf,
@@ -46,7 +45,11 @@ func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataS
 		orderedUnits: make(chan []gomel.Unit, 10),
 		log:          log,
 	}
-	ord.creator = creator.New(conf, ds, ord.insert, ord.rsData, log)
+	send := func(u gomel.Unit) {
+		ord.insert(u)
+		ord.syncer.Multicast(u)
+	}
+	ord.creator = creator.New(conf, ds, send, ord.rsData, log)
 	return ord
 }
 
@@ -59,6 +62,12 @@ func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
 }
 
 func (ord *orderer) Start() error {
+	if ord.syncer == nil {
+		return errors.New("ordered cannot be started without setting the syncer")
+	}
+	if ord.alerter == nil {
+		return errors.New("ordered cannot be started without setting the alerter")
+	}
 	go ord.creator.Work(ord.unitBelt, ord.lastTiming, &ord.wg)
 	go ord.preblockMaker()
 	return nil

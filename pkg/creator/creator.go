@@ -1,3 +1,4 @@
+// Package creator contains the implementation of Creator together with functions for serializing and deserializing new epoch proofs.
 package creator
 
 import (
@@ -10,7 +11,11 @@ import (
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
-// Creator is a component responsible for producing new units. TODO
+// Creator is a component responsible for producing new units. It reads units produced by other
+// committee members from some external channel (aka unit belt) and stores the ones with the highest
+// level as possible parents (candidates). Whenever there are enough parents to produce a unit on a new level,
+// Creator collects data from its DataSource, and random source data using the provided function, then builds,
+// signs and sends (using a function given to the constructor) a new unit.
 type Creator struct {
 	conf       config.Config
 	ds         core.DataSource
