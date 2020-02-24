@@ -8,55 +8,58 @@
 package beacon
 
 import (
+	"encoding/binary"
 	"errors"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/encrypt"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/tcoin"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/encrypt"
+	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
+	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
 )
 
 const (
-	dealingLevel   = 0
-	votingLevel    = 3
-	multicoinLevel = 6
-	sharesLevel    = 8
+	dealingLevel  = 0
+	votingLevel   = 3
+	multikeyLevel = 6
+	sharesLevel   = 8
 )
 
-func nonce(level int) int64 {
-	return int64(level)
+func nonce(level int) []byte {
+	data := make([]byte, 2)
+	binary.LittleEndian.PutUint16(data, uint16(level))
+	return data
 }
 
 // Beacon is a struct representing the beacon random source.
 type Beacon struct {
-	pid        uint16
-	conf       config.Config
-	dag        gomel.Dag
-	multicoins []*tcoin.ThresholdCoin
-	tcoins     []*tcoin.ThresholdCoin
-	// vote[i][j] is the vote of i-th process on the j-th tcoin
+	pid  uint16
+	conf config.Config
+	dag  gomel.Dag
+	wtk  []*tss.WeakThresholdKey
+	tks  []*tss.ThresholdKey
+	// vote[i][j] is the vote of i-th process on the j-th tss
 	// it is nil when j-th dealing unit is not below
 	// the unit of i-th process on votingLevel
 	votes [][]*vote
 	// shareProviders[i] is the set of the processes which have a unit on
-	// votingLevel below the unit created by the i-th process on multicoinLevel
+	// votingLevel below the unit created by the i-th process on multikeyLevel
 	shareProviders []map[uint16]bool
 	// subcoins[i] is the set of coins which forms the i-th multicoin
 	subcoins []map[uint16]bool
 	// shares[i] is a map of the form
-	// hash of a unit => the share for the i-th tcoin contained in the unit
+	// hash of a unit => the share for the i-th tss contained in the unit
 	shares       []*random.SyncCSMap
 	polyVerifier bn256.PolyVerifier
 	p2pKeys      []encrypt.SymmetricKey
 }
 
-// vote is a vote for a tcoin
-// proof = nil means that the tcoin is correct
-// proof != nil means gives proof that the tcoin is incorrect
+// vote is a vote for a tss
+// proof = nil means that the tss is correct
+// proof != nil means gives proof that the tss is incorrect
 type vote struct {
 	proof *p2p.SharedSecret
 }
@@ -74,8 +77,8 @@ func New(conf config.Config) (*Beacon, error) {
 	b := &Beacon{
 		pid:            conf.Pid,
 		conf:           conf,
-		multicoins:     make([]*tcoin.ThresholdCoin, conf.NProc),
-		tcoins:         make([]*tcoin.ThresholdCoin, conf.NProc),
+		wtk:            make([]*tss.WeakThresholdKey, conf.NProc),
+		tks:            make([]*tss.ThresholdKey, conf.NProc),
 		votes:          make([][]*vote, conf.NProc),
 		shareProviders: make([]map[uint16]bool, conf.NProc),
 		subcoins:       make([]map[uint16]bool, conf.NProc),
@@ -114,29 +117,29 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 		// RandomBytes asked on too low level
 		return nil
 	}
-	shares := []*tcoin.CoinShare{}
+	shares := []*tss.Share{}
 	units := unitsOnLevel(b.dag, level)
 	for _, u := range units {
 		if b.shareProviders[pid][u.Creator()] {
-			uShares := []*tcoin.CoinShare{}
+			uShares := []*tss.Share{}
 			for sc := range b.subcoins[pid] {
 				uShares = append(uShares, b.shares[sc].Get(u.Hash()))
 			}
-			shares = append(shares, tcoin.SumShares(uShares))
+			shares = append(shares, tss.SumShares(uShares))
 		}
 	}
-	coin, ok := b.multicoins[pid].CombineCoinShares(shares)
+	coin, ok := b.wtk[pid].CombineShares(shares)
 	if !ok {
 		// Not enough shares
 		return nil
 	}
-	return coin.RandomBytes()
+	return coin.Marshal()
 }
 
 func (b *Beacon) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
-		tc, _, err := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
+		tc, _, err := tss.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
 		if err != nil {
 			return err
 		}
@@ -168,7 +171,7 @@ func (b *Beacon) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 					return errors.New("missing share")
 				}
 				// This verification is slow
-				if !b.tcoins[pid].VerifyCoinShare(shares[pid], nonce(u.Level())) {
+				if !b.tks[pid].VerifyShare(shares[pid], nonce(u.Level())) {
 					return errors.New("invalid share")
 				}
 			}
@@ -181,7 +184,7 @@ func (b *Beacon) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 func (b *Beacon) update(u gomel.Unit) {
 	if u.Level() == dealingLevel {
 		tcEncoded := u.RandomSourceData()
-		tc, okSecretKey, _ := tcoin.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
+		tc, okSecretKey, _ := tss.Decode(tcEncoded, u.Creator(), b.pid, b.p2pKeys[u.Creator()])
 		if !okSecretKey {
 			secret := p2p.NewSharedSecret(b.conf.P2PSecretKey, b.conf.P2PPublicKeys[u.Creator()])
 			b.votes[b.pid][u.Creator()] = &vote{
@@ -190,7 +193,7 @@ func (b *Beacon) update(u gomel.Unit) {
 		} else {
 			b.votes[b.pid][u.Creator()] = &vote{}
 		}
-		b.tcoins[u.Creator()] = tc
+		b.tks[u.Creator()] = tc
 	}
 	if u.Level() == votingLevel {
 		votes, _ := unmarshallVotes(u.RandomSourceData(), b.conf.NProc)
@@ -198,7 +201,7 @@ func (b *Beacon) update(u gomel.Unit) {
 			b.votes[u.Creator()][pid] = vote
 		}
 	}
-	if u.Level() == multicoinLevel {
+	if u.Level() == multikeyLevel {
 		coinsApprovedBy := make([]uint16, b.conf.NProc)
 		nBelowUOnVotingLevel := uint16(0)
 		providers := make(map[uint16]bool)
@@ -215,14 +218,14 @@ func (b *Beacon) update(u gomel.Unit) {
 				}
 			}
 		}
-		coinsToMerge := []*tcoin.ThresholdCoin{}
+		coinsToMerge := []*tss.ThresholdKey{}
 		for pid := uint16(0); pid < b.conf.NProc; pid++ {
 			if coinsApprovedBy[pid] == nBelowUOnVotingLevel {
-				coinsToMerge = append(coinsToMerge, b.tcoins[pid])
+				coinsToMerge = append(coinsToMerge, b.tks[pid])
 				b.subcoins[u.Creator()][pid] = true
 			}
 		}
-		b.multicoins[u.Creator()] = tcoin.CreateMulticoin(coinsToMerge)
+		b.wtk[u.Creator()] = tss.CreateWTK(coinsToMerge, providers)
 		b.shareProviders[u.Creator()] = providers
 	}
 	if u.Level() >= sharesLevel {
@@ -269,7 +272,7 @@ func (b *Beacon) verifyWrongSecretKeyProof(prover, suspect uint16, proof p2p.Sha
 	if err != nil {
 		return false
 	}
-	return !b.tcoins[suspect].CheckSecretKey(prover, key)
+	return !b.tks[suspect].CheckSecretKey(prover, key)
 }
 
 // DealingData returns random source data that should be included in the dealing unit.
@@ -277,7 +280,7 @@ func (b *Beacon) DealingData(epoch gomel.EpochID) ([]byte, error) {
 	if epoch != 0 {
 		return nil, errors.New("Beacon was asked for dealing data with non-zero epoch")
 	}
-	gtc := tcoin.NewRandomGlobal(b.conf.NProc, gomel.MinimalTrusted(b.conf.NProc))
+	gtc := tss.NewRandom(b.conf.NProc, gomel.MinimalTrusted(b.conf.NProc))
 	tc, err := gtc.Encrypt(b.p2pKeys)
 	if err != nil {
 		return nil, err
@@ -291,13 +294,13 @@ func (b *Beacon) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) 
 		return marshallVotes(b.votes[b.pid]), nil
 	}
 	if level >= sharesLevel {
-		cses := make([]*tcoin.CoinShare, b.conf.NProc)
+		shs := make([]*tss.Share, b.conf.NProc)
 		for pid := uint16(0); pid < b.conf.NProc; pid++ {
 			if b.votes[b.conf.Pid][pid] != nil && b.votes[b.conf.Pid][pid].isCorrect() {
-				cses[pid] = b.tcoins[pid].CreateCoinShare(nonce(level))
+				shs[pid] = b.tks[pid].CreateShare(nonce(level))
 			}
 		}
-		return marshallShares(cses), nil
+		return marshallShares(shs), nil
 	}
 	return []byte{}, nil
 }
@@ -305,7 +308,7 @@ func (b *Beacon) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) 
 // GetCoin returns a coin random source obtained by using this beacon.
 // Head should be the creator of a timing unit chosen on the 6th level.
 func (b *Beacon) GetCoin(head uint16) gomel.RandomSourceFactory {
-	return coin.NewFactory(b.pid, b.multicoins[head], b.shareProviders[head])
+	return coin.NewFactory(b.pid, b.wtk[head])
 }
 
 // unitsOnLevel returns all the prime units in the dag on a given level

@@ -39,7 +39,7 @@ const (
 	AddingStarted         = "h"
 	DecodeParentsError    = "i"
 	CheckError            = "j"
-	GotRandomSource       = "k"
+	GotWeakThresholdKey   = "k"
 	OwnUnitOrdered        = "l"
 	UnitAdded             = "m"
 	AddUnitStarted        = "n"
@@ -87,7 +87,7 @@ var eventTypeDict = map[string]string{
 	AddingStarted:         "adding a ready waiting preunit started",
 	DecodeParentsError:    "DecodeParents error, passing it to error handlers",
 	CheckError:            "Check error, passing it to error handlers",
-	GotRandomSource:       "received randomness source",
+	GotWeakThresholdKey:   "received weak threshold key",
 	OwnUnitOrdered:        "unit created by this process has been ordered",
 	UnitAdded:             "unit successfully added to the dag",
 	AddUnitStarted:        "adding a single unit received from PID started",
