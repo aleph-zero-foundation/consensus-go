@@ -15,6 +15,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/order"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/syncer"
 	"gitlab.com/alephledger/core-go/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
 )
 
 type closureService struct {
@@ -106,7 +107,7 @@ func NewConsensus(
 	conf config.Config,
 	ds core.DataSource,
 	ps core.PreblockSink,
-	rsSource <-chan gomel.RandomSourceFactory,
+	wtkSource <-chan *tss.WeakThresholdKey,
 	log zerolog.Logger,
 	fatalError chan error,
 ) (gomel.Service, error) {
@@ -127,15 +128,14 @@ func NewConsensus(
 				orderedUnits := make(chan []gomel.Unit, 10)
 				defer close(orderedUnits)
 
-				var rsf gomel.RandomSourceFactory
 				select {
-				case rsf = <-rsSource:
+				case conf.WTKey = <-wtkSource:
 				case <-stopService:
 					return
 				}
-				log.Info().Msg(logging.GotRandomSourceFactory)
+				log.Info().Msg(logging.GotWeakThresholdKey)
 
-				orderer := order.NewOrderer(conf, rsf, ps)
+				orderer := order.NewOrderer(conf, ps)
 
 				alerter, err :=
 					forking.NewAlertService(conf, orderer, log.With().Int(logging.Service, logging.AlertService).Logger())

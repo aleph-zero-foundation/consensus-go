@@ -3,9 +3,10 @@ package config
 import (
 	"time"
 
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
+	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
 )
 
 // Config represents a complete configuration needed for a process to start.
@@ -31,6 +32,7 @@ type conf struct {
 	LogBuffer      int
 	LogMemInterval int
 	// keys
+	WTKey         *tss.WeakThresholdKey
 	PrivateKey    gomel.PrivateKey
 	PublicKeys    []gomel.PublicKey
 	P2PPublicKeys []*p2p.PublicKey
