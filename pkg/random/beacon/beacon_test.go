@@ -83,9 +83,9 @@ var _ = Describe("Beacon", func() {
 		BeforeEach(func() {
 			// Generating very regular dag
 			for level := 0; level < maxLevel; level++ {
-				parents := make([]gomel.Unit, n)
 				for creator := uint16(0); creator < n; creator++ {
 					// create a unit
+					parents := make([]gomel.Unit, n)
 					if level == 0 {
 						rsData, err = rsf[creator].DealingData(epoch)
 						Expect(err).ToNot(HaveOccurred())
@@ -213,16 +213,22 @@ var _ = Describe("Beacon", func() {
 						continue
 					}
 					// create a unit
+					parents := make([]gomel.Unit, n)
 					if level == 0 {
-					} else {
-						parents := make([]gomel.Unit, n)
-						for pid := uint16(0); pid < n; pid++ {
-							parents[pid] = dags[creator].UnitsOnLevel(level - 1).Get(pid)[0]
-						}
-						rsData, err := rs[creator].DataToInclude(parents, level)
+						rsData, err = rsf[creator].DealingData(epoch)
 						Expect(err).ToNot(HaveOccurred())
-						u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
+					} else {
+						for pid := uint16(0); pid < n; pid++ {
+							if pid == maliciousNode {
+								parents[pid] = dags[creator].UnitsOnLevel(0).Get(pid)[0]
+							} else {
+								parents[pid] = dags[creator].UnitsOnLevel(level - 1).Get(pid)[0]
+							}
+						}
+						rsData, err = rs[creator].DataToInclude(parents, level)
+						Expect(err).ToNot(HaveOccurred())
 					}
+					u = unit.New(creator, epoch, parents, level, core.Data{}, rsData, sks[creator])
 					// add the unit to dags
 					for pid := uint16(0); pid < n; pid++ {
 						if pid == maliciousNode {
