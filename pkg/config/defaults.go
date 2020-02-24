@@ -10,8 +10,6 @@ import (
 // default template returns Config for consensus with default values.
 func defaultTemplate() Config {
 	return &conf{
-		CreateDelay:    500 * time.Millisecond,
-		EpochLength:    1000,
 		CRPFixedPrefix: 5,
 		GossipAbove:    50,
 		FetchInterval:  2 * time.Second,
@@ -48,6 +46,9 @@ func newConfig(m *Member, c *Committee) Config {
 func addSetupConf(cnf Config) Config {
 	cnf.CanSkipLevel = false
 	cnf.OrderStartLevel = 6
+	cnf.CRPFixedPrefix = 0
+	cnf.EpochLength = 1
+	cnf.NumberOfEpochs = 1
 	cnf.Checks = append(cnf.Checks, check.NoLevelSkipping, check.NoForks)
 	return cnf
 }
@@ -55,6 +56,9 @@ func addSetupConf(cnf Config) Config {
 func addRegularConf(cnf Config) Config {
 	cnf.CanSkipLevel = true
 	cnf.OrderStartLevel = 0
+	cnf.CRPFixedPrefix = 5
+	cnf.EpochLength = 1000
+	cnf.NumberOfEpochs = 10
 	cnf.Checks = append(cnf.Checks, check.NoSelfForkingEvidence, check.ForkerMuting)
 	return cnf
 }
