@@ -128,17 +128,14 @@ func NewConsensus(
 				orderedUnits := make(chan []gomel.Unit, 10)
 				defer close(orderedUnits)
 
-				var wtk *tss.WeakThresholdKey
 				select {
-				case wtk = <-wtkSource:
+				case conf.WTKey = <-wtkSource:
 				case <-stopService:
 					return
 				}
 				log.Info().Msg(logging.GotWeakThresholdKey)
 
-				rsf := 
-
-				orderer := order.NewOrderer(conf, rsf, ps)
+				orderer := order.NewOrderer(conf, ps)
 
 				alerter, err :=
 					forking.NewAlertService(conf, orderer, log.With().Int(logging.Service, logging.AlertService).Logger())
