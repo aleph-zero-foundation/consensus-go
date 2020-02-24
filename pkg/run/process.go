@@ -107,7 +107,7 @@ func NewConsensus(
 	conf config.Config,
 	ds core.DataSource,
 	ps core.PreblockSink,
-	wtkSource <-chan tss.WeakThresholdKey,
+	wtkSource <-chan *tss.WeakThresholdKey,
 	log zerolog.Logger,
 	fatalError chan error,
 ) (gomel.Service, error) {
@@ -128,7 +128,7 @@ func NewConsensus(
 				orderedUnits := make(chan []gomel.Unit, 10)
 				defer close(orderedUnits)
 
-				var wtk tss.WeakThresholdKey
+				var wtk *tss.WeakThresholdKey
 				select {
 				case wtk = <-wtkSource:
 				case <-stopService:

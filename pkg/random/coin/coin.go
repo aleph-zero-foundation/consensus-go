@@ -57,7 +57,7 @@ type coin struct {
 	randomBytes    *random.SyncBytesSlice
 }
 
-// newCoin returns a Coin RandomSource based on fixed thresholdCoin with the given set of share providerss.
+// newCoin returns a Coin RandomSource based on fixed thresholdCoin with the given set of share providers.
 func newCoin(pid uint16, dag gomel.Dag, wtkey *tss.WeakThresholdKey, shareProviders map[uint16]bool) gomel.RandomSource {
 	c := &coin{
 		pid:            pid,
@@ -135,7 +135,7 @@ func (c *coin) update(u gomel.Unit) {
 // is correct. The following rules should be satisfied:
 //  (1) A dealing unit created by a share providers should contain a marshalled share
 //  (2) A non-dealing prime unit should start with random bytes from the previous level,
-//  followed by a marshalled coin share, if the creator is a share providers.
+//  followed by a marshalled coin share, if the creator is a share provider.
 //  (3) Every other unit's random source data should be empty.
 func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 	if gomel.Dealing(u) && c.shareProviders[u.Creator()] {
