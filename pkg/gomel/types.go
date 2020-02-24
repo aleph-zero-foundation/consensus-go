@@ -17,3 +17,6 @@ type UnitChecker func(Unit, Dag) error
 
 // InsertHook is a function that performs some additional action on a unit before or after Insert.
 type InsertHook func(Unit)
+
+// PreblockMaker is a function that is called on a slice of units forming a timing round that was produced by Orderer.
+type PreblockMaker func([]Unit)

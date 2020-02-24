@@ -21,7 +21,7 @@ type orderer struct {
 	syncer       gomel.Syncer
 	rsf          gomel.RandomSourceFactory
 	alerter      gomel.Alerter
-	ps           core.PreblockSink
+	toPreblock   gomel.PreblockMaker
 	creator      *creator.Creator
 	current      *epoch
 	previous     *epoch
@@ -34,11 +34,11 @@ type orderer struct {
 }
 
 // New constructs a new orderer instance using provided config, random source factory, data source, preblock sink, and logger.
-func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, ps core.PreblockSink, log zerolog.Logger) gomel.Orderer {
+func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
 		rsf:          rsf,
-		ps:           ps,
+		toPreblock:   toPreblock,
 		unitBelt:     make(chan gomel.Unit, beltSize),
 		lastTiming:   make(chan gomel.Unit, 10),
 		orderedUnits: make(chan []gomel.Unit, 10),
@@ -86,7 +86,7 @@ func (ord *orderer) preblockMaker() {
 		}
 		epoch := timingUnit.EpochID()
 		if epoch >= current {
-			ord.ps <- gomel.ToPreblock(round)
+			ord.toPreblock(round)
 		}
 		current = epoch
 	}
