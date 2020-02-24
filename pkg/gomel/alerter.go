@@ -34,7 +34,7 @@ func NopAlerter() Alerter {
 
 type nopAl struct{}
 
-func (*nopAl) Start() error                                                { return nil }
+func (*nopAl) Start()                                                      {}
 func (*nopAl) Stop()                                                       {}
 func (*nopAl) NewFork(Preunit, Preunit)                                    {}
 func (*nopAl) HandleIncoming(network.Connection, *sync.WaitGroup)          {}

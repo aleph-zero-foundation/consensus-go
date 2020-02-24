@@ -2,7 +2,6 @@
 package orderer
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -53,24 +52,13 @@ func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, 
 	return ord
 }
 
-func (ord *orderer) SetAlerter(alerter gomel.Alerter) {
-	ord.alerter = alerter
-}
-
-func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
+func (ord *orderer) Start(syncer gomel.Syncer, alerter gomel.Alerter) {
 	ord.syncer = syncer
-}
-
-func (ord *orderer) Start() error {
-	if ord.syncer == nil {
-		return errors.New("ordered cannot be started without setting the syncer")
-	}
-	if ord.alerter == nil {
-		return errors.New("ordered cannot be started without setting the alerter")
-	}
+	ord.alerter = alerter
+	syncer.Start()
+	alerter.Start()
 	go ord.creator.Work(ord.unitBelt, ord.lastTiming, &ord.wg)
 	go ord.preblockMaker()
-	return nil
 }
 
 func (ord *orderer) Stop() {
@@ -79,6 +67,8 @@ func (ord *orderer) Stop() {
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
+	ord.alerter.Stop()
+	ord.syncer.Stop()
 }
 
 // preblockMaker waits for ordered round of units produced by Extenders and produces Preblocks based on them.
@@ -114,7 +104,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
 		}
 		ep, newer := ord.getEpoch(epoch)
 		if newer {
-			if creator.EpochProof(preunits[0], ord.conf.ThresholdKey) {
+			if creator.EpochProof(preunits[0], ord.conf.WTKey) {
 				ep = ord.newEpoch(epoch)
 			} else {
 				// TODO: don't do this if preunits[0] is too high

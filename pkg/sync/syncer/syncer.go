@@ -90,7 +90,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 	return s, nil
 }
 
-func (s *service) Start() error {
+func (s *service) Start() {
 	for _, service := range s.subservices {
 		service.Start()
 	}
@@ -98,7 +98,6 @@ func (s *service) Start() error {
 		server.Start()
 	}
 	s.log.Info().Msg(logging.ServiceStarted)
-	return nil
 }
 
 func (s *service) Stop() {

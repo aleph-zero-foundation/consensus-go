@@ -41,11 +41,10 @@ func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (
 	return s, nil
 }
 
-func (s *service) Start() error {
+func (s *service) Start() {
 	s.listens.Add(1)
 	go s.handleConns()
 	s.log.Info().Msg(logging.ServiceStarted)
-	return nil
 }
 
 func (s *service) Stop() {

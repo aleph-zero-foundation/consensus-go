@@ -32,7 +32,7 @@ func NewService(n int, log zerolog.Logger) gomel.Service {
 	}
 }
 
-func (s *service) Start() error {
+func (s *service) Start() {
 	s.wg.Add(1)
 	var stats runtime.MemStats
 	go func() {
@@ -48,7 +48,6 @@ func (s *service) Start() error {
 		}
 	}()
 	s.log.Info().Msg(ServiceStarted)
-	return nil
 }
 
 func (s *service) Stop() {
