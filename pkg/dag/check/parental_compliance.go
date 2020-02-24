@@ -4,9 +4,12 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-// ParentConsistency checks the consistency rule.
-func ParentConsistency(u gomel.Unit, dag gomel.Dag) error {
-	parents := u.Parents()
+// ParentConsistency checks the parent consistency rule.
+// Parent consistency rule means that unit's i-th parent cannot be lower (in a level sense) than
+// i-th parent of any other of that units parents. In other words, units seen from U "directly"
+// (as parents) cannot be below the ones seen "indirectly" (as parents of parents).
+func ParentConsistency(unit gomel.Unit, dag gomel.Dag) error {
+	parents := unit.Parents()
 	nProc := dag.NProc()
 	for i := uint16(0); i < nProc; i++ {
 		for j := uint16(0); j < nProc; j++ {
@@ -14,13 +17,7 @@ func ParentConsistency(u gomel.Unit, dag gomel.Dag) error {
 				continue
 			}
 			u := parents[j].Parents()[i]
-			if parents[i] == nil {
-				if u != nil {
-					return gomel.NewComplianceError("parent consistency rule violated")
-				}
-				continue
-			}
-			if u != nil && parents[i].Level() < u.Level() {
+			if u != nil && (parents[i] == nil || parents[i].Level() < u.Level()) {
 				return gomel.NewComplianceError("parent consistency rule violated")
 			}
 		}

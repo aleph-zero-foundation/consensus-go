@@ -1,11 +1,14 @@
-package order
+// Package orderer contains the main implementation of the gomel.Orderer interface.
+package orderer
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
+	"gitlab.com/alephledger/consensus-go/pkg/creator"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
@@ -20,30 +23,33 @@ type orderer struct {
 	rsf          gomel.RandomSourceFactory
 	alerter      gomel.Alerter
 	ps           core.PreblockSink
+	creator      *creator.Creator
 	current      *epoch
 	previous     *epoch
-	creator      *creator
-	unitBelt     chan gomel.Unit
+	unitBelt     chan gomel.Unit // Note: units on the unit belt does not have to appear in topological order
+	lastTiming   chan gomel.Unit // used to pass the last timing unit of the epoch to creator
 	orderedUnits chan []gomel.Unit
 	mx           sync.RWMutex
 	wg           sync.WaitGroup
 	log          zerolog.Logger
 }
 
-// NewOrderer TODO
-//
-// Note: units on the unit belt does not have to appear in topological order,
-// but for a given creator they are ordered by ascending height.
-func NewOrderer(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, ps core.PreblockSink, log zerolog.Logger) gomel.Orderer {
+// New constructs a new orderer instance using provided config, random source factory, data source, preblock sink, and logger.
+func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, ps core.PreblockSink, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
 		rsf:          rsf,
 		ps:           ps,
 		unitBelt:     make(chan gomel.Unit, beltSize),
+		lastTiming:   make(chan gomel.Unit, 10),
 		orderedUnits: make(chan []gomel.Unit, 10),
 		log:          log,
 	}
-	ord.creator = newCreator(conf, ord, ds, ord.unitBelt, log)
+	send := func(u gomel.Unit) {
+		ord.insert(u)
+		ord.syncer.Multicast(u)
+	}
+	ord.creator = creator.New(conf, ds, send, ord.rsData, log)
 	return ord
 }
 
@@ -56,8 +62,13 @@ func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
 }
 
 func (ord *orderer) Start() error {
-	ord.creator.newEpoch(gomel.EpochID(0), core.Data{})
-	go ord.creator.work()
+	if ord.syncer == nil {
+		return errors.New("ordered cannot be started without setting the syncer")
+	}
+	if ord.alerter == nil {
+		return errors.New("ordered cannot be started without setting the alerter")
+	}
+	go ord.creator.Work(ord.unitBelt, ord.lastTiming, &ord.wg)
 	go ord.preblockMaker()
 	return nil
 }
@@ -70,17 +81,26 @@ func (ord *orderer) Stop() {
 	ord.wg.Wait()
 }
 
+// preblockMaker waits for ordered round of units produced by Extenders and produces Preblocks based on them.
+// Since Extenders in multiple epochs can supply ordered rounds simultaneously, preblockMaker needs to ensure that
+// Preblocks are produced in ascending order with respect to epochs. For the last ordered round
+// of the epoch, the timing unit defining it is sent to the creator (to produce signature shares.)
 func (ord *orderer) preblockMaker() {
 	ord.wg.Add(1)
 	defer ord.wg.Done()
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
-		epoch := round[0].EpochID()
+		timingUnit := round[len(round)-1]
+		if timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
+			ord.lastTiming <- timingUnit
+		}
+		epoch := timingUnit.EpochID()
 		if epoch >= current {
 			ord.ps <- gomel.ToPreblock(round)
 		}
 		current = epoch
 	}
+	close(ord.lastTiming)
 }
 
 // AddPreunits sends preunits received from other committee members to their corresponding epochs.
@@ -94,7 +114,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
 		}
 		ep, newer := ord.getEpoch(epoch)
 		if newer {
-			if witness(preunits[0]) {
+			if creator.EpochProof(preunits[0], ord.conf.ThresholdKey) {
 				ep = ord.newEpoch(epoch)
 			} else {
 				// TODO: don't do this if preunits[0] is too high
@@ -198,7 +218,7 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 func (ord *orderer) getEpoch(epoch gomel.EpochID) (*epoch, bool) {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
-	if epoch > ord.current.id {
+	if ord.current == nil || epoch > ord.current.id {
 		return nil, true
 	}
 	if epoch == ord.current.id {
@@ -210,11 +230,14 @@ func (ord *orderer) getEpoch(epoch gomel.EpochID) (*epoch, bool) {
 	return nil, false
 }
 
+// newEpoch creates and returns a new epoch object with the given EpochID. If such epoch already exists, returns it.
 func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 	ord.mx.Lock()
 	defer ord.mx.Unlock()
-	if epoch > ord.current.id {
-		ord.previous.close()
+	if ord.current == nil || epoch > ord.current.id {
+		if ord.previous != nil {
+			ord.previous.close()
+		}
 		ord.previous = ord.current
 		ord.current = newEpoch(epoch, ord.conf, ord.syncer, ord.rsf, ord.alerter, ord.unitBelt, ord.orderedUnits, ord.log)
 		return ord.current
@@ -228,16 +251,21 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 	return nil
 }
 
+// insert puts the provided unit directly into the corresponding epoch. If such epoch does not exist, creates it.
+// All correctness checks (epoch proof, adder, dag checks) are skipped. This method is meant for our own units only.
 func (ord *orderer) insert(unit gomel.Unit) {
-	ep, newer := ord.getEpoch(unit.EpochID())
-	if newer {
-		ep = ord.newEpoch(unit.EpochID())
-	}
-	if ep != nil {
-		ep.dag.Insert(unit)
+	if unit.Creator() == ord.conf.Pid {
+		ep, newer := ord.getEpoch(unit.EpochID())
+		if newer {
+			ep = ord.newEpoch(unit.EpochID())
+		}
+		if ep != nil {
+			ep.dag.Insert(unit)
+		}
 	}
 }
 
+// rsData produces random source data for a unit with provided level, parents and epoch.
 func (ord *orderer) rsData(level int, parents []gomel.Unit, epoch gomel.EpochID) []byte {
 	var result []byte
 	var err error
@@ -253,16 +281,7 @@ func (ord *orderer) rsData(level int, parents []gomel.Unit, epoch gomel.EpochID)
 	}
 	if err != nil {
 		ord.log.Error().Str("where", "orderer.rsData").Msg(err.Error())
-		return nil
+		return []byte{}
 	}
 	return result
-}
-
-// witness checks if the given preunit is a proof that a new epoch started.
-func witness(pu gomel.Preunit) bool {
-	if !gomel.Dealing(pu) {
-		return false
-	}
-	// TODO check threshold signature
-	return true
 }
