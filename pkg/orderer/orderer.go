@@ -34,10 +34,9 @@ type orderer struct {
 }
 
 // New constructs a new orderer instance using provided config, random source factory, data source, preblock sink, and logger.
-func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
+func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
-		rsf:          rsf,
 		toPreblock:   toPreblock,
 		unitBelt:     make(chan gomel.Unit, beltSize),
 		lastTiming:   make(chan gomel.Unit, 10),
@@ -52,7 +51,8 @@ func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, 
 	return ord
 }
 
-func (ord *orderer) Start(syncer gomel.Syncer, alerter gomel.Alerter) {
+func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, alerter gomel.Alerter) {
+	ord.rsf = rsf
 	ord.syncer = syncer
 	ord.alerter = alerter
 	syncer.Start()
@@ -81,7 +81,7 @@ func (ord *orderer) preblockMaker() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
-		if timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
+		if ord.conf.NumberOfEpochs > 1 && timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
 			ord.lastTiming <- timingUnit
 		}
 		epoch := timingUnit.EpochID()

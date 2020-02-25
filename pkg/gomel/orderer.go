@@ -19,6 +19,6 @@ type Orderer interface {
 	// That includes also all units from newer epochs.
 	Delta([2]*DagInfo) []Unit
 	// Start starts the orderer using provided Syncer and Alerter.
-	Start(Syncer, Alerter)
+	Start(RandomSourceFactory, Syncer, Alerter)
 	Stop()
 }
