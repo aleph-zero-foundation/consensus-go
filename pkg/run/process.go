@@ -105,6 +105,7 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 		head := units[len(units)-1]
 		if head.Level() == conf.OrderStartLevel {
 			ch <- units[len(units)-1].Creator()
+			return
 		}
 		panic("Setup phase: wrong level")
 	}
