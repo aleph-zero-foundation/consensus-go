@@ -1,5 +1,4 @@
-// Package sync implements a service that creates and runs all the necessary syncing servers.
-package sync
+package syncer
 
 import (
 	"time"

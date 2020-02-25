@@ -105,7 +105,10 @@ func (cr *Creator) ready() bool {
 // of hash and id of the last timing unit (obtained from preblockMaker on lastTiming channel)
 func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 	if level < cr.conf.OrderStartLevel+cr.conf.EpochLength {
-		return cr.ds.GetData()
+		if cr.ds != nil {
+			return cr.ds.GetData()
+		}
+		return core.Data{}
 	}
 	for {
 		// in a rare case there can be timing units from previous epochs left on lastTiming channel.
