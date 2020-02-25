@@ -6,12 +6,12 @@ import (
 )
 
 func (s *server) In() {
-	conn, err := s.netserv.Listen(s.timeout)
+	conn, err := s.netserv.Listen(s.conf.Timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.timeout)
+	conn.TimeoutAfter(s.conf.Timeout)
 
 	preunit, err := encoding.ReadPreunit(conn)
 	if err != nil {
@@ -26,12 +26,12 @@ func (s *server) Out(pid uint16) {
 	if !ok {
 		return
 	}
-	conn, err := s.netserv.Dial(pid, s.timeout)
+	conn, err := s.netserv.Dial(pid, s.conf.Timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.timeout)
+	conn.TimeoutAfter(s.conf.Timeout)
 	_, err = conn.Write(r.encUnit)
 	if err != nil {
 		s.log.Error().Str("where", "multicast.out.sendUnit").Msg(err.Error())

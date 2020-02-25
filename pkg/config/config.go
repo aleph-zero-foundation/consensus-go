@@ -17,8 +17,8 @@ type conf struct {
 	Pid   uint16
 	NProc uint16
 	// epoch
-	CreateDelay     time.Duration
 	EpochLength     int
+	NumberOfEpochs  int
 	CanSkipLevel    bool
 	OrderStartLevel int
 	CRPFixedPrefix  uint16

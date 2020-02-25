@@ -1,18 +1,15 @@
 package gomel
 
 import (
-	"sync"
-
 	"gitlab.com/alephledger/core-go/pkg/network"
 )
 
 // Alerter is responsible for raising alerts about forks and handling communication about commitments in case of fork.
 type Alerter interface {
-	Service
 	// NewFork raises an alert about newly detected fork.
 	NewFork(Preunit, Preunit)
 	// HandleIncoming handles the incoming connection and signals the provided WaitGroup when done.
-	HandleIncoming(network.Connection, *sync.WaitGroup)
+	HandleIncoming(network.Connection)
 	// Disambiguate which of the provided (forked) units is the right one to be the parent of the given preunit.
 	Disambiguate([]Unit, Preunit) (Unit, error)
 	// RequestCommitment that is missing in the given Preunit from the committee member with the given process ID.
@@ -25,6 +22,10 @@ type Alerter interface {
 	Lock(uint16)
 	// Unlock the state for the given process ID.
 	Unlock(uint16)
+	// Start Alerter.
+	Start()
+	// Stop Alerter.
+	Stop()
 }
 
 // NopAlerter is an alerter that does nothing.
@@ -34,10 +35,10 @@ func NopAlerter() Alerter {
 
 type nopAl struct{}
 
-func (*nopAl) Start() error                                                { return nil }
+func (*nopAl) Start()                                                      {}
 func (*nopAl) Stop()                                                       {}
 func (*nopAl) NewFork(Preunit, Preunit)                                    {}
-func (*nopAl) HandleIncoming(network.Connection, *sync.WaitGroup)          {}
+func (*nopAl) HandleIncoming(network.Connection)                           {}
 func (*nopAl) Disambiguate([]Unit, Preunit) (Unit, error)                  { return nil, nil }
 func (*nopAl) RequestCommitment(Preunit, uint16) error                     { return nil }
 func (*nopAl) ResolveMissingCommitment(e error, _ Preunit, _ uint16) error { return e }

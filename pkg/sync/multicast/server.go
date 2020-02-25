@@ -7,7 +7,6 @@ package multicast
 import (
 	"math/rand"
 	"sync/atomic"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -30,29 +29,27 @@ type request struct {
 }
 
 type server struct {
-	pid      uint16
+	conf     config.Config
 	orderer  gomel.Orderer
 	netserv  network.Server
 	requests []chan request
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
-	timeout  time.Duration
 	quit     int64
 	log      zerolog.Logger
 }
 
 // NewServer returns a server that runs the multicast protocol.
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, timeout time.Duration, log zerolog.Logger) (sync.Server, sync.Multicast) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Multicast) {
 	nProc := int(conf.NProc)
 	requests := make([]chan request, nProc)
 	for i := 0; i < nProc; i++ {
 		requests[i] = make(chan request, requestSize)
 	}
 	s := &server{
-		pid:      conf.Pid,
+		conf:     conf,
 		netserv:  netserv,
 		requests: requests,
-		timeout:  timeout,
 		log:      log,
 	}
 	s.outPool = sync.NewPerPidPool(conf.NProc, outPoolSize, s.Out)
@@ -71,24 +68,23 @@ func (s *server) StopIn() {
 
 func (s *server) StopOut() {
 	atomic.StoreInt64(&s.quit, 1)
-	nProc := int(s.dag.NProc())
-	for i := 0; i < nProc; i++ {
+	for i := uint16(0); i < s.conf.NProc; i++ {
 		close(s.requests[i])
 	}
 	s.outPool.Stop()
 }
 
 func (s *server) send(unit gomel.Unit) {
-	if unit.Creator() != s.pid {
-		return
+	if unit.Creator() != s.conf.Pid {
+		panic("Attempting to multicast unit that we didn't create")
 	}
 	encUnit, err := encoding.EncodeUnit(unit)
 	if err != nil {
 		s.log.Error().Str("where", "multicastServer.Send.EncodeUnit").Msg(err.Error())
 		return
 	}
-	for _, i := range rand.Perm(int(s.dag.NProc())) {
-		if i == int(s.pid) {
+	for _, i := range rand.Perm(int(s.conf.NProc)) {
+		if i == int(s.conf.Pid) {
 			continue
 		}
 		if atomic.LoadInt64(&s.quit) == 0 {

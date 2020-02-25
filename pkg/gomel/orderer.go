@@ -18,8 +18,7 @@ type Orderer interface {
 	// Delta returns all the units present in orderer that are above heights indicated by provided DagInfo.
 	// That includes also all units from newer epochs.
 	Delta([2]*DagInfo) []Unit
-	// SetAlerter binds the given Alerter to this orderer
-	SetAlerter(Alerter)
-	// SetSyncer binds the given Syncer to this orderer
-	SetSyncer(Syncer)
+	// Start starts the orderer using provided RandomSourceFactory, Syncer, and Alerter.
+	Start(RandomSourceFactory, Syncer, Alerter)
+	Stop()
 }

@@ -44,7 +44,7 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
 		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
-		shares:     newShareDB(conf.ThresholdKey),
+		shares:     newShareDB(conf.WTKey),
 		frozen:     make(map[uint16]bool),
 		log:        log,
 	}
@@ -105,7 +105,10 @@ func (cr *Creator) ready() bool {
 // of hash and id of the last timing unit (obtained from preblockMaker on lastTiming channel)
 func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 	if level < cr.conf.OrderStartLevel+cr.conf.EpochLength {
-		return cr.ds.GetData()
+		if cr.ds != nil {
+			return cr.ds.GetData()
+		}
+		return core.Data{}
 	}
 	for {
 		// in a rare case there can be timing units from previous epochs left on lastTiming channel.
@@ -118,7 +121,7 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 			if timingUnit.EpochID() == cr.epoch {
 				cr.epochDone = true
 				msg := encodeProof(timingUnit)
-				share := cr.conf.ThresholdKey.CreateShare(msg)
+				share := cr.conf.WTKey.CreateShare(msg)
 				if share != nil {
 					return encodeShare(share, msg)
 				}
@@ -144,7 +147,7 @@ func (cr *Creator) update(u gomel.Unit) {
 	// Since units appear on the belt in order they were added to the dag,
 	// the first unit from a new epoch is always a dealing unit.
 	if u.EpochID() > cr.epoch {
-		if !EpochProof(u, cr.conf.ThresholdKey) {
+		if !EpochProof(u, cr.conf.WTKey) {
 			panic("creator received unit from new epoch without a correct proof")
 		}
 		cr.newEpoch(u.EpochID(), u.Data())
@@ -208,7 +211,7 @@ func (cr *Creator) updateShares(u gomel.Unit) core.Data {
 		cr.log.Error().Str("where", "creator.decodeShare").Msg(err.Error())
 		return nil
 	}
-	if !cr.conf.ThresholdKey.VerifyShare(share, msg) {
+	if !cr.conf.WTKey.VerifyShare(share, msg) {
 		cr.log.Error().Str("where", "creator.verifyShare").Msg(err.Error())
 		return nil
 	}

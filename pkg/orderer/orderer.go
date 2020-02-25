@@ -2,7 +2,6 @@
 package orderer
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -22,7 +21,7 @@ type orderer struct {
 	syncer       gomel.Syncer
 	rsf          gomel.RandomSourceFactory
 	alerter      gomel.Alerter
-	ps           core.PreblockSink
+	toPreblock   gomel.PreblockMaker
 	creator      *creator.Creator
 	current      *epoch
 	previous     *epoch
@@ -34,12 +33,11 @@ type orderer struct {
 	log          zerolog.Logger
 }
 
-// New constructs a new orderer instance using provided config, random source factory, data source, preblock sink, and logger.
-func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, ps core.PreblockSink, log zerolog.Logger) gomel.Orderer {
+// New constructs a new orderer instance using provided config, data source, preblock maker, and logger.
+func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
-		rsf:          rsf,
-		ps:           ps,
+		toPreblock:   toPreblock,
 		unitBelt:     make(chan gomel.Unit, beltSize),
 		lastTiming:   make(chan gomel.Unit, 10),
 		orderedUnits: make(chan []gomel.Unit, 10),
@@ -53,24 +51,14 @@ func New(conf config.Config, rsf gomel.RandomSourceFactory, ds core.DataSource, 
 	return ord
 }
 
-func (ord *orderer) SetAlerter(alerter gomel.Alerter) {
-	ord.alerter = alerter
-}
-
-func (ord *orderer) SetSyncer(syncer gomel.Syncer) {
+func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, alerter gomel.Alerter) {
+	ord.rsf = rsf
 	ord.syncer = syncer
-}
-
-func (ord *orderer) Start() error {
-	if ord.syncer == nil {
-		return errors.New("ordered cannot be started without setting the syncer")
-	}
-	if ord.alerter == nil {
-		return errors.New("ordered cannot be started without setting the alerter")
-	}
+	ord.alerter = alerter
+	syncer.Start()
+	alerter.Start()
 	go ord.creator.Work(ord.unitBelt, ord.lastTiming, &ord.wg)
 	go ord.preblockMaker()
-	return nil
 }
 
 func (ord *orderer) Stop() {
@@ -79,6 +67,8 @@ func (ord *orderer) Stop() {
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
+	ord.alerter.Stop()
+	ord.syncer.Stop()
 }
 
 // preblockMaker waits for ordered round of units produced by Extenders and produces Preblocks based on them.
@@ -91,12 +81,12 @@ func (ord *orderer) preblockMaker() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
-		if timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
+		if ord.conf.NumberOfEpochs > 1 && timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
 			ord.lastTiming <- timingUnit
 		}
 		epoch := timingUnit.EpochID()
 		if epoch >= current {
-			ord.ps <- gomel.ToPreblock(round)
+			ord.toPreblock(round)
 		}
 		current = epoch
 	}
@@ -114,7 +104,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
 		}
 		ep, newer := ord.getEpoch(epoch)
 		if newer {
-			if creator.EpochProof(preunits[0], ord.conf.ThresholdKey) {
+			if creator.EpochProof(preunits[0], ord.conf.WTKey) {
 				ep = ord.newEpoch(epoch)
 			} else {
 				// TODO: don't do this if preunits[0] is too high

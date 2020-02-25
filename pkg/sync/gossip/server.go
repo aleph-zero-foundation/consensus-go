@@ -4,8 +4,6 @@
 package gossip
 
 import (
-	"time"
-
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -14,34 +12,28 @@ import (
 )
 
 type server struct {
-	nProc       uint16
-	pid         uint16
+	conf        config.Config
 	orderer     gomel.Orderer
 	netserv     network.Server
 	peerManager *peerManager
 	syncIds     []uint32
 	outPool     sync.WorkerPool
 	inPool      sync.WorkerPool
-	timeout     time.Duration
 	log         zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn, nIdle int) (sync.Server, sync.Gossip) {
-	pid := conf.Pid
-	nProc := int(conf.NProc)
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Gossip) {
 	s := &server{
-		nProc:       nProc,
-		pid:         pid,
+		conf:        conf,
 		orderer:     orderer,
 		netserv:     netserv,
-		peerManager: newPeerManager(conf.NProc, pid, nIdle),
-		syncIds:     make([]uint32, nProc),
-		timeout:     timeout,
+		peerManager: newPeerManager(conf.NProc, conf.Pid, conf.GossipWorkers[2]),
+		syncIds:     make([]uint32, conf.NProc),
 		log:         log,
 	}
-	s.outPool = sync.NewPool(nOut, s.Out)
-	s.inPool = sync.NewPool(nIn, s.In)
+	s.inPool = sync.NewPool(conf.GossipWorkers[0], s.In)
+	s.outPool = sync.NewPool(conf.GossipWorkers[1], s.Out)
 	return s, s.peerManager.request
 }
 

@@ -24,8 +24,8 @@ type service struct {
 	log     zerolog.Logger
 }
 
-// NewService constructs an alerting service for the given dag with the given configuration.
-func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Alerter, error) {
+// NewAlerter constructs an alerting service for the given dag with the given configuration.
+func NewAlerter(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Alerter, error) {
 	rmc := rmc.New(conf.RMCPublicKeys, conf.RMCPrivateKey)
 	netserv, err := tcp.NewServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses)
 	if err != nil {
@@ -41,11 +41,10 @@ func NewService(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (
 	return s, nil
 }
 
-func (s *service) Start() error {
+func (s *service) Start() {
 	s.listens.Add(1)
 	go s.handleConns()
 	s.log.Info().Msg(logging.ServiceStarted)
-	return nil
 }
 
 func (s *service) Stop() {

@@ -14,7 +14,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/random"
-	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/core-go/pkg/crypto/encrypt"
 	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
@@ -305,10 +304,10 @@ func (b *Beacon) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) 
 	return []byte{}, nil
 }
 
-// GetCoin returns a coin random source obtained by using this beacon.
-// Head should be the creator of a timing unit chosen on the 6th level.
-func (b *Beacon) GetCoin(head uint16) gomel.RandomSourceFactory {
-	return coin.NewFactory(b.pid, b.wtk[head])
+// GetWTK returns a weak threshold key obtained by using this beacon.
+// Head should be the creator of the timing unit chosen on the 6th level.
+func (b *Beacon) GetWTK(head uint16) *tss.WeakThresholdKey {
+	return b.wtk[head]
 }
 
 // unitsOnLevel returns all the prime units in the dag on a given level
