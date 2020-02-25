@@ -12,6 +12,8 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/diode"
+
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 )
 
 var genesis time.Time
@@ -39,39 +41,27 @@ func init() {
 }
 
 // NewLogger creates a new zerolog logger based on the given configuration values.
-func NewLogger(path string, level, diodeBuf int, humanReadable bool) (zerolog.Logger, error) {
-	var (
-		output io.Writer
-		err    error
-	)
+func NewLogger(conf config.Config) (zerolog.Logger, error) {
+	var output io.Writer
 
-	switch path {
-	case "stdout":
-		output = os.Stdout
-
-	case "stderr":
-		output = os.Stderr
-
-	default:
-		output, err = os.Create(path)
-		if err != nil {
-			return zerolog.Logger{}.Level(zerolog.Disabled), err
-		}
+	output, err := os.Create(conf.LogFile)
+	if err != nil {
+		return zerolog.Logger{}.Level(zerolog.Disabled), err
 	}
 
 	// enable decoder
-	if humanReadable {
+	if conf.LogHuman {
 		output = NewDecoder(output)
 	}
 
 	// enable diode
-	if diodeBuf > 0 {
-		output = diode.NewWriter(output, diodeBuf, 0, func(missed int) {
+	if conf.LogBuffer > 0 {
+		output = diode.NewWriter(output, conf.LogBuffer, 0, func(missed int) {
 			fmt.Fprintf(os.Stderr, "WARNING: Dropped %d log entries\n", missed)
 		})
 	}
 
-	log := zerolog.New(output).With().Timestamp().Logger().Level(zerolog.Level(level))
+	log := zerolog.New(output).With().Timestamp().Logger().Level(zerolog.Level(conf.LogLevel))
 	log.Log().Str(Genesis, genesis.Format(time.RFC1123Z)).Msg(Genesis)
 
 	return log, nil
