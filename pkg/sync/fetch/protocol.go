@@ -2,17 +2,18 @@ package fetch
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
+	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
 func (p *server) In() {
-	conn, err := p.netserv.Listen(p.timeout)
+	conn, err := p.netserv.Listen(p.conf.Timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
+	conn.TimeoutAfter(p.conf.Timeout)
 	pid, sid, err := handshake.AcceptGreeting(conn)
 	if err != nil {
 		p.log.Error().Str("where", "fetch.in.greeting").Msg(err.Error())
@@ -30,10 +31,9 @@ func (p *server) In() {
 		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
 		return
 	}
-	units := p.orderer.UnitsByID(unitIDs)
-	if err != nil {
-		log.Error().Str("where", "fetch.in.getUnits").Msg(err.Error())
-		return
+	units := make([]gomel.Unit, len(unitIDs))
+	for _, id := range unitIDs {
+		units = append(units, p.orderer.UnitsByID(id)...)
 	}
 	log.Debug().Msg(logging.SendUnits)
 	err = encoding.WriteChunk(units, conn)
@@ -55,15 +55,15 @@ func (p *server) Out() {
 		return
 	}
 	remotePid := r.Pid
-	conn, err := p.netserv.Dial(remotePid, p.timeout)
+	conn, err := p.netserv.Dial(remotePid, p.conf.Timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
+	conn.TimeoutAfter(p.conf.Timeout)
 	sid := p.syncIds[remotePid]
 	p.syncIds[remotePid]++
-	err = handshake.Greet(conn, p.pid, sid)
+	err = handshake.Greet(conn, p.conf.Pid, sid)
 	if err != nil {
 		p.log.Error().Str("where", "fetch.out.greeting").Msg(err.Error())
 		return
@@ -84,7 +84,5 @@ func (p *server) Out() {
 		return
 	}
 	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
-	if add.Chunk(p.adder, units, remotePid, "fetch.out", log) {
-		log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
-	}
+	p.orderer.AddPreunits(remotePid, units...)
 }

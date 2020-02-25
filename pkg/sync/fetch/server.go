@@ -6,7 +6,6 @@ package fetch
 
 import (
 	"sync/atomic"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -17,33 +16,31 @@ import (
 )
 
 type server struct {
-	pid      uint16
+	conf     config.Config
 	orderer  gomel.Orderer
 	netserv  network.Server
 	requests chan Request
 	syncIds  []uint32
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
-	timeout  time.Duration
 	quit     int64
 	log      zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger, nOut, nIn int, timeout time.Duration) (sync.Server, sync.Fetch) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Fetch) {
 	nProc := int(conf.NProc)
 	requests := make(chan Request, nProc)
 	s := &server{
-		pid:      conf.Pid,
+		conf:     conf,
 		orderer:  orderer,
 		netserv:  netserv,
 		requests: requests,
 		syncIds:  make([]uint32, nProc),
-		timeout:  timeout,
 		log:      log,
 	}
-	s.outPool = sync.NewPool(nOut, s.Out)
-	s.inPool = sync.NewPool(nIn, s.In)
+	s.inPool = sync.NewPool(s.conf.FetchWorkers[0], s.In)
+	s.outPool = sync.NewPool(s.conf.FetchWorkers[1], s.Out)
 	return s, s.trigger
 }
 
