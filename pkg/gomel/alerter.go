@@ -6,7 +6,6 @@ import (
 
 // Alerter is responsible for raising alerts about forks and handling communication about commitments in case of fork.
 type Alerter interface {
-	Service
 	// NewFork raises an alert about newly detected fork.
 	NewFork(Preunit, Preunit)
 	// HandleIncoming handles the incoming connection and signals the provided WaitGroup when done.
@@ -23,6 +22,10 @@ type Alerter interface {
 	Lock(uint16)
 	// Unlock the state for the given process ID.
 	Unlock(uint16)
+	// Start Alerter.
+	Start()
+	// Stop Alerter.
+	Stop()
 }
 
 // NopAlerter is an alerter that does nothing.

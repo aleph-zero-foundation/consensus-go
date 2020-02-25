@@ -33,7 +33,7 @@ type orderer struct {
 	log          zerolog.Logger
 }
 
-// New constructs a new orderer instance using provided config, random source factory, data source, preblock sink, and logger.
+// New constructs a new orderer instance using provided config, data source, preblock maker, and logger.
 func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
 		conf:         conf,
