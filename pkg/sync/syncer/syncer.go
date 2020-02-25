@@ -2,7 +2,6 @@
 package sync
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -14,93 +13,82 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/rmc"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	"gitlab.com/alephledger/core-go/pkg/network/persistent"
 	"gitlab.com/alephledger/core-go/pkg/network/tcp"
 	"gitlab.com/alephledger/core-go/pkg/network/udp"
-	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
 )
 
 type syncer struct {
 	gossip      sync.Gossip
 	fetch       sync.Fetch
-	mCast       sync.Multicast
+	mcast       sync.Multicast
 	servers     []sync.Server
-	subservices []gomel.Service
-	log         zerolog.Logger
+	subservices []core.Service
 }
 
-var logNames = map[string]int{
-	"multicast": logging.MCService,
-	"rmc":       logging.RMCService,
-	"gossip":    logging.GossipService,
-	"fetch":     logging.FetchService,
-}
-
-// New creates a new syncer.
-// Each config entry corresponds to a separate sync.Server.
-// The returned function should be called on units created by this process after they are added to the poset.
+// New creates a new syncer that uses provided config, ordered and logger.
 func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Syncer, error) {
-	err, configs := valid(conf)
+	err := valid(conf)
 	if err != nil {
 		return nil, err
 	}
-	s := &service{
-		servers: make([]sync.Server, len(configs)),
-		log:     log.With().Int(logging.Service, logging.SyncService).Logger(),
-	}
+	s := &syncer{}
 
+	var serv sync.Server
 	var netserv network.Server
-	for i, c := range configs {
-
-		timeout, err := conf.Timeout
+	if len(conf.RMCAddresses) == int(conf.NProc) {
+		netserv, s.subservices, err = getNetServ(conf.RMCNetType, conf.Pid, conf.RMCAddresses, s.subservices)
 		if err != nil {
 			return nil, err
 		}
-
-		lg := log.With().Int(logging.Service, logNames[c.Type]).Logger()
-		netserv, s.subservices, err = getNetServ(c.netType, c.addrs[conf.Pid], c.addrs, s.subservices)
+		serv, s.mcast = rmc.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.RMCService).Logger())
+		s.servers = append(s.servers, serv)
+	}
+	if len(conf.MCastAddresses) == int(conf.NProc) {
+		netserv, s.subservices, err = getNetServ(conf.MCastNetType, conf.Pid, conf.MCastAddresses, s.subservices)
 		if err != nil {
 			return nil, err
 		}
-
-		switch c.Type {
-		case "multicast":
-			s.servers[i], s.mcast = multicast.NewServer(conf, orderer, netserv, timeout, lg)
-
-		case "rmc":
-			s.servers[i], s.mcast = rmc.NewServer(conf, orderer, netserv, rmcbox.New(c.Pubs, c.Priv), timeout, lg)
-
-		case "gossip":
-			nOut, nIn, nIdle := c.workers[0], c.workers[1], c.workers[2]
-			server, trigger := gossip.NewServer(conf, orderer, netserv, timeout, lg, nOut, nIn, nIdle)
-			s.servers[i] = server
-			s.reqGossip = trigger
-
-		case "fetch":
-			nOut, nIn := c.workers[0], c.workers[1]
-			server, trigger := fetch.NewServer(conf, orderer, netserv, timeout, lg, nOut, nIn)
-			s.servers[i] = server
-			s.reqFetch = trigger
-
-		default:
-			return nil, gomel.NewConfigError("unknown sync type: " + c.Type)
+		serv, s.mcast = multicast.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.MCService).Logger())
+		s.servers = append(s.servers, serv)
+	}
+	if len(conf.FetchAddresses) == int(conf.NProc) {
+		netserv, s.subservices, err = getNetServ(conf.FetchNetType, conf.Pid, conf.FetchAddresses, s.subservices)
+		if err != nil {
+			return nil, err
 		}
+		serv, trigger := fetch.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.FetchService).Logger())
+		s.servers = append(s.servers, serv)
+		s.fetch = trigger
+	}
+	if len(conf.GossipAddresses) == int(conf.NProc) {
+		netserv, s.subservices, err = getNetServ(conf.GossipNetType, conf.Pid, conf.GossipAddresses, s.subservices)
+		if err != nil {
+			return nil, err
+		}
+		serv, trigger := gossip.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.GossipService).Logger())
+		s.servers = append(s.servers, serv)
+		s.gossip = trigger
 	}
 	return s, nil
 }
 
-func (s *service) Start() {
+func (s *syncer) Multicast(u gomel.Unit)                { s.mcast(u) }
+func (s *syncer) RequestFetch(pid uint16, ids []uint64) { s.fetch(pid, ids) }
+func (s *syncer) RequestGossip(pid uint16)              { s.gossip(pid) }
+
+func (s *syncer) Start() {
 	for _, service := range s.subservices {
 		service.Start()
 	}
 	for _, server := range s.servers {
 		server.Start()
 	}
-	s.log.Info().Msg(logging.ServiceStarted)
 }
 
-func (s *service) Stop() {
+func (s *syncer) Stop() {
 	for _, server := range s.servers {
 		server.StopOut()
 	}
@@ -112,58 +100,55 @@ func (s *service) Stop() {
 	for _, service := range s.subservices {
 		service.Stop()
 	}
-	s.log.Info().Msg(logging.ServiceStopped)
 }
 
-type syncConf struct {
-	netType string
-	addrs   []string
-	workers []int
-}
+// Checks if the config entries for syncer are is valid:
+// 1) the number of addresses for each server must be NProc or 0
+// 2) RMC and Multicast cannot be both enabled or disabled
+func valid(conf config.Config) error {
+	ok := func(i int) bool { return i == int(conf.NProc) || i == 0 }
 
-// Checks if the list of configs is valid, that means there is only one multicasting server.
-func valid(conf config.Config) ([]syncConf, error) {
-	scs := []syncConf{}
-
-	// parse rmc configuration
-	if len(conf.RMCAddresses) != int(conf.NProc) {
-		return nil, gomel.NewConfigError("wrong number of rmc addresses")
+	if !ok(len(conf.RMCAddresses)) {
+		return gomel.NewConfigError("syncer: wrong number of rmc addresses")
 	}
-	scs = append(scs, syncConf{conf.RMCNetType, conf.RMCAddresses})
-	// parse mcast configuration
-	if len(conf.MCastAddresses) == int(conf.NProc) {
-		// we use only one type of multicast, so we drop rmc conf and use it for alerts
-		scs = syncConf{conf.MCastNetType, conf.MCastAddresses}
+	if !ok(len(conf.MCastAddresses)) {
+		return gomel.NewConfigError("syncer: wrong number of multicast addresses")
 	}
-	// parse gossip configuration
-	if len(conf.GossipAddresses) == int(conf.NProc) {
-		scs = append(scs, syncConf{conf.GossipNetType, conf.GossipAddresses, conf.GossipWorkers})
+	if !ok(len(conf.GossipAddresses)) {
+		return gomel.NewConfigError("syncer: wrong number of gossip addresses")
 	}
-	// parse fetch configuration
-	if len(conf.FetchAddresses) == int(conf.NProc) {
-		scs = append(syncConf{conf.FetchNetType, conf.FetchAddresses, conf.FetchWorkers})
+	if !ok(len(conf.FetchAddresses)) {
+		return gomel.NewConfigError("syncer: wrong number of fetch addresses")
 	}
 
-	return scs, nil
+	rmcOn := len(conf.RMCAddresses) == int(conf.NProc)
+	mcOn := len(conf.MCastAddresses) == int(conf.NProc)
+	if mcOn && rmcOn {
+		return gomel.NewConfigError("syncer: both RMC and multicast enabled")
+	}
+	if !mcOn && !rmcOn {
+		return gomel.NewConfigError("syncer: both RMC and multicast disabled")
+	}
+	return nil
 }
 
 // Return network.Server of the type indicated by "net". If needed, append a corresponding service to the given slice. Defaults to "tcp".
-func getNetServ(net string, localAddress string, remoteAddresses []string, services []gomel.Service) (network.Server, []gomel.Service, error) {
+func getNetServ(net string, pid uint16, addresses []string, services []core.Service) (network.Server, []core.Service, error) {
 	switch net {
 	case "udp":
-		netserv, err := udp.NewServer(localAddress, remoteAddresses)
+		netserv, err := udp.NewServer(addresses[pid], addresses)
 		if err != nil {
 			return nil, services, err
 		}
 		return netserv, services, nil
 	case "pers":
-		netserv, service, err := persistent.NewServer(localAddress, remoteAddresses)
+		netserv, service, err := persistent.NewServer(addresses[pid], addresses)
 		if err != nil {
 			return nil, services, err
 		}
 		return netserv, append(services, service), nil
 	default:
-		netserv, err := tcp.NewServer(localAddress, remoteAddresses)
+		netserv, err := tcp.NewServer(addresses[pid], addresses)
 		if err != nil {
 			return nil, services, err
 		}
