@@ -11,7 +11,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	. "gitlab.com/alephledger/consensus-go/pkg/random/beacon"
-	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/unit"
 	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/crypto/encrypt"
@@ -253,7 +252,7 @@ var _ = Describe("Beacon", func() {
 				if pid == maliciousNode {
 					continue
 				}
-				obtainedCoin := rs[pid].(*Beacon).GetCoin(head)
+				obtainedWTK := rs[pid].(*Beacon).GetWTK(head)
 				subkeys := []*tss.ThresholdKey{}
 				for i := uint16(0); i < n; i++ {
 					if i == maliciousNode {
@@ -262,10 +261,9 @@ var _ = Describe("Beacon", func() {
 					tk, _, _ := tss.Decode(dags[pid].UnitsOnLevel(0).Get(i)[0].RandomSourceData(), i, pid, p2pKeys[pid][i])
 					subkeys = append(subkeys, tk)
 				}
-				multikey := tss.CreateWTK(subkeys, expectedShareProviders)
+				expectedWTK := tss.CreateWTK(subkeys, expectedShareProviders)
 
-				expectedCoin := coin.NewFactory(pid, multikey)
-				Expect(expectedCoin).To(Equal(obtainedCoin))
+				Expect(expectedWTK).To(Equal(obtainedWTK))
 			}
 		})
 	})
