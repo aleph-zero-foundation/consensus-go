@@ -27,21 +27,27 @@ func (units *unitBag) getOne(hash *gomel.Hash) gomel.Unit {
 	return units.contents[*hash]
 }
 
-func (units *unitBag) getMany(hashes []*gomel.Hash) ([]gomel.Unit, int) {
+func (units *unitBag) getMany(hashes []*gomel.Hash) []gomel.Unit {
 	units.RLock()
 	defer units.RUnlock()
 	result := make([]gomel.Unit, len(hashes))
-	unknown := 0
 	for i, h := range hashes {
 		if h == nil {
 			continue
 		}
 		if u, ok := units.contents[*h]; ok {
 			result[i] = u
-		} else {
-			result[i] = nil
-			unknown++
 		}
 	}
-	return result, unknown
+	return result
+}
+
+func (units *unitBag) getAll() []gomel.Unit {
+	units.RLock()
+	defer units.RUnlock()
+	result := make([]gomel.Unit, len(units.contents))
+	for _, u := range units.contents {
+		result = append(result, u)
+	}
+	return result
 }

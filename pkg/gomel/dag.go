@@ -1,10 +1,9 @@
-// Package gomel defines all the interfaces representing basic components for executing the Aleph protocol.
+// Package gomel defines all the interfaces representing basic components for executing the Aleph consensus protocol.
 //
 // The main components defined in this package are:
 //  1. The unit and preunit representing the information produced by a single process in a single round of the protocol.
 //  2. The dag, containing all the units created by processes and representing the partial order between them.
 //  3. The random source interacting with the dag to generate randomness needed for the protocol.
-//  4. The linear ordering that uses the dag and random source to eventually output a linear ordering of all units.
 package gomel
 
 import "gitlab.com/alephledger/core-go/pkg/crypto"
@@ -23,10 +22,10 @@ type Dag interface {
 	Insert(Unit)
 	// UnitsOnLevel returns all units on a given level of the dag.
 	UnitsOnLevel(int) SlottedUnits
-	// UnitsOnHeight returns all units on a given height of the dag.
-	UnitsOnHeight(int) SlottedUnits
 	// MaximalUnitsPerProcess returns a collection of units containing, for each process, all maximal units created by that process.
 	MaximalUnitsPerProcess() SlottedUnits
+	// UnitsAbove returns all units present in dag with heights higher than given slice of heights (of length NProc).
+	UnitsAbove([]int) []Unit
 	// GetUnit returns a unit with the given hash, if present in the dag, or nil otherwise.
 	GetUnit(*Hash) Unit
 	// GetUnits returns slice of units associated with given hashes, in the same order.

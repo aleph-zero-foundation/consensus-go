@@ -75,7 +75,7 @@ func (dag *Dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
 		if h == -1 {
 			continue
 		}
-		su := dag.UnitsOnHeight(h)
+		su := dag.unitsOnHeight(h)
 		if su == nil {
 			unknown++
 			continue
@@ -126,7 +126,7 @@ func (dag *Dag) Insert(u gomel.Unit) {
 	}
 }
 
-// PrimeUnits returns the prime units at the given level.
+// UnitsOnLevel returns all units at the given level.
 func (dag *Dag) UnitsOnLevel(level int) gomel.SlottedUnits {
 	dag.RLock()
 	defer dag.RUnlock()
@@ -136,8 +136,21 @@ func (dag *Dag) UnitsOnLevel(level int) gomel.SlottedUnits {
 	return nil
 }
 
-// UnitsOnHeight returns the units on the given height.
-func (dag *Dag) UnitsOnHeight(height int) gomel.SlottedUnits {
+// UnitsAbove returns all units above given heights.
+func (dag *Dag) UnitsAbove(heights []int) []gomel.Unit {
+	var result []gomel.Unit
+	dag.RLock()
+	defer dag.RUnlock()
+	for i, height := range heights {
+		for h := height + 1; h < len(dag.unitsByHeight); h++ {
+			result = append(result, dag.unitsByHeight[h].Get(uint16(i))...)
+		}
+	}
+	return result
+}
+
+// unitsOnHeight returns the units on the given height.
+func (dag *Dag) unitsOnHeight(height int) gomel.SlottedUnits {
 	dag.RLock()
 	defer dag.RUnlock()
 	if height < len(dag.unitsByHeight) {

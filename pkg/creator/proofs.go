@@ -3,6 +3,7 @@ package creator
 import (
 	"encoding/binary"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
@@ -15,7 +16,7 @@ const proofLength = gomel.HashLength + 8
 
 // EpochProof checks if the given preunit is a proof that a new epoch started.
 func EpochProof(pu gomel.Preunit, wtk *tss.WeakThresholdKey) bool {
-	if !gomel.Dealing(pu) {
+	if !gomel.Dealing(pu) || wtk == nil {
 		return false
 	}
 	sig, msg, err := decodeSignature(pu.Data())
@@ -82,13 +83,13 @@ func decodeSignature(data core.Data) (*tss.Signature, []byte, error) {
 
 // shareDB is a simple storage for threshold signature shares indexed by the message they sign.
 type shareDB struct {
-	wtk  *tss.WeakThresholdKey
+	conf config.Config
 	data map[string][]*tss.Share
 }
 
 // newShareDB constructs a storage for shares that uses the provided weak threshold key for combining shares.
-func newShareDB(wtk *tss.WeakThresholdKey) *shareDB {
-	return &shareDB{wtk: wtk, data: make(map[string][]*tss.Share)}
+func newShareDB(conf config.Config) *shareDB {
+	return &shareDB{conf: conf, data: make(map[string][]*tss.Share)}
 }
 
 // add puts the share that signs msg to the storage. If there are enough shares (for that msg),
@@ -100,8 +101,8 @@ func (db *shareDB) add(share *tss.Share, msg []byte) *tss.Signature {
 	} else {
 		db.data[key] = []*tss.Share{share}
 	}
-	if len(db.data[key]) >= int(db.wtk.Threshold()) {
-		if sig, ok := db.wtk.CombineShares(db.data[key]); ok {
+	if len(db.data[key]) >= int(db.conf.WTKey.Threshold()) {
+		if sig, ok := db.conf.WTKey.CombineShares(db.data[key]); ok {
 			return sig
 		}
 	}
