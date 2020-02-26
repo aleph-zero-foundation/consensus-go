@@ -43,7 +43,7 @@ func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, outpu
 		trigger:      make(chan struct{}, 1),
 		timingRounds: make(chan *timingRound, 10),
 		lastTUs:      make([]gomel.Unit, stdDecider.firstRoundZeroForCommonVote),
-		log:          log,
+		log:          log.With().Int(logging.Service, logging.ExtenderService).Logger(),
 	}
 
 	ext.wg.Add(2)

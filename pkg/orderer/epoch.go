@@ -8,6 +8,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 type epoch struct {
@@ -16,9 +17,11 @@ type epoch struct {
 	dag      gomel.Dag
 	extender *linear.Extender
 	rs       gomel.RandomSource
+	log      zerolog.Logger
 }
 
 func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gomel.RandomSourceFactory, alert gomel.Alerter, unitBelt chan<- gomel.Unit, output chan<- []gomel.Unit, log zerolog.Logger) *epoch {
+	log = log.With().Uint32(logging.Epoch, uint32(id)).Logger()
 	dg := dag.New(conf, id)
 	adr := adder.New(dg, conf, syncer, alert, log)
 	rs := rsf.NewRandomSource(dg)
@@ -29,18 +32,21 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 			unitBelt <- u
 		}
 	})
+	log.Info().Msg(logging.NewEpoch)
 	return &epoch{
 		id:       id,
 		adder:    adr,
 		dag:      dg,
 		extender: ext,
 		rs:       rs,
+		log:      log,
 	}
 }
 
 func (ep *epoch) close() {
 	ep.adder.Close()
 	ep.extender.Close()
+	ep.log.Info().Msg(logging.EpochEnd)
 }
 
 func (ep *epoch) unitsAbove(heights []int) []gomel.Unit {

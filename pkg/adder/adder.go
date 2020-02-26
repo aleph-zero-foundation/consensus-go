@@ -51,7 +51,7 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 		waitingByID: make(map[uint64]*waitingPreunit),
 		missing:     make(map[uint64]*missingPreunit),
 		active:      true,
-		log:         log,
+		log:         log.With().Int(logging.Service, logging.AdderService).Logger(),
 	}
 	for i := range ad.ready {
 		if uint16(i) == ad.conf.Pid {
@@ -82,14 +82,13 @@ func (ad *adder) Close() {
 	ad.log.Info().Msg(logging.ServiceStopped)
 }
 
-// AddPreunits checks basic correctness of a given slice of preunits and then adds them to the buffer zone.
-// Does not block - this method returns when all preunits are added to the waiting preunits (or rejected due to signature or duplication).
-// Returned AggregateError can have the following members:
+// AddPreunits checks basic correctness of a slice of preunits and then adds correct ones to the buffer zone.
+// Returned slice can have the following members:
 //   DataError - if creator or signature are wrong
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
-//   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
+//   UnknownParents - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
-	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnitsStarted)
+	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnits)
 	errors := make([]error, len(preunits))
 	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {

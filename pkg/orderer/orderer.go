@@ -9,6 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creator"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
@@ -41,7 +42,7 @@ func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker,
 		unitBelt:     make(chan gomel.Unit, beltSize),
 		lastTiming:   make(chan gomel.Unit, 10),
 		orderedUnits: make(chan []gomel.Unit, 10),
-		log:          log,
+		log:          log.With().Int(logging.Service, logging.OrderService).Logger(),
 	}
 	send := func(u gomel.Unit) {
 		ord.insert(u)
@@ -59,6 +60,7 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	alerter.Start()
 	go ord.creator.Work(ord.unitBelt, ord.lastTiming, &ord.wg)
 	go ord.preblockMaker()
+	ord.log.Info().Msg(logging.ServiceStarted)
 }
 
 func (ord *orderer) Stop() {
@@ -69,6 +71,7 @@ func (ord *orderer) Stop() {
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
+	ord.log.Info().Msg(logging.ServiceStopped)
 }
 
 // preblockMaker waits for ordered round of units produced by Extenders and produces Preblocks based on them.
@@ -251,6 +254,7 @@ func (ord *orderer) insert(unit gomel.Unit) {
 		}
 		if ep != nil {
 			ep.dag.Insert(unit)
+			ord.log.Info().Int(logging.Height, unit.Height()).Msg(logging.UnitAdded)
 		}
 	}
 }
