@@ -41,6 +41,8 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 	return &Creator{
 		conf:       conf,
 		ds:         dataSource,
+		send:       send,
+		rsData:     rsData,
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
 		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
