@@ -98,7 +98,8 @@ func (ord *orderer) preblockMaker() {
 
 // AddPreunits sends preunits received from other committee members to their corresponding epochs.
 // It assumes preunits are ordered by ascending epochID and, within each epoch, they are topologically sorted.
-func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
+func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
+	errors := make([]error, 0, len(preunits))
 	for len(preunits) > 0 {
 		epoch := preunits[0].EpochID()
 		end := 0
@@ -115,10 +116,12 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) {
 			}
 		}
 		if ep != nil {
-			ep.adder.AddPreunits(source, preunits[:end]...) //TODO handle error
+			errs := ep.adder.AddPreunits(source, preunits[:end]...)
+			errors = append(errors, errs...)
 		}
 		preunits = preunits[end:]
 	}
+	return errors
 }
 
 // UnitsByID allows to access units present in the orderer using their ids.

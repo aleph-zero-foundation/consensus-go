@@ -3,7 +3,7 @@ package gomel
 // Orderer orders ordered orders into ordered order.
 type Orderer interface {
 	// AddPreunits sends to orderer preunits received from other committee member.
-	AddPreunits(uint16, ...Preunit)
+	AddPreunits(uint16, ...Preunit) []error
 	// UnitsByID finds units with given IDs in Orderer.
 	// Returns nil on the corresponding position if the requested unit is not present.
 	// In case of forks returns all known units with a particular ID.
