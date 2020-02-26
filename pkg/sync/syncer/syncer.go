@@ -37,7 +37,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 
 	var serv sync.Server
 	var netserv network.Server
-	if len(conf.RMCAddresses) == int(conf.NProc) {
+	if len(conf.RMCAddresses) == int(conf.NProc) && len(conf.MCastAddresses) == 0 {
 		netserv, s.subservices, err = getNetServ(conf.RMCNetType, conf.Pid, conf.RMCAddresses, s.subservices)
 		if err != nil {
 			return nil, err
@@ -102,8 +102,7 @@ func (s *syncer) Stop() {
 }
 
 // Checks if the config entries for syncer are is valid:
-// 1) the number of addresses for each server must be NProc or 0
-// 2) RMC and Multicast cannot be both enabled or disabled
+// the number of addresses for each server must be NProc or 0
 func valid(conf config.Config) error {
 	ok := func(i int) bool { return i == int(conf.NProc) || i == 0 }
 
@@ -122,9 +121,6 @@ func valid(conf config.Config) error {
 
 	rmcOn := len(conf.RMCAddresses) == int(conf.NProc)
 	mcOn := len(conf.MCastAddresses) == int(conf.NProc)
-	if mcOn && rmcOn {
-		return gomel.NewConfigError("syncer: both RMC and multicast enabled")
-	}
 	if !mcOn && !rmcOn {
 		return gomel.NewConfigError("syncer: both RMC and multicast disabled")
 	}

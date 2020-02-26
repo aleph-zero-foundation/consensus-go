@@ -32,9 +32,7 @@ func defaultTemplate() Config {
 	}
 }
 
-// newConfig return a Config with default values together with Member and Committee data.
-func newConfig(m *Member, c *Committee) Config {
-	cnf := defaultTemplate()
+func addKeys(cnf Config, m *Member, c *Committee) {
 	cnf.Pid = m.Pid
 	cnf.NProc = uint16(len(c.PublicKeys))
 	cnf.PrivateKey = m.PrivateKey
@@ -43,43 +41,52 @@ func newConfig(m *Member, c *Committee) Config {
 	cnf.RMCPrivateKey = m.RMCSecretKey
 	cnf.P2PPublicKeys = c.P2PPublicKeys
 	cnf.P2PSecretKey = m.P2PSecretKey
-	cnf.RMCAddresses = c.Addresses["rmc"]
-	cnf.GossipAddresses = c.Addresses["gossip"]
-	cnf.FetchAddresses = c.Addresses["fetch"]
-	cnf.MCastAddresses = c.Addresses["mcast"]
-	cnf.GossipWorkers = [3]int{1, 1, 1}
-	cnf.FetchWorkers = [2]int{int(cnf.NProc) / 2, int(cnf.NProc) / 4}
-	return cnf
 }
 
-func addSetupConf(cnf Config) Config {
+func addAddresses(cnf Config, addresses map[string][]string) {
+	cnf.RMCAddresses = addresses["rmc"]
+	cnf.GossipAddresses = addresses["gossip"]
+	cnf.FetchAddresses = addresses["fetch"]
+	cnf.MCastAddresses = addresses["mcast"]
+	cnf.GossipWorkers = [3]int{1, 1, 1}
+	cnf.FetchWorkers = [2]int{int(cnf.NProc) / 2, int(cnf.NProc) / 4}
+}
+
+func addSetupConf(cnf Config) {
 	cnf.CanSkipLevel = false
 	cnf.OrderStartLevel = 6
 	cnf.CRPFixedPrefix = 0
 	cnf.EpochLength = 1
 	cnf.NumberOfEpochs = 1
 	cnf.Checks = append(cnf.Checks, check.NoLevelSkipping, check.NoForks)
-	return cnf
 }
 
-func addRegularConf(cnf Config) Config {
+func addConsensusConf(cnf Config) Config {
 	cnf.CanSkipLevel = true
 	cnf.OrderStartLevel = 0
 	cnf.CRPFixedPrefix = 5
-	cnf.EpochLength = 1000
-	cnf.NumberOfEpochs = 10
+	cnf.EpochLength = 50
+	cnf.NumberOfEpochs = 2
 	cnf.Checks = append(cnf.Checks, check.NoSelfForkingEvidence, check.ForkerMuting)
 	return cnf
 }
 
 // NewSetup returns a Config for setup phase given Member and Committee data.
 func NewSetup(m *Member, c *Committee) Config {
-	return addSetupConf(newConfig(m, c))
+	cnf := defaultTemplate()
+	addKeys(cnf, m, c)
+	addAddresses(cnf, c.SetupAddresses)
+	addSetupConf(cnf)
+	return cnf
 }
 
 // New returns a Config for regular consensus run from the given Member and Committee data.
 func New(m *Member, c *Committee) Config {
-	return addRegularConf(newConfig(m, c))
+	cnf := defaultTemplate()
+	addKeys(cnf, m, c)
+	addAddresses(cnf, c.Addresses)
+	addConsensusConf(cnf)
+	return cnf
 }
 
 // Empty returns an empty Config populated by zero-values.
