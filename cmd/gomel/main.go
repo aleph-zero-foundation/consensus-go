@@ -134,7 +134,12 @@ func main() {
 
 	fmt.Fprintln(os.Stdout, "Starting process...")
 
-	start, stop, err := run.Process(setupConfig, consensusConfig, tds, ps)
+	var start, stop func()
+	if len(setupConfig.RMCAddresses) == 0 {
+		start, stop, err = run.NoBeacon(consensusConfig, tds, ps)
+	} else {
+		start, stop, err = run.Process(setupConfig, consensusConfig, tds, ps)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 		return

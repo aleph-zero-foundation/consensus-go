@@ -139,6 +139,12 @@ func parseCommitteeLine(line string) (string, string, string, map[string]string,
 	return "", "", "", nil, nil, fmt.Errorf(strings.Join(errStrings, "\n"))
 }
 
+func addAddr(commAddrMap map[string][]string, addrMap map[string]string) {
+	for syncType, addr := range addrMap {
+		commAddrMap[syncType] = append(commAddrMap[syncType], addr)
+	}
+}
+
 // LoadCommittee loads the data from the given reader and creates a committee.
 func LoadCommittee(r io.Reader) (*Committee, error) {
 	scanner := bufio.NewScanner(r)
@@ -168,13 +174,8 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		c.PublicKeys = append(c.PublicKeys, publicKey)
 		c.P2PPublicKeys = append(c.P2PPublicKeys, p2pPublicKey)
 		c.RMCVerificationKeys = append(c.RMCVerificationKeys, verificationKey)
-		c.SetupAddresses["rmc"] = append(c.SetupAddresses["rmc"], setupAddrs["rmc"])
-		c.SetupAddresses["fetch"] = append(c.SetupAddresses["fetch"], setupAddrs["fetch"])
-		c.SetupAddresses["gossip"] = append(c.SetupAddresses["gossip"], setupAddrs["gossip"])
-		c.Addresses["rmc"] = append(c.Addresses["rmc"], addrs["rmc"])
-		c.Addresses["mcast"] = append(c.Addresses["mcast"], addrs["mcast"])
-		c.Addresses["fetch"] = append(c.Addresses["fetch"], addrs["fetch"])
-		c.Addresses["gossip"] = append(c.Addresses["gossip"], addrs["gossip"])
+		addAddr(c.SetupAddresses, setupAddrs)
+		addAddr(c.Addresses, addrs)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -225,6 +226,9 @@ func StoreMember(w io.Writer, m *Member) error {
 
 func storeAddresses(w io.Writer, pid int, addresses map[string][]string, types []string) error {
 	for j, syncType := range types {
+		if _, ok := addresses[syncType]; !ok {
+			continue
+		}
 		if j != 0 {
 			if _, err := io.WriteString(w, " "); err != nil {
 				return err

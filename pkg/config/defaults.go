@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strconv"
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
@@ -53,6 +54,7 @@ func addAddresses(cnf Config, addresses map[string][]string) {
 }
 
 func addSetupConf(cnf Config) {
+	cnf.LogFile = strconv.Itoa(int(cnf.Pid)) + ".setup.log"
 	cnf.CanSkipLevel = false
 	cnf.OrderStartLevel = 6
 	cnf.CRPFixedPrefix = 0
@@ -62,6 +64,7 @@ func addSetupConf(cnf Config) {
 }
 
 func addConsensusConf(cnf Config) Config {
+	cnf.LogFile = strconv.Itoa(int(cnf.Pid)) + ".log"
 	cnf.CanSkipLevel = true
 	cnf.OrderStartLevel = 0
 	cnf.CRPFixedPrefix = 5

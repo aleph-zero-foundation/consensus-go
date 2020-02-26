@@ -1,10 +1,14 @@
 #!/bin/bash
 set -e
 
-go run ../../../cmd/gomel-keys 4 addrs/$1.addrs
+rm -f out
+
+rm -f *log *pk committee.ka
+
+go run ../../../cmd/gomel-keys 4 $1
 
 for PID in {0..3}
 do
-    go run ../../../cmd/gomel --pk $PID.pk --keys_addrs committee.ka --log $PID.$1.log --config "confs/$1.json"&
+    go run ../../../cmd/gomel --priv $PID.pk --keys_addrs committee.ka&
 done
 

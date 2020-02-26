@@ -42,6 +42,9 @@ func makeMemberKeys(addresses map[string][]string) memberKeys {
 
 func makeAddrMap(addrs string, addresses map[string][]string) {
 	for _, addr := range strings.Split(addrs, " ") {
+		if len(addr) == 0 {
+			continue
+		}
 		switch addr[0] {
 		case 'r':
 			addresses["rmc"] = append(addresses["rmc"], addr[1:])
