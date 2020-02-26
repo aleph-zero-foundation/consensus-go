@@ -44,11 +44,9 @@ func (ep *epoch) close() {
 }
 
 func (ep *epoch) unitsAbove(heights []int) []gomel.Unit {
-	//TODO
-	return nil
+	return ep.dag.UnitsAbove(heights)
 }
 
 func (ep *epoch) allUnits() []gomel.Unit {
-	//TODO
-	return nil
+	return ep.dag.UnitsAbove(nil)
 }
