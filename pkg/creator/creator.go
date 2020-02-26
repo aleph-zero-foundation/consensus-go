@@ -44,7 +44,7 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
 		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
-		shares:     newShareDB(conf.WTKey),
+		shares:     newShareDB(conf),
 		frozen:     make(map[uint16]bool),
 		log:        log,
 	}
@@ -120,6 +120,10 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 			}
 			if timingUnit.EpochID() == cr.epoch {
 				cr.epochDone = true
+				if int(cr.epoch) == cr.conf.NumberOfEpochs-1 {
+					// the epoch we just finished is the last epoch we were supposed to produce
+					return core.Data{}
+				}
 				msg := encodeProof(timingUnit)
 				share := cr.conf.WTKey.CreateShare(msg)
 				if share != nil {

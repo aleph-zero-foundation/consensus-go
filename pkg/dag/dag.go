@@ -7,7 +7,7 @@ import (
 )
 
 type dag struct {
-	nProcesses  uint16
+	nProc       uint16
 	epochID     gomel.EpochID
 	units       *unitBag
 	levelUnits  *fiberMap
@@ -21,7 +21,7 @@ type dag struct {
 // New constructs a dag for a given number of processes.
 func New(conf config.Config, epochID gomel.EpochID) gomel.Dag {
 	return &dag{
-		nProcesses:  conf.NProc,
+		nProc:       conf.NProc,
 		epochID:     epochID,
 		units:       newUnitBag(),
 		levelUnits:  newFiberMap(conf.NProc, 10),
@@ -49,30 +49,31 @@ func (dag *dag) EpochID() gomel.EpochID {
 
 // IsQuorum checks if the given number of processes forms a quorum amongst all processes.
 func (dag *dag) IsQuorum(number uint16) bool {
-	return number >= gomel.MinimalQuorum(dag.nProcesses)
+	return number >= gomel.MinimalQuorum(dag.nProc)
 }
 
 // NProc returns the number of processes which use the dag.
 func (dag *dag) NProc() uint16 {
-	return dag.nProcesses
+	return dag.nProc
 }
 
 // PrimeUnits returns the prime units at the requested level, indexed by their creator ids.
 func (dag *dag) UnitsOnLevel(level int) gomel.SlottedUnits {
 	res, err := dag.levelUnits.getFiber(level)
 	if err != nil {
-		return newSlottedUnits(dag.nProcesses)
+		return newSlottedUnits(dag.nProc)
 	}
 	return res
 }
 
-// UnitsOnHeight returns the units at the requested height, indexed by their creator ids.
-func (dag *dag) UnitsOnHeight(height int) gomel.SlottedUnits {
-	res, err := dag.heightUnits.getFiber(height)
-	if err != nil {
-		return newSlottedUnits(dag.nProcesses)
+// UnitsAbove returns all units present in dag that are above (in height sense) given heights.
+// When called with nil argument, returns all units in the dag.
+// Units returned by this method are in random order.
+func (dag *dag) UnitsAbove(heights []int) []gomel.Unit {
+	if heights == nil {
+		return dag.units.getAll()
 	}
-	return res
+	return dag.heightUnits.above(heights)
 }
 
 // MaximalUnitsPerProcess returns the maximal units created by respective processes.
@@ -80,18 +81,18 @@ func (dag *dag) MaximalUnitsPerProcess() gomel.SlottedUnits {
 	return dag.maxUnits
 }
 
+// GetUnit returns a unit with the given hash, if present in dag.
 func (dag *dag) GetUnit(hash *gomel.Hash) gomel.Unit {
 	return dag.units.getOne(hash)
 }
 
 // GetUnits returns a slice of units corresponding to the hashes provided.
 // If a unit of a given hash is not present in the dag, the corresponding value is nil.
-// Returned int is the number of such missing units.
 func (dag *dag) GetUnits(hashes []*gomel.Hash) []gomel.Unit {
-	us, _ := dag.units.getMany(hashes)
-	return us
+	return dag.units.getMany(hashes)
 }
 
+// GetByID returns all units in dag with the given ID. There is more than one only in case of forks.
 func (dag *dag) GetByID(id uint64) []gomel.Unit {
 	height, creator, epoch := gomel.DecodeID(id)
 	if epoch != dag.EpochID() {

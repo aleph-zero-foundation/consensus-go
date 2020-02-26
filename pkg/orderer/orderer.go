@@ -62,13 +62,13 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 }
 
 func (ord *orderer) Stop() {
+	ord.alerter.Stop()
+	ord.syncer.Stop()
 	ord.previous.close()
 	ord.current.close()
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
-	ord.alerter.Stop()
-	ord.syncer.Stop()
 }
 
 // preblockMaker waits for ordered round of units produced by Extenders and produces Preblocks based on them.
@@ -81,7 +81,7 @@ func (ord *orderer) preblockMaker() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
-		if ord.conf.NumberOfEpochs > 1 && timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
+		if timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
 			ord.lastTiming <- timingUnit
 		}
 		epoch := timingUnit.EpochID()
