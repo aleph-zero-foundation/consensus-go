@@ -34,7 +34,7 @@ func newConfig(m *Member, c *Committee) Config {
 	cnf.RMCPrivateKey = m.RMCSecretKey
 	cnf.P2PPublicKeys = c.P2PPublicKeys
 	cnf.P2PSecretKey = m.P2PSecretKey
-	cnf.RMCAddresses = c.RMCAddresses
+	cnf.RMCAddresses = c.Addresses["rmc"]
 	cnf.GossipAddresses = c.Addresses["gossip"]
 	cnf.FetchAddresses = c.Addresses["fetch"]
 	cnf.MCastAddresses = c.Addresses["mcast"]

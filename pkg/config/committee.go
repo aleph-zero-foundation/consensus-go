@@ -40,9 +40,6 @@ type Committee struct {
 	// Verification keys of all committee members use for RMC, ordered according to process ids.
 	RMCVerificationKeys []*bn256.VerificationKey
 
-	// RMCAddresses of all committee members
-	RMCAddresses []string
-
 	// Addresses of all committee members
 	Addresses map[string][]string
 }
@@ -96,16 +93,16 @@ func LoadMember(r io.Reader) (*Member, error) {
 	}, nil
 }
 
-func parseCommitteeLine(line string) (string, string, string, string, map[string]string, error) {
+func parseCommitteeLine(line string) (string, string, string, map[string]string, error) {
 	s := strings.Split(line, "|")
 
-	if len(s) < 5 {
-		return "", "", "", "", nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|p2pPublicKey|setupAddresses|addresses")
+	if len(s) < 4 {
+		return "", "", "", nil, errors.New("commitee line should be of the form:\npublicKey|verifiactionKey|p2pPublicKey||addresses")
 	}
-	pk, p2pPK, vk, rmcAddrs, addrsList := s[0], s[1], s[2], s[3], s[4]
+	pk, p2pPK, vk, addrsList := s[0], s[1], s[2], s[3]
 	var errStrings []string
 	if len(pk) == 0 {
-		return "", "", "", "", nil, errors.New(malformedData)
+		return "", "", "", nil, errors.New(malformedData)
 	}
 	if len(p2pPK) == 0 {
 		errStrings = append(errStrings, "p2p public key should be non-empty")
@@ -119,6 +116,8 @@ func parseCommitteeLine(line string) (string, string, string, string, map[string
 			continue
 		}
 		switch addr[0] {
+		case 'r':
+			addrs["rmc"] = addr[1:]
 		case 'f':
 			addrs["fetch"] = addr[1:]
 		case 'g':
@@ -128,9 +127,9 @@ func parseCommitteeLine(line string) (string, string, string, string, map[string
 		}
 	}
 	if errStrings == nil {
-		return pk, p2pPK, vk, rmcAddrs, addrs, nil
+		return pk, p2pPK, vk, addrs, nil
 	}
-	return "", "", "", "", nil, fmt.Errorf(strings.Join(errStrings, "\n"))
+	return "", "", "", nil, fmt.Errorf(strings.Join(errStrings, "\n"))
 }
 
 // LoadCommittee loads the data from the given reader and creates a committee.
@@ -139,7 +138,7 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 
 	c := &Committee{Addresses: make(map[string][]string)}
 	for scanner.Scan() {
-		pk, p2pPK, vk, rmcAddr, syncAddrs, err := parseCommitteeLine(scanner.Text())
+		pk, p2pPK, vk, addrs, err := parseCommitteeLine(scanner.Text())
 		if err != nil {
 			return nil, err
 		}
@@ -162,10 +161,10 @@ func LoadCommittee(r io.Reader) (*Committee, error) {
 		c.PublicKeys = append(c.PublicKeys, publicKey)
 		c.P2PPublicKeys = append(c.P2PPublicKeys, p2pPublicKey)
 		c.RMCVerificationKeys = append(c.RMCVerificationKeys, verificationKey)
-		c.RMCAddresses = append(c.RMCAddresses, rmcAddr)
-		c.Addresses["mcast"] = append(c.Addresses["mcast"], syncAddrs["mcast"])
-		c.Addresses["fetch"] = append(c.Addresses["fetch"], syncAddrs["fetch"])
-		c.Addresses["gossip"] = append(c.Addresses["gossip"], syncAddrs["gossip"])
+		c.Addresses["rmc"] = append(c.Addresses["rmc"], addrs["rmc"])
+		c.Addresses["mcast"] = append(c.Addresses["mcast"], addrs["mcast"])
+		c.Addresses["fetch"] = append(c.Addresses["fetch"], addrs["fetch"])
+		c.Addresses["gossip"] = append(c.Addresses["gossip"], addrs["gossip"])
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -238,15 +237,8 @@ func StoreCommittee(w io.Writer, c *Committee) error {
 		if _, err := io.WriteString(w, "|"); err != nil {
 			return err
 		}
-		// store addresses for RMC
-		if _, err := io.WriteString(w, c.RMCAddresses[i]); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "|"); err != nil {
-			return err
-		}
-		// store sync addresses
-		for j, syncType := range []string{"mcast", "fetch", "gossip"} {
+		// store addresses
+		for j, syncType := range []string{"rmc", "mcast", "fetch", "gossip"} {
 			if j != 0 {
 				if _, err := io.WriteString(w, " "); err != nil {
 					return err
