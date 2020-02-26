@@ -27,7 +27,7 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(dag)
+				rs = tests.NewTestRandomSource()
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
@@ -40,7 +40,7 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(dag)
+				rs = tests.NewTestRandomSource()
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
@@ -53,7 +53,7 @@ var _ = Describe("Ordering", func() {
 			BeforeEach(func() {
 				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactoryWithChecks())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(dag)
+				rs = tests.NewTestRandomSource()
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
@@ -75,7 +75,7 @@ var _ = Describe("Ordering", func() {
 			It("should return nil", func() {
 				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(dag)
+				rs = tests.NewTestRandomSource()
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
@@ -89,7 +89,7 @@ var _ = Describe("Ordering", func() {
 			BeforeEach(func() {
 				dag, _, err = tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactoryWithChecks())
 				Expect(err).NotTo(HaveOccurred())
-				rs = tests.NewTestRandomSource(dag)
+				rs = tests.NewTestRandomSource()
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix

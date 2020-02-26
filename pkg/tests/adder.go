@@ -14,37 +14,35 @@ func NewAdder(dag gomel.Dag) gomel.Adder {
 func (ad *adder) Close() {}
 
 func (ad *adder) AddPreunits(source uint16, pus ...gomel.Preunit) []error {
-	result := make([]error, len(pus))
-	noErrors := true
+	var result []error
+	getErrors := func() []error {
+		if result == nil {
+			result = make([]error, len(pus))
+		}
+		return result
+	}
 	for i, pu := range pus {
 		if pu.EpochID() != ad.dag.EpochID() {
-			result[i] = gomel.NewDataError("wrong epoch")
-			noErrors = false
+			getErrors()[i] = gomel.NewDataError("wrong epoch")
 			continue
 		}
 		alreadyInDag := ad.dag.GetUnit(pu.Hash())
 		if alreadyInDag != nil {
-			result[i] = gomel.NewDuplicateUnit(alreadyInDag)
-			noErrors = false
+			getErrors()[i] = gomel.NewDuplicateUnit(alreadyInDag)
 			continue
 		}
 		parents, err := ad.dag.DecodeParents(pu)
 		if err != nil {
-			result[i] = err
-			noErrors = false
+			getErrors()[i] = err
 			continue
 		}
 		freeUnit := ad.dag.BuildUnit(pu, parents)
 		err = ad.dag.Check(freeUnit)
 		if err != nil {
-			result[i] = err
-			noErrors = false
+			getErrors()[i] = err
 			continue
 		}
 		ad.dag.Insert(freeUnit)
-	}
-	if noErrors {
-		return nil
 	}
 	return result
 }

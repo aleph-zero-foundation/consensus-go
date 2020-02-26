@@ -206,8 +206,8 @@ var _ = Describe("Protocol", func() {
 				init(10 * time.Millisecond)
 
 				// expected number of rounds to cover whole network
-				expectedTime := 2 * 4
-				performTest(expectedTime)
+				expectedTime := 4
+				performTest(expectedTime * 5)
 
 				allUnits := collectUnits(dags[0])
 				for ix := range dags[1:] {
@@ -226,7 +226,7 @@ var _ = Describe("Protocol", func() {
 				init(10 * time.Millisecond)
 
 				// expected number of rounds to cover whole network
-				expectedTime := 4 * nProc
+				expectedTime := 2 * nProc
 				performTest(expectedTime * 5)
 
 				allUnits := collectUnits(dags[0])

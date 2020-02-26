@@ -10,8 +10,12 @@ type testRandomSource struct {
 }
 
 // NewTestRandomSource returns a simple RandomSource for testing.
-func NewTestRandomSource(dag gomel.Dag) gomel.RandomSource {
+func NewTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
+}
+
+// Bind the random source with the given dag.
+func (rs *testRandomSource) Bind(dag gomel.Dag) {
 }
 
 // RandomBytes returns a sequence of "random" bits for a given unit.

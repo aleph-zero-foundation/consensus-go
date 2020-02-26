@@ -117,7 +117,6 @@ var _ = Describe("Dag", func() {
 		for _, pus := range addFirst {
 			for _, pu := range pus {
 				err := adder.AddPreunits(pu.Creator(), pu)
-				// Expect(err).NotTo(HaveOccurred())
 				Expect(err).To(BeEmpty())
 			}
 		}

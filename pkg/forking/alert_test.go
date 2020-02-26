@@ -156,7 +156,7 @@ var _ = Describe("Alert", func() {
 			var err error
 			alerters[i], err = NewAlerter(cnf, orderers[i], netservs[i], zerolog.Nop())
 			dags[i] = dag.New(cnf, gomel.EpochID(0))
-			rss[i] = tests.NewTestRandomSource(dags[i])
+			rss[i] = tests.NewTestRandomSource()
 			orderers[i].SetDag(dags[i])
 
 			Expect(err).NotTo(HaveOccurred())
