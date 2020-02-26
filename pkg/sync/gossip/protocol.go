@@ -87,7 +87,7 @@ func (p *server) In() {
 	}
 
 	// 6. add units
-	p.orderer.AddPreunits(pid, theirPreunitsReceived...)
+	logging.AddingErrors(p.orderer.AddPreunits(pid, theirPreunitsReceived...), log)
 	log.Info().Int(logging.Recv, nReceived).Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
@@ -174,7 +174,6 @@ func (p *server) Out() {
 	}
 
 	// 6. add units to dag
-	p.orderer.AddPreunits(remotePid, theirPreunitsReceived...)
-
+	logging.AddingErrors(p.orderer.AddPreunits(remotePid, theirPreunitsReceived...), log)
 	log.Info().Int(logging.Recv, nReceived).Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }

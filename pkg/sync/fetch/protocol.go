@@ -82,6 +82,6 @@ func (p *server) Out() {
 		log.Error().Str("where", "fetch.out.receivePreunits").Msg(err.Error())
 		return
 	}
-	p.orderer.AddPreunits(remotePid, units...)
+	logging.AddingErrors(p.orderer.AddPreunits(remotePid, units...), log)
 	log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }

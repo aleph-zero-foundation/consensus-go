@@ -18,7 +18,7 @@ func (s *server) In() {
 		s.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
 		return
 	}
-	s.orderer.AddPreunits(preunit.Creator(), preunit)
+	logging.AddingErrors(s.orderer.AddPreunits(preunit.Creator(), preunit), s.log)
 }
 
 func (s *server) Out(pid uint16) {
@@ -42,5 +42,5 @@ func (s *server) Out(pid uint16) {
 		s.log.Error().Str("where", "multicast.out.flush").Msg(err.Error())
 		return
 	}
-	s.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, pid).Msg(logging.UnitBroadcasted)
+	s.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, pid).Msg(logging.SyncCompleted)
 }

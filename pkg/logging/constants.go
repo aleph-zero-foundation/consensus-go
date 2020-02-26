@@ -16,16 +16,16 @@ const (
 	AddUnits            = "K"
 	AddingStarted       = "L"
 	ForkDetected        = "M"
-	MissingParents      = "N"
-	UnitBroadcasted     = "O"
-	SyncStarted         = "P"
-	SyncCompleted       = "Q"
-	GetInfo             = "R"
-	SendInfo            = "S"
-	GetUnits            = "T"
-	SendUnits           = "U"
-	DuplicatedUnit      = "V"
-	DuplicatedPreunit   = "W"
+	UnitBroadcasted     = "N"
+	SyncStarted         = "O"
+	SyncCompleted       = "P"
+	GetInfo             = "Q"
+	SendInfo            = "R"
+	GetUnits            = "S"
+	SendUnits           = "T"
+	SuccesfulAdd        = "U"
+	DuplicatedUnits     = "V"
+	DuplicatedPreunits  = "W"
 	UnknownParents      = "X"
 )
 
@@ -41,10 +41,9 @@ var eventTypeDict = map[string]string{
 	OwnUnitOrdered:      "unit created by this process has been ordered",
 	LinearOrderExtended: "linear order extended",
 	UnitAdded:           "unit added to the dag",
-	AddUnits:            "adding units batch started",
+	AddUnits:            "adding units started",
 	AddingStarted:       "adding a ready waiting preunit started",
 	ForkDetected:        "fork detected in adder",
-	MissingParents:      "new waiting preunit with some missing parents",
 	UnitBroadcasted:     "sent a unit through multicast",
 	SyncStarted:         "new sync started",
 	SyncCompleted:       "sync completed",
@@ -52,8 +51,9 @@ var eventTypeDict = map[string]string{
 	SendInfo:            "sending dag info started",
 	GetUnits:            "receiving preunits started",
 	SendUnits:           "sending units started",
-	DuplicatedUnit:      "trying to add unit already present in dag",
-	DuplicatedPreunit:   "trying to add unit already present in adder",
+	SuccesfulAdd:        "added ready waiting preunits",
+	DuplicatedUnits:     "trying to add units already present in dag",
+	DuplicatedPreunits:  "trying to add preunits already present in adder",
 	UnknownParents:      "trying to add a unit with missing parents",
 }
 

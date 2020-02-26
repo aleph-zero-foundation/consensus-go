@@ -137,7 +137,7 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	maxHeights := ad.checkParents(wp)
 	ad.checkIfMissing(wp)
 	if wp.missingParents > 0 {
-		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.MissingParents)
+		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.UnknownParents)
 		ad.fetchMissing(wp, maxHeights)
 		return gomel.NewUnknownParents(wp.missingParents)
 	}
