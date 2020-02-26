@@ -21,9 +21,9 @@ type ParamsWriter interface {
 	StoreParams(io.Writer, *Params) error
 }
 
-type jsonConfigLoader struct{}
+type jsonParamsLoader struct{}
 
-func (l jsonConfigLoader) LoadParams(reader io.Reader, config *Params) error {
+func (l jsonParamsLoader) LoadParams(reader io.Reader, config *Params) error {
 	if config == nil {
 		return gomel.NewConfigError("config parameter is nil")
 	}
@@ -47,18 +47,18 @@ func (l jsonConfigLoader) LoadParams(reader io.Reader, config *Params) error {
 	return nil
 }
 
-func (l jsonConfigLoader) StoreParams(writer io.Writer, config *Params) error {
+func (l jsonParamsLoader) StoreParams(writer io.Writer, config *Params) error {
 	return json.NewEncoder(writer).Encode(*config)
 }
 
-// NewJSONConfigLoader returns a new instance of the ParamsLoader type that expects that the provided configuration
+// NewJSONParamsLoader returns a new instance of the ParamsLoader type that expects that the provided configuration
 // is stored using the JSON format.
-func NewJSONConfigLoader() ParamsLoader {
-	return jsonConfigLoader{}
+func NewJSONParamsLoader() ParamsLoader {
+	return jsonParamsLoader{}
 }
 
-// NewJSONConfigWriter returns a new instance of the ParamsWriter type that stores the configuration using the JSON
+// NewJSONParamsWriter returns a new instance of the ParamsWriter type that stores the configuration using the JSON
 // format.
-func NewJSONConfigWriter() ParamsWriter {
-	return jsonConfigLoader{}
+func NewJSONParamsWriter() ParamsWriter {
+	return jsonParamsLoader{}
 }

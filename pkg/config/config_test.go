@@ -24,12 +24,12 @@ var _ = Describe("Params", func() {
 
 				// store configuration using a buffer
 				var buf bytes.Buffer
-				err := NewJSONConfigWriter().StoreParams(&buf, &config)
+				err := NewJSONParamsWriter().StoreParams(&buf, &config)
 				Expect(err).NotTo(HaveOccurred())
 
 				// load the configuration from the buffer
 				var newParams Params
-				err = NewJSONConfigLoader().LoadParams(&buf, &newParams)
+				err = NewJSONParamsLoader().LoadParams(&buf, &newParams)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(newParams).To(Equal(configCopy))
 			})
@@ -37,33 +37,33 @@ var _ = Describe("Params", func() {
 
 		Describe("parsing incomplete JSON configuration", func() {
 			It("should return an error", func() {
-				jsonConfig := "{\"LevelLimit\": 1000}"
-				configStream := strings.NewReader(jsonConfig)
+				jsonParams := "{\"LevelLimit\": 1000}"
+				configStream := strings.NewReader(jsonParams)
 
 				var config Params
-				err := NewJSONConfigLoader().LoadParams(configStream, &config)
+				err := NewJSONParamsLoader().LoadParams(configStream, &config)
 				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		Describe("configuration with non-existent field", func() {
 			It("should return an error", func() {
-				jsonConfig := "{\"BlaBla\": 1000}"
-				configStream := strings.NewReader(jsonConfig)
+				jsonParams := "{\"BlaBla\": 1000}"
+				configStream := strings.NewReader(jsonParams)
 
 				var config Params
-				err := NewJSONConfigLoader().LoadParams(configStream, &config)
+				err := NewJSONParamsLoader().LoadParams(configStream, &config)
 				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		Describe("broken configuration", func() {
 			It("should return an error", func() {
-				jsonConfig := "adasdjiojoi  a{ aaa/"
-				configStream := strings.NewReader(jsonConfig)
+				jsonParams := "adasdjiojoi  a{ aaa/"
+				configStream := strings.NewReader(jsonParams)
 
 				var config Params
-				err := NewJSONConfigLoader().LoadParams(configStream, &config)
+				err := NewJSONParamsLoader().LoadParams(configStream, &config)
 				Expect(err).To(HaveOccurred())
 			})
 		})
