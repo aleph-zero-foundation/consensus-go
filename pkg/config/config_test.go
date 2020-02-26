@@ -11,63 +11,9 @@ import (
 	. "gitlab.com/alephledger/consensus-go/pkg/config"
 
 	"bytes"
-	"strings"
 )
 
-var _ = Describe("Params", func() {
-	Describe("json configuration", func() {
-		Describe("Store and Load Params", func() {
-			It("should return same Params", func() {
-				config := NewDefaultParams()
-				config.LevelLimit = 10000
-				configCopy := config
-
-				// store configuration using a buffer
-				var buf bytes.Buffer
-				err := NewJSONParamsWriter().StoreParams(&buf, &config)
-				Expect(err).NotTo(HaveOccurred())
-
-				// load the configuration from the buffer
-				var newParams Params
-				err = NewJSONParamsLoader().LoadParams(&buf, &newParams)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(newParams).To(Equal(configCopy))
-			})
-		})
-
-		Describe("parsing incomplete JSON configuration", func() {
-			It("should return an error", func() {
-				jsonParams := "{\"LevelLimit\": 1000}"
-				configStream := strings.NewReader(jsonParams)
-
-				var config Params
-				err := NewJSONParamsLoader().LoadParams(configStream, &config)
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		Describe("configuration with non-existent field", func() {
-			It("should return an error", func() {
-				jsonParams := "{\"BlaBla\": 1000}"
-				configStream := strings.NewReader(jsonParams)
-
-				var config Params
-				err := NewJSONParamsLoader().LoadParams(configStream, &config)
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		Describe("broken configuration", func() {
-			It("should return an error", func() {
-				jsonParams := "adasdjiojoi  a{ aaa/"
-				configStream := strings.NewReader(jsonParams)
-
-				var config Params
-				err := NewJSONParamsLoader().LoadParams(configStream, &config)
-				Expect(err).To(HaveOccurred())
-			})
-		})
-	})
+var _ = Describe("Config", func() {
 	Describe("committee", func() {
 		Describe("When loaded from a test file ", func() {
 			It("Should work without errors", func() {

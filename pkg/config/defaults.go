@@ -7,6 +7,15 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
+const (
+	// MaxDataBytesPerUnit is the maximal allowed size of data included in a unit, in bytes.
+	MaxDataBytesPerUnit = 2e6
+	// MaxRandomSourceDataBytesPerUnit is the maximal allowed size of random source data included in a unit, in bytes.
+	MaxRandomSourceDataBytesPerUnit = 1e6
+	// MaxUnitsInChunk is the maximal number of units in a chunk.
+	MaxUnitsInChunk = 1e6
+)
+
 // default template returns Config for consensus with default values.
 func defaultTemplate() Config {
 	return &conf{

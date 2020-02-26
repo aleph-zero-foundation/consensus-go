@@ -40,6 +40,21 @@ func makeMemberKeys(addresses map[string][]string) memberKeys {
 	}
 }
 
+func makeAddrMap(addrs string, addresses map[string][]string) {
+	for _, addr := range strings.Split(addrs, " ") {
+		switch addr[0] {
+		case 'r':
+			addresses["rmc"] = append(addresses["rmc"], addr[1:])
+		case 'm':
+			addresses["mcast"] = append(addresses["mcast"], addr[1:])
+		case 'f':
+			addresses["fetch"] = append(addresses["fetch"], addr[1:])
+		case 'g':
+			addresses["gossip"] = append(addresses["gossip"], addr[1:])
+		}
+	}
+}
+
 // This program generates files with random keys and local addresses for a committee of the specified size.
 // These files are intended to be used for local and AWS tests of the gomel binary.
 func main() {
@@ -58,6 +73,7 @@ func main() {
 		return
 	}
 
+	setupAddresses := make(map[string][]string)
 	addresses := make(map[string][]string)
 	if len(os.Args) == 2 {
 		for i := 0; i < nProc; i++ {
@@ -65,6 +81,9 @@ func main() {
 			addresses["mcast"] = append(addresses["mcast"], "127.0.0.1:"+strconv.Itoa(10000+i))
 			addresses["fetch"] = append(addresses["fetch"], "127.0.0.1:"+strconv.Itoa(11000+i))
 			addresses["gossip"] = append(addresses["gossip"], "127.0.0.1:"+strconv.Itoa(12000+i))
+			setupAddresses["rmc"] = append(setupAddresses["rmc"], "127.0.0.1:"+strconv.Itoa(13000+i))
+			setupAddresses["fetch"] = append(setupAddresses["fetch"], "127.0.0.1:"+strconv.Itoa(14000+i))
+			setupAddresses["gossip"] = append(setupAddresses["gossip"], "127.0.0.1:"+strconv.Itoa(15000+i))
 		}
 	} else {
 		f, err := os.Open(os.Args[2])
@@ -75,18 +94,14 @@ func main() {
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		for pid := 0; pid < nProc && scanner.Scan(); pid++ {
-			for _, addr := range strings.Split(scanner.Text(), " ") {
-				switch addr[0] {
-				case 'r':
-					addresses["rmc"] = append(addresses["rmc"], addr[1:])
-				case 'm':
-					addresses["mcast"] = append(addresses["mcast"], addr[1:])
-				case 'f':
-					addresses["fetch"] = append(addresses["fetch"], addr[1:])
-				case 'g':
-					addresses["gossip"] = append(addresses["gossip"], addr[1:])
-				}
+			line := strings.Split(scanner.Text(), "|")
+			if len(line) < 2 {
+				fmt.Fprintln(os.Stderr, "missing addresses")
+				return
 			}
+			saddrs, addrs := line[0], line[1]
+			makeAddrMap(saddrs, setupAddresses)
+			makeAddrMap(addrs, addresses)
 		}
 	}
 	keys := []memberKeys{}
@@ -94,6 +109,7 @@ func main() {
 		keys = append(keys, makeMemberKeys(addresses))
 	}
 	committee := &config.Committee{}
+	committee.SetupAddresses = setupAddresses
 	committee.Addresses = addresses
 	for _, ks := range keys {
 		committee.PublicKeys = append(committee.PublicKeys, ks.publicKey)
