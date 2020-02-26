@@ -124,7 +124,6 @@ func main() {
 
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(300 * options.txpu)
-	tds.Start()
 	ps := make(chan *core.Preblock)
 	var wait sync.WaitGroup
 	// Reading and ignoring all the preblocks.
@@ -135,7 +134,7 @@ func main() {
 
 	fmt.Fprintln(os.Stdout, "Starting process...")
 
-	start, stop, err := run.Process(setupConfig, consensusConfig, tds.DataSource(), ps)
+	start, stop, err := run.Process(setupConfig, consensusConfig, tds, ps)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 		return
@@ -149,7 +148,6 @@ func main() {
 		}
 	}
 
-	tds.Stop()
 	close(ps)
 	stop()
 	wait.Wait()
