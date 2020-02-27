@@ -17,7 +17,7 @@ var _ = Describe("Coin", func() {
 	var (
 		n              uint16
 		maxLevel       int
-		seed           int
+		seed           int64
 		cnfs           []config.Config
 		epoch          gomel.EpochID
 		dags           []gomel.Dag
@@ -61,7 +61,7 @@ var _ = Describe("Coin", func() {
 		for pid := uint16(0); pid < n; pid++ {
 			cnfs[pid].PublicKeys = pks
 			dags[pid] = dag.New(cnfs[pid], epoch)
-			rsf[pid] = NewSeededCoinFactory(n, pid, seed, shareProviders)
+			rsf[pid] = NewSeededFactory(n, pid, seed, shareProviders)
 			rs[pid] = rsf[pid].NewRandomSource(dags[pid])
 		}
 		// Generating very regular dag

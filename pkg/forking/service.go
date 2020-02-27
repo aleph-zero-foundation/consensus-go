@@ -36,7 +36,7 @@ func NewAlerter(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (
 		alertHandler: a,
 		netserv:      netserv,
 		timeout:      conf.Timeout,
-		log:          log,
+		log:          log.With().Int(logging.Service, logging.AlertService).Logger(),
 	}
 	return s, nil
 }

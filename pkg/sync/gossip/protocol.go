@@ -45,7 +45,7 @@ func (p *server) In() {
 	log.Info().Msg(logging.SyncStarted)
 
 	// 1. receive dag info
-	log.Debug().Msg(logging.GetDagInfo)
+	log.Debug().Msg(logging.GetInfo)
 	theirDagInfo, err := encoding.ReadDagInfos(conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getDagInfo").Msg(err.Error())
@@ -56,7 +56,7 @@ func (p *server) In() {
 	dagInfo := p.orderer.GetInfo()
 
 	// 3. send dag info
-	log.Debug().Msg(logging.SendDagInfo)
+	log.Debug().Msg(logging.SendInfo)
 	if err := encoding.WriteDagInfos(dagInfo, conn); err != nil {
 		log.Error().Str("where", "gossip.in.sendDagInfo").Msg(err.Error())
 		return
@@ -64,13 +64,12 @@ func (p *server) In() {
 
 	// 4. send units
 	units := p.orderer.Delta(theirDagInfo)
-	log.Debug().Msg(logging.SendUnits)
+	log.Debug().Int(logging.Sent, len(units)).Msg(logging.SendUnits)
 	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.sendUnits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 
 	err = conn.Flush()
 	if err != nil {
@@ -79,19 +78,17 @@ func (p *server) In() {
 	}
 
 	// 5. receive units
-	log.Debug().Msg(logging.GetPreunits)
+	log.Debug().Msg(logging.GetUnits)
 	theirPreunitsReceived, err := encoding.ReadChunk(conn)
 	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getPreunits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
-
-	log.Debug().Msg(logging.AddUnits)
 
 	// 6. add units
-	p.orderer.AddPreunits(pid, theirPreunitsReceived...)
+	logging.AddingErrors(p.orderer.AddPreunits(pid, theirPreunitsReceived...), log)
+	log.Info().Int(logging.Recv, nReceived).Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }
 
 // out handles the outgoing connection using info from the dag.
@@ -102,7 +99,7 @@ func (p *server) In() {
     1. Get a consistent snapshot of our maximal units and convert it to a list of heights.
 	2. Send this info.
 	3. Receive a similar info created by the other party.
-	4. Receive units, that are predecessors of the received info and succesors of ours.
+	4. Receive units, that are predecessors of the received info and successors of ours.
 	5. Compute and send units complying with the above restrictions.
     6. Add the received units to the dag.
 */
@@ -123,17 +120,18 @@ func (p *server) Out() {
 	// handshake
 	sid := p.syncIds[remotePid]
 	p.syncIds[remotePid]++
+	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
+	log.Info().Msg(logging.SyncStarted)
+
 	err = handshake.Greet(conn, p.conf.Pid, sid)
 	if err != nil {
-		p.log.Error().Str("where", "gossip.out.greeting").Msg(err.Error())
+		log.Error().Str("where", "gossip.out.greeting").Msg(err.Error())
 		return
 	}
 
 	// 2. send dag info
-	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
-	log.Info().Msg(logging.SyncStarted)
 	dagInfo := p.orderer.GetInfo()
-	log.Debug().Msg(logging.SendDagInfo)
+	log.Debug().Msg(logging.SendInfo)
 	if err := encoding.WriteDagInfos(dagInfo, conn); err != nil {
 		log.Error().Str("where", "gossip.out.sendDagInfo").Msg(err.Error())
 		return
@@ -145,7 +143,7 @@ func (p *server) Out() {
 	}
 
 	// 3. receive dag info
-	log.Debug().Msg(logging.GetDagInfo)
+	log.Debug().Msg(logging.GetInfo)
 	theirDagInfo, err := encoding.ReadDagInfos(conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.getDagInfo").Msg(err.Error())
@@ -153,31 +151,29 @@ func (p *server) Out() {
 	}
 
 	// 4. receive units
-	log.Debug().Msg(logging.GetPreunits)
+	log.Debug().Msg(logging.GetUnits)
 	theirPreunitsReceived, err := encoding.ReadChunk(conn)
 	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.getPreunits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
 
 	// 5. send units
 	units := p.orderer.Delta(theirDagInfo)
-	log.Debug().Msg(logging.SendUnits)
+	log.Debug().Int(logging.Sent, len(units)).Msg(logging.SendUnits)
 	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.sendUnits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, len(units)).Msg(logging.SentUnits)
 	err = conn.Flush()
 	if err != nil {
 		log.Error().Str("where", "gossip.out.flush2").Msg(err.Error())
 		return
 	}
-	log.Debug().Msg(logging.AddUnits)
 
 	// 6. add units to dag
-	p.orderer.AddPreunits(remotePid, theirPreunitsReceived...)
+	logging.AddingErrors(p.orderer.AddPreunits(remotePid, theirPreunitsReceived...), log)
+	log.Info().Int(logging.Recv, nReceived).Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
 }

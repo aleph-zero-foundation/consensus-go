@@ -25,7 +25,6 @@ func (p *server) In() {
 	}
 	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
 	log.Info().Msg(logging.SyncStarted)
-	log.Debug().Msg(logging.GetRequests)
 	unitIDs, err := receiveRequests(conn)
 	if err != nil {
 		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
@@ -35,7 +34,7 @@ func (p *server) In() {
 	for _, id := range unitIDs {
 		units = append(units, p.orderer.UnitsByID(id)...)
 	}
-	log.Debug().Msg(logging.SendUnits)
+	log.Debug().Int(logging.Sent, len(units)).Msg(logging.SendUnits)
 	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "fetch.in.sendUnits").Msg(err.Error())
@@ -63,26 +62,26 @@ func (p *server) Out() {
 	conn.TimeoutAfter(p.conf.Timeout)
 	sid := p.syncIds[remotePid]
 	p.syncIds[remotePid]++
-	err = handshake.Greet(conn, p.conf.Pid, sid)
-	if err != nil {
-		p.log.Error().Str("where", "fetch.out.greeting").Msg(err.Error())
-		return
-	}
 	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
 	log.Info().Msg(logging.SyncStarted)
-	log.Debug().Int(logging.Size, len(r.UnitIDs)).Msg(logging.SendRequests)
+
+	err = handshake.Greet(conn, p.conf.Pid, sid)
+	if err != nil {
+		log.Error().Str("where", "fetch.out.greeting").Msg(err.Error())
+		return
+	}
 	err = sendRequests(conn, r.UnitIDs)
 	if err != nil {
 		log.Error().Str("where", "fetch.out.sendRequests").Msg(err.Error())
 		return
 	}
-	log.Debug().Msg(logging.GetPreunits)
+	log.Debug().Msg(logging.GetUnits)
 	units, err := encoding.ReadChunk(conn)
 	nReceived := len(units)
 	if err != nil {
 		log.Error().Str("where", "fetch.out.receivePreunits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Size, nReceived).Msg(logging.ReceivedPreunits)
-	p.orderer.AddPreunits(remotePid, units...)
+	logging.AddingErrors(p.orderer.AddPreunits(remotePid, units...), log)
+	log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
 }

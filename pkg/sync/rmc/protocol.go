@@ -163,17 +163,17 @@ func (s *server) in() {
 				log.Error().Str("where", "rmc.in.DecodePreunit3").Msg(err.Error())
 				return
 			}
-			s.orderer.AddPreunits(pu.Creator(), pu)
+			logging.AddingErrors(s.orderer.AddPreunits(pu.Creator(), pu), log)
 		}
 	case requestFinished:
 		err := s.state.SendFinished(id, conn)
 		if err != nil {
-			s.log.Error().Str("where", "rmc.in.SendFinished").Msg(err.Error())
+			log.Error().Str("where", "rmc.in.SendFinished").Msg(err.Error())
 			return
 		}
 		err = conn.Flush()
 		if err != nil {
-			s.log.Error().Str("where", "rmc.in.Flush4").Msg(err.Error())
+			log.Error().Str("where", "rmc.in.Flush4").Msg(err.Error())
 			return
 		}
 

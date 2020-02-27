@@ -78,7 +78,7 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 			// received termination signal from outside
 			return
 		}
-		log.Info().Msg(logging.GotWeakThresholdKey)
+		log.Info().Msg(logging.GotWTK)
 		conf.WTKey = wtkey
 		ord.Start(coin.NewFactory(conf.Pid, wtkey), syn, alrt)
 	}

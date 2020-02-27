@@ -51,7 +51,7 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 		waitingByID: make(map[uint64]*waitingPreunit),
 		missing:     make(map[uint64]*missingPreunit),
 		active:      true,
-		log:         log,
+		log:         log.With().Int(logging.Service, logging.AdderService).Logger(),
 	}
 	for i := range ad.ready {
 		if uint16(i) == ad.conf.Pid {
@@ -82,14 +82,13 @@ func (ad *adder) Close() {
 	ad.log.Info().Msg(logging.ServiceStopped)
 }
 
-// AddPreunits checks basic correctness of a given slice of preunits and then adds them to the buffer zone.
-// Does not block - this method returns when all preunits are added to the waiting preunits (or rejected due to signature or duplication).
-// Returned AggregateError can have the following members:
+// AddPreunits checks basic correctness of a slice of preunits and then adds correct ones to the buffer zone.
+// Returned slice can have the following members:
 //   DataError - if creator or signature are wrong
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
-//   UnknownParents  - in that case the preunit is normally added and processed, error is returned only for log purpose.
+//   UnknownParents - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
-	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnitsStarted)
+	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnits)
 	errors := make([]error, len(preunits))
 	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {
@@ -121,6 +120,31 @@ func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 	return errors
 }
 
+// addPreunit as a waitingPreunit to the buffer zone.
+// This method must be called under mutex!
+func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
+	if wp, ok := ad.waiting[*pu.Hash()]; ok {
+		return gomel.NewDuplicatePreunit(wp.pu)
+	}
+	id := gomel.UnitID(pu)
+	if fork, ok := ad.waitingByID[id]; ok {
+		ad.log.Warn().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.ForkDetected)
+		ad.alert.NewFork(pu, fork.pu)
+	}
+	wp := &waitingPreunit{pu: pu, id: id, source: source}
+	ad.waiting[*pu.Hash()] = wp
+	ad.waitingByID[id] = wp
+	maxHeights := ad.checkParents(wp)
+	ad.checkIfMissing(wp)
+	if wp.missingParents > 0 {
+		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.UnknownParents)
+		ad.fetchMissing(wp, maxHeights)
+		return gomel.NewUnknownParents(wp.missingParents)
+	}
+	ad.sendIfReady(wp)
+	return nil
+}
+
 // sendIfReady checks if a waitingPreunit is ready (has no waiting or missing parents).
 // If yes, the preunit is sent to the channel corresponding to its dedicated worker.
 // Atomic flag prevents send on a closed channel after Stop().
@@ -129,7 +153,6 @@ func (ad *adder) sendIfReady(wp *waitingPreunit) {
 	defer ad.rmx.RUnlock()
 	if wp.waitingParents == 0 && wp.missingParents == 0 && ad.active {
 		ad.ready[wp.pu.Creator()] <- wp
-		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Msg(logging.PreunitReady)
 	}
 }
 
@@ -142,12 +165,27 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	// 1. Decode Parents
 	parents, err := ad.dag.DecodeParents(wp.pu)
 	if err != nil {
-		parents, err = ad.handleDecodeError(err, wp)
+		if e, ok := err.(*gomel.AmbiguousParents); ok {
+			parents = make([]gomel.Unit, 0, len(e.Units))
+			for _, us := range e.Units {
+				parent, err := ad.alert.Disambiguate(us, wp.pu)
+				err = ad.alert.ResolveMissingCommitment(err, wp.pu, wp.source)
+				if err != nil {
+					break
+				}
+				parents = append(parents, parent)
+			}
+		}
 		if err != nil {
 			log.Error().Str("where", "DecodeParents").Msg(err.Error())
 			wp.failed = true
 			return
 		}
+	}
+	if *gomel.CombineHashes(gomel.ToHashes(parents)) != wp.pu.View().ControlHash {
+		//TODO Handle wrong control hash
+		wp.failed = true
+		return
 	}
 
 	// 2. Build Unit
@@ -156,7 +194,8 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	// 3. Check
 	ad.alert.Lock(freeUnit.Creator())
 	defer ad.alert.Unlock(freeUnit.Creator())
-	err = ad.handleCheckError(ad.dag.Check(freeUnit), freeUnit, wp.source)
+	err = ad.dag.Check(freeUnit)
+	err = ad.alert.ResolveMissingCommitment(err, freeUnit, wp.source)
 	if err != nil {
 		log.Error().Str("where", "Check").Msg(err.Error())
 		wp.failed = true
@@ -183,32 +222,4 @@ func (ad *adder) checkCorrectness(pu gomel.Preunit) error {
 		return gomel.NewDataError("invalid signature")
 	}
 	return nil
-}
-
-func (ad *adder) handleDecodeError(err error, wp *waitingPreunit) ([]gomel.Unit, error) {
-	switch e := err.(type) {
-	case *gomel.AmbiguousParents:
-		parents := make([]gomel.Unit, 0, len(e.Units))
-		for _, us := range e.Units {
-			parent, err2 := ad.alert.Disambiguate(us, wp.pu)
-			err2 = ad.alert.ResolveMissingCommitment(err2, wp.pu, wp.source)
-			if err2 != nil {
-				return nil, err2
-			}
-			parents = append(parents, parent)
-		}
-		if *gomel.CombineHashes(gomel.ToHashes(parents)) != wp.pu.View().ControlHash {
-			return nil, gomel.NewDataError("wrong control hash")
-		}
-		return parents, nil
-	default:
-		return nil, err
-	}
-}
-
-func (ad *adder) handleCheckError(err error, u gomel.Unit, source uint16) error {
-	if err == nil {
-		return nil
-	}
-	return ad.alert.ResolveMissingCommitment(err, u, source)
 }

@@ -28,6 +28,12 @@ func NewFactory(pid uint16, wtkey *tss.WeakThresholdKey) gomel.RandomSourceFacto
 	}
 }
 
+// NewSeededFactory creates an unsafe coin factory. Should be used only for testing purposes
+func NewSeededFactory(nProc, pid uint16, seed int64, shareProviders map[uint16]bool) gomel.RandomSourceFactory {
+	wtk := tss.SeededWTK(nProc, pid, seed, shareProviders)
+	return &coinFactory{pid, wtk}
+}
+
 func (cf *coinFactory) NewRandomSource(dag gomel.Dag) gomel.RandomSource {
 	return newCoin(cf.pid, dag, cf.wtkey, cf.wtkey.ShareProviders())
 }
