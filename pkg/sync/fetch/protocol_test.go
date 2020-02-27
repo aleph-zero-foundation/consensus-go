@@ -101,14 +101,16 @@ var _ = Describe("Protocol", func() {
 		config1 := config.Empty()
 		config1.NProc = 2
 		config1.Pid = 0
+		config1.Timeout = time.Second
 		if adder1 == nil {
 			panic("adder1 is nil")
 		}
-		serv1, request = NewServer(config1, adder1, netservs[0], time.Second, zerolog.Nop())
+		serv1, request = NewServer(config1, adder1, netservs[0], zerolog.Nop())
 		config2 := config.Empty()
 		config2.NProc = 2
 		config2.Pid = 1
-		serv2, _ = NewServer(config2, adder2, netservs[1], time.Second, zerolog.Nop())
+		config2.Timeout = time.Second
+		serv2, _ = NewServer(config2, adder2, netservs[1], zerolog.Nop())
 		tserv1 = serv1.(testServer)
 		tserv2 = serv2.(testServer)
 	})

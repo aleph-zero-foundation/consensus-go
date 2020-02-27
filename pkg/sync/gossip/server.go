@@ -27,16 +27,16 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, timeout time.Duration, log zerolog.Logger, nOut, nIn, nIdle int) (sync.Server, sync.Gossip) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Gossip) {
 	pid := conf.Pid
 	s := &server{
 		nProc:       conf.NProc,
 		pid:         pid,
 		orderer:     orderer,
 		netserv:     netserv,
-		peerManager: newPeerManager(conf.NProc, pid, nIdle),
+		peerManager: newPeerManager(conf.NProc, pid, conf.GossipWorkers[2]),
 		syncIds:     make([]uint32, conf.NProc),
-		timeout:     timeout,
+		timeout:     conf.Timeout,
 		log:         log,
 	}
 	s.inPool = sync.NewPool(conf.GossipWorkers[0], s.In)

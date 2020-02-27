@@ -43,7 +43,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs the multicast protocol.
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, timeout time.Duration, log zerolog.Logger) (sync.Server, sync.Multicast) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Multicast) {
 	nProc := conf.NProc
 	requests := make([]chan request, nProc)
 	for i := uint16(0); i < nProc; i++ {
@@ -55,7 +55,7 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		orderer:  orderer,
 		netserv:  netserv,
 		requests: requests,
-		timeout:  timeout,
+		timeout:  conf.Timeout,
 		log:      log,
 	}
 	s.outPool = sync.NewPerPidPool(conf.NProc, outPoolSize, s.Out)

@@ -36,7 +36,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, timeout time.Duration, log zerolog.Logger) (gsync.Server, gsync.Multicast) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (gsync.Server, gsync.Multicast) {
 	nProc := int(conf.NProc)
 	s := &server{
 		pid:     conf.Pid,
@@ -44,7 +44,7 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		orderer: orderer,
 		netserv: netserv,
 		state:   rmcbox.New(conf.RMCPublicKeys, conf.RMCPrivateKey),
-		timeout: timeout,
+		timeout: conf.Timeout,
 		log:     log,
 		quit:    0,
 	}

@@ -70,7 +70,8 @@ var _ = Describe("Protocol", func() {
 			config := config.Empty()
 			config.NProc = 4
 			config.Pid = uint16(i)
-			serv, mltcst := NewServer(config, adders[i], netservs[i], 10*time.Second, zerolog.Nop())
+			config.Timeout = 10 * time.Second
+			serv, mltcst := NewServer(config, adders[i], netservs[i], zerolog.Nop())
 			servs = append(servs, serv)
 			tservs = append(tservs, serv.(testServer))
 			if multicast == nil {
