@@ -168,13 +168,10 @@ var _ = Describe("Protocol", func() {
 			for i := 0; i < repetitions; i++ {
 				done.Add(len(tservs))
 				for _, serv := range tservs {
-					run := func(serv testServer) {
-						go func() {
-							defer done.Done()
-							serv.In()
-						}()
-					}
-					run(serv)
+					go func(serv testServer) {
+						defer done.Done()
+						serv.In()
+					}(serv)
 				}
 				done.Add(len(tservs))
 				for _, serv := range tservs {
