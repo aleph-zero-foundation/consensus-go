@@ -2,7 +2,6 @@ package adder
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // waitingPreunit is a struct that keeps a single preunit waiting to be added to dag.
@@ -49,31 +48,6 @@ func (ad *adder) checkParents(wp *waitingPreunit) []int {
 		}
 	}
 	return maxHeights
-}
-
-// addPreunit as a waitingPreunit to the buffer zone.
-// This method must be called under mutex!
-func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
-	if wp, ok := ad.waiting[*pu.Hash()]; ok {
-		return gomel.NewDuplicatePreunit(wp.pu)
-	}
-	id := gomel.UnitID(pu)
-	if fork, ok := ad.waitingByID[id]; ok {
-		ad.log.Warn().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.ForkDetected)
-		ad.alert.NewFork(pu, fork.pu)
-	}
-	wp := &waitingPreunit{pu: pu, id: id, source: source}
-	ad.waiting[*pu.Hash()] = wp
-	ad.waitingByID[id] = wp
-	maxHeights := ad.checkParents(wp)
-	ad.checkIfMissing(wp)
-	if wp.missingParents > 0 {
-		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.MissingParents)
-		ad.fetchMissing(wp, maxHeights)
-		return gomel.NewUnknownParents(wp.missingParents)
-	}
-	ad.sendIfReady(wp)
-	return nil
 }
 
 // remove waitingPreunit from the buffer zone and notify its children.

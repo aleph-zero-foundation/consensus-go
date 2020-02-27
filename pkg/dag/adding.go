@@ -24,9 +24,6 @@ func (dag *dag) DecodeParents(pu gomel.Preunit) ([]gomel.Unit, error) {
 		}
 		parents[i] = units[0]
 	}
-	if *gomel.CombineHashes(gomel.ToHashes(parents)) != pu.View().ControlHash {
-		return nil, gomel.NewDataError("wrong control hash")
-	}
 	return parents, nil
 }
 
