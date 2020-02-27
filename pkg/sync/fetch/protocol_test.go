@@ -31,18 +31,7 @@ type unitsAdder struct {
 	dag          gomel.Dag
 }
 
-func (ua *unitsAdder) AddUnit(unit gomel.Preunit, source uint16) error {
-	ua.mx.Lock()
-	ua.attemptedAdd = append(ua.attemptedAdd, unit)
-	ua.mx.Unlock()
-	err := ua.Adder.AddPreunits(source, unit)
-	if err != nil {
-		return err[0]
-	}
-	return nil
-}
-
-func (ua *unitsAdder) AddUnits(units []gomel.Preunit, source uint16) []error {
+func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) []error {
 	ua.mx.Lock()
 	ua.attemptedAdd = append(ua.attemptedAdd, units...)
 	ua.mx.Unlock()
@@ -51,10 +40,6 @@ func (ua *unitsAdder) AddUnits(units []gomel.Preunit, source uint16) []error {
 		return err
 	}
 	return nil
-}
-
-func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) []error {
-	return ua.AddUnits(units, source)
 }
 
 func (ua *unitsAdder) UnitsByID(ids ...uint64) []gomel.Unit {
