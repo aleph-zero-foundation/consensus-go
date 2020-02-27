@@ -50,13 +50,13 @@ func toPreunit(u gomel.Unit) gomel.Preunit {
 }
 
 func retrieveParentCandidates(dag gomel.Dag) []gomel.Unit {
-	parents := make([]gomel.Unit, dag.NProc())
-	ix := 0
+	parents := make([]gomel.Unit, 0, dag.NProc())
 	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
-		defer func() { ix++ }()
+		var candidate gomel.Unit
 		if len(units) > 0 {
-			parents[ix] = units[0]
+			candidate = units[0]
 		}
+		parents = append(parents, candidate)
 		return true
 	})
 	creator.MakeConsistent(parents)

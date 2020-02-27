@@ -42,22 +42,19 @@ func (ua *unitsAdder) AddUnit(unit gomel.Preunit, source uint16) error {
 	return nil
 }
 
-func (ua *unitsAdder) AddUnits(units []gomel.Preunit, source uint16) *gomel.AggregateError {
+func (ua *unitsAdder) AddUnits(units []gomel.Preunit, source uint16) []error {
 	ua.mx.Lock()
 	ua.attemptedAdd = append(ua.attemptedAdd, units...)
 	ua.mx.Unlock()
 	err := ua.Adder.AddPreunits(source, units...)
 	if err != nil {
-		return gomel.NewAggregateError(err)
+		return err
 	}
 	return nil
 }
 
-func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) {
-	err := ua.AddUnits(units, source)
-	if err != nil {
-		panic("an error occurred while adding units" + err.Error())
-	}
+func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) []error {
+	return ua.AddUnits(units, source)
 }
 
 func (ua *unitsAdder) UnitsByID(ids ...uint64) []gomel.Unit {

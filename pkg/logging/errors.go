@@ -8,6 +8,9 @@ import (
 
 // AddingErrors logs information about errors from AddPreunits to provided logger.
 func AddingErrors(errors []error, log zerolog.Logger) {
+	if !(len(errors) > 0) {
+		return
+	}
 	ok, units, preunits := 0, 0, 0
 	for _, err := range errors {
 		if err == nil {

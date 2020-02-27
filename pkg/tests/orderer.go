@@ -16,7 +16,8 @@ func (o orderer) UnitsByID(...uint64) []gomel.Unit {
 	return nil
 }
 
-func (o orderer) AddPreunits(uint16, ...gomel.Preunit) {
+func (o orderer) AddPreunits(uint16, ...gomel.Preunit) []error {
+	return nil
 }
 
 func (o orderer) GetInfo() [2]*gomel.DagInfo {

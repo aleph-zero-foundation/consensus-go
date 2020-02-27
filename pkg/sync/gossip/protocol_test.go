@@ -50,15 +50,8 @@ type unitsAdder struct {
 	dag gomel.Dag
 }
 
-func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) {
-	errors := ua.Adder.AddPreunits(source, units...)
-	if errors != nil {
-		for _, err := range errors {
-			if _, ok := err.(*gomel.DuplicateUnit); err != nil && !ok {
-				panic("an error occurred while adding units: " + gomel.NewAggregateError(errors).Error())
-			}
-		}
-	}
+func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) []error {
+	return ua.Adder.AddPreunits(source, units...)
 }
 
 func (ua *unitsAdder) GetInfo() [2]*gomel.DagInfo {

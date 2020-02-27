@@ -123,7 +123,7 @@ func (p *server) Out() {
 	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
 	log.Info().Msg(logging.SyncStarted)
 
-	err = handshake.Greet(conn, p.conf.Pid, sid)
+	err = handshake.Greet(conn, p.pid, sid)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.greeting").Msg(err.Error())
 		return
