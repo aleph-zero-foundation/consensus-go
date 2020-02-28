@@ -52,6 +52,13 @@ func (e *encoder) encodeCrown(crown *gomel.Crown) error {
 
 // encodeDagInfo encodes daginfo and writes the encoded data to the io.Writer.
 func (e *encoder) encodeDagInfo(info *gomel.DagInfo) error {
+	if info == nil {
+		var data [4]byte
+		binary.LittleEndian.PutUint32(data[:], uint32(math.MaxUint32))
+		_, err := e.Write(data[:])
+		return err
+	}
+
 	nProc := uint16(len(info.Heights))
 	data := make([]byte, 4+2+nProc*4)
 	binary.LittleEndian.PutUint32(data[:4], uint32(info.Epoch))

@@ -19,6 +19,10 @@ func EpochProof(pu gomel.Preunit, wtk *tss.WeakThresholdKey) bool {
 	if !gomel.Dealing(pu) || wtk == nil {
 		return false
 	}
+	// TODO consider adding a proof that beacon has finished
+	if pu.EpochID() == gomel.EpochID(0) {
+		return true
+	}
 	sig, msg, err := decodeSignature(pu.Data())
 	if err != nil {
 		return false

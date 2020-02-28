@@ -48,6 +48,7 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 	}
 	s := &server{
 		conf:     conf,
+		orderer:  orderer,
 		netserv:  netserv,
 		requests: requests,
 		log:      log,

@@ -1,4 +1,8 @@
 #!/bin/bash
+
+killall go
+killall gomel
+
 set -e
 
 rm -f out

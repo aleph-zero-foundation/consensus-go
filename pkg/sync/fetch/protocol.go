@@ -30,7 +30,7 @@ func (p *server) In() {
 		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
 		return
 	}
-	units := make([]gomel.Unit, len(unitIDs))
+	units := []gomel.Unit{}
 	for _, id := range unitIDs {
 		units = append(units, p.orderer.UnitsByID(id)...)
 	}
