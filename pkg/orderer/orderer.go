@@ -194,6 +194,9 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 
 	var result []gomel.Unit
 	deltaResolver := func(dagInfo *gomel.DagInfo) {
+		if dagInfo == nil {
+			return
+		}
 		if ord.previous != nil && dagInfo.Epoch == ord.previous.id {
 			result = append(result, ord.previous.unitsAbove(dagInfo.Heights)...)
 		}
@@ -203,7 +206,7 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 	}
 	deltaResolver(info[0])
 	deltaResolver(info[1])
-	if info[0].Epoch < ord.current.id && info[1].Epoch < ord.current.id {
+	if info[0] != nil && info[0].Epoch < ord.current.id && info[1].Epoch < ord.current.id {
 		result = append(result, ord.current.allUnits()...)
 	}
 	return result
