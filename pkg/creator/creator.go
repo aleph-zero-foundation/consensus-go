@@ -135,10 +135,9 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 			}
 			panic("TIME TRAVEL ERROR: lastTiming received a unit from the future")
 		default:
-			break
+			return core.Data{}
 		}
 	}
-	return core.Data{}
 }
 
 // update takes a unit that has been received from unit belt and updates
