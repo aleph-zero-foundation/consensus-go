@@ -20,17 +20,17 @@ import (
 // - false when generating the suffix of the permutation failed (because the dag
 //   hasn't reached a level high enough to reveal the randomBytes needed)
 // - true otherwise
-func (ext *Extender) crpIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
-	prefix, sufix := splitProcesses(ext.dag.NProc(), ext.crpFixedPrefix, level, previousTU)
+func (ord *ordering) crpIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
+	prefix, sufix := splitProcesses(ord.dag.NProc(), ord.crpFixedPrefix, level, previousTU)
 
-	perm := defaultPermutation(ext.dag, level, prefix)
+	perm := defaultPermutation(ord.dag, level, prefix)
 	for _, u := range perm {
 		if !work(u) {
 			return true
 		}
 	}
 
-	perm, ok := randomPermutation(ext.randomSource, ext.dag, level, sufix)
+	perm, ok := randomPermutation(ord.randomSource, ord.dag, level, sufix)
 	if !ok {
 		return false
 	}
