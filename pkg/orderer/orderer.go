@@ -48,7 +48,7 @@ func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker,
 		ord.insert(u)
 		ord.syncer.Multicast(u)
 	}
-	ord.creator = creator.New(conf, ds, send, ord.rsData, log)
+	ord.creator = creator.New(conf, ds, send, ord.rsData, log, ord.Stop)
 	return ord
 }
 
