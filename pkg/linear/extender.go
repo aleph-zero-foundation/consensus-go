@@ -10,40 +10,46 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// shallbedone: take this from config?
-const firstDecidingRound = 3
-
 // Extender is a component working on a dag that extends a partial order of units defined by dag to a linear order.
 // Extender reacts every time a new unit is inserted into the underlying dag. It tries to pick next timing unit.
 // If successful, Extender collects all the units belonging to that timing round, and linearly orders them.
 type Extender struct {
-	dag              gomel.Dag
-	randomSource     gomel.RandomSource
-	conf             config.Config
-	decider          *superMajorityDecider
-	output           chan<- []gomel.Unit
-	trigger          chan struct{}
-	timingRounds     chan *timingRound
-	lastTUs          []gomel.Unit
-	currentTU        gomel.Unit
-	lastDecideResult bool
-	wg               sync.WaitGroup
-	log              zerolog.Logger
+	pid                           uint16
+	dag                           gomel.Dag
+	randomSource                  gomel.RandomSource
+	deciders                      map[gomel.Hash]*superMajorityDecider
+	output                        chan<- []gomel.Unit
+	trigger                       chan struct{}
+	timingRounds                  chan *timingRound
+	lastTUs                       []gomel.Unit
+	currentTU                     gomel.Unit
+	lastDecideResult              bool
+	firstRoundZeroForCommonVote   int
+	firstDecidingRound            int
+	orderStartLevel               int
+	crpFixedPrefix                uint16
+	commonVoteDeterministicPrefix int
+	wg                            sync.WaitGroup
+	log                           zerolog.Logger
 }
 
 // NewExtender constructs an extender working on the given dag and sending rounds of ordered units to the given output.
 func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, output chan<- []gomel.Unit, log zerolog.Logger) *Extender {
-	stdDecider := newSuperMajorityDecider(dag, rs)
 	ext := &Extender{
-		dag:          dag,
-		randomSource: rs,
-		conf:         conf,
-		output:       output,
-		decider:      stdDecider,
-		trigger:      make(chan struct{}, 1),
-		timingRounds: make(chan *timingRound, 10),
-		lastTUs:      make([]gomel.Unit, stdDecider.firstRoundZeroForCommonVote),
-		log:          log.With().Int(logging.Service, logging.ExtenderService).Logger(),
+		pid:                           conf.Pid,
+		dag:                           dag,
+		randomSource:                  rs,
+		deciders:                      make(map[gomel.Hash]*superMajorityDecider),
+		output:                        output,
+		trigger:                       make(chan struct{}, 1),
+		timingRounds:                  make(chan *timingRound, 10),
+		lastTUs:                       make([]gomel.Unit, conf.FirstRoundZeroForCommonVote),
+		firstRoundZeroForCommonVote:   conf.FirstRoundZeroForCommonVote,
+		firstDecidingRound:            conf.FirstDecidingRound,
+		orderStartLevel:               conf.OrderStartLevel,
+		crpFixedPrefix:                conf.CRPFixedPrefix,
+		commonVoteDeterministicPrefix: conf.CommonVoteDeterministicPrefix,
+		log:                           log.With().Int(logging.Service, logging.ExtenderService).Logger(),
 	}
 
 	ext.wg.Add(2)
@@ -90,14 +96,12 @@ func (ext *Extender) roundSorter() {
 		units := round.OrderedUnits()
 		ext.output <- units
 		for _, u := range units {
-
 			ext.log.Info().
 				Uint16(logging.Creator, u.Creator()).
 				Int(logging.Height, u.Height()).
 				Uint32(logging.Epoch, uint32(u.EpochID())).
 				Msg(logging.UnitOrdered)
-
-			if u.Creator() == ext.conf.Pid {
+			if u.Creator() == ext.pid {
 				ext.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
 			}
 		}
@@ -105,38 +109,49 @@ func (ext *Extender) roundSorter() {
 	}
 }
 
+func (ext *Extender) getDecider(uc gomel.Unit) *superMajorityDecider {
+	var decider *superMajorityDecider
+	decider = ext.deciders[*uc.Hash()]
+	if decider == nil {
+		decider = newSuperMajorityDecider(uc, ext.dag, ext.randomSource, ext.commonVoteDeterministicPrefix, ext.firstRoundZeroForCommonVote)
+		ext.deciders[*uc.Hash()] = decider
+	}
+	return decider
+}
+
 // NextRound tries to pick the next timing unit. Returns nil if it cannot be decided yet.
 func (ext *Extender) NextRound() *timingRound {
 	if ext.lastDecideResult {
 		ext.lastDecideResult = false
-		ext.decider = newSuperMajorityDecider(ext.dag, ext.randomSource)
 	}
 
 	dagMaxLevel := dagMaxLevel(ext.dag)
-	if dagMaxLevel < ext.conf.OrderStartLevel {
+	if dagMaxLevel < ext.orderStartLevel {
 		return nil
 	}
 
-	level := ext.conf.OrderStartLevel
+	level := ext.orderStartLevel
 	if ext.currentTU != nil {
 		level = ext.currentTU.Level() + 1
 	}
-	if dagMaxLevel < level+firstDecidingRound {
+	if dagMaxLevel < level+ext.firstDecidingRound {
 		return nil
 	}
 
 	previousTU := ext.currentTU
 	decided := false
 	ext.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
-		decision, decidedOn := ext.decider.decideUnitIsPopular(uc, dagMaxLevel)
+		decider := ext.getDecider(uc)
+		decision, decidedOn := decider.DecideUnitIsPopular(dagMaxLevel)
 		if decision == popular {
 			ext.log.Info().Int(logging.Height, decidedOn).Int(logging.Size, dagMaxLevel).Int(logging.Round, level).Msg(logging.NewTimingUnit)
 
 			ext.lastTUs = ext.lastTUs[1:]
 			ext.lastTUs = append(ext.lastTUs, ext.currentTU)
 			ext.currentTU = uc
-			ext.decider = nil
+			ext.deciders = nil
 			ext.lastDecideResult = true
+			ext.deciders = make(map[gomel.Hash]*superMajorityDecider)
 
 			decided = true
 			return false

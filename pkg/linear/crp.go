@@ -21,7 +21,7 @@ import (
 //   hasn't reached a level high enough to reveal the randomBytes needed)
 // - true otherwise
 func (ext *Extender) crpIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
-	prefix, sufix := splitProcesses(ext.dag.NProc(), ext.conf.CRPFixedPrefix, level, previousTU)
+	prefix, sufix := splitProcesses(ext.dag.NProc(), ext.crpFixedPrefix, level, previousTU)
 
 	perm := defaultPermutation(ext.dag, level, prefix)
 	for _, u := range perm {
