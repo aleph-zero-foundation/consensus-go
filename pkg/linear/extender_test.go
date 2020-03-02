@@ -17,7 +17,7 @@ const (
 
 var _ = Describe("Ordering", func() {
 	var (
-		ordering *Extender
+		extender *Extender
 		dag      gomel.Dag
 		rs       gomel.RandomSource
 		err      error
@@ -32,8 +32,8 @@ var _ = Describe("Ordering", func() {
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
 				output := make(chan []gomel.Unit, 1)
-				ordering = NewExtender(dag, rs, cnf, output, zerolog.Nop())
-				Expect(ordering.NextRound()).To(BeNil())
+				extender = NewExtender(dag, rs, cnf, output, zerolog.Nop())
+				Expect(extender.NextRound()).To(BeNil())
 			})
 		})
 		Context("On a dag with only dealing units on level 0", func() {
@@ -45,8 +45,8 @@ var _ = Describe("Ordering", func() {
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
 				output := make(chan []gomel.Unit, 1)
-				ordering = NewExtender(dag, rs, cnf, output, zerolog.Nop())
-				Expect(ordering.NextRound()).To(BeNil())
+				extender = NewExtender(dag, rs, cnf, output, zerolog.Nop())
+				Expect(extender.NextRound()).To(BeNil())
 			})
 		})
 		Context("On a very regular dag with 4 processes and 10 levels defined in regular.txt file", func() {
@@ -58,13 +58,13 @@ var _ = Describe("Ordering", func() {
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
 				output := make(chan []gomel.Unit, 1)
-				ordering = NewExtender(dag, rs, cnf, output, zerolog.Nop())
+				extender = NewExtender(dag, rs, cnf, output, zerolog.Nop())
 			})
 			It("should decide up to 8th level", func() {
 				for level := 0; level < 8; level++ {
-					Expect(ordering.NextRound()).NotTo(BeNil())
+					Expect(extender.NextRound()).NotTo(BeNil())
 				}
-				Expect(ordering.NextRound()).To(BeNil())
+				Expect(extender.NextRound()).To(BeNil())
 			})
 		})
 	})
@@ -80,8 +80,8 @@ var _ = Describe("Ordering", func() {
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
 				output := make(chan []gomel.Unit, 1)
-				ordering = NewExtender(dag, rs, cnf, output, zerolog.Nop())
-				timingRound := ordering.NextRound()
+				extender = NewExtender(dag, rs, cnf, output, zerolog.Nop())
+				timingRound := extender.NextRound()
 				Expect(timingRound).To(BeNil())
 			})
 		})
@@ -94,15 +94,15 @@ var _ = Describe("Ordering", func() {
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
 				output := make(chan []gomel.Unit, 1)
-				ordering = NewExtender(dag, rs, cnf, output, zerolog.Nop())
+				extender = NewExtender(dag, rs, cnf, output, zerolog.Nop())
 				for level := 0; level < 8; level++ {
-					timingRound := ordering.NextRound()
+					timingRound := extender.NextRound()
 					Expect(timingRound).NotTo(BeNil())
 					thisRound := timingRound.OrderedUnits()
 					Expect(thisRound).NotTo(BeNil())
 					timingRounds = append(timingRounds, thisRound)
 				}
-				timingRound := ordering.NextRound()
+				timingRound := extender.NextRound()
 				Expect(timingRound).To(BeNil())
 			})
 			It("should on each level choose timing unit on this level", func() {

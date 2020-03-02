@@ -142,10 +142,7 @@ func (ext *Extender) NextRound() *timingRound {
 	if !decided {
 		return nil
 	}
-	return &timingRound{
-		currentTU: ext.currentTU,
-		lastTUs:   ext.lastTUs,
-	}
+	return newTimingRound(ext.currentTU, ext.lastTUs)
 }
 
 // dagMaxLevel returns the maximal level of a unit in the dag.
