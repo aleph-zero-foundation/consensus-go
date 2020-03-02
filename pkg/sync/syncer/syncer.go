@@ -34,6 +34,10 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 		return nil, err
 	}
 	s := &syncer{}
+	// TODO: Consider logging usage of noop sync method
+	s.gossip = func(uint16) {}
+	s.fetch = func(uint16, []uint64) {}
+	s.mcast = func(gomel.Unit) {}
 
 	var serv sync.Server
 	var netserv network.Server
