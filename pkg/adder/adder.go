@@ -21,8 +21,7 @@ const (
 // a) DecodeParents
 // b) BuildUnit
 // c) Check
-// d) Transform
-// e) Insert
+// d) Insert
 type adder struct {
 	dag         gomel.Dag
 	alert       gomel.Alerter
@@ -88,8 +87,14 @@ func (ad *adder) Close() {
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
 //   UnknownParents - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
-	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnits)
-	errors := make([]error, len(preunits))
+	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnitsStarted)
+	var errors []error
+	getErrors := func() []error {
+		if errors == nil {
+			errors = make([]error, len(preunits))
+		}
+		return errors
+	}
 	hashes := make([]*gomel.Hash, len(preunits))
 	for i, pu := range preunits {
 		hashes[i] = pu.Hash()
@@ -100,11 +105,11 @@ func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 		if alreadyInDag[i] == nil {
 			err := ad.checkCorrectness(pu)
 			if err != nil {
-				errors[i] = err
+				getErrors()[i] = err
 				preunits[i] = nil
 			}
 		} else {
-			errors[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
+			getErrors()[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
 			preunits[i] = nil
 		}
 	}
@@ -115,7 +120,7 @@ func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 		if pu == nil {
 			continue
 		}
-		errors[i] = ad.addToWaiting(pu, source)
+		getErrors()[i] = ad.addToWaiting(pu, source)
 	}
 	return errors
 }

@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
@@ -22,24 +23,34 @@ type testServer interface {
 	Out()
 }
 
-type adder struct {
+type unitsAdder struct {
+	gomel.Orderer
 	gomel.Adder
 	mx           snc.Mutex
 	attemptedAdd []gomel.Preunit
+	dag          gomel.Dag
 }
 
-func (a *adder) AddUnit(unit gomel.Preunit, source uint16) error {
-	a.mx.Lock()
-	a.attemptedAdd = append(a.attemptedAdd, unit)
-	a.mx.Unlock()
-	return a.Adder.AddUnit(unit, source)
+func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) []error {
+	ua.mx.Lock()
+	ua.attemptedAdd = append(ua.attemptedAdd, units...)
+	ua.mx.Unlock()
+	err := ua.Adder.AddPreunits(source, units...)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (a *adder) AddUnits(units []gomel.Preunit, source uint16) *gomel.AggregateError {
-	a.mx.Lock()
-	a.attemptedAdd = append(a.attemptedAdd, units...)
-	a.mx.Unlock()
-	return a.Adder.AddUnits(units, source)
+func (ua *unitsAdder) UnitsByID(ids ...uint64) []gomel.Unit {
+	var result []gomel.Unit
+	for _, id := range ids {
+		_, _, epoch := gomel.DecodeID(id)
+		if epoch == ua.dag.EpochID() {
+			result = append(result, ua.dag.GetByID(id)...)
+		}
+	}
+	return result
 }
 
 // missingParents returns a slice of unit IDs that are parents of preunit above maxUnits.
@@ -70,11 +81,11 @@ var _ = Describe("Protocol", func() {
 	var (
 		dag1     gomel.Dag
 		dag2     gomel.Dag
-		adder1   *adder
-		adder2   gomel.Adder
+		adder1   *unitsAdder
+		adder2   gomel.Orderer
 		serv1    sync.Server
 		serv2    sync.Server
-		request  gomel.RequestFetch
+		request  sync.Fetch
 		tserv1   testServer
 		tserv2   testServer
 		netservs []network.Server
@@ -87,8 +98,19 @@ var _ = Describe("Protocol", func() {
 	})
 
 	JustBeforeEach(func() {
-		serv1, request = NewServer(0, dag1, adder1, netservs[0], time.Second, zerolog.Nop(), 0, 0)
-		serv2, _ = NewServer(1, dag2, adder2, netservs[1], time.Second, zerolog.Nop(), 0, 0)
+		config1 := config.Empty()
+		config1.NProc = 2
+		config1.Pid = 0
+		config1.Timeout = time.Second
+		if adder1 == nil {
+			panic("adder1 is nil")
+		}
+		serv1, request = NewServer(config1, adder1, netservs[0], zerolog.Nop())
+		config2 := config.Empty()
+		config2.NProc = 2
+		config2.Pid = 1
+		config2.Timeout = time.Second
+		serv2, _ = NewServer(config2, adder2, netservs[1], zerolog.Nop())
 		tserv1 = serv1.(testServer)
 		tserv2 = serv2.(testServer)
 	})
@@ -103,8 +125,10 @@ var _ = Describe("Protocol", func() {
 
 			BeforeEach(func() {
 				dag1, _, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/empty.txt", tests.NewTestDagFactory())
-				adder1 = &adder{Adder: tests.NewAdder(dag1)}
-				dag2, adder2, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/random_100u.txt", tests.NewTestDagFactory())
+				adder1 = &unitsAdder{dag: dag1, Orderer: tests.NewOrderer(), Adder: tests.NewAdder(dag1)}
+				var testAdder gomel.Adder
+				dag2, testAdder, _ = tests.CreateDagFromTestFile("../../testdata/dags/10/random_100u.txt", tests.NewTestDagFactory())
+				adder2 = &unitsAdder{dag: dag2, Orderer: tests.NewOrderer(), Adder: testAdder}
 				max1 := dag1.MaximalUnitsPerProcess()
 				unit := dag2.MaximalUnitsPerProcess().Get(1)[0]
 				enc, err := encoding.EncodeUnit(unit)

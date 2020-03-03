@@ -8,7 +8,7 @@ import (
 type Alerter interface {
 	// NewFork raises an alert about newly detected fork.
 	NewFork(Preunit, Preunit)
-	// HandleIncoming handles the incoming connection and signals the provided WaitGroup when done.
+	// HandleIncoming handles the incoming connection.
 	HandleIncoming(network.Connection)
 	// Disambiguate which of the provided (forked) units is the right one to be the parent of the given preunit.
 	Disambiguate([]Unit, Preunit) (Unit, error)

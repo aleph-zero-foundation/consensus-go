@@ -14,21 +14,32 @@ func NewAdder(dag gomel.Dag) gomel.Adder {
 func (ad *adder) Close() {}
 
 func (ad *adder) AddPreunits(source uint16, pus ...gomel.Preunit) []error {
-	result := make([]error, len(pus))
+	var result []error
+	getErrors := func() []error {
+		if result == nil {
+			result = make([]error, len(pus))
+		}
+		return result
+	}
 	for i, pu := range pus {
 		if pu.EpochID() != ad.dag.EpochID() {
-			result[i] = gomel.NewDataError("wrong epoch")
+			getErrors()[i] = gomel.NewDataError("wrong epoch")
+			continue
+		}
+		alreadyInDag := ad.dag.GetUnit(pu.Hash())
+		if alreadyInDag != nil {
+			getErrors()[i] = gomel.NewDuplicateUnit(alreadyInDag)
 			continue
 		}
 		parents, err := ad.dag.DecodeParents(pu)
 		if err != nil {
-			result[i] = err
+			getErrors()[i] = err
 			continue
 		}
 		freeUnit := ad.dag.BuildUnit(pu, parents)
 		err = ad.dag.Check(freeUnit)
 		if err != nil {
-			result[i] = err
+			getErrors()[i] = err
 			continue
 		}
 		ad.dag.Insert(freeUnit)
@@ -39,7 +50,7 @@ func (ad *adder) AddPreunits(source uint16, pus ...gomel.Preunit) []error {
 // AddUnit adds a preunit to the given dag.
 func AddUnit(dag gomel.Dag, pu gomel.Preunit) (gomel.Unit, error) {
 	err := NewAdder(dag).AddPreunits(pu.Creator(), pu)
-	if err[0] != nil {
+	if err != nil && err[0] != nil {
 		return nil, err[0]
 	}
 	return dag.GetUnit(pu.Hash()), nil

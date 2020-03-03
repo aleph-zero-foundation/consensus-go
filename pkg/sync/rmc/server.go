@@ -6,6 +6,7 @@ package rmc
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -22,12 +23,14 @@ const (
 
 // server is a multicast server
 type server struct {
-	conf                config.Config
+	pid                 uint16
+	nProc               uint16
 	orderer             gomel.Orderer
 	netserv             network.Server
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
 	inPool              gsync.WorkerPool
+	timeout             time.Duration
 	log                 zerolog.Logger
 	quit                int64
 }
@@ -36,10 +39,12 @@ type server struct {
 func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (gsync.Server, gsync.Multicast) {
 	nProc := int(conf.NProc)
 	s := &server{
-		conf:    conf,
+		pid:     conf.Pid,
+		nProc:   conf.NProc,
 		orderer: orderer,
 		netserv: netserv,
 		state:   rmcbox.New(conf.RMCPublicKeys, conf.RMCPrivateKey),
+		timeout: conf.Timeout,
 		log:     log,
 		quit:    0,
 	}
@@ -64,13 +69,13 @@ func (s *server) StopOut() {
 }
 
 func (s *server) send(unit gomel.Unit) {
-	if unit.Creator() == s.conf.Pid {
+	if unit.Creator() == s.pid {
 		go s.multicast(unit)
 	}
 }
 
 func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
-	if u.Creator() == s.conf.Pid {
+	if u.Creator() == s.pid {
 		// We trust our own units.
 		return nil
 	}
@@ -89,14 +94,14 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 }
 
 func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
-	conn, err := s.netserv.Dial(source, s.conf.Timeout)
+	conn, err := s.netserv.Dial(source, s.timeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.conf.Timeout)
+	conn.TimeoutAfter(s.timeout)
 	id := gomel.UnitID(u)
-	err = rmcbox.Greet(conn, s.conf.Pid, id, requestFinished)
+	err = rmcbox.Greet(conn, s.pid, id, requestFinished)
 	if err != nil {
 		return err
 	}

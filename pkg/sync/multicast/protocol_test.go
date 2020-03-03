@@ -1,6 +1,7 @@
 package multicast_test
 
 import (
+	snc "sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
@@ -21,30 +23,34 @@ type testServer interface {
 	Out(uint16)
 }
 
-type adder struct {
+type unitsAdder struct {
+	gomel.Orderer
 	gomel.Adder
 	attemptedAdd []gomel.Preunit
+	mx           snc.Mutex
 }
 
-func (a *adder) AddUnit(unit gomel.Preunit, source uint16) error {
-	a.attemptedAdd = append(a.attemptedAdd, unit)
-	return a.Adder.AddUnit(unit, source)
-}
-
-func (a *adder) AddAntichain(units []gomel.Preunit, source uint16) *gomel.AggregateError {
-	a.attemptedAdd = append(a.attemptedAdd, units...)
-	return a.Adder.AddUnits(units, source)
+func (ua *unitsAdder) AddPreunits(source uint16, units ...gomel.Preunit) []error {
+	ua.mx.Lock()
+	ua.attemptedAdd = append(ua.attemptedAdd, units...)
+	ua.mx.Unlock()
+	err := ua.Adder.AddPreunits(source, units...)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var _ = Describe("Protocol", func() {
 
 	var (
-		dags     []gomel.Dag
-		adders   []*adder
-		servs    []sync.Server
-		tservs   []testServer
-		netservs []network.Server
-		pu       gomel.Preunit
+		dags      []gomel.Dag
+		adders    []*unitsAdder
+		servs     []sync.Server
+		tservs    []testServer
+		netservs  []network.Server
+		multicast sync.Multicast
+		pu        gomel.Preunit
 	)
 
 	BeforeEach(func() {
@@ -58,12 +64,19 @@ var _ = Describe("Protocol", func() {
 	JustBeforeEach(func() {
 		adders = nil
 		for _, dag := range dags {
-			adders = append(adders, &adder{tests.NewAdder(dag), nil})
+			adders = append(adders, &unitsAdder{Orderer: tests.NewOrderer(), Adder: tests.NewAdder(dag)})
 		}
 		for i := 0; i < 4; i++ {
-			serv := NewServer(uint16(i), dags[i], adders[i], netservs[i], time.Second, zerolog.Nop())
+			config := config.Empty()
+			config.NProc = 4
+			config.Pid = uint16(i)
+			config.Timeout = 10 * time.Second
+			serv, mltcst := NewServer(config, adders[i], netservs[i], zerolog.Nop())
 			servs = append(servs, serv)
 			tservs = append(tservs, serv.(testServer))
+			if multicast == nil {
+				multicast = mltcst
+			}
 		}
 	})
 
@@ -77,17 +90,26 @@ var _ = Describe("Protocol", func() {
 					dag, _, _ := tests.CreateDagFromTestFile("../../testdata/dags/4/empty.txt", tests.NewTestDagFactory())
 					dags = append(dags, dag)
 				}
-				pu = tests.NewPreunit(0, gomel.EmptyCrown(4), []byte{}, nil)
+				pu = tests.NewPreunit(uint16(0), gomel.EmptyCrown(4), []byte{}, []byte{}, nil)
+
 			})
 
 			It("should add the unit to empty copies", func() {
+				adders[0].AddPreunits(0, pu)
+				unit := dags[0].MaximalUnitsPerProcess().Get(0)[0]
+				var wg snc.WaitGroup
 				for i := uint16(1); i < 4; i++ {
-					go tservs[0].Out(i)
+					wg.Add(1)
+					go func(pid uint16) {
+						defer wg.Done()
+						tservs[0].Out(pid)
+					}(i)
 				}
-				adders[0].AddUnit(pu, 0)
+				multicast(unit)
 				for i := 1; i < 4; i++ {
 					tservs[i].In()
 				}
+				wg.Wait()
 				for i := 0; i < 4; i++ {
 					Expect(adders[i].attemptedAdd).To(HaveLen(1))
 					Expect(adders[i].attemptedAdd[0].Creator()).To(BeNumerically("==", 0))

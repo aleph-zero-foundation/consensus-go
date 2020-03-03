@@ -242,7 +242,7 @@ func (cr *Creator) freezeParent(pid uint16) gomel.Unit {
 func (cr *Creator) getParents() []gomel.Unit {
 	result := make([]gomel.Unit, cr.conf.NProc)
 	copy(result, cr.candidates)
-	makeConsistent(result)
+	MakeConsistent(result)
 	return result
 }
 
@@ -255,7 +255,7 @@ func (cr *Creator) getParentsForLevel(level int) []gomel.Unit {
 		}
 		result[i] = u
 	}
-	makeConsistent(result)
+	MakeConsistent(result)
 	return result
 }
 
@@ -277,11 +277,11 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 
-// makeConsistent ensures that the set of parents follows "parent consistency rule". Modifies the provided unit slice in place.
+// MakeConsistent ensures that the set of parents follows "parent consistency rule". Modifies the provided unit slice in place.
 // Parent consistency rule means that unit's i-th parent cannot be lower (in a level sense) than
 // i-th parent of any other of that units parents. In other words, units seen from U "directly"
 // (as parents) cannot be below the ones seen "indirectly" (as parents of parents).
-func makeConsistent(parents []gomel.Unit) {
+func MakeConsistent(parents []gomel.Unit) {
 	for i := 0; i < len(parents); i++ {
 		for j := 0; j < len(parents); j++ {
 			if parents[j] == nil {
