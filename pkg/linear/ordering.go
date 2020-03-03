@@ -19,8 +19,8 @@ type ordering struct {
 	firstRoundZeroForCommonVote   int
 	firstDecidingRound            int
 	orderStartLevel               int
-	crpFixedPrefix                uint16
 	commonVoteDeterministicPrefix int
+	crpIterator                   *commonRandomPermutation
 	log                           zerolog.Logger
 }
 
@@ -34,8 +34,8 @@ func newOrdering(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, log z
 		firstRoundZeroForCommonVote:   conf.FirstRoundZeroForCommonVote,
 		firstDecidingRound:            conf.FirstDecidingRound,
 		orderStartLevel:               conf.OrderStartLevel,
-		crpFixedPrefix:                conf.CRPFixedPrefix,
 		commonVoteDeterministicPrefix: conf.CommonVoteDeterministicPrefix,
+		crpIterator:                   newCommonRandomPermutation(dag, rs, conf.CRPFixedPrefix),
 		log:                           log,
 	}
 }
@@ -61,7 +61,7 @@ func (ord *ordering) NextRound() *timingRound {
 
 	previousTU := ord.currentTU
 	decided := false
-	ord.crpIterate(level, previousTU, func(uc gomel.Unit) bool {
+	ord.crpIterator.CRPIterate(level, previousTU, func(uc gomel.Unit) bool {
 		decider := ord.getDecider(uc)
 		decision, decidedOn := decider.DecideUnitIsPopular(dagMaxLevel)
 		if decision == popular {

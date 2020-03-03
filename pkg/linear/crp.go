@@ -7,7 +7,17 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// crpIterate iterates over all the prime units on a given level in random order.
+type commonRandomPermutation struct {
+	dag            gomel.Dag
+	randomSource   gomel.RandomSource
+	crpFixedPrefix uint16
+}
+
+func newCommonRandomPermutation(dag gomel.Dag, randomSource gomel.RandomSource, crpFixedPrefix uint16) *commonRandomPermutation {
+	return &commonRandomPermutation{dag: dag, randomSource: randomSource, crpFixedPrefix: crpFixedPrefix}
+}
+
+// CRPIterate iterates over all the prime units on a given level in random order.
 // It calls the given work function on each of the units until the function
 // returns false or the contents run out.
 // The underlying random permutation of units is generated in two steps
@@ -20,17 +30,17 @@ import (
 // - false when generating the suffix of the permutation failed (because the dag
 //   hasn't reached a level high enough to reveal the randomBytes needed)
 // - true otherwise
-func (ord *ordering) crpIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
-	prefix, sufix := splitProcesses(ord.dag.NProc(), ord.crpFixedPrefix, level, previousTU)
+func (crp *commonRandomPermutation) CRPIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
+	prefix, sufix := splitProcesses(crp.dag.NProc(), crp.crpFixedPrefix, level, previousTU)
 
-	perm := defaultPermutation(ord.dag, level, prefix)
+	perm := defaultPermutation(crp.dag, level, prefix)
 	for _, u := range perm {
 		if !work(u) {
 			return true
 		}
 	}
 
-	perm, ok := randomPermutation(ord.randomSource, ord.dag, level, sufix)
+	perm, ok := randomPermutation(crp.randomSource, crp.dag, level, sufix)
 	if !ok {
 		return false
 	}
