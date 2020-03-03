@@ -18,6 +18,7 @@ const (
 )
 
 type orderer struct {
+	blockLimit   int
 	conf         config.Config
 	syncer       gomel.Syncer
 	rsf          gomel.RandomSourceFactory
@@ -37,6 +38,7 @@ type orderer struct {
 // New constructs a new orderer instance using provided config, data source, preblock maker, and logger.
 func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
+		blockLimit:   conf.OrderStartLevel + conf.EpochLength,
 		conf:         conf,
 		toPreblock:   toPreblock,
 		unitBelt:     make(chan gomel.Unit, beltSize),
@@ -48,7 +50,7 @@ func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker,
 		ord.insert(u)
 		ord.syncer.Multicast(u)
 	}
-	ord.creator = creator.New(conf, ds, send, ord.rsData, log, ord.Stop)
+	ord.creator = creator.New(conf, ds, send, ord.rsData, log)
 	return ord
 }
 
@@ -84,11 +86,11 @@ func (ord *orderer) preblockMaker() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
-		if timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
+		if timingUnit.Level() == ord.blockLimit-1 {
 			ord.lastTiming <- timingUnit
 		}
 		epoch := timingUnit.EpochID()
-		if epoch >= current {
+		if epoch >= current && timingUnit.Level() < ord.blockLimit {
 			ord.toPreblock(round)
 		}
 		current = epoch

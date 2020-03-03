@@ -74,7 +74,11 @@ func (ad *adder) Close() {
 	ad.rmx.Lock()
 	ad.active = false
 	ad.rmx.Unlock()
-	for _, c := range ad.ready {
+	for i, c := range ad.ready {
+		// this channel was never instantiated
+		if uint16(i) == ad.conf.Pid {
+			continue
+		}
 		close(c)
 	}
 	ad.wg.Wait()

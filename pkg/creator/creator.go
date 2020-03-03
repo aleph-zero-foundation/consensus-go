@@ -32,13 +32,12 @@ type Creator struct {
 	frozen     map[uint16]bool
 	mx         sync.Mutex
 	log        zerolog.Logger
-	stop       func()
 }
 
 // New constructs a creator that uses provided config, data source and logger.
 // send function is called on each created unit.
 // rsData provides random source data for the given level, parents and epoch.
-func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), rsData func(int, []gomel.Unit, gomel.EpochID) []byte, log zerolog.Logger, stop func()) *Creator {
+func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), rsData func(int, []gomel.Unit, gomel.EpochID) []byte, log zerolog.Logger) *Creator {
 	return &Creator{
 		conf:       conf,
 		ds:         dataSource,
@@ -50,7 +49,6 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 		shares:     newShareDB(conf),
 		frozen:     make(map[uint16]bool),
 		log:        log,
-		stop:       stop,
 	}
 }
 
@@ -168,7 +166,6 @@ func (cr *Creator) update(u gomel.Unit) {
 	if data != nil {
 		if cr.epoch == gomel.EpochID(cr.conf.NumberOfEpochs-1) {
 			// TODO: add some heuristic to postpone calling stop, eg. seen units from all processes on highets level.
-			cr.stop()
 		} else {
 			cr.newEpoch(cr.epoch+1, data)
 		}
