@@ -36,6 +36,7 @@ func (e *encoder) encodeCrown(crown *gomel.Crown) error {
 	data := make([]byte, 2+nParents*4+32)
 	binary.LittleEndian.PutUint16(data[:2], nParents)
 	s := 2
+
 	for _, h := range crown.Heights {
 		if h == -1 {
 			binary.LittleEndian.PutUint32(data[s:s+4], math.MaxUint32)

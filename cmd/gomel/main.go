@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,13 +8,10 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
-	"sync"
 	"syscall"
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 	"gitlab.com/alephledger/core-go/pkg/core"
@@ -23,7 +19,7 @@ import (
 
 func getMember(filename string) (*config.Member, error) {
 	if filename == "" {
-		return nil, errors.New("please provide a key file")
+		return nil, errors.New("please provide a file with private keys and pid")
 	}
 	file, err := os.Open(filename)
 	if err != nil {
@@ -35,7 +31,7 @@ func getMember(filename string) (*config.Member, error) {
 
 func getCommittee(filename string) (*config.Committee, error) {
 	if filename == "" {
-		return nil, errors.New("please provide a key file")
+		return nil, errors.New("please provide a file with keys and addresses of the committee")
 	}
 	file, err := os.Open(filename)
 	if err != nil {
@@ -45,33 +41,13 @@ func getCommittee(filename string) (*config.Committee, error) {
 	return config.LoadCommittee(file)
 }
 
-func getConfiguration(filename string) (*config.Params, error) {
-	var result config.Params
-	if filename == "" {
-		result = config.NewDefaultConfiguration()
-		return &result, nil
-	}
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	err = config.NewJSONConfigLoader().LoadConfiguration(file, &result)
-	if err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
 type cliOptions struct {
-	pkPidFilename     string
+	privFilename      string
 	keysAddrsFilename string
-	configFilename    string
-	logFilename       string
 	cpuProfFilename   string
 	memProfFilename   string
 	traceFilename     string
-	dagFilename       string
+	txpu              int
 	mutexFraction     int
 	blockFraction     int
 	delay             int64
@@ -79,14 +55,12 @@ type cliOptions struct {
 
 func getOptions() cliOptions {
 	var result cliOptions
-	flag.StringVar(&result.pkPidFilename, "pk", "", "a file with a private key and process id")
+	flag.StringVar(&result.privFilename, "priv", "", "a file with private keys and process id")
 	flag.StringVar(&result.keysAddrsFilename, "keys_addrs", "", "a file with keys and associated addresses")
-	flag.StringVar(&result.configFilename, "config", "", "a configuration file")
-	flag.StringVar(&result.logFilename, "log", "aleph.log", "the name of the file with logs")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
-	flag.StringVar(&result.dagFilename, "dag", "", "the name of the file to save resulting dag")
+	flag.IntVar(&result.txpu, "txpu", 0, "number of transactions to put to every unit")
 	flag.IntVar(&result.mutexFraction, "mf", 0, "the sampling fraction of mutex contention events")
 	flag.IntVar(&result.blockFraction, "bf", 0, "the sampling fraction of goroutine blocking events")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
@@ -107,44 +81,22 @@ func main() {
 		time.Sleep(duration)
 	}
 
-	member, err := getMember(options.pkPidFilename)
+	// get member
+	member, err := getMember(options.privFilename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid private key file \"%s\", because: %s.\n", options.pkPidFilename, err.Error())
+		fmt.Fprintf(os.Stderr, "Invalid private key file \"%s\", because: %s.\n", options.privFilename, err.Error())
 		return
 	}
+	// get committee
 	committee, err := getCommittee(options.keysAddrsFilename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keysAddrsFilename, err.Error())
 		return
 	}
-	conf, err := getConfiguration(options.configFilename)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid configuration file \"%s\", because: %s.\n", options.configFilename, err.Error())
-		return
-	}
-	if len(conf.SyncSetup) != len(committee.SetupAddresses) {
-		fmt.Fprintf(os.Stderr, "Wrong number of setup addresses. Needs %d, got %d", len(conf.SyncSetup), len(committee.SetupAddresses))
-		return
-	}
-	// The additional address is for alerts.
-	if len(conf.Sync)+1 != len(committee.Addresses) {
-		fmt.Println(committee.Addresses)
-		fmt.Fprintf(os.Stderr, "Wrong number of addresses. Needs %d, got %d", len(conf.Sync)+1, len(committee.Addresses))
-		return
-	}
-
-	log, err := logging.NewLogger(options.logFilename, conf.LogLevel, conf.LogBuffer, conf.LogHuman)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Creating log file \"%s\" failed because: %s.\n", options.logFilename, err.Error())
-		return
-	}
-	setupLog, err := logging.NewLogger("setup_"+options.logFilename, conf.LogLevel, conf.LogBuffer, conf.LogHuman)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Creating log file \"%s\" failed because: %s.\n", "setup_"+options.logFilename, err.Error())
-		return
-	}
-
-	processConfig := conf.GenerateConfig(member, committee)
+	// get process config
+	consensusConfig := config.New(member, committee)
+	// get setup config
+	setupConfig := config.NewSetup(member, committee)
 
 	if options.cpuProfFilename != "" {
 		f, err := os.Create(options.cpuProfFilename)
@@ -169,56 +121,33 @@ func main() {
 		defer trace.Stop()
 	}
 
-	// Mock data source and preblock sink.
-	tds := tests.NewDataSource(300 * conf.Txpu)
-	tds.Start()
-	ps := make(chan *core.Preblock)
-	var wait sync.WaitGroup
-	wait.Add(1)
-	// Reading and ignoring all the preblocks.
-	go func() {
-		defer wait.Done()
-		for range ps {
-		}
-	}()
-
 	fmt.Fprintln(os.Stdout, "Starting process...")
 
-	setupErrors := make(chan error)
-	mainServiceErrors := make(chan error)
-	wait.Add(1)
-	go func() {
-		defer wait.Done()
-		for err := range setupErrors {
-			panic("error in setup: " + err.Error())
-		}
-	}()
-	wait.Add(1)
-	go func() {
-		defer wait.Done()
-		for err := range mainServiceErrors {
-			panic("error in main service: " + err.Error())
-		}
-	}()
+	// Mock data source and preblock sink.
+	tds := tests.NewDataSource(300 * options.txpu)
+	ps := make(chan *core.Preblock)
 
-	createdDag := make(chan gomel.Dag)
-
-	dagService, err := run.Process(processConfig, tds.DataSource(), ps, createdDag, setupLog, log, setupErrors, mainServiceErrors)
+	var start, stop func()
+	if len(setupConfig.RMCAddresses) == 0 {
+		start, stop, err = run.NoBeacon(consensusConfig, tds, ps)
+	} else {
+		start, stop, err = run.Process(setupConfig, consensusConfig, tds, ps)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
+		return
 	}
-	err = dagService.Start()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Main service died with %s.\n", err.Error())
+	start()
+	seenPB, expectedPB := 0, consensusConfig.EpochLength*consensusConfig.NumberOfEpochs
+	for range ps {
+		seenPB++
+		if seenPB == expectedPB {
+			break
+		}
 	}
-	dag := <-createdDag
-	dagService.Stop()
-	close(setupErrors)
-	close(mainServiceErrors)
 
-	tds.Stop()
 	close(ps)
-	wait.Wait()
+	stop()
 
 	if options.memProfFilename != "" {
 		f, err := os.Create(options.memProfFilename)
@@ -232,16 +161,5 @@ func main() {
 		}
 	}
 
-	if options.dagFilename != "" {
-		f, err := os.Create(options.dagFilename)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Creating dag file \"%s\" failed because: %s.\n", options.dagFilename, err.Error())
-		}
-		defer f.Close()
-		out := bufio.NewWriter(f)
-		tests.WriteDag(out, dag)
-		out.Flush()
-	}
-
-	fmt.Fprintf(os.Stdout, "All done! :)\n")
+	fmt.Fprintf(os.Stdout, "All done!\n")
 }

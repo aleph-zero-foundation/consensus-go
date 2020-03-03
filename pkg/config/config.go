@@ -1,3 +1,6 @@
+// Package config reads and writes the configuration of the program.
+//
+// This package handles both the parameters of the protocol, as well as all the needed keys and committee information.
 package config
 
 import (

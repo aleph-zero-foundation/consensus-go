@@ -18,6 +18,7 @@ const (
 )
 
 type orderer struct {
+	blockLimit   int
 	conf         config.Config
 	syncer       gomel.Syncer
 	rsf          gomel.RandomSourceFactory
@@ -37,6 +38,7 @@ type orderer struct {
 // New constructs a new orderer instance using provided config, data source, preblock maker, and logger.
 func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
 	ord := &orderer{
+		blockLimit:   conf.OrderStartLevel + conf.EpochLength,
 		conf:         conf,
 		toPreblock:   toPreblock,
 		unitBelt:     make(chan gomel.Unit, beltSize),
@@ -84,11 +86,11 @@ func (ord *orderer) preblockMaker() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
-		if timingUnit.Level() == ord.conf.OrderStartLevel+ord.conf.EpochLength-1 {
+		if timingUnit.Level() == ord.blockLimit-1 {
 			ord.lastTiming <- timingUnit
 		}
 		epoch := timingUnit.EpochID()
-		if epoch >= current {
+		if epoch >= current && timingUnit.Level() < ord.blockLimit {
 			ord.toPreblock(round)
 		}
 		current = epoch
@@ -105,6 +107,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) []erro
 		if errors == nil {
 			errors = make([]error, errorsSize)
 		}
+		return errors
 	}
 	processed := 0
 	for len(preunits) > 0 {
@@ -202,6 +205,9 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 
 	var result []gomel.Unit
 	deltaResolver := func(dagInfo *gomel.DagInfo) {
+		if dagInfo == nil {
+			return
+		}
 		if ord.previous != nil && dagInfo.Epoch == ord.previous.id {
 			result = append(result, ord.previous.unitsAbove(dagInfo.Heights)...)
 		}
@@ -211,7 +217,7 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 	}
 	deltaResolver(info[0])
 	deltaResolver(info[1])
-	if info[0].Epoch < ord.current.id && info[1].Epoch < ord.current.id {
+	if info[0] != nil && info[0].Epoch < ord.current.id && info[1].Epoch < ord.current.id {
 		result = append(result, ord.current.allUnits()...)
 	}
 	return result

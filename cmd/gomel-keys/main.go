@@ -8,42 +8,58 @@ import (
 	"strings"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
 )
 
-type proc struct {
-	publicKey       gomel.PublicKey
-	privateKey      gomel.PrivateKey
-	sekKey          *bn256.SecretKey
-	verKey          *bn256.VerificationKey
-	p2pPubKey       *p2p.PublicKey
-	p2pSecKey       *p2p.SecretKey
-	localAddrs      []string
-	setupLocalAddrs []string
+type memberKeys struct {
+	publicKey  gomel.PublicKey
+	privateKey gomel.PrivateKey
+	sekKey     *bn256.SecretKey
+	verKey     *bn256.VerificationKey
+	p2pPubKey  *p2p.PublicKey
+	p2pSecKey  *p2p.SecretKey
+	addresses  map[string][]string
 }
 
-func makeProcess(setupLocalAddrs []string, localAddrs []string) proc {
+func makeMemberKeys(addresses map[string][]string) memberKeys {
 	pubKey, privKey, _ := signing.GenerateKeys()
 	verKey, sekKey, _ := bn256.GenerateKeys()
 	p2pPubKey, p2pSecKey, _ := p2p.GenerateKeys()
 
-	return proc{
-		publicKey:       pubKey,
-		privateKey:      privKey,
-		sekKey:          sekKey,
-		verKey:          verKey,
-		p2pPubKey:       p2pPubKey,
-		p2pSecKey:       p2pSecKey,
-		setupLocalAddrs: setupLocalAddrs,
-		localAddrs:      localAddrs,
+	return memberKeys{
+		publicKey:  pubKey,
+		privateKey: privKey,
+		sekKey:     sekKey,
+		verKey:     verKey,
+		p2pPubKey:  p2pPubKey,
+		p2pSecKey:  p2pSecKey,
+		addresses:  addresses,
+	}
+}
+
+func makeAddrMap(addrs string, addresses map[string][]string) {
+	for _, addr := range strings.Split(addrs, " ") {
+		if len(addr) == 0 {
+			continue
+		}
+		switch addr[0] {
+		case 'r':
+			addresses["rmc"] = append(addresses["rmc"], addr[1:])
+		case 'm':
+			addresses["mcast"] = append(addresses["mcast"], addr[1:])
+		case 'f':
+			addresses["fetch"] = append(addresses["fetch"], addr[1:])
+		case 'g':
+			addresses["gossip"] = append(addresses["gossip"], addr[1:])
+		}
 	}
 }
 
 // This program generates files with random keys and local addresses for a committee of the specified size.
-// These files are intended to be used for simple local tests of the gomel binary.
+// These files are intended to be used for local and AWS tests of the gomel binary.
 func main() {
 	usageMsg := "Usage: gomel-keys <number> [<addresses_file>]."
 	if len(os.Args) != 2 && len(os.Args) != 3 {
@@ -56,26 +72,21 @@ func main() {
 		return
 	}
 	if nProc < 4 {
-		fmt.Fprintln(os.Stderr, "Cannot have less than 4 processes.")
+		fmt.Fprintln(os.Stderr, "Cannot have less than 4 keys.")
 		return
 	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, usageMsg)
-		return
-	}
-	// addresses for gossip and multicast
-	setupAddresses := make([][]string, nProc)
-	addresses := make([][]string, nProc)
+
+	setupAddresses := make(map[string][]string)
+	addresses := make(map[string][]string)
 	if len(os.Args) == 2 {
 		for i := 0; i < nProc; i++ {
-			// gossip
-			setupAddresses[i] = append(setupAddresses[i], "127.0.0.1:"+strconv.Itoa(11000+i))
-			// multicast
-			setupAddresses[i] = append(setupAddresses[i], "127.0.0.1:"+strconv.Itoa(12000+i))
-			// gossip
-			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(9000+i))
-			// multicast
-			addresses[i] = append(addresses[i], "127.0.0.1:"+strconv.Itoa(10000+i))
+			addresses["rmc"] = append(addresses["rmc"], "127.0.0.1:"+strconv.Itoa(9000+i))
+			addresses["mcast"] = append(addresses["mcast"], "127.0.0.1:"+strconv.Itoa(10000+i))
+			addresses["fetch"] = append(addresses["fetch"], "127.0.0.1:"+strconv.Itoa(11000+i))
+			addresses["gossip"] = append(addresses["gossip"], "127.0.0.1:"+strconv.Itoa(12000+i))
+			setupAddresses["rmc"] = append(setupAddresses["rmc"], "127.0.0.1:"+strconv.Itoa(13000+i))
+			setupAddresses["fetch"] = append(setupAddresses["fetch"], "127.0.0.1:"+strconv.Itoa(14000+i))
+			setupAddresses["gossip"] = append(setupAddresses["gossip"], "127.0.0.1:"+strconv.Itoa(15000+i))
 		}
 	} else {
 		f, err := os.Open(os.Args[2])
@@ -86,37 +97,31 @@ func main() {
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		for pid := 0; pid < nProc && scanner.Scan(); pid++ {
-			s := strings.Split(scanner.Text(), "|")
-			setupAddrs, addrs := s[0], s[1]
-			for _, addr := range strings.Split(setupAddrs, " ") {
-				setupAddresses[pid] = append(setupAddresses[pid], addr)
+			line := strings.Split(scanner.Text(), "|")
+			if len(line) < 2 {
+				fmt.Fprintln(os.Stderr, "missing addresses")
+				return
 			}
-			for _, addr := range strings.Split(addrs, " ") {
-				addresses[pid] = append(addresses[pid], addr)
-			}
+			saddrs, addrs := line[0], line[1]
+			makeAddrMap(saddrs, setupAddresses)
+			makeAddrMap(addrs, addresses)
 		}
 	}
-	processes := []proc{}
-	for i := 0; i < nProc; i++ {
-		processes = append(processes, makeProcess(setupAddresses[i], addresses[i]))
+	keys := []memberKeys{}
+	for pid := 0; pid < nProc; pid++ {
+		keys = append(keys, makeMemberKeys(addresses))
 	}
 	committee := &config.Committee{}
-	committee.SetupAddresses = make([][]string, len(setupAddresses[0]))
-	committee.Addresses = make([][]string, len(addresses[0]))
-	for _, p := range processes {
-		committee.PublicKeys = append(committee.PublicKeys, p.publicKey)
-		committee.RMCVerificationKeys = append(committee.RMCVerificationKeys, p.verKey)
-		committee.P2PPublicKeys = append(committee.P2PPublicKeys, p.p2pPubKey)
-		for i, addr := range p.setupLocalAddrs {
-			committee.SetupAddresses[i] = append(committee.SetupAddresses[i], addr)
-		}
-		for i, addr := range p.localAddrs {
-			committee.Addresses[i] = append(committee.Addresses[i], addr)
-		}
+	committee.SetupAddresses = setupAddresses
+	committee.Addresses = addresses
+	for _, ks := range keys {
+		committee.PublicKeys = append(committee.PublicKeys, ks.publicKey)
+		committee.RMCVerificationKeys = append(committee.RMCVerificationKeys, ks.verKey)
+		committee.P2PPublicKeys = append(committee.P2PPublicKeys, ks.p2pPubKey)
 	}
 
-	for pid, p := range processes {
-		member := &config.Member{uint16(pid), p.privateKey, p.sekKey, p.p2pSecKey}
+	for pid, ks := range keys {
+		member := &config.Member{uint16(pid), ks.privateKey, ks.sekKey, ks.p2pSecKey}
 		f, err := os.Create(strconv.Itoa(pid) + ".pk")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())

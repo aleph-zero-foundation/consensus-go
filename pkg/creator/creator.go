@@ -41,6 +41,8 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 	return &Creator{
 		conf:       conf,
 		ds:         dataSource,
+		send:       send,
+		rsData:     rsData,
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
 		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
@@ -133,10 +135,9 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 			}
 			panic("TIME TRAVEL ERROR: lastTiming received a unit from the future")
 		default:
-			break
+			return core.Data{}
 		}
 	}
-	return core.Data{}
 }
 
 // update takes a unit that has been received from unit belt and updates
@@ -160,10 +161,14 @@ func (cr *Creator) update(u gomel.Unit) {
 
 	// If this is a finishing unit try to extract threshold signature share from it.
 	// If there are enough shares to produce the signature (and therefore a proof that
-	// the current epoch is finished) switch to a new epoch.
+	// the current epoch is finished) switch to a new epoch or close the creator.
 	data := cr.updateShares(u)
 	if data != nil {
-		cr.newEpoch(cr.epoch+1, data)
+		if cr.epoch == gomel.EpochID(cr.conf.NumberOfEpochs-1) {
+			// TODO: add some heuristic to postpone calling stop, eg. seen units from all processes on highets level.
+		} else {
+			cr.newEpoch(cr.epoch+1, data)
+		}
 		return
 	}
 
