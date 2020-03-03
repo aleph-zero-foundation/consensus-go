@@ -122,17 +122,11 @@ func main() {
 		defer trace.Stop()
 	}
 
+	fmt.Fprintln(os.Stdout, "Starting process...")
+
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(300 * options.txpu)
 	ps := make(chan *core.Preblock)
-	var wait sync.WaitGroup
-	// Reading and ignoring all the preblocks.
-	go func() {
-		for range ps {
-		}
-	}()
-
-	fmt.Fprintln(os.Stdout, "Starting process...")
 
 	var start, stop func()
 	if len(setupConfig.RMCAddresses) == 0 {
@@ -155,7 +149,6 @@ func main() {
 
 	close(ps)
 	stop()
-	wait.Wait()
 
 	if options.memProfFilename != "" {
 		f, err := os.Create(options.memProfFilename)
