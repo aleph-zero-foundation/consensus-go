@@ -133,7 +133,7 @@ func (dag *Dag) UnitsOnLevel(level int) gomel.SlottedUnits {
 	if level < len(dag.primeUnits) {
 		return dag.primeUnits[level]
 	}
-	return nil
+	return newSlottedUnits(dag.nProcesses)
 }
 
 // UnitsAbove returns all units above given heights.

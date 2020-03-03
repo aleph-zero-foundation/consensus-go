@@ -26,7 +26,7 @@ type Extender struct {
 // NewExtender constructs an extender working on the given dag and sending rounds of ordered units to the given output.
 func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, output chan<- []gomel.Unit, log zerolog.Logger) *Extender {
 	logger := log.With().Int(logging.Service, logging.ExtenderService).Logger()
-	ordering := newOrdering(dag, rs, conf, log)
+	ordering := newOrdering(dag, rs, conf, logger)
 	ext := &Extender{
 		ordering:     ordering,
 		pid:          conf.Pid,

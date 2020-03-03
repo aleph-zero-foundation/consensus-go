@@ -1,4 +1,4 @@
-package linear_test
+package linear
 
 import (
 	"github.com/rs/zerolog"
@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	. "gitlab.com/alephledger/consensus-go/pkg/linear"
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
@@ -17,7 +16,7 @@ const (
 
 var _ = Describe("Ordering", func() {
 	var (
-		ordering *Ordering
+		ordering *ordering
 		dag      gomel.Dag
 		rs       gomel.RandomSource
 		err      error
@@ -31,7 +30,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
 				Expect(ordering.NextRound()).To(BeNil())
 			})
 		})
@@ -43,7 +42,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
 				Expect(ordering.NextRound()).To(BeNil())
 			})
 		})
@@ -55,7 +54,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
 			})
 			It("should decide up to 8th level", func() {
 				for level := 0; level < 8; level++ {
@@ -76,7 +75,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
 				timingRound := ordering.NextRound()
 				Expect(timingRound).To(BeNil())
 			})
@@ -89,7 +88,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
 				for level := 0; level < 8; level++ {
 					timingRound := ordering.NextRound()
 					Expect(timingRound).NotTo(BeNil())

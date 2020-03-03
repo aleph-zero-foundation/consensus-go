@@ -31,7 +31,7 @@ func newCommonRandomPermutation(dag gomel.Dag, randomSource gomel.RandomSource, 
 //   hasn't reached a level high enough to reveal the randomBytes needed)
 // - true otherwise
 func (crp *commonRandomPermutation) CRPIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
-	prefix, sufix := splitProcesses(crp.dag.NProc(), crp.crpFixedPrefix, level, previousTU)
+	prefix, suffix := splitProcesses(crp.dag.NProc(), crp.crpFixedPrefix, level, previousTU)
 
 	perm := defaultPermutation(crp.dag, level, prefix)
 	for _, u := range perm {
@@ -40,7 +40,7 @@ func (crp *commonRandomPermutation) CRPIterate(level int, previousTU gomel.Unit,
 		}
 	}
 
-	perm, ok := randomPermutation(crp.randomSource, crp.dag, level, sufix)
+	perm, ok := randomPermutation(crp.randomSource, crp.dag, level, suffix)
 	if !ok {
 		return false
 	}

@@ -61,7 +61,7 @@ func (ord *ordering) NextRound() *timingRound {
 
 	previousTU := ord.currentTU
 	decided := false
-	ord.crpIterator.CRPIterate(level, previousTU, func(uc gomel.Unit) bool {
+	randomBytesPresent := ord.crpIterator.CRPIterate(level, previousTU, func(uc gomel.Unit) bool {
 		decider := ord.getDecider(uc)
 		decision, decidedOn := decider.DecideUnitIsPopular(dagMaxLevel)
 		if decision == popular {
@@ -86,6 +86,9 @@ func (ord *ordering) NextRound() *timingRound {
 		}
 		return true
 	})
+	if !randomBytesPresent {
+		ord.log.Info().Int(logging.Round, level).Msg(logging.MissingRandomBytes)
+	}
 	if !decided {
 		return nil
 	}

@@ -27,8 +27,9 @@ const (
 	DuplicatedUnits     = "V"
 	DuplicatedPreunits  = "W"
 	UnknownParents      = "X"
-	UnitOrdered         = "Y"
-	InvalidControlHash  = "Z"
+	MissingRandomBytes  = "Y"
+	UnitOrdered         = "Z"
+	InvalidControlHash  = "AA"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -57,6 +58,7 @@ var eventTypeDict = map[string]string{
 	DuplicatedUnits:     "trying to add units already present in dag",
 	DuplicatedPreunits:  "trying to add preunits already present in adder",
 	UnknownParents:      "trying to add a unit with missing parents",
+	MissingRandomBytes:  "missing random bytes",
 	UnitOrdered:         "unit ordered",
 	InvalidControlHash:  "invalid control hash",
 }
