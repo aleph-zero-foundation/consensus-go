@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
-	"sync"
 	"syscall"
 	"time"
 

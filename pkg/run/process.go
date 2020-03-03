@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync/syncer"
 	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/crypto/tss"
+	"gitlab.com/alephledger/core-go/pkg/network/tcp"
 )
 
 // Process is the main external API of consensus-go.

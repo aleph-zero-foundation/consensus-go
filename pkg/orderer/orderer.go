@@ -105,6 +105,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) []erro
 		if errors == nil {
 			errors = make([]error, errorsSize)
 		}
+		return errors
 	}
 	processed := 0
 	for len(preunits) > 0 {

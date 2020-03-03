@@ -87,7 +87,7 @@ func (ad *adder) Close() {
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
 //   UnknownParents - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
-	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnitsStarted)
+	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnits)
 	var errors []error
 	getErrors := func() []error {
 		if errors == nil {
