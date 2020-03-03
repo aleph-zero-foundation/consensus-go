@@ -116,8 +116,8 @@ var _ = Describe("Dag", func() {
 	JustBeforeEach(func() {
 		for _, pus := range addFirst {
 			for _, pu := range pus {
-				err := adder.AddPreunits(pu.Creator(), pu)[0]
-				Expect(err).NotTo(HaveOccurred())
+				err := adder.AddPreunits(pu.Creator(), pu)
+				Expect(err).To(BeEmpty())
 			}
 		}
 	})
@@ -143,21 +143,22 @@ var _ = Describe("Dag", func() {
 				})
 				Context("When the dag is empty", func() {
 					It("Should be added as a dealing unit", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
 						result := dag.GetUnit(addedUnit.Hash())
-						Expect(err).NotTo(HaveOccurred())
+						Expect(err).To(BeEmpty())
 						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 						Expect(result.Signature()).To(Equal(addedUnit.Signature()))
 					})
 				})
 				Context("When the dag already contains the unit", func() {
 					JustBeforeEach(func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
-						Expect(err).NotTo(HaveOccurred())
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
+						Expect(err).To(BeEmpty())
 					})
 					It("Should report that fact", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
-						Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
+						Expect(err).NotTo(BeEmpty())
+						Expect(err[0]).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
 					})
 				})
 				Context("When the dag contains another parentless unit for this process", func() {
@@ -167,9 +168,9 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 					It("Should be added as a second dealing unit", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
 						result := dag.GetUnit(addedUnit.Hash())
-						Expect(err).NotTo(HaveOccurred())
+						Expect(err).To(BeEmpty())
 						Expect(result.Hash()).To(Equal(addedUnit.Hash()))
 						Expect(result.Parents()[result.Creator()]).To(BeNil())
 					})
@@ -187,10 +188,11 @@ var _ = Describe("Dag", func() {
 				})
 				Context("When the dag is empty", func() {
 					It("Should fail because of lack of parents", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
 						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewUnknownParents(1)))
+						Expect(err).NotTo(BeEmpty())
+						Expect(err[0]).To(MatchError(gomel.NewUnknownParents(1)))
 					})
 				})
 				Context("When the dag contains the parent", func() {
@@ -200,10 +202,11 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 					It("Should fail because of non prime unit", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
 						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewComplianceError("non-prime unit")))
+						Expect(err).NotTo(BeEmpty())
+						Expect(err[0]).To(MatchError(gomel.NewComplianceError("non-prime unit")))
 					})
 				})
 			})
@@ -220,10 +223,11 @@ var _ = Describe("Dag", func() {
 				})
 				Context("When the dag is empty", func() {
 					It("Should fail because of lack of parents", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
 						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewUnknownParents(3)))
+						Expect(err).NotTo(BeEmpty())
+						Expect(err[0]).To(MatchError(gomel.NewUnknownParents(3)))
 					})
 				})
 				Context("When the dag contains one of the parents", func() {
@@ -233,10 +237,11 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu}}
 					})
 					It("Should fail because of lack of parents", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
 						result := dag.GetUnit(addedUnit.Hash())
 						Expect(result).To(BeNil())
-						Expect(err).To(MatchError(gomel.NewUnknownParents(2)))
+						Expect(err).NotTo(BeEmpty())
+						Expect(err[0]).To(MatchError(gomel.NewUnknownParents(2)))
 					})
 				})
 				Context("When the dag contains all the parents", func() {
@@ -250,17 +255,18 @@ var _ = Describe("Dag", func() {
 						addFirst = [][]*preunitMock{[]*preunitMock{pu1, pu2, pu3}}
 					})
 					It("Should add the unit succesfully", func() {
-						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
-						Expect(err).NotTo(HaveOccurred())
+						err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
+						Expect(err).To(BeEmpty())
 					})
 					Context("When the dag already contains the unit", func() {
 						JustBeforeEach(func() {
-							err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
-							Expect(err).NotTo(HaveOccurred())
+							err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
+							Expect(err).To(BeEmpty())
 						})
 						It("Should report that fact", func() {
-							err := adder.AddPreunits(addedUnit.Creator(), addedUnit)[0]
-							Expect(err).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
+							err := adder.AddPreunits(addedUnit.Creator(), addedUnit)
+							Expect(err).NotTo(BeEmpty())
+							Expect(err[0]).To(MatchError(gomel.NewDuplicateUnit(dag.GetUnit(addedUnit.Hash()))))
 						})
 					})
 				})
@@ -476,8 +482,8 @@ var _ = Describe("Dag", func() {
 					It("should confirm that a unit is valid", func() {
 						validUnit := newPreunitMock(0, []int{0, 0, 0, -1}, []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash, &gomel.Hash{}})
 						validUnit.SetHash(4)
-						err := adder.AddPreunits(validUnit.Creator(), validUnit)[0]
-						Expect(err).NotTo(HaveOccurred())
+						err := adder.AddPreunits(validUnit.Creator(), validUnit)
+						Expect(err).To(BeEmpty())
 					})
 				})
 				Describe("adding a unit with different EpochID", func() {
@@ -485,8 +491,9 @@ var _ = Describe("Dag", func() {
 						pu := newPreunitMock(0, []int{0, 0, 0, -1}, []*gomel.Hash{&pu1.hash, &pu2.hash, &pu3.hash, &gomel.Hash{}})
 						pu.SetHash(4)
 						pu.epochID = 101
-						err := adder.AddPreunits(pu.Creator(), pu)[0]
-						Expect(err).To(HaveOccurred())
+						err := adder.AddPreunits(pu.Creator(), pu)
+						Expect(err).NotTo(BeEmpty())
+						Expect(err[0]).To(HaveOccurred())
 					})
 				})
 			})

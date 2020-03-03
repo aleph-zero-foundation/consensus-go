@@ -6,6 +6,7 @@ package fetch
 
 import (
 	"sync/atomic"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -16,7 +17,7 @@ import (
 )
 
 type server struct {
-	conf     config.Config
+	pid      uint16
 	orderer  gomel.Orderer
 	netserv  network.Server
 	requests chan Request
@@ -24,6 +25,7 @@ type server struct {
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
 	quit     int64
+	timeout  time.Duration
 	log      zerolog.Logger
 }
 
@@ -32,15 +34,16 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 	nProc := int(conf.NProc)
 	requests := make(chan Request, nProc)
 	s := &server{
-		conf:     conf,
+		pid:      conf.Pid,
 		orderer:  orderer,
 		netserv:  netserv,
 		requests: requests,
 		syncIds:  make([]uint32, nProc),
+		timeout:  conf.Timeout,
 		log:      log,
 	}
-	s.inPool = sync.NewPool(s.conf.FetchWorkers[0], s.In)
-	s.outPool = sync.NewPool(s.conf.FetchWorkers[1], s.Out)
+	s.inPool = sync.NewPool(conf.FetchWorkers[0], s.In)
+	s.outPool = sync.NewPool(conf.FetchWorkers[1], s.Out)
 	return s, s.trigger
 }
 

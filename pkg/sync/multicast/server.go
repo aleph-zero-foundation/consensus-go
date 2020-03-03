@@ -7,6 +7,7 @@ package multicast
 import (
 	"math/rand"
 	"sync/atomic"
+	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -29,32 +30,36 @@ type request struct {
 }
 
 type server struct {
-	conf     config.Config
+	pid      uint16
+	nProc    uint16
 	orderer  gomel.Orderer
 	netserv  network.Server
 	requests []chan request
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
 	quit     int64
+	timeout  time.Duration
 	log      zerolog.Logger
 }
 
 // NewServer returns a server that runs the multicast protocol.
 func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Multicast) {
-	nProc := int(conf.NProc)
+	nProc := conf.NProc
 	requests := make([]chan request, nProc)
-	for i := 0; i < nProc; i++ {
+	for i := uint16(0); i < nProc; i++ {
 		requests[i] = make(chan request, requestSize)
 	}
 	s := &server{
-		conf:     conf,
+		pid:      conf.Pid,
+		nProc:    nProc,
 		orderer:  orderer,
 		netserv:  netserv,
 		requests: requests,
+		timeout:  conf.Timeout,
 		log:      log,
 	}
 	s.outPool = sync.NewPerPidPool(conf.NProc, outPoolSize, s.Out)
-	s.inPool = sync.NewPool(inPoolSize*nProc, s.In)
+	s.inPool = sync.NewPool(inPoolSize*int(nProc), s.In)
 	return s, s.send
 }
 
@@ -69,14 +74,14 @@ func (s *server) StopIn() {
 
 func (s *server) StopOut() {
 	atomic.StoreInt64(&s.quit, 1)
-	for i := uint16(0); i < s.conf.NProc; i++ {
+	for i := uint16(0); i < s.nProc; i++ {
 		close(s.requests[i])
 	}
 	s.outPool.Stop()
 }
 
 func (s *server) send(unit gomel.Unit) {
-	if unit.Creator() != s.conf.Pid {
+	if unit.Creator() != s.pid {
 		panic("Attempting to multicast unit that we didn't create")
 	}
 	encUnit, err := encoding.EncodeUnit(unit)
@@ -84,8 +89,8 @@ func (s *server) send(unit gomel.Unit) {
 		s.log.Error().Str("where", "multicastServer.Send.EncodeUnit").Msg(err.Error())
 		return
 	}
-	for _, i := range rand.Perm(int(s.conf.NProc)) {
-		if i == int(s.conf.Pid) {
+	for _, i := range rand.Perm(int(s.nProc)) {
+		if i == int(s.pid) {
 			continue
 		}
 		if atomic.LoadInt64(&s.quit) == 0 {

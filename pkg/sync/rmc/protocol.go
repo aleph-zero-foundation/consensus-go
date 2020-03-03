@@ -35,11 +35,11 @@ func (s *server) multicast(unit gomel.Unit) {
 }
 
 func (s *server) sendProof(receipient uint16, id uint64) error {
-	conn, err := s.netserv.Dial(receipient, s.conf.Timeout)
+	conn, err := s.netserv.Dial(receipient, s.timeout)
 	if err != nil {
 		return err
 	}
-	err = rmcbox.Greet(conn, s.conf.Pid, id, sendProof)
+	err = rmcbox.Greet(conn, s.pid, id, sendProof)
 	if err != nil {
 		return err
 	}
@@ -60,10 +60,10 @@ func (s *server) sendProof(receipient uint16, id uint64) error {
 // It returns nProc boolean values in a slice, i-th value indicates
 // weather the i-th process signed the data or not.
 func (s *server) getCommitteeSignatures(data []byte, id uint64) []bool {
-	signedBy := make([]bool, s.conf.NProc)
+	signedBy := make([]bool, s.nProc)
 	gathering := &sync.WaitGroup{}
-	for pid := uint16(0); pid < s.conf.NProc; pid++ {
-		if pid == s.conf.Pid {
+	for pid := uint16(0); pid < s.nProc; pid++ {
+		if pid == s.pid {
 			continue
 		}
 		gathering.Add(1)
@@ -83,11 +83,11 @@ func (s *server) getMemberSignature(data []byte, id uint64, receipient uint16, g
 	defer gathering.Done()
 	log := s.log.With().Uint16(logging.PID, receipient).Uint64(logging.OSID, id).Logger()
 	for s.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&s.quit) == 0 {
-		conn, err := s.netserv.Dial(receipient, s.conf.Timeout)
+		conn, err := s.netserv.Dial(receipient, s.timeout)
 		if err != nil {
 			continue
 		}
-		conn.TimeoutAfter(s.conf.Timeout)
+		conn.TimeoutAfter(s.timeout)
 		log.Info().Msg(logging.SyncStarted)
 		err = s.attemptGather(conn, data, id, receipient)
 		if err == nil {
@@ -101,7 +101,7 @@ func (s *server) getMemberSignature(data []byte, id uint64, receipient uint16, g
 
 func (s *server) attemptGather(conn network.Connection, data []byte, id uint64, receipient uint16) error {
 	defer conn.Close()
-	err := rmcbox.Greet(conn, s.conf.Pid, id, sendData)
+	err := rmcbox.Greet(conn, s.pid, id, sendData)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (s *server) attemptGather(conn network.Connection, data []byte, id uint64, 
 
 func (s *server) sendProve(conn network.Connection, id uint64) error {
 	defer conn.Close()
-	err := rmcbox.Greet(conn, s.conf.Pid, id, sendProof)
+	err := rmcbox.Greet(conn, s.pid, id, sendProof)
 	if err != nil {
 		return err
 	}
@@ -138,12 +138,12 @@ func (s *server) sendProve(conn network.Connection, id uint64) error {
 }
 
 func (s *server) in() {
-	conn, err := s.netserv.Listen(s.conf.Timeout)
+	conn, err := s.netserv.Listen(s.timeout)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.conf.Timeout)
+	conn.TimeoutAfter(s.timeout)
 
 	pid, id, msgType, err := rmcbox.AcceptGreeting(conn)
 	if err != nil {

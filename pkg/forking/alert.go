@@ -58,7 +58,7 @@ type alertHandler struct {
 	log         zerolog.Logger
 }
 
-// NewAlertHandler for raising and handling commitments.
+// newAlertHandler for raising and handling commitments.
 func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, netserv network.Server, log zerolog.Logger) *alertHandler {
 	al := &alertHandler{
 		myPid:       conf.Pid,

@@ -11,6 +11,10 @@ type timingRound struct {
 	lastTUs   []gomel.Unit
 }
 
+func newTimingRound(currentTimingUnit gomel.Unit, lastTimingUnits []gomel.Unit) *timingRound {
+	return &timingRound{currentTU: currentTimingUnit, lastTUs: lastTimingUnits}
+}
+
 func (tr *timingRound) OrderedUnits() []gomel.Unit {
 	layers := getAntichainLayers(tr.currentTU, tr.lastTUs)
 	sortedUnits := mergeLayers(layers)

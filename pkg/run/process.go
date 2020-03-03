@@ -67,7 +67,11 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 	if err != nil {
 		return nil, nil, err
 	}
-	alrt, err := forking.NewAlerter(conf, ord, log)
+	netserv, err := tcp.NewServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses)
+	if err != nil {
+		return nil, nil, err
+	}
+	alrt, err := forking.NewAlerter(conf, ord, netserv, log)
 	if err != nil {
 		return nil, nil, err
 	}
