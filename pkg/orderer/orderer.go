@@ -68,7 +68,9 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 func (ord *orderer) Stop() {
 	ord.alerter.Stop()
 	ord.syncer.Stop()
-	ord.previous.close()
+	if ord.previous != nil {
+		ord.previous.close()
+	}
 	ord.current.close()
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
