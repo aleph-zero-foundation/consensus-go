@@ -27,6 +27,8 @@ const (
 	DuplicatedUnits     = "V"
 	DuplicatedPreunits  = "W"
 	UnknownParents      = "X"
+	UnitOrdered         = "Y"
+	InvalidControlHash  = "Z"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -55,26 +57,29 @@ var eventTypeDict = map[string]string{
 	DuplicatedUnits:     "trying to add units already present in dag",
 	DuplicatedPreunits:  "trying to add preunits already present in adder",
 	UnknownParents:      "trying to add a unit with missing parents",
+	UnitOrdered:         "unit ordered",
+	InvalidControlHash:  "invalid control hash",
 }
 
 // Field names.
 const (
-	Time    = "T"
-	Level   = "L"
-	Event   = "V"
-	Service = "S"
-	Size    = "N"
-	Creator = "C"
-	Height  = "H"
-	Epoch   = "E"
-	Lvl     = "Q"
-	Round   = "R"
-	ID      = "D"
-	PID     = "P"
-	ISID    = "I"
-	OSID    = "O"
-	Sent    = "A"
-	Recv    = "B"
+	Time        = "T"
+	Level       = "L"
+	Event       = "V"
+	Service     = "S"
+	Size        = "N"
+	Creator     = "C"
+	Height      = "H"
+	Epoch       = "E"
+	Lvl         = "Q"
+	Round       = "R"
+	ID          = "D"
+	PID         = "P"
+	ISID        = "I"
+	OSID        = "O"
+	Sent        = "A"
+	Recv        = "B"
+	ControlHash = "Z"
 )
 
 // fieldNameDict maps short field names to human readable form.

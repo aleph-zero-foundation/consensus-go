@@ -2,6 +2,8 @@
 package run
 
 import (
+	"errors"
+
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -19,21 +21,21 @@ import (
 // Given two Config objects (one for the setup phase and one for the main consensus), data source and preblock sink,
 // Process initializes two orderers and a channel between them used to pass the result of the setup phase.
 // Returns two functions that can be used to, respectively, start and stop the whole system.
-func Process(setupConf, conf config.Config, ds core.DataSource, ps core.PreblockSink) (func(), func(), error) {
+func Process(setupConf, conf config.Config, ds core.DataSource, ps core.PreblockSink) (start func(), stop func(), err error) {
 	wtkchan := make(chan *tss.WeakThresholdKey, 1)
-	startSetup, stopSetup, err := setup(setupConf, wtkchan)
-	if err != nil {
-		return nil, nil, err
+	startSetup, stopSetup, setupErr := setup(setupConf, wtkchan)
+	if setupErr != nil {
+		return nil, nil, errors.New("an error occurred while initializing setup: " + setupErr.Error())
 	}
-	startConsensus, stopConsensus, err := consensus(conf, wtkchan, ds, ps)
-	if err != nil {
-		return nil, nil, err
+	startConsensus, stopConsensus, consensusErr := consensus(conf, wtkchan, ds, ps)
+	if consensusErr != nil {
+		return nil, nil, errors.New("an error occurred while initializing consensus: " + consensusErr.Error())
 	}
-	start := func() {
+	start = func() {
 		startSetup()
-		go startConsensus()
+		startConsensus()
 	}
-	stop := func() {
+	stop = func() {
 		stopSetup()
 		stopConsensus()
 	}
@@ -77,18 +79,23 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 		return nil, nil, err
 	}
 
+	started := make(chan struct{})
 	start := func() {
-		wtkey, ok := <-wtkchan
-		if !ok {
-			// received termination signal from outside
-			return
-		}
-		log.Info().Msg(logging.GotWTK)
-		conf.WTKey = wtkey
-		ord.Start(coin.NewFactory(conf.Pid, wtkey), syn, alrt)
+		go func() {
+			defer func() { started <- struct{}{} }()
+			wtkey, ok := <-wtkchan
+			if !ok {
+				// received termination signal from outside
+				return
+			}
+			log.Info().Msg(logging.GotWTK)
+			conf.WTKey = wtkey
+			ord.Start(coin.NewFactory(conf.Pid, wtkey), syn, alrt)
+		}()
 	}
 	stop := func() {
 		close(wtkchan)
+		<-started
 		ord.Stop()
 	}
 	return start, stop, nil
