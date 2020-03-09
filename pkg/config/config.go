@@ -142,7 +142,7 @@ func addSetupConf(cnf Config) {
 func addConsensusConf(cnf Config) {
 	cnf.CanSkipLevel = true
 	cnf.OrderStartLevel = 0
-	cnf.CRPFixedPrefix = 5
+	cnf.CRPFixedPrefix = 4
 	cnf.EpochLength = 50
 	cnf.NumberOfEpochs = 2
 	cnf.Checks = consensusChecks

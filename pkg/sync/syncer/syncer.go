@@ -33,6 +33,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 
 	var serv sync.Server
 	var netserv network.Server
+	var err error
 	if len(conf.RMCAddresses) == int(conf.NProc) && len(conf.MCastAddresses) == 0 {
 		netserv, s.subservices, err = getNetServ(conf.RMCNetType, conf.Pid, conf.RMCAddresses, s.subservices)
 		if err != nil {

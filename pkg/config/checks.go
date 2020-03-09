@@ -147,6 +147,9 @@ func Valid(cnf Config, setup bool) error {
 	if setup && cnf.OrderStartLevel != 6 {
 		return gomel.NewConfigError("OrderStartLevel should be 6 and not " + strconv.Itoa(cnf.OrderStartLevel))
 	}
+	if cnf.CRPFixedPrefix > cnf.NProc {
+		return gomel.NewConfigError("CRPFixedPrefix connot exceed NProc")
+	}
 	if len(cnf.Checks) != len(setupCheks) {
 		return gomel.NewConfigError("wrong number of checks")
 	}

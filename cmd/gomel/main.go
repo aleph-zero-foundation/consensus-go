@@ -47,6 +47,7 @@ type cliOptions struct {
 	cpuProfFilename   string
 	memProfFilename   string
 	traceFilename     string
+	setup             bool
 	txpu              int
 	mutexFraction     int
 	blockFraction     int
@@ -55,6 +56,7 @@ type cliOptions struct {
 
 func getOptions() cliOptions {
 	var result cliOptions
+	flag.BoolVar(&result.setup, "setup", true, "a flag whether a setup should be run")
 	flag.StringVar(&result.privFilename, "priv", "", "a file with private keys and process id")
 	flag.StringVar(&result.keysAddrsFilename, "keys_addrs", "", "a file with keys and associated addresses")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
@@ -93,10 +95,18 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keysAddrsFilename, err.Error())
 		return
 	}
-	// get process config
-	consensusConfig := config.New(member, committee)
 	// get setup config
 	setupConfig := config.NewSetup(member, committee)
+	if err := config.Valid(setupConfig, true); options.setup && err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid setup configuration because: %s.\n", err.Error())
+		return
+	}
+	// get process config
+	consensusConfig := config.New(member, committee)
+	if err := config.Valid(consensusConfig, false); err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid consensus configuration because: %s.\n", err.Error())
+		return
+	}
 
 	if options.cpuProfFilename != "" {
 		f, err := os.Create(options.cpuProfFilename)
