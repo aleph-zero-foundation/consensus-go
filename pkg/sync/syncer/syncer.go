@@ -29,10 +29,6 @@ type syncer struct {
 
 // New creates a new syncer that uses provided config, ordered and logger.
 func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Syncer, error) {
-	err := valid(conf)
-	if err != nil {
-		return nil, err
-	}
 	s := &syncer{}
 
 	var serv sync.Server

@@ -84,8 +84,9 @@ var _ = Describe("Config", func() {
 	})
 	Describe("defaults", func() {
 		var (
-			m *Member
-			c *Committee
+			m   *Member
+			c   *Committee
+			cnf Config
 		)
 		BeforeEach(func() {
 			file, err := os.Open("../testdata/test_pk.txt")
@@ -103,15 +104,13 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should generate valid setup config", func() {
-			cnf, err := NewSetup(m, c)
-			Expect(err).NotTo(HaveOccurred())
-			err = Valid(cnf, true)
+			cnf = NewSetup(m, c)
+			err := Valid(cnf, true)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should generate valid consensus config", func() {
-			cnf, err := New(m, c)
-			Expect(err).NotTo(HaveOccurred())
-			err = Valid(cnf, false)
+			cnf = New(m, c)
+			err := Valid(cnf, false)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
