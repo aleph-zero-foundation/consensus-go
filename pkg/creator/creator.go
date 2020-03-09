@@ -55,13 +55,8 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 // Work executes the main loop of the creator. Units appearing on unitBelt are examined and stored to
 // be used as parents of future units. When there are enough new parents, a new unit is produced.
 // lastTiming is a channel on which the last timing unit of each epoch is expected to appear.
-// This method is stopped by closing unitBelt channel. A WaitGroup pointer can optionally be passed,
-// if waiting for the end of Work is needed.
-func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, wg *sync.WaitGroup) {
-	if wg != nil {
-		wg.Add(1)
-		defer wg.Done()
-	}
+// This method is stopped by closing unitBelt channel.
+func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit) {
 	cr.newEpoch(gomel.EpochID(0), core.Data{})
 
 	var parents []gomel.Unit
