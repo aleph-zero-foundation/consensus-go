@@ -136,7 +136,7 @@ func addSetupConf(cnf Config) {
 	cnf.CRPFixedPrefix = 0
 	cnf.EpochLength = 1
 	cnf.NumberOfEpochs = 1
-	cnf.Checks = setupCheks
+	cnf.Checks = setupChecks
 }
 
 func addConsensusConf(cnf Config) {

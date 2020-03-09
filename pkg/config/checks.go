@@ -132,35 +132,14 @@ func checkChecks(given, expected []gomel.UnitChecker) error {
 	return nil
 }
 
-// Valid checks if a given config is in valid state
-func Valid(cnf Config, setup bool) error {
+// checks basic validity of config for both setup and consensus
+func valid(cnf Config) error {
 	// epoch Checks
 	if cnf.NProc < uint16(4) {
 		return gomel.NewConfigError("nProc is " + strconv.Itoa(int(cnf.NProc)))
 	}
 	if cnf.EpochLength < 1 {
 		return gomel.NewConfigError("EpochLength is " + strconv.Itoa(cnf.EpochLength))
-	}
-	if setup && cnf.CanSkipLevel {
-		return gomel.NewConfigError("Cannot skip level in setup")
-	}
-	if setup && cnf.OrderStartLevel != 6 {
-		return gomel.NewConfigError("OrderStartLevel should be 6 and not " + strconv.Itoa(cnf.OrderStartLevel))
-	}
-	if cnf.CRPFixedPrefix > cnf.NProc {
-		return gomel.NewConfigError("CRPFixedPrefix connot exceed NProc")
-	}
-	if len(cnf.Checks) != len(setupChecks) {
-		return gomel.NewConfigError("wrong number of checks")
-	}
-	if setup {
-		if err := checkChecks(cnf.Checks, setupChecks); err != nil {
-			return err
-		}
-	} else {
-		if err := checkChecks(cnf.Checks, consensusChecks); err != nil {
-			return err
-		}
 	}
 
 	// log checks
@@ -179,8 +158,52 @@ func Valid(cnf Config, setup bool) error {
 		return err
 	}
 
-	// sync params checks
-	if err := checkSyncConf(cnf, setup); err != nil {
+	return nil
+}
+
+// Valid checks if a given config is in valid state for setup
+func Valid(cnf Config) error {
+	if err := valid(cnf); err != nil {
+		return err
+	}
+	if cnf.CRPFixedPrefix > cnf.NProc {
+		return gomel.NewConfigError("CRPFixedPrefix connot exceed NProc")
+	}
+	if len(cnf.Checks) != len(consensusChecks) {
+		return gomel.NewConfigError("wrong number of checks")
+	}
+	if err := checkChecks(cnf.Checks, consensusChecks); err != nil {
+		return err
+	}
+
+	if err := checkSyncConf(cnf, false); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ValidSetup checks if a given config is in valid state for setup
+func ValidSetup(cnf Config) error {
+	if err := valid(cnf); err != nil {
+		return err
+	}
+	if cnf.CanSkipLevel {
+		return gomel.NewConfigError("Cannot skip level in setup")
+	}
+	if cnf.OrderStartLevel != 6 {
+		return gomel.NewConfigError("OrderStartLevel should be 6 and not " + strconv.Itoa(cnf.OrderStartLevel))
+	}
+	if cnf.CRPFixedPrefix != 0 {
+		return gomel.NewConfigError("CRPFixedPrefix connot be nonzero in setup")
+	}
+	if len(cnf.Checks) != len(setupChecks) {
+		return gomel.NewConfigError("wrong number of checks")
+	}
+	if err := checkChecks(cnf.Checks, setupChecks); err != nil {
+		return err
+	}
+	if err := checkSyncConf(cnf, true); err != nil {
 		return err
 	}
 

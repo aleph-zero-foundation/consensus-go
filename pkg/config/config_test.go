@@ -105,12 +105,12 @@ var _ = Describe("Config", func() {
 		})
 		It("should generate valid setup config", func() {
 			cnf = NewSetup(m, c)
-			err := Valid(cnf, true)
+			err := ValidSetup(cnf)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should generate valid consensus config", func() {
 			cnf = New(m, c)
-			err := Valid(cnf, false)
+			err := Valid(cnf)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
