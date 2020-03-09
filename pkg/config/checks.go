@@ -20,11 +20,11 @@ const (
 )
 
 var (
-	setupCheks      = []gomel.UnitChecker{check.BasicCorrectness, check.ParentConsistency, check.NoLevelSkipping, check.NoForks}
+	setupChecks     = []gomel.UnitChecker{check.BasicCorrectness, check.ParentConsistency, check.NoLevelSkipping, check.NoForks}
 	consensusChecks = []gomel.UnitChecker{check.BasicCorrectness, check.ParentConsistency, check.NoSelfForkingEvidence, check.ForkerMuting}
 )
 
-// checks if slice is of nProc length and if slice does not contains a nil
+// checks if slice is of nProc length and if slice does not contain a nil
 func noNils(slice interface{}, nProc uint16, keyType string) error {
 	s := reflect.ValueOf(slice)
 	if uint16(s.Len()) != nProc {
@@ -150,11 +150,11 @@ func Valid(cnf Config, setup bool) error {
 	if cnf.CRPFixedPrefix > cnf.NProc {
 		return gomel.NewConfigError("CRPFixedPrefix connot exceed NProc")
 	}
-	if len(cnf.Checks) != len(setupCheks) {
+	if len(cnf.Checks) != len(setupChecks) {
 		return gomel.NewConfigError("wrong number of checks")
 	}
 	if setup {
-		if err := checkChecks(cnf.Checks, setupCheks); err != nil {
+		if err := checkChecks(cnf.Checks, setupChecks); err != nil {
 			return err
 		}
 	} else {
