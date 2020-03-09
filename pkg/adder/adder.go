@@ -192,8 +192,13 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 		}
 	}
 	if *gomel.CombineHashes(gomel.ToHashes(parents)) != wp.pu.View().ControlHash {
-		//TODO Handle wrong control hash
 		wp.failed = true
+		ad.log.Info().
+			Bytes(logging.ControlHash, wp.pu.View().ControlHash[:]).
+			Uint16(logging.PID, wp.source).
+			Ints(logging.Height, wp.pu.View().Heights).
+			Msg(logging.InvalidControlHash)
+		ad.handleInvalidControlHash(wp.source, wp.pu, parents)
 		return
 	}
 
@@ -215,6 +220,16 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	ad.dag.Insert(freeUnit)
 
 	log.Info().Msg(logging.UnitAdded)
+}
+
+func (ad *adder) handleInvalidControlHash(sourcePID uint16, witness gomel.Preunit, parentCandidates []gomel.Unit) {
+	ids := make([]uint64, 0, len(witness.View().Heights))
+	for pid, height := range witness.View().Heights {
+		ids = append(ids, gomel.ID(height, uint16(pid), witness.EpochID()))
+	}
+	// this should trigger download of all parents, including some that are witnesses of forks,
+	// and start an alert while they are added
+	ad.syncer.RequestFetch(sourcePID, ids)
 }
 
 // checkCorrectness checks very basic correctness of the given preunit: creator and signature.

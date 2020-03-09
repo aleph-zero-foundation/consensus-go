@@ -7,15 +7,14 @@ import (
 	"sort"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
-	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/random/coin"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/unit"
 )
 
 const (
@@ -23,17 +22,17 @@ const (
 )
 
 // UnitCreator is a type of a function that given a list of dags attempts to create a new unit or returns an error otherwise.
-type UnitCreator func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) (gomel.Preunit, error)
+type UnitCreator func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) (gomel.Unit, error)
 
 // Creator is a type of a function that given a dag and some 'creator' attempts to build a valid unit.
-type Creator func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error)
+type Creator func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Unit, error)
 
 // AddingHandler is a type of a function that given a list of dags and a unit handles adding of that unit with accordance to
 // used strategy.
-type AddingHandler func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error
+type AddingHandler func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit) error
 
 // DagVerifier is a type of a function that is responsible for verifying if a given list of dags is in valid state.
-type DagVerifier func([]gomel.Dag, []uint16, []config.Params, []gomel.RandomSource) error
+type DagVerifier func([]gomel.Dag, []uint16, []config.Config, []gomel.RandomSource) error
 
 // TestingRoutine describes a strategy for performing a test on a given set of dags.
 type TestingRoutine struct {
@@ -83,7 +82,7 @@ func NewDefaultTestingRoutine(
 	}
 	wrappedCreator := func(dags []gomel.Dag, privKeys []gomel.PrivateKey) UnitCreator {
 		origCreator := creator(dags, privKeys)
-		return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Preunit, error) {
+		return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Unit, error) {
 			pu, err := origCreator(dags, privKeys, rss)
 			if err == nil {
 				unitsCreated++
@@ -106,7 +105,7 @@ func NewTestingRoutineWithStopCondition(
 
 // NewDefaultAdder creates an instance of AddingHandler that ads a given unit to all dags under test.
 func NewDefaultAdder() AddingHandler {
-	return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+	return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit) error {
 		_, err := AddToDags(preunit, rss, dags)
 		return err
 	}
@@ -114,21 +113,33 @@ func NewDefaultAdder() AddingHandler {
 
 // NewNoOpAdder return an instance of 'AddingHandler' type that performs no operation.
 func NewNoOpAdder() AddingHandler {
-	return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+	return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit) error {
 		return nil
 	}
 }
 
 // NewDefaultCreator creates an instance of Creator that when called attempts to create a unit using default data.
-func NewDefaultCreator(maxParents uint16) Creator {
-	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		pu, _, err := creating.NewUnit(dag, creator, NewDefaultDataContent(), rs, true)
+func NewDefaultCreator(maxParents int32) Creator {
+	return func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Unit, error) {
+
+		nProc := dag.NProc()
+		parents := make([]gomel.Unit, 0, nProc)
+		dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+			if len(units) > 0 {
+				parents = append(parents, units[0])
+			} else {
+				parents = append(parents, nil)
+			}
+			return true
+		})
+		level := gomel.LevelFromParents(parents)
+		rsData, err := rs.DataToInclude(parents, level)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error while creating a new unit:", err)
 			return nil, err
 		}
-		pu.SetSignature(privKey.Sign(pu))
-		return pu, nil
+		unitData := make([]byte, 4)
+		unit := unit.New(creator, gomel.EpochID(0), parents, level, unitData, rsData, privKey)
+		return unit, nil
 	}
 }
 
@@ -173,7 +184,7 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 					parentsHeights := unit.View().Heights
 					failed := false
 					for ix, h := range parentsHeights {
-						if hu := dag.UnitsOnHeight(h); hu == nil || hu.Get(uint16(ix)) == nil {
+						if hu := dag.UnitsOnLevel(h); hu == nil || hu.Get(uint16(ix)) == nil {
 							fmt.Println("missing parent:", ix)
 							failed = true
 							break
@@ -190,7 +201,7 @@ func AddToDagsIngoringErrors(unit gomel.Preunit, dags []gomel.Dag) gomel.Unit {
 }
 
 // AddUnitsToDagsInRandomOrder adds a set of units in random order (per each dag) to all provided dags.
-func AddUnitsToDagsInRandomOrder(units []gomel.Preunit, dags []gomel.Dag) error {
+func AddUnitsToDagsInRandomOrder(units []gomel.Unit, dags []gomel.Dag) error {
 	for _, dag := range dags {
 		rand.Shuffle(len(units), func(i, j int) {
 			units[i], units[j] = units[j], units[i]
@@ -258,9 +269,10 @@ func GenerateKeys(nProcesses int) ([]gomel.PublicKey, []gomel.PrivateKey) {
 }
 
 // NewDefaultConfigurations creates a slice of a given size containing default configurations.
-func NewDefaultConfigurations(nProcesses int) []config.Params {
-	defaultConfig := config.NewDefaultConfiguration()
-	configs := make([]config.Params, nProcesses)
+func NewDefaultConfigurations(nProcesses uint16) []config.Config {
+	defaultConfig := config.Empty()
+	defaultConfig.NProc = nProcesses
+	configs := make([]config.Config, nProcesses)
 	for pid := range configs {
 		configs[pid] = defaultConfig
 	}
@@ -270,7 +282,7 @@ func NewDefaultConfigurations(nProcesses int) []config.Params {
 // NewDefaultUnitCreator returns an implementation of the UnitCreator type that tries to build a unit using a randomly selected
 // dag.
 func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
-	return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Preunit, error) {
+	return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Unit, error) {
 		attempts := 0
 		for {
 			attempts++
@@ -290,7 +302,6 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 				fmt.Fprintf(os.Stderr, "Creator %d was unable to build a unit\n", creator)
 				continue
 			}
-			pu.SetSignature(privKeys[creator].Sign(pu))
 			fmt.Fprintf(os.Stderr, "Unit created by dag no %d", creator)
 			fmt.Fprintln(os.Stderr, "")
 			return pu, nil
@@ -302,7 +313,7 @@ func NewDefaultUnitCreator(unitFactory Creator) UnitCreator {
 // a creator which is a direct successor of the previous one (i.e. 0, 1, 2...).
 func NewEachInSequenceUnitCreator(unitFactory Creator) UnitCreator {
 	nextCreator := 0
-	return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Preunit, error) {
+	return func(dags []gomel.Dag, privKeys []gomel.PrivateKey, rss []gomel.RandomSource) (gomel.Unit, error) {
 		attempts := 0
 		for {
 			attempts++
@@ -322,7 +333,6 @@ func NewEachInSequenceUnitCreator(unitFactory Creator) UnitCreator {
 				fmt.Fprintf(os.Stderr, "Creator %d was unable to build a unit\n", creator)
 				continue
 			}
-			pu.SetSignature(privKeys[creator].Sign(pu))
 			fmt.Fprintf(os.Stderr, "Unit created by dag no %d", creator)
 			fmt.Fprintln(os.Stderr, "")
 
@@ -332,11 +342,12 @@ func NewEachInSequenceUnitCreator(unitFactory Creator) UnitCreator {
 	}
 }
 
-func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
+func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Config, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
-		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
+		logger, _ := logging.NewLogger(generalConfig)
+		output := make(chan<- []gomel.Unit)
+		ordering := linear.NewExtender(dag, rs, generalConfig, output, logger)
 		level := generalConfig.OrderStartLevel
 		timingRound := ordering.NextRound()
 		for ; timingRound != nil; timingRound = ordering.NextRound() {
@@ -355,17 +366,19 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Params, rs 
 	return units
 }
 
-func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
+func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Config, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 
-		logger, _ := logging.NewLogger("stdout", generalConfig.LogLevel, 100000, false)
-		ordering := linear.NewOrdering(dag, rs, generalConfig.OrderStartLevel, generalConfig.CRPFixedPrefix, logger)
+		logger, _ := logging.NewLogger(generalConfig)
+		output := make(chan<- []gomel.Unit)
+		ordering := linear.NewExtender(dag, rs, generalConfig, output, logger)
 		level := generalConfig.OrderStartLevel
 		timingRound := ordering.NextRound()
 
 		for ; timingRound != nil; timingRound = ordering.NextRound() {
-			timingUnit := timingRound.TimingUnit()
+			orderedUnits := timingRound.OrderedUnits()
+			timingUnit := orderedUnits[len(orderedUnits)-1]
 			if timingUnit.Level() != level {
 				panic(fmt.Sprint("invalid level of a timing unit - expected", level, "received", timingUnit.Level()))
 			}
@@ -379,7 +392,7 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Params, r
 	return units
 }
 
-func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
+func getMaximalUnitsSorted(dag gomel.Dag, pid uint16, generalConfig config.Config, rs gomel.RandomSource) chan gomel.Unit {
 	units := make(chan gomel.Unit)
 	go func() {
 		dag.MaximalUnitsPerProcess().Iterate(func(forks []gomel.Unit) bool {
@@ -416,7 +429,7 @@ func dagLevel(dag gomel.Dag) int {
 // ComposeVerifiers composes provided verifiers into a single verifier. Created verifier fails immediately after it discovers a failure of one of
 // its verifiers.
 func ComposeVerifiers(verifiers ...DagVerifier) DagVerifier {
-	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Params, rss []gomel.RandomSource) error {
+	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Config, rss []gomel.RandomSource) error {
 		for _, verifier := range verifiers {
 			if err := verifier(dags, pids, generalConfigs, rss); err != nil {
 				return err
@@ -430,7 +443,7 @@ func ComposeVerifiers(verifiers ...DagVerifier) DagVerifier {
 // failure of one of its 'adders'.
 func ComposeAdders(adders ...AddingHandler) AddingHandler {
 
-	return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+	return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit) error {
 		for _, adder := range adders {
 			if err := adder(dags, rss, preunit); err != nil {
 				return err
@@ -440,8 +453,8 @@ func ComposeAdders(adders ...AddingHandler) AddingHandler {
 	}
 }
 
-func verifyUnitsUsingOrdering(ordering func(gomel.Dag, uint16, config.Params, gomel.RandomSource) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) DagVerifier {
-	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Params, rss []gomel.RandomSource) error {
+func verifyUnitsUsingOrdering(ordering func(gomel.Dag, uint16, config.Config, gomel.RandomSource) chan gomel.Unit, checker func(u1, u2 gomel.Unit) error) DagVerifier {
+	return func(dags []gomel.Dag, pids []uint16, generalConfigs []config.Config, rss []gomel.RandomSource) error {
 		if len(dags) < 2 {
 			return nil
 		}
@@ -478,7 +491,7 @@ func VerifyTimingUnits() DagVerifier {
 	prevLevel := -1
 	return verifyUnitsUsingOrdering(
 
-		func(dag gomel.Dag, pid uint16, generalConfig config.Params, rs gomel.RandomSource) chan gomel.Unit {
+		func(dag gomel.Dag, pid uint16, generalConfig config.Config, rs gomel.RandomSource) chan gomel.Unit {
 			prevLevel = -1
 			return getAllTimingUnits(dag, pid, generalConfig, rs)
 		},
@@ -541,7 +554,7 @@ func NewDefaultVerifier() func([]gomel.Dag, []gomel.PrivateKey) DagVerifier {
 
 // NewNoOpVerifier returns a DagVerifier that does not check provided dags and immediately answers that they are correct.
 func NewNoOpVerifier() DagVerifier {
-	return func([]gomel.Dag, []uint16, []config.Params, []gomel.RandomSource) error {
+	return func([]gomel.Dag, []uint16, []config.Config, []gomel.RandomSource) error {
 		fmt.Println("No verification step")
 		return nil
 	}
@@ -559,8 +572,6 @@ func newTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
 }
 
-func (rs *testRandomSource) Bind(dag gomel.Dag) {}
-
 func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 	if SimpleCoin(pid, level) {
 		return []byte{0}
@@ -568,7 +579,7 @@ func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {
 	return []byte{1}
 }
 
-func (*testRandomSource) DataToInclude(uint16, []gomel.Unit, int) ([]byte, error) {
+func (*testRandomSource) DataToInclude([]gomel.Unit, int) ([]byte, error) {
 	return nil, nil
 }
 
@@ -576,7 +587,7 @@ func (*testRandomSource) DataToInclude(uint16, []gomel.Unit, int) ([]byte, error
 func Test(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	configurations []config.Params,
+	configurations []config.Config,
 	testingRoutine *TestingRoutine,
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
@@ -584,8 +595,7 @@ func Test(
 		for i := uint16(0); i < dag.NProc(); i++ {
 			shareProviders[i] = true
 		}
-		rs := coin.NewFixedCoin(dag.NProc(), pid, 0, shareProviders)
-		rs.Bind(dag)
+		rs := coin.NewSeededFactory(dag.NProc(), pid, 0, shareProviders).NewRandomSource(dag)
 		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
@@ -596,12 +606,11 @@ func Test(
 func TestUsingTestRandomSource(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	configurations []config.Params,
+	configurations []config.Config,
 	testingRoutine *TestingRoutine,
 ) error {
 	rssProvider := func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag) {
 		rs := newTestRandomSource()
-		rs.Bind(dag)
 		return rs, dag
 	}
 	return TestUsingRandomSourceProvider(pubKeys, privKeys, configurations, rssProvider, testingRoutine)
@@ -609,11 +618,14 @@ func TestUsingTestRandomSource(
 
 // MakeStandardDag returns a daag with standard checks.
 func MakeStandardDag(nProc uint16) gomel.Dag {
-	dag := dag.New(nProc)
-	check.ForkerMuting(dag)
-	check.NoSelfForkingEvidence(dag)
-	check.ParentConsistency(dag)
-	check.BasicCompliance(dag)
+	config := config.Empty()
+	config.NProc = nProc
+	epoch := gomel.EpochID(0)
+	dag := dag.New(config, epoch)
+	// check.ForkerMuting(dag)
+	// check.NoSelfForkingEvidence(dag)
+	// check.ParentConsistency(dag)
+	// check.BasicCompliance(dag)
 	return dag
 }
 
@@ -621,7 +633,7 @@ func MakeStandardDag(nProc uint16) gomel.Dag {
 func TestUsingRandomSourceProvider(
 	pubKeys []gomel.PublicKey,
 	privKeys []gomel.PrivateKey,
-	configurations []config.Params,
+	configurations []config.Config,
 	rssProvider func(pid uint16, dag gomel.Dag) (gomel.RandomSource, gomel.Dag),
 	testingRoutine *TestingRoutine,
 ) error {
@@ -649,7 +661,7 @@ func TestUsingRandomSourceProvider(
 	fmt.Println("Starting a testing routine")
 	for !stopCondition(dags) {
 
-		var newUnit gomel.Preunit
+		var newUnit gomel.Unit
 		var err error
 		if newUnit, err = unitCreator(dags, privKeys, rss); err != nil {
 			fmt.Fprintln(os.Stderr, "Unable to create a new unit")

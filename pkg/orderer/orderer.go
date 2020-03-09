@@ -60,8 +60,19 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	ord.alerter = alerter
 	syncer.Start()
 	alerter.Start()
-	go ord.creator.Work(ord.unitBelt, ord.lastTiming, &ord.wg)
-	go ord.preblockMaker()
+
+	ord.wg.Add(1)
+	go func() {
+		defer ord.wg.Done()
+		ord.creator.Work(ord.unitBelt, ord.lastTiming)
+	}()
+
+	ord.wg.Add(1)
+	go func() {
+		defer ord.wg.Done()
+		ord.preblockMaker()
+	}()
+
 	ord.log.Info().Msg(logging.ServiceStarted)
 }
 
@@ -83,8 +94,6 @@ func (ord *orderer) Stop() {
 // Preblocks are produced in ascending order with respect to epochs. For the last ordered round
 // of the epoch, the timing unit defining it is sent to the creator (to produce signature shares.)
 func (ord *orderer) preblockMaker() {
-	ord.wg.Add(1)
-	defer ord.wg.Done()
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]

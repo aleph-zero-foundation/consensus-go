@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/crypto/p2p"
 	"gitlab.com/alephledger/consensus-go/pkg/crypto/signing"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
@@ -18,6 +17,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
+	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
 )
 
 func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
@@ -47,45 +47,56 @@ func generateP2PKeys(nProcesses uint16) (p2pPubKeys []*p2p.PublicKey, p2pSecKeys
 	return
 }
 
-func generateLocalhostAddresses(localhostAddress string, nProcesses int) ([]string, []string, []string, []string, []string, []string) {
+func generateLocalhostAddresses(localhostAddress string, nProcesses int) (gossip []string, mc []string, fetch []string, rmc []string, setupGossip []string, setupMC []string, setupFetch []string, setupRMC []string) {
 	const (
 		magicPort = 21037
 	)
-	result := make([]string, nProcesses)
-	resultMC := make([]string, nProcesses)
-	setupResult := make([]string, nProcesses)
-	setupFetchResult := make([]string, nProcesses)
-	setupMCResult := make([]string, nProcesses)
-	alertResult := make([]string, nProcesses)
+	gossip = make([]string, nProcesses)
+	mc = make([]string, nProcesses)
+	fetch = make([]string, nProcesses)
+	rmc = make([]string, nProcesses)
+
+	setupGossip = make([]string, nProcesses)
+	setupMC = make([]string, nProcesses)
+	setupFetch = make([]string, nProcesses)
+	setupRMC = make([]string, nProcesses)
+
 	for id := 0; id < nProcesses; id++ {
-		result[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id)
-		resultMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+1)
-		setupResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+2)
-		setupFetchResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+3)
-		setupMCResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+4)
-		alertResult[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+6*id+5)
+		gossip[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id)
+		mc[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id+1)
+		fetch[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id+2)
+		rmc[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id+3)
+
+		setupGossip[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id+4)
+		setupMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id+5)
+		setupFetch[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id+6)
+		setupRMC[id] = fmt.Sprintf("%s:%d", localhostAddress, magicPort+8*id+7)
 	}
-	return result, setupResult, resultMC, setupMCResult, setupFetchResult, alertResult
+	return
 }
 
 func createAndStartProcess(
 	id uint16,
-	addresses []string,
-	setupAddresses []string,
+
+	gossipAddresses []string,
 	mcAddresses []string,
+	fetchAddresses []string,
+	rmcAddresses []string,
+
+	setupGossipAddresses []string,
 	setupMCAddresses []string,
 	setupFetchAddresses []string,
-	alertAddresses []string,
+	setupRMCAddresses []string,
+
 	pubKeys []gomel.PublicKey,
 	privKey gomel.PrivateKey,
 	verificationKeys []*bn256.VerificationKey,
 	secretKey *bn256.SecretKey,
 	p2pPubKeys []*p2p.PublicKey,
 	p2pSecKey *p2p.SecretKey,
-	maxLevel int,
+	numberOfPreblocks int,
 	dagFinished *sync.WaitGroup,
 	finished *sync.WaitGroup,
-	dags []gomel.Dag,
 ) error {
 	member := config.Member{
 		Pid:          id,
@@ -97,130 +108,82 @@ func createAndStartProcess(
 		PublicKeys:          pubKeys,
 		RMCVerificationKeys: verificationKeys,
 		P2PPublicKeys:       p2pPubKeys,
-		SetupAddresses:      [][]string{setupMCAddresses, setupFetchAddresses, setupAddresses},
-		Addresses:           [][]string{mcAddresses, addresses, alertAddresses},
+		SetupAddresses: map[string][]string{
+			"mcast":  setupMCAddresses,
+			"fetch":  setupFetchAddresses,
+			"rmc":    setupRMCAddresses,
+			"gossip": setupGossipAddresses,
+		},
+		Addresses: map[string][]string{
+			"mcast":  mcAddresses,
+			"fetch":  fetchAddresses,
+			"rmc":    rmcAddresses,
+			"gossip": gossipAddresses,
+		},
 	}
-	defaultAppConfig := config.NewDefaultConfiguration()
-	defaultAppConfig.OrderStartLevel = 6
-	defaultAppConfig.LogHuman = true
-	config := defaultAppConfig.GenerateConfig(&member, &committee)
+	cnf := config.New(&member, &committee)
+	cnf.LogHuman = true
+	cnf.LogBuffer = 100000
+	cnf.LogLevel = 0
 	// set stop condition for a process
-	config.Create.MaxLevel = int(maxLevel)
-
-	setupLog, err := logging.NewLogger("setup_log"+strconv.Itoa(int(id))+".log", 0, 100000, defaultAppConfig.LogHuman)
-	if err != nil {
-		return err
+	preblocksCountEstimation := numberOfPreblocks / cnf.EpochLength
+	if preblocksCountEstimation == 0 {
+		preblocksCountEstimation = 1
 	}
+	cnf.NumberOfEpochs = preblocksCountEstimation
 
-	log, err := logging.NewLogger("log"+strconv.Itoa(int(id))+".log", 0, 100000, defaultAppConfig.LogHuman)
+	setupCnf := config.NewSetup(&member, &committee)
+	cnf.OrderStartLevel = 6
+	setupCnf.LogFile = "setup_log" + strconv.Itoa(int(id)) + ".log"
+	setupCnf.LogHuman = cnf.LogHuman
+	setupCnf.LogBuffer = 100000
+	setupCnf.LogLevel = 0
+
+	logConfig := cnf
+	logConfig.LogFile = "log" + strconv.Itoa(int(id)) + ".log"
+	log, err := logging.NewLogger(logConfig)
 	if err != nil {
 		return err
 	}
 
 	// Mock data source and preblock sink.
 	tds := tests.NewDataSource(10)
-	tds.Start()
 	ps := make(chan *core.Preblock)
-	// Reading and ignoring all the preblocks.
-	var wait sync.WaitGroup
-	wait.Add(1)
-	go func() {
-		defer wait.Done()
-		for range ps {
-		}
-	}()
 
 	go func() {
 		defer finished.Done()
 
-		setupError := make(chan error, 1)
-		mainError := make(chan error, 1)
+		var wait sync.WaitGroup
+		seenPB, expectedPB := 0, cnf.EpochLength*cnf.NumberOfEpochs
+		wait.Add(1)
 		go func() {
-			for err := range setupError {
-				panic("error in setup service: " + err.Error())
-			}
-		}()
-		go func() {
-			for err := range mainError {
-				panic("error in main dag service: " + err.Error())
+			defer wait.Done()
+			for range ps {
+				seenPB++
+				if seenPB >= expectedPB {
+					break
+				}
 			}
 		}()
 
-		createdDag := make(chan gomel.Dag)
-		mainService, err := run.Process(config, tds.DataSource(), ps, createdDag, setupLog, log, setupError, mainError)
+		mainStart, mainStop, err := run.Process(setupCnf, cnf, tds, ps)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 			panic(err)
 		}
-		err = mainService.Start()
-		if err != nil {
-			log.Err(err).Msg("failed to initialize a service")
-			panic(err)
-		}
-		dag := <-createdDag
+		mainStart()
+
+		// await for all expected preblocks
+		wait.Wait()
 
 		dagFinished.Done()
 		dagFinished.Wait()
 
-		mainService.Stop()
+		mainStop()
 
-		close(setupError)
-		close(mainError)
-
-		dags[id] = dag
-		tds.Stop()
 		close(ps)
-		wait.Wait()
 	}()
 	return nil
-}
-
-func collectUnits(dag gomel.Dag) map[gomel.Unit]bool {
-	seenUnits := make(map[gomel.Unit]bool)
-	var dfs func(u gomel.Unit)
-	dfs = func(u gomel.Unit) {
-		seenUnits[u] = true
-		for _, uParent := range u.Parents() {
-			if uParent == nil {
-				continue
-			}
-			if !seenUnits[uParent] {
-				dfs(uParent)
-			}
-		}
-	}
-	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
-		for _, u := range units {
-			if !seenUnits[u] {
-				dfs(u)
-			}
-		}
-		return true
-	})
-	return seenUnits
-}
-
-func commonLevel(dags []gomel.Dag, maxLevel int) int {
-	// counting how many dags contains a unit
-	nDagsContainingUnit := make(map[gomel.Hash]int)
-	for _, dag := range dags {
-		for u := range collectUnits(dag) {
-			nDagsContainingUnit[*u.Hash()]++
-		}
-	}
-
-	// counting how many levels the dags have in common
-	commonLevel := maxLevel
-	for _, dag := range dags {
-		for u := range collectUnits(dag) {
-			if nDagsContainingUnit[*u.Hash()] != int(dag.NProc()) {
-				if u.Level() <= commonLevel {
-					commonLevel = u.Level() - 1
-				}
-			}
-		}
-	}
-	return commonLevel
 }
 
 func isPrefix(ord1, ord2 [][2]int) bool {
@@ -248,9 +211,9 @@ func readOrderFromLogs(logfile string) [][2]int {
 		var data map[string]interface{}
 		json.Unmarshal([]byte(scanner.Text()), &data)
 		if service, ok := data[logging.Service]; ok {
-			if int(service.(float64)) == logging.ValidateService {
+			if int(service.(float64)) == logging.ExtenderService {
 				if event, ok := data[logging.Event]; ok {
-					if event.(string) == logging.DataValidated {
+					if event.(string) == logging.UnitOrdered {
 						result = append(result, [2]int{int(data[logging.Creator].(float64)), int(data[logging.Height].(float64))})
 					}
 				}
@@ -276,21 +239,39 @@ func checkOrderingFromLogs(nProc uint16, filenamePrefix string) bool {
 
 func main() {
 	testSize := flag.Int("test_size", 10, "number of created processes; default is 10")
-	maxLevel := flag.Int("max_level", 12, "number of levels after which a process should finish; default is 12")
+	numberOfPreblocks := flag.Int("max_level", 12, "number of pre-blocks after which a process should finish; default is 12")
 	flag.Parse()
 
-	addresses, setupAddresses, mcAddresses, setupMCAddresses, setupFetchAddresses, alertAddresses := generateLocalhostAddresses("localhost", *testSize)
-	pubKeys, privKeys := generateKeys(uint16(*testSize))
-	sekKeys, verKeys := generateRMCKeys(uint16(*testSize))
-	p2pPubKeys, p2pSecKeys := generateP2PKeys(uint16(*testSize))
-	dags := make([]gomel.Dag, int(*testSize))
+	nProc := uint16(*testSize)
+
+	gossipAddresses, mcAddresses, fetchAddresses, rmcAddresses, setupGossipAddresses, setupMCAddresses, setupFetchAddresses, setupRMCAddresses := generateLocalhostAddresses("localhost", *testSize)
+	pubKeys, privKeys := generateKeys(nProc)
+	sekKeys, verKeys := generateRMCKeys(nProc)
+	p2pPubKeys, p2pSecKeys := generateP2PKeys(nProc)
 
 	var allDone sync.WaitGroup
 	var dagsFinished sync.WaitGroup
-	dagsFinished.Add(len(addresses))
-	for id := range addresses {
+	dagsFinished.Add(len(gossipAddresses))
+	for id := range gossipAddresses {
 		allDone.Add(1)
-		err := createAndStartProcess(uint16(id), addresses, setupAddresses, mcAddresses, setupMCAddresses, setupFetchAddresses, alertAddresses, pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id], *maxLevel, &dagsFinished, &allDone, dags)
+		err := createAndStartProcess(
+			uint16(id),
+
+			gossipAddresses,
+			mcAddresses,
+			fetchAddresses,
+			rmcAddresses,
+
+			setupGossipAddresses,
+			setupMCAddresses,
+			setupFetchAddresses,
+			setupRMCAddresses,
+
+			pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id],
+			*numberOfPreblocks,
+			&dagsFinished,
+			&allDone,
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -299,24 +280,13 @@ func main() {
 	// wait for all processes to finish
 	allDone.Wait()
 	// Sanity checks
-	if checkOrderingFromLogs(dags[0].NProc(), "setup_log") {
+	if checkOrderingFromLogs(nProc, "setup_log") {
 		fmt.Println("Ordering in setup OK")
 	} else {
 		fmt.Println("Processes obtained different orderings in setup!")
 		os.Exit(1)
 	}
-	cl := commonLevel(dags, int(*maxLevel))
-	fmt.Println("Main Dags are the same up to", cl, "level. Max level is", *maxLevel)
-	if cl != int(*maxLevel) {
-		for i, dag := range dags {
-			f, _ := os.Create(fmt.Sprint("dag", i, ".dag"))
-			out := bufio.NewWriter(f)
-			tests.WriteDag(out, dag)
-			out.Flush()
-			f.Close()
-		}
-	}
-	if checkOrderingFromLogs(dags[0].NProc(), "log") {
+	if checkOrderingFromLogs(nProc, "log") {
 		fmt.Println("Ordering in main is OK")
 	} else {
 		fmt.Println("Processes obtained different orderings in main!")

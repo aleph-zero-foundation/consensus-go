@@ -34,10 +34,6 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 		return nil, err
 	}
 	s := &syncer{}
-	// TODO: Consider logging usage of noop sync method
-	s.gossip = func(uint16) {}
-	s.fetch = func(uint16, []uint64) {}
-	s.mcast = func(gomel.Unit) {}
 
 	var serv sync.Server
 	var netserv network.Server
@@ -75,6 +71,19 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 		s.servers = append(s.servers, serv)
 		s.gossip = trigger
 	}
+	if s.gossip == nil {
+		s.gossip = func(uint16) {}
+		log.Info().Str("where", "syncer").Msg("using `noop` gossip")
+	}
+	if s.fetch == nil {
+		s.fetch = func(uint16, []uint64) {}
+		log.Info().Str("where", "syncer").Msg("using `noop` fetch")
+	}
+	if s.mcast == nil {
+		s.mcast = func(gomel.Unit) {}
+		log.Info().Str("where", "syncer").Msg("using `noop` mcast")
+	}
+
 	return s, nil
 }
 

@@ -30,7 +30,7 @@ var level stat = func(_ gomel.Dag, u gomel.Unit, _ []gomel.Unit, _ int) int {
 var popularAfter stat = func(dag gomel.Dag, u gomel.Unit, _ []gomel.Unit, maxLevel int) int {
 	level := u.Level()
 	for up := 0; up+level <= maxLevel; up++ {
-		primesAbove := dag.PrimeUnits(level + up)
+		primesAbove := dag.UnitsOnLevel(level + up)
 		ok := true
 		primesAbove.Iterate(func(prs []gomel.Unit) bool {
 			for _, v := range prs {
