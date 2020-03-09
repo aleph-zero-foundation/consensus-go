@@ -34,10 +34,6 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.S
 		return nil, err
 	}
 	s := &syncer{}
-	// TODO: Consider logging usage of noop sync method
-	s.gossip = func(uint16) {}
-	s.fetch = func(uint16, []uint64) {}
-	s.mcast = func(gomel.Unit) {}
 
 	var serv sync.Server
 	var netserv network.Server
@@ -103,32 +99,6 @@ func (s *syncer) Stop() {
 	for _, service := range s.subservices {
 		service.Stop()
 	}
-}
-
-// Checks if the config entries for syncer are is valid:
-// the number of addresses for each server must be NProc or 0
-func valid(conf config.Config) error {
-	ok := func(i int) bool { return i == int(conf.NProc) || i == 0 }
-
-	if !ok(len(conf.RMCAddresses)) {
-		return gomel.NewConfigError("syncer: wrong number of rmc addresses")
-	}
-	if !ok(len(conf.MCastAddresses)) {
-		return gomel.NewConfigError("syncer: wrong number of multicast addresses")
-	}
-	if !ok(len(conf.GossipAddresses)) {
-		return gomel.NewConfigError("syncer: wrong number of gossip addresses")
-	}
-	if !ok(len(conf.FetchAddresses)) {
-		return gomel.NewConfigError("syncer: wrong number of fetch addresses")
-	}
-
-	rmcOn := len(conf.RMCAddresses) == int(conf.NProc)
-	mcOn := len(conf.MCastAddresses) == int(conf.NProc)
-	if !mcOn && !rmcOn {
-		return gomel.NewConfigError("syncer: both RMC and multicast disabled")
-	}
-	return nil
 }
 
 // Return network.Server of the type indicated by "net". If needed, append a corresponding service to the given slice. Defaults to "tcp".

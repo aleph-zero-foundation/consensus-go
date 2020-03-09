@@ -1,6 +1,7 @@
 package config
 
 import (
+	"reflect"
 	"strconv"
 	"time"
 
@@ -33,24 +34,81 @@ func defaultTemplate() Config {
 	}
 }
 
-func addKeys(cnf Config, m *Member, c *Committee) {
-	cnf.Pid = m.Pid
-	cnf.NProc = uint16(len(c.PublicKeys))
-	cnf.PrivateKey = m.PrivateKey
-	cnf.PublicKeys = c.PublicKeys
-	cnf.RMCPublicKeys = c.RMCVerificationKeys
-	cnf.RMCPrivateKey = m.RMCSecretKey
-	cnf.P2PPublicKeys = c.P2PPublicKeys
-	cnf.P2PSecretKey = m.P2PSecretKey
+func checkKeys(slice interface{}, nProc uint16, keyType string) error {
+	s := reflect.ValueOf(slice)
+	if uint16(s.Len()) != nProc {
+		return gomel.NewConfigError("wrong number of " + keyType)
+	}
+
+	for i := 0; i < s.Len(); i++ {
+		if s.Index(i).IsNil() {
+			return gomel.NewConfigError(keyType + " contains nil")
+		}
+	}
+	return nil
 }
 
-func addAddresses(cnf Config, addresses map[string][]string) {
+func addKeys(cnf Config, m *Member, c *Committee) error {
+	cnf.Pid = m.Pid
+	cnf.NProc = uint16(len(c.PublicKeys))
+
+	if m.PrivateKey == nil {
+		return gomel.NewConfigError("Private key is missing")
+	}
+	cnf.PrivateKey = m.PrivateKey
+	if err := checkKeys(c.PublicKeys, cnf.NProc, "PublicKeys"); err != nil {
+		return err
+	}
+	cnf.PublicKeys = c.PublicKeys
+
+	if m.RMCSecretKey == nil {
+		return gomel.NewConfigError("RMC private key is missing")
+	}
+	cnf.RMCPrivateKey = m.RMCSecretKey
+	if err := checkKeys(c.RMCVerificationKeys, cnf.NProc, "RMC verification keys"); err != nil {
+		return err
+	}
+	cnf.RMCPublicKeys = c.RMCVerificationKeys
+
+	if m.P2PSecretKey == nil {
+		return gomel.NewConfigError("P2P private key is missing")
+	}
+	cnf.P2PSecretKey = m.P2PSecretKey
+	if err := checkKeys(c.P2PPublicKeys, cnf.NProc, "P2P public keys"); err != nil {
+		return err
+	}
+	cnf.P2PPublicKeys = c.P2PPublicKeys
+
+	return nil
+}
+
+func addAddresses(cnf Config, addresses map[string][]string, setup bool) error {
+	n := int(cnf.NProc)
+	ok := func(s []string) bool { return len(s) == n }
+
+	if !ok(addresses["rmc"]) {
+		return gomel.NewConfigError("wrong number of rmc addresses")
+	}
 	cnf.RMCAddresses = addresses["rmc"]
+
+	if !ok(addresses["gossip"]) {
+		return gomel.NewConfigError("wrong number of gossip addresses")
+	}
 	cnf.GossipAddresses = addresses["gossip"]
+
+	if !ok(addresses["fetch"]) {
+		return gomel.NewConfigError("wrong number of fetch addresses")
+	}
 	cnf.FetchAddresses = addresses["fetch"]
+
+	if !setup && !ok(addresses["mcast"]) {
+		return gomel.NewConfigError("wrong number of mcast addresses")
+	}
 	cnf.MCastAddresses = addresses["mcast"]
-	cnf.GossipWorkers = [3]int{1, 1, 1}
-	cnf.FetchWorkers = [2]int{int(cnf.NProc) / 2, int(cnf.NProc) / 4}
+
+	cnf.GossipWorkers = [3]int{n/20 + 1, n/40 + 1, 1}
+	cnf.FetchWorkers = [2]int{n / 2, n / 4}
+	return nil
 }
 
 func addSetupConf(cnf Config) {
@@ -75,21 +133,29 @@ func addConsensusConf(cnf Config) Config {
 }
 
 // NewSetup returns a Config for setup phase given Member and Committee data.
-func NewSetup(m *Member, c *Committee) Config {
+func NewSetup(m *Member, c *Committee) (Config, error) {
 	cnf := defaultTemplate()
-	addKeys(cnf, m, c)
-	addAddresses(cnf, c.SetupAddresses)
+	if err := addKeys(cnf, m, c); err != nil {
+		return nil, err
+	}
+	if err := addAddresses(cnf, c.SetupAddresses, true); err != nil {
+		return nil, err
+	}
 	addSetupConf(cnf)
-	return cnf
+	return cnf, nil
 }
 
 // New returns a Config for regular consensus run from the given Member and Committee data.
-func New(m *Member, c *Committee) Config {
+func New(m *Member, c *Committee) (Config, error) {
 	cnf := defaultTemplate()
-	addKeys(cnf, m, c)
-	addAddresses(cnf, c.Addresses)
+	if err := addKeys(cnf, m, c); err != nil {
+		return nil, err
+	}
+	if err := addAddresses(cnf, c.SetupAddresses, false); err != nil {
+		return nil, err
+	}
 	addConsensusConf(cnf)
-	return cnf
+	return cnf, nil
 }
 
 // Empty returns an empty Config populated by zero-values.
