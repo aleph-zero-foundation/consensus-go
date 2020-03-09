@@ -28,45 +28,43 @@ type syncer struct {
 }
 
 // New creates a new syncer that uses provided config, ordered and logger.
-func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger) (gomel.Syncer, error) {
+func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bool) (gomel.Syncer, error) {
 	s := &syncer{}
 
-	var serv sync.Server
+	// init fetch
 	var netserv network.Server
 	var err error
-	if len(conf.RMCAddresses) == int(conf.NProc) && len(conf.MCastAddresses) == 0 {
+	netserv, s.subservices, err = getNetServ(conf.FetchNetType, conf.Pid, conf.FetchAddresses, s.subservices)
+	if err != nil {
+		return nil, err
+	}
+	serv, ftrigger := fetch.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.FetchService).Logger())
+	s.servers = append(s.servers, serv)
+	s.fetch = ftrigger
+	// init gossip
+	netserv, s.subservices, err = getNetServ(conf.GossipNetType, conf.Pid, conf.GossipAddresses, s.subservices)
+	if err != nil {
+		return nil, err
+	}
+	serv, gtrigger := gossip.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.GossipService).Logger())
+	s.servers = append(s.servers, serv)
+	s.gossip = gtrigger
+	if setup {
+		// init rmc
 		netserv, s.subservices, err = getNetServ(conf.RMCNetType, conf.Pid, conf.RMCAddresses, s.subservices)
 		if err != nil {
 			return nil, err
 		}
 		serv, s.mcast = rmc.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.RMCService).Logger())
 		s.servers = append(s.servers, serv)
-	}
-	if len(conf.MCastAddresses) == int(conf.NProc) {
+	} else {
+		// init mcast
 		netserv, s.subservices, err = getNetServ(conf.MCastNetType, conf.Pid, conf.MCastAddresses, s.subservices)
 		if err != nil {
 			return nil, err
 		}
 		serv, s.mcast = multicast.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.MCService).Logger())
 		s.servers = append(s.servers, serv)
-	}
-	if len(conf.FetchAddresses) == int(conf.NProc) {
-		netserv, s.subservices, err = getNetServ(conf.FetchNetType, conf.Pid, conf.FetchAddresses, s.subservices)
-		if err != nil {
-			return nil, err
-		}
-		serv, trigger := fetch.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.FetchService).Logger())
-		s.servers = append(s.servers, serv)
-		s.fetch = trigger
-	}
-	if len(conf.GossipAddresses) == int(conf.NProc) {
-		netserv, s.subservices, err = getNetServ(conf.GossipNetType, conf.Pid, conf.GossipAddresses, s.subservices)
-		if err != nil {
-			return nil, err
-		}
-		serv, trigger := gossip.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.GossipService).Logger())
-		s.servers = append(s.servers, serv)
-		s.gossip = trigger
 	}
 	return s, nil
 }
