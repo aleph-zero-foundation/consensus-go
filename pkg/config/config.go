@@ -25,8 +25,6 @@ type conf struct {
 	CanSkipLevel    bool
 	OrderStartLevel int
 	CRPFixedPrefix  uint16
-	GossipAbove     int
-	FetchInterval   time.Duration
 	Checks          []gomel.UnitChecker
 	// log
 	LogFile        string
@@ -43,6 +41,8 @@ type conf struct {
 	RMCPrivateKey *bn256.SecretKey
 	RMCPublicKeys []*bn256.VerificationKey
 	// sync
+	GossipAbove     int
+	FetchInterval   time.Duration
 	Timeout         time.Duration
 	RMCAddresses    []string
 	RMCNetType      string

@@ -2,6 +2,7 @@ package config
 
 import (
 	"reflect"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -18,23 +19,13 @@ const (
 	MaxUnitsInChunk = 1e6
 )
 
-// default template returns Config for consensus with default values.
-func defaultTemplate() Config {
-	return &conf{
-		CRPFixedPrefix: 5,
-		GossipAbove:    50,
-		FetchInterval:  2 * time.Second,
-		LogFile:        "aleph.log",
-		LogLevel:       1,
-		LogHuman:       false,
-		LogBuffer:      100000,
-		LogMemInterval: 10,
-		Checks:         []gomel.UnitChecker{check.BasicCorrectness, check.ParentConsistency},
-		Timeout:        2 * time.Second,
-	}
-}
+var (
+	setupCheks      = []gomel.UnitChecker{check.BasicCorrectness, check.ParentConsistency, check.NoLevelSkipping, check.NoForks}
+	consensusChecks = []gomel.UnitChecker{check.BasicCorrectness, check.ParentConsistency, check.NoSelfForkingEvidence, check.ForkerMuting}
+)
 
-func checkKeys(slice interface{}, nProc uint16, keyType string) error {
+// checks if slice is of nProc length and if slice does not contains a nil
+func noNils(slice interface{}, nProc uint16, keyType string) error {
 	s := reflect.ValueOf(slice)
 	if uint16(s.Len()) != nProc {
 		return gomel.NewConfigError("wrong number of " + keyType)
@@ -48,113 +39,241 @@ func checkKeys(slice interface{}, nProc uint16, keyType string) error {
 	return nil
 }
 
+func checkKeys(cnf Config) error {
+	if cnf.NProc == uint16(0) {
+		return gomel.NewConfigError("nProc set to 0 during keys check")
+	}
+
+	if cnf.PrivateKey == nil {
+		return gomel.NewConfigError("Private key is missing")
+	}
+	if err := noNils(cnf.PublicKeys, cnf.NProc, "PublicKeys"); err != nil {
+		return err
+	}
+
+	if cnf.RMCPrivateKey == nil {
+		return gomel.NewConfigError("RMC private key is missing")
+	}
+	if err := noNils(cnf.RMCPublicKeys, cnf.NProc, "RMC verification keys"); err != nil {
+		return err
+	}
+
+	if cnf.P2PSecretKey == nil {
+		return gomel.NewConfigError("P2P private key is missing")
+	}
+	if err := noNils(cnf.P2PPublicKeys, cnf.NProc, "P2P public keys"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func addKeys(cnf Config, m *Member, c *Committee) error {
 	cnf.Pid = m.Pid
 	cnf.NProc = uint16(len(c.PublicKeys))
-
-	if m.PrivateKey == nil {
-		return gomel.NewConfigError("Private key is missing")
-	}
 	cnf.PrivateKey = m.PrivateKey
-	if err := checkKeys(c.PublicKeys, cnf.NProc, "PublicKeys"); err != nil {
-		return err
-	}
 	cnf.PublicKeys = c.PublicKeys
-
-	if m.RMCSecretKey == nil {
-		return gomel.NewConfigError("RMC private key is missing")
-	}
 	cnf.RMCPrivateKey = m.RMCSecretKey
-	if err := checkKeys(c.RMCVerificationKeys, cnf.NProc, "RMC verification keys"); err != nil {
-		return err
-	}
 	cnf.RMCPublicKeys = c.RMCVerificationKeys
-
-	if m.P2PSecretKey == nil {
-		return gomel.NewConfigError("P2P private key is missing")
-	}
 	cnf.P2PSecretKey = m.P2PSecretKey
-	if err := checkKeys(c.P2PPublicKeys, cnf.NProc, "P2P public keys"); err != nil {
-		return err
-	}
 	cnf.P2PPublicKeys = c.P2PPublicKeys
 
-	return nil
+	return checkKeys(cnf)
 }
 
-func addAddresses(cnf Config, addresses map[string][]string, setup bool) error {
+func checkSyncConf(cnf Config, setup bool) error {
+	if cnf.Timeout == 0*time.Second {
+		return gomel.NewConfigError("timeout cannot be 0")
+	}
+	if cnf.FetchInterval == 0*time.Second {
+		return gomel.NewConfigError("fetch interval cannot be 0")
+	}
+	if cnf.GossipAbove == 0 {
+		return gomel.NewConfigError("GossipAbove cannot be 0")
+	}
+
 	n := int(cnf.NProc)
 	ok := func(s []string) bool { return len(s) == n }
 
-	if !ok(addresses["rmc"]) {
+	if !ok(cnf.RMCAddresses) {
 		return gomel.NewConfigError("wrong number of rmc addresses")
 	}
-	cnf.RMCAddresses = addresses["rmc"]
-
-	if !ok(addresses["gossip"]) {
+	if !ok(cnf.GossipAddresses) {
 		return gomel.NewConfigError("wrong number of gossip addresses")
 	}
-	cnf.GossipAddresses = addresses["gossip"]
-
-	if !ok(addresses["fetch"]) {
+	if !ok(cnf.FetchAddresses) {
 		return gomel.NewConfigError("wrong number of fetch addresses")
 	}
-	cnf.FetchAddresses = addresses["fetch"]
-
-	if !setup && !ok(addresses["mcast"]) {
+	if !setup && !ok(cnf.MCastAddresses) {
 		return gomel.NewConfigError("wrong number of mcast addresses")
 	}
-	cnf.MCastAddresses = addresses["mcast"]
 
-	cnf.GossipWorkers = [3]int{n/20 + 1, n/40 + 1, 1}
-	cnf.FetchWorkers = [2]int{n / 2, n / 4}
+	if cnf.GossipWorkers[0] == 0 {
+		return gomel.NewConfigError("nIn gossip workers cannot be 0")
+	}
+	if cnf.GossipWorkers[1] == 0 {
+		return gomel.NewConfigError("nOut gossip workers cannot be 0")
+	}
+	if cnf.FetchWorkers[0] == 0 {
+		return gomel.NewConfigError("nIn fetch workers cannot be 0")
+	}
+	if cnf.FetchWorkers[1] == 0 {
+		return gomel.NewConfigError("nOut fetch workers cannot be 0")
+	}
+
 	return nil
 }
 
+func addSyncConf(cnf Config, addresses map[string][]string, setup bool) error {
+	cnf.Timeout = time.Second
+	cnf.FetchInterval = time.Second
+	cnf.GossipAbove = 50
+
+	cnf.RMCNetType = "pers"
+	cnf.RMCAddresses = addresses["rmc"]
+
+	cnf.GossipNetType = "pers"
+	cnf.GossipAddresses = addresses["gossip"]
+
+	cnf.FetchNetType = "pers"
+	cnf.FetchAddresses = addresses["fetch"]
+
+	cnf.MCastNetType = "pers"
+	cnf.MCastAddresses = addresses["mcast"]
+
+	n := int(cnf.NProc)
+	cnf.GossipWorkers = [3]int{n/20 + 1, n/40 + 1, 1}
+	cnf.FetchWorkers = [2]int{n / 2, n / 4}
+
+	return checkSyncConf(cnf, setup)
+}
+
+func addLogConf(cnf Config, logFile string) {
+	cnf.LogFile = logFile
+	cnf.LogBuffer = 100000
+	cnf.LogHuman = false
+	cnf.LogLevel = 1
+	cnf.LogMemInterval = 5
+}
+
 func addSetupConf(cnf Config) {
-	cnf.LogFile = strconv.Itoa(int(cnf.Pid)) + ".setup.log"
 	cnf.CanSkipLevel = false
 	cnf.OrderStartLevel = 6
 	cnf.CRPFixedPrefix = 0
 	cnf.EpochLength = 1
 	cnf.NumberOfEpochs = 1
-	cnf.Checks = append(cnf.Checks, check.NoLevelSkipping, check.NoForks)
+	cnf.Checks = setupCheks
 }
 
-func addConsensusConf(cnf Config) Config {
-	cnf.LogFile = strconv.Itoa(int(cnf.Pid)) + ".log"
+func addConsensusConf(cnf Config) {
 	cnf.CanSkipLevel = true
 	cnf.OrderStartLevel = 0
 	cnf.CRPFixedPrefix = 5
 	cnf.EpochLength = 50
 	cnf.NumberOfEpochs = 2
-	cnf.Checks = append(cnf.Checks, check.NoSelfForkingEvidence, check.ForkerMuting)
-	return cnf
+	cnf.Checks = consensusChecks
+}
+
+func funcName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
+func checkChecks(given, expected []gomel.UnitChecker) error {
+	for _, sc := range expected {
+		notFound := true
+		fn := funcName(sc)
+		for _, c := range given {
+			if funcName(c) == fn {
+				notFound = false
+				break
+			}
+		}
+		if notFound {
+			return gomel.NewConfigError("missing check: " + funcName(sc))
+		}
+	}
+	return nil
+}
+
+// Valid checks if a given config is in valid state
+func Valid(cnf Config, setup bool) error {
+	// epoch Checks
+	if cnf.NProc < uint16(4) {
+		return gomel.NewConfigError("nProc is " + strconv.Itoa(int(cnf.NProc)))
+	}
+	if cnf.EpochLength < 1 {
+		return gomel.NewConfigError("EpochLength is " + strconv.Itoa(cnf.EpochLength))
+	}
+	if setup && cnf.CanSkipLevel {
+		return gomel.NewConfigError("Cannot skip level in setup")
+	}
+	if setup && cnf.OrderStartLevel != 6 {
+		return gomel.NewConfigError("OrderStartLevel should be 6 and not " + strconv.Itoa(cnf.OrderStartLevel))
+	}
+	if len(cnf.Checks) != len(setupCheks) {
+		return gomel.NewConfigError("wrong number of checks")
+	}
+	if setup {
+		if err := checkChecks(cnf.Checks, setupCheks); err != nil {
+			return err
+		}
+	} else {
+		if err := checkChecks(cnf.Checks, consensusChecks); err != nil {
+			return err
+		}
+	}
+
+	// log checks
+	if cnf.LogFile == "" {
+		return gomel.NewConfigError("missing log filename")
+	}
+	if cnf.LogBuffer == 0 {
+		return gomel.NewConfigError("Log buffer cannot be 0")
+	}
+	if cnf.LogMemInterval == 0 {
+		return gomel.NewConfigError("LogMem interval cannot be 0")
+	}
+
+	// keys checks
+	if err := checkKeys(cnf); err != nil {
+		return err
+	}
+
+	// sync params checks
+	if err := checkSyncConf(cnf, setup); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // NewSetup returns a Config for setup phase given Member and Committee data.
 func NewSetup(m *Member, c *Committee) (Config, error) {
-	cnf := defaultTemplate()
+	cnf := &conf{}
 	if err := addKeys(cnf, m, c); err != nil {
 		return nil, err
 	}
-	if err := addAddresses(cnf, c.SetupAddresses, true); err != nil {
+	if err := addSyncConf(cnf, c.SetupAddresses, true); err != nil {
 		return nil, err
 	}
+	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".setup.log")
 	addSetupConf(cnf)
+
 	return cnf, nil
 }
 
 // New returns a Config for regular consensus run from the given Member and Committee data.
 func New(m *Member, c *Committee) (Config, error) {
-	cnf := defaultTemplate()
+	cnf := &conf{}
 	if err := addKeys(cnf, m, c); err != nil {
 		return nil, err
 	}
-	if err := addAddresses(cnf, c.SetupAddresses, false); err != nil {
+	if err := addSyncConf(cnf, c.Addresses, false); err != nil {
 		return nil, err
 	}
+	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".log")
 	addConsensusConf(cnf)
+
 	return cnf, nil
 }
 
