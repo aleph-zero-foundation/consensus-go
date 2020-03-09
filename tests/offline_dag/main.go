@@ -21,7 +21,7 @@ func runOfflineTest() {
 	pubKeys, privKeys := helpers.GenerateKeys(nProcesses)
 	unitCreator := helpers.NewDefaultUnitCreator(helpers.NewDefaultCreator(maxParents))
 	defaultAdder := helpers.NewDefaultAdder()
-	unitAdder := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+	unitAdder := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit) error {
 		err := defaultAdder(dags, rss, preunit)
 		if err != nil {
 			switch err.(type) {

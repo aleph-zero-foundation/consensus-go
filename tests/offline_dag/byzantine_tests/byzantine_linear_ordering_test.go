@@ -12,18 +12,18 @@ import (
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
-	"gitlab.com/alephledger/consensus-go/pkg/creating"
 	"gitlab.com/alephledger/consensus-go/pkg/dag/check"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/consensus-go/pkg/unit"
 	"gitlab.com/alephledger/consensus-go/tests/offline_dag/helpers"
 )
 
-type forkingStrategy func(gomel.Preunit, gomel.Dag, gomel.PrivateKey, gomel.RandomSource, int) []gomel.Preunit
+type forkingStrategy func(gomel.Unit, gomel.Dag, gomel.PrivateKey, gomel.RandomSource, int) []gomel.Unit
 
-type forker func(gomel.Preunit, gomel.Dag, gomel.PrivateKey, gomel.RandomSource) (gomel.Preunit, error)
+type forker func(gomel.Unit, gomel.Dag, gomel.PrivateKey, gomel.RandomSource) (gomel.Unit, error)
 
 func generateFreshData(preunitData []byte) []byte {
 	var data []byte
@@ -36,27 +36,30 @@ func generateFreshData(preunitData []byte) []byte {
 	return data
 }
 
-func newForkWithDifferentData(preunit gomel.Preunit) gomel.Preunit {
+func newForkWithDifferentData(preunit gomel.Unit, privKey gomel.PrivateKey) gomel.Unit {
 	data := generateFreshData(preunit.Data())
-	return creating.NewPreunit(
+
+	return unit.New(
 		preunit.Creator(),
 		preunit.EpochID(),
-		preunit.View(),
+		preunit.Parents(),
+		preunit.Level(),
 		data,
 		preunit.RandomSourceData(),
+		privKey,
 	)
 }
 
 func newForkerUsingDifferentDataStrategy() forker {
-	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
-		return newForkWithDifferentData(preunit), nil
+	return func(preunit gomel.Unit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Unit, error) {
+		return newForkWithDifferentData(preunit, privKey), nil
 	}
 }
 
 func createForkUsingNewUnit() forker {
-	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	return func(preunit gomel.Unit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Unit, error) {
 
-		pu, _, err := creating.NewUnit(dag, preunit.Creator(), helpers.NewDefaultDataContent(), rs, true)
+		pu, err := helpers.NewDefaultCreator(-1)(dag, preunit.Creator(), privKey, rs)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create a forking unit: %s", err.Error())
 		}
@@ -73,12 +76,12 @@ func createForkUsingNewUnit() forker {
 		puParents[pu.Creator()] = preunitParents[pu.Creator()]
 		freshData := generateFreshData(preunit.Data())
 		level := helpers.ComputeLevel(dag, puParents)
-		rsData, err := rs.DataToInclude(pu.Creator(), puParents, level)
+		rsData, err := rs.DataToInclude(puParents, level)
 		if err != nil {
 			return nil, err
 		}
 
-		return preunitFromParents(pu.Creator(), pu.EpochID(), puParents, freshData, rsData), nil
+		return preunitFromParents(pu.Creator(), pu.EpochID(), puParents, freshData, rsData, privKey), nil
 	}
 }
 
@@ -92,11 +95,18 @@ func checkSelfForkingEvidence(parents []gomel.Unit, creator uint16) bool {
 	return len(combinedFloor) > 1 || (len(combinedFloor) == 1 && !gomel.Equal(combinedFloor[0], parents[creator]))
 }
 
+type privateKeyMock struct {
+}
+
+func (privateKeyMock) Sign(*gomel.Hash) gomel.Signature { return gomel.ZeroHash[:] }
+func (privateKeyMock) Encode() string                   { return "" }
+
 func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error {
 	if checkSelfForkingEvidence(parents, creator) {
 		return gomel.NewComplianceError("parents contain evidence of self forking")
 	}
-	if check.ForkerMutingCheck(parents) != nil {
+	unit := preunitFromParents(creator, gomel.EpochID(0), parents, nil, nil, privateKeyMock{})
+	if check.ForkerMuting(unit, dag) != nil {
 		return gomel.NewComplianceError("parents do not satisfy the forker-muting rule")
 	}
 	return nil
@@ -104,7 +114,7 @@ func checkCompliance(dag gomel.Dag, creator uint16, parents []gomel.Unit) error 
 
 func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 
-	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	return func(preunit gomel.Unit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Unit, error) {
 
 		preunitParents, err := dag.DecodeParents(preunit)
 		if err != nil {
@@ -159,20 +169,20 @@ func createForkWithRandomParents(parentsCount uint16, rand *rand.Rand) forker {
 
 		freshData := generateFreshData(preunit.Data())
 		level := helpers.ComputeLevel(dag, sortedParents)
-		rsData, err := rs.DataToInclude(preunit.Creator(), sortedParents, level)
+		rsData, err := rs.DataToInclude(sortedParents, level)
 		if err != nil {
 			return nil, err
 		}
-		return preunitFromParents(preunit.Creator(), preunit.EpochID(), sortedParents, freshData, rsData), nil
+		return preunitFromParents(preunit.Creator(), preunit.EpochID(), sortedParents, freshData, rsData, privKey), nil
 	}
 }
 
 func createForksUsingForker(forker forker) forkingStrategy {
 
-	return func(preunit gomel.Preunit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource, count int) []gomel.Preunit {
+	return func(preunit gomel.Unit, dag gomel.Dag, privKey gomel.PrivateKey, rs gomel.RandomSource, count int) []gomel.Unit {
 
 		created := make(map[gomel.Hash]bool, count)
-		result := make([]gomel.Preunit, 0, count)
+		result := make([]gomel.Unit, 0, count)
 
 		for len(result) < count {
 			fork, err := forker(preunit, dag, privKey, rs)
@@ -184,7 +194,6 @@ func createForksUsingForker(forker forker) forkingStrategy {
 			if created[hash] {
 				continue
 			}
-			fork.SetSignature(privKey.Sign(fork))
 			created[hash] = true
 			result = append(result, fork)
 			preunit = fork
@@ -200,8 +209,8 @@ func newForkAndHideAdder(
 	privKey gomel.PrivateKey,
 	forkingStrategy forkingStrategy,
 	numberOfForks int,
-	maxParents uint16,
-) (helpers.Creator, func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error, error) {
+	maxParents int32,
+) (helpers.Creator, func(dags []gomel.Dag, rss []gomel.RandomSource, preunit, unit gomel.Unit) error, error) {
 	if createLevel > buildLevel {
 		return nil, nil, errors.New("'createLevel' should be not larger than 'buildLevel'")
 	}
@@ -209,15 +218,15 @@ func newForkAndHideAdder(
 		return nil, nil, errors.New("'buildLevel' should not be larger than 'showOffLevel'")
 	}
 
-	var createdForks []gomel.Preunit
-	var forkingRoot gomel.Preunit
+	var createdForks []gomel.Unit
+	var forkingRoot gomel.Unit
 	var forkingRootUnit gomel.Unit
 	alreadyAdded := false
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	switchCounter := 0
 
 	defaultUnitCreator := helpers.NewDefaultCreator(maxParents)
-	unitCreator := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	unitCreator := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Unit, error) {
 		// do not create new units after we showed some fork
 		if alreadyAdded {
 			return nil, nil
@@ -229,7 +238,7 @@ func newForkAndHideAdder(
 		return pu, nil
 	}
 
-	addingHandler := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error {
+	addingHandler := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit, unit gomel.Unit) error {
 		if alreadyAdded {
 			return nil
 		}
@@ -285,7 +294,7 @@ func getRandomListOfByzantineDags(n uint16) []uint16 {
 
 func newTriggeredAdder(triggerCondition func(unit gomel.Unit) bool, wrappedHandler helpers.AddingHandler) helpers.AddingHandler {
 
-	return func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
+	return func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Unit) error {
 		newUnit, err := helpers.AddToDags(unit, rss, dags)
 		if err != nil {
 			return err
@@ -318,7 +327,7 @@ func newSimpleForkingAdder(forkingLevel int, privKeys []gomel.PrivateKey, byzant
 				return false
 			},
 
-			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
+			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Unit) error {
 				fmt.Println("simple forking behavior triggered")
 				units := forkingStrategy(unit, dags[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], 2)
 				if len(units) == 0 {
@@ -361,7 +370,7 @@ func newPrimeFloodingAdder(floodingLevel int, numberOfPrimes int, privKeys []gom
 				return false
 			},
 
-			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
+			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Unit) error {
 				fmt.Println("Prime flooding started")
 				for _, unit := range forkingStrategy(unit, dags[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], numberOfPrimes) {
 					if _, err := helpers.AddToDags(unit, rss, dags); err != nil {
@@ -397,7 +406,7 @@ func newRandomForkingAdder(byzantineDags []uint16, forkProbability int, privKeys
 				return false
 			},
 
-			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Preunit) error {
+			func(dags []gomel.Dag, rss []gomel.RandomSource, unit gomel.Unit) error {
 				fmt.Println("random forking")
 				const forkSize = 2
 				for _, unit := range forkingStrategy(unit, dags[unit.Creator()], privKeys[unit.Creator()], rss[unit.Creator()], forkSize) {
@@ -495,7 +504,7 @@ func testForkingChangingParents(forker forker) error {
 	byzantineDags := getRandomListOfByzantineDags(nProcesses)
 	fmt.Println("byzantine dags:", byzantineDags)
 
-	type byzAddingHandler func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit, unit gomel.Unit) error
+	type byzAddingHandler func(dags []gomel.Dag, rss []gomel.RandomSource, preunit, unit gomel.Unit) error
 	type byzPair struct {
 		byzCreator helpers.Creator
 		byzAdder   byzAddingHandler
@@ -521,7 +530,7 @@ func testForkingChangingParents(forker forker) error {
 	}
 
 	defaultUnitCreator := helpers.NewDefaultCreator(maxParents)
-	unitFactory := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Preunit, error) {
+	unitFactory := func(dag gomel.Dag, creator uint16, privKey gomel.PrivateKey, rs gomel.RandomSource) (gomel.Unit, error) {
 		if byzDag, ok := byzDags[creator]; ok {
 			return byzDag.byzCreator(dag, creator, privKey, rs)
 
@@ -531,7 +540,7 @@ func testForkingChangingParents(forker forker) error {
 	unitCreator := helpers.NewDefaultUnitCreator(unitFactory)
 
 	unitAdder := func([]gomel.Dag, []gomel.PrivateKey, []gomel.RandomSource) helpers.AddingHandler {
-		return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+		return func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit) error {
 			unit, err := helpers.AddToDags(preunit, rss, dags)
 			if err != nil {
 				return err
@@ -1046,24 +1055,26 @@ func subsetSizesOfLowerLevelBasedOnCommonVote(vote bool, nProc uint16) (ones, ze
 	return nonByzantineProcesses, maxNumberOfByzantineProcesses
 }
 
-func preunitFromParents(creator uint16, epochID gomel.EpochID, parents []gomel.Unit, data []byte, rsData []byte) gomel.Preunit {
-	nProc := len(parents)
-	heights := make([]int, nProc)
-	hashes := make([]*gomel.Hash, nProc)
-	for i, p := range parents {
-		if p == nil {
-			heights[i] = -1
-			hashes[i] = &gomel.ZeroHash
-		} else {
-			heights[i] = p.Height()
-			hashes[i] = p.Hash()
-		}
-	}
-	return creating.NewPreunit(creator, epochID, gomel.NewCrown(heights, gomel.CombineHashes(hashes)), data, rsData)
+func preunitFromParents(creator uint16, epochID gomel.EpochID, parents []gomel.Unit, data []byte, rsData []byte, pk gomel.PrivateKey) gomel.Unit {
+	level := gomel.LevelFromParents(parents)
+	return unit.New(creator, epochID, parents, level, data, rsData, pk)
 }
 
 func unitToPreunit(unit gomel.Unit) gomel.Preunit {
-	return preunitFromParents(unit.Creator(), unit.EpochID(), unit.Parents(), unit.Data(), unit.RandomSourceData())
+	return unit
+}
+
+func getDefaultParentCandidates(dag gomel.Dag) []gomel.Unit {
+	parents := make([]gomel.Unit, 0, dag.NProc())
+	dag.MaximalUnitsPerProcess().Iterate(func(units []gomel.Unit) bool {
+		if len(units) > 0 {
+			parents = append(parents, units[0])
+		} else {
+			parents = append(parents, nil)
+		}
+		return true
+	})
+	return parents
 }
 
 // this function assumes that it is possible to create a new level, i.e. there are enough candidates on lower level
@@ -1092,10 +1103,14 @@ func buildOneLevelUp(
 			if createdOnLevel {
 				break
 			}
-			preunit, _, err := creating.NewUnit(dag, ids[ix], helpers.NewDefaultDataContent(), rss[ix], true)
+
+			parents := getDefaultParentCandidates(dag)
+			level := gomel.LevelFromParents(parents)
+			rssData, err := rss[ix].DataToInclude(parents, level)
 			if err != nil {
 				return nil, fmt.Errorf("error while creating a unit for dag no %d: %s", ids[ix], err.Error())
 			}
+			preunit := preunitFromParents(ids[ix], gomel.EpochID(0), parents, helpers.NewDefaultDataContent(), rssData, privKeys[ix])
 			// add only to its creator's dag
 			addedUnit, err := tests.AddUnit(dag, preunit)
 			if err != nil {
@@ -1134,7 +1149,7 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 			return false
 		}
 
-		addingHandler := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Preunit) error {
+		addingHandler := func(dags []gomel.Dag, rss []gomel.RandomSource, preunit gomel.Unit) error {
 
 			dagsCopy := append([]gomel.Dag{}, dags...)
 			privKeysCopy := append([]gomel.PrivateKey{}, privKeys...)
@@ -1146,15 +1161,15 @@ func longTimeUndecidedStrategy(startLevel *int, initialVotingRound int, numberOf
 
 			triggeringDag := crp(*startLevel)
 			fmt.Println("triggering dag no", triggeringDag)
-			triggeringPreunit, _, err := creating.NewUnit(
-				dags[triggeringDag],
-				triggeringDag,
-				helpers.NewDefaultDataContent(),
-				rss[triggeringDag], true,
-			)
+
+			parents := getDefaultParentCandidates(dags[triggeringDag])
+			level := gomel.LevelFromParents(parents)
+			rssData, err := rss[triggeringDag].DataToInclude(parents, level)
 			if err != nil {
-				return err
+				return fmt.Errorf("error while creating a unit for dag no %d: %s", triggeringDag, err.Error())
 			}
+			triggeringPreunit := preunitFromParents(triggeringDag, gomel.EpochID(0), parents, helpers.NewDefaultDataContent(), rssData, privKeys[triggeringDag])
+
 			triggeringUnit, err := tests.AddUnit(dags[triggeringDag], triggeringPreunit)
 			if err != nil {
 				return err
@@ -1194,7 +1209,9 @@ func testLongTimeUndecidedStrategy() error {
 		initialVotingRound          = 1
 	)
 
-	conf := config.NewDefaultConfiguration()
+	// TODO
+	// conf := config.NewDefaultConfiguration()
+	conf := config.Empty()
 
 	// NOTE following 4 lines are supposed to enforce a unit of creator 1 being first on crp for level 1
 	unitCreator := helpers.NewEachInSequenceUnitCreator(helpers.NewDefaultCreator(nProcesses))
@@ -1202,7 +1219,7 @@ func testLongTimeUndecidedStrategy() error {
 	startLevel := 1
 	crp := func(int) uint16 { return 1 }
 
-	configurations := make([]config.Params, nProcesses)
+	configurations := make([]config.Config, nProcesses)
 	for pid := range configurations {
 		configurations[pid] = conf
 	}
@@ -1213,28 +1230,37 @@ func testLongTimeUndecidedStrategy() error {
 		longTimeUndecidedStrategy(&startLevel, initialVotingRound, numberOfDeterministicRounds, crp)
 
 	checkIfUndecidedVerifier :=
-		func(dags []gomel.Dag, pids []uint16, configs []config.Params, rss []gomel.RandomSource) error {
+		func(dags []gomel.Dag, pids []uint16, configs []config.Config, rss []gomel.RandomSource) error {
 			fmt.Println("starting the undecided checker")
 
-			logger, _ := logging.NewLogger("stdout", conf.LogLevel, 100000, false)
+			logger, _ := logging.NewLogger(conf)
 
 			errorsCount := 0
 			for pid, dag := range dags {
-				ordering := linear.NewOrdering(
+
+				output := make(chan []gomel.Unit)
+				ordering := linear.NewExtender(
 					dag,
 					rss[pid],
-					conf.OrderStartLevel,
-					conf.CRPFixedPrefix,
+					conf,
+					output,
 					logger,
 				)
 
-				for tu := ordering.NextRound(); tu != nil && tu.TimingUnit().Level() < int(startLevel)-1; {
+				for tu := ordering.NextRound(); tu != nil; {
+					orderedUnits := tu.OrderedUnits()
+					if orderedUnits[len(orderedUnits)-1].Level() < int(startLevel)-1 {
+						break
+					}
 					tu = ordering.NextRound()
 				}
-				if timingRound := ordering.NextRound(); timingRound != nil && timingRound.TimingUnit().Level() >= startLevel {
-					timingUnit := timingRound.TimingUnit()
-					fmt.Println("some dag already decided - error", "level:", timingUnit.Level(), "creator:", timingUnit.Creator())
-					errorsCount++
+				if timingRound := ordering.NextRound(); timingRound != nil {
+					orderedUnits := timingRound.OrderedUnits()
+					if orderedUnits[len(orderedUnits)-1].Level() >= int(startLevel) {
+						timingUnit := orderedUnits[len(orderedUnits)-1]
+						fmt.Println("some dag already decided - error", "level:", timingUnit.Level(), "creator:", timingUnit.Creator())
+						errorsCount++
+					}
 				}
 			}
 			if errorsCount > 0 {

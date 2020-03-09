@@ -2,6 +2,8 @@
 package run
 
 import (
+	"errors"
+
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -21,13 +23,13 @@ import (
 // Returns two functions that can be used to, respectively, start and stop the whole system.
 func Process(setupConf, conf config.Config, ds core.DataSource, ps core.PreblockSink) (start func(), stop func(), err error) {
 	wtkchan := make(chan *tss.WeakThresholdKey, 1)
-	startSetup, stopSetup, err := setup(setupConf, wtkchan)
-	if err != nil {
-		return nil, nil, err
+	startSetup, stopSetup, setupErr := setup(setupConf, wtkchan)
+	if setupErr != nil {
+		return nil, nil, errors.New("an error occurred while initializing setup: " + setupErr.Error())
 	}
-	startConsensus, stopConsensus, err := consensus(conf, wtkchan, ds, ps)
-	if err != nil {
-		return nil, nil, err
+	startConsensus, stopConsensus, consensusErr := consensus(conf, wtkchan, ds, ps)
+	if consensusErr != nil {
+		return nil, nil, errors.New("an error occurred while initializing consensus: " + consensusErr.Error())
 	}
 	start = func() {
 		startSetup()
