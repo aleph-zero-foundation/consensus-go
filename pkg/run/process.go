@@ -33,7 +33,7 @@ func Process(setupConf, conf config.Config, ds core.DataSource, ps core.Preblock
 	}
 	start = func() {
 		startSetup()
-		go startConsensus()
+		startConsensus()
 	}
 	stop = func() {
 		stopSetup()
@@ -79,18 +79,23 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 		return nil, nil, err
 	}
 
+	started := make(chan struct{})
 	start := func() {
-		wtkey, ok := <-wtkchan
-		if !ok {
-			// received termination signal from outside
-			return
-		}
-		log.Info().Msg(logging.GotWTK)
-		conf.WTKey = wtkey
-		ord.Start(coin.NewFactory(conf.Pid, wtkey), syn, alrt)
+		go func() {
+			defer func() { started <- struct{}{} }()
+			wtkey, ok := <-wtkchan
+			if !ok {
+				// received termination signal from outside
+				return
+			}
+			log.Info().Msg(logging.GotWTK)
+			conf.WTKey = wtkey
+			ord.Start(coin.NewFactory(conf.Pid, wtkey), syn, alrt)
+		}()
 	}
 	stop := func() {
 		close(wtkchan)
+		<-started
 		ord.Stop()
 	}
 	return start, stop, nil
