@@ -239,7 +239,7 @@ func checkOrderingFromLogs(nProc uint16, filenamePrefix string) bool {
 
 func main() {
 	testSize := flag.Int("test_size", 10, "number of created processes; default is 10")
-	maxLevel := flag.Int("max_level", 12, "number of levels after which a process should finish; default is 12")
+	numberOfPreblocks := flag.Int("max_level", 12, "number of pre-blocks after which a process should finish; default is 12")
 	flag.Parse()
 
 	nProc := uint16(*testSize)
@@ -268,7 +268,7 @@ func main() {
 			setupRMCAddresses,
 
 			pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id],
-			*maxLevel,
+			*numberOfPreblocks,
 			&dagsFinished,
 			&allDone,
 		)
