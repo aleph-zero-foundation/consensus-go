@@ -19,7 +19,7 @@ import (
 // Given two Config objects (one for the setup phase and one for the main consensus), data source and preblock sink,
 // Process initializes two orderers and a channel between them used to pass the result of the setup phase.
 // Returns two functions that can be used to, respectively, start and stop the whole system.
-func Process(setupConf, conf config.Config, ds core.DataSource, ps core.PreblockSink) (func(), func(), error) {
+func Process(setupConf, conf config.Config, ds core.DataSource, ps core.PreblockSink) (start func(), stop func(), err error) {
 	wtkchan := make(chan *tss.WeakThresholdKey, 1)
 	startSetup, stopSetup, err := setup(setupConf, wtkchan)
 	if err != nil {
@@ -29,11 +29,11 @@ func Process(setupConf, conf config.Config, ds core.DataSource, ps core.Preblock
 	if err != nil {
 		return nil, nil, err
 	}
-	start := func() {
+	start = func() {
 		startSetup()
 		go startConsensus()
 	}
-	stop := func() {
+	stop = func() {
 		stopSetup()
 		stopConsensus()
 	}

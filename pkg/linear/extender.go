@@ -90,6 +90,7 @@ func (ext *Extender) roundSorter() {
 		units := round.OrderedUnits()
 		ext.output <- units
 		for _, u := range units {
+			ext.log.Info().Uint16(logging.Creator, u.Creator()).Int(logging.Height, u.Height()).Msg(logging.UnitOrdered)
 			if u.Creator() == ext.conf.Pid {
 				ext.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
 			}
