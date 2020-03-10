@@ -161,7 +161,7 @@ func valid(cnf Config) error {
 	return nil
 }
 
-// Valid checks if a given config is in valid state for setup
+// Valid checks if a given config is in valid state for consensus
 func Valid(cnf Config) error {
 	if err := valid(cnf); err != nil {
 		return err

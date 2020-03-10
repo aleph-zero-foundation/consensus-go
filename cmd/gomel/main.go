@@ -134,7 +134,7 @@ func main() {
 	var start, stop func()
 	if options.setup {
 		setupConfig := config.NewSetup(member, committee)
-		if err := config.ValidSetup(setupConfig); options.setup && err != nil {
+		if err := config.ValidSetup(setupConfig); err != nil {
 			fmt.Fprintf(os.Stderr, "Invalid setup configuration because: %s.\n", err.Error())
 			return
 		}
