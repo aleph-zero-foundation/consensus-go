@@ -346,8 +346,7 @@ func getOrderedUnits(dag gomel.Dag, pid uint16, generalConfig config.Config, rs 
 	units := make(chan gomel.Unit)
 	go func() {
 		logger, _ := logging.NewLogger(generalConfig)
-		output := make(chan<- []gomel.Unit)
-		ordering := linear.NewExtender(dag, rs, generalConfig, output, logger)
+		ordering := linear.NewOrdering(dag, rs, generalConfig, logger)
 		level := generalConfig.OrderStartLevel
 		timingRound := ordering.NextRound()
 		for ; timingRound != nil; timingRound = ordering.NextRound() {
@@ -371,8 +370,7 @@ func getAllTimingUnits(dag gomel.Dag, pid uint16, generalConfig config.Config, r
 	go func() {
 
 		logger, _ := logging.NewLogger(generalConfig)
-		output := make(chan<- []gomel.Unit)
-		ordering := linear.NewExtender(dag, rs, generalConfig, output, logger)
+		ordering := linear.NewOrdering(dag, rs, generalConfig, logger)
 		level := generalConfig.OrderStartLevel
 		timingRound := ordering.NextRound()
 

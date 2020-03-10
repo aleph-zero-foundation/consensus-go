@@ -30,7 +30,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
 				Expect(ordering.NextRound()).To(BeNil())
 			})
 		})
@@ -42,7 +42,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
 				Expect(ordering.NextRound()).To(BeNil())
 			})
 		})
@@ -54,7 +54,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
 			})
 			It("should decide up to 8th level", func() {
 				for level := 0; level < 8; level++ {
@@ -75,7 +75,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
 				timingRound := ordering.NextRound()
 				Expect(timingRound).To(BeNil())
 			})
@@ -88,7 +88,7 @@ var _ = Describe("Ordering", func() {
 				cnf := config.Empty()
 				cnf.OrderStartLevel = 0
 				cnf.CRPFixedPrefix = crpFixedPrefix
-				ordering = newOrdering(dag, rs, cnf, zerolog.Nop())
+				ordering = NewOrdering(dag, rs, cnf, zerolog.Nop())
 				for level := 0; level < 8; level++ {
 					timingRound := ordering.NextRound()
 					Expect(timingRound).NotTo(BeNil())

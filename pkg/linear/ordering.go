@@ -24,8 +24,8 @@ type ordering struct {
 	log                           zerolog.Logger
 }
 
-// newOrdering constructs an iterator like object that is responsible of ordering units in a given dag.
-func newOrdering(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, log zerolog.Logger) *ordering {
+// NewOrdering constructs an iterator like object that is responsible of ordering units in a given dag.
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, log zerolog.Logger) *ordering {
 	return &ordering{
 		dag:                           dag,
 		randomSource:                  rs,
