@@ -56,13 +56,11 @@ func (ad *adder) fetchMissing(wp *waitingPreunit, maxHeights []int) {
 			}
 		}
 		if len(toRequest) > ad.conf.GossipAbove {
-			//TODO what happens when there's no gossip?
 			ad.syncer.RequestGossip(wp.source)
 			return
 		}
 	}
 	if len(toRequest) > 0 {
-		//TODO what happens when there's no fetch?
 		ad.syncer.RequestFetch(wp.source, toRequest)
 	}
 }

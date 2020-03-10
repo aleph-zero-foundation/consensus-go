@@ -66,7 +66,7 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 	}
 
 	ord := orderer.New(conf, ds, makePreblock, log)
-	syn, err := syncer.New(conf, ord, log)
+	syn, err := syncer.New(conf, ord, log, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,7 +128,7 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 	}
 
 	ord := orderer.New(conf, nil, extractHead, log)
-	syn, err := syncer.New(conf, ord, log)
+	syn, err := syncer.New(conf, ord, log, true)
 	if err != nil {
 		return nil, nil, err
 	}

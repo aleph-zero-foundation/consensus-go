@@ -151,7 +151,6 @@ func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 // If the shares don't combine to the correct random bytes for previous level
 // it returns an error. This means that someone had included a wrong coin share
 // and we should start an alert.
-// TODO raise alarm
 func (c *coin) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) {
 	var rb []byte
 	if rbl := c.randomBytes.Get(level - 1); rbl != nil {

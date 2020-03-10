@@ -47,6 +47,7 @@ type cliOptions struct {
 	cpuProfFilename   string
 	memProfFilename   string
 	traceFilename     string
+	setup             bool
 	txpu              int
 	mutexFraction     int
 	blockFraction     int
@@ -55,6 +56,7 @@ type cliOptions struct {
 
 func getOptions() cliOptions {
 	var result cliOptions
+	flag.BoolVar(&result.setup, "setup", true, "a flag whether a setup should be run")
 	flag.StringVar(&result.privFilename, "priv", "", "a file with private keys and process id")
 	flag.StringVar(&result.keysAddrsFilename, "keys_addrs", "", "a file with keys and associated addresses")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
@@ -80,23 +82,6 @@ func main() {
 		duration := time.Duration(options.delay) * time.Second
 		time.Sleep(duration)
 	}
-
-	// get member
-	member, err := getMember(options.privFilename)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid private key file \"%s\", because: %s.\n", options.privFilename, err.Error())
-		return
-	}
-	// get committee
-	committee, err := getCommittee(options.keysAddrsFilename)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keysAddrsFilename, err.Error())
-		return
-	}
-	// get process config
-	consensusConfig := config.New(member, committee)
-	// get setup config
-	setupConfig := config.NewSetup(member, committee)
 
 	if options.cpuProfFilename != "" {
 		f, err := os.Create(options.cpuProfFilename)
@@ -127,11 +112,35 @@ func main() {
 	tds := tests.NewDataSource(300 * options.txpu)
 	ps := make(chan *core.Preblock)
 
+	// get member
+	member, err := getMember(options.privFilename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid private key file \"%s\", because: %s.\n", options.privFilename, err.Error())
+		return
+	}
+	// get committee
+	committee, err := getCommittee(options.keysAddrsFilename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid key file \"%s\", because: %s.\n", options.keysAddrsFilename, err.Error())
+		return
+	}
+	// get committee config
+	consensusConfig := config.New(member, committee)
+	if err := config.Valid(consensusConfig); err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid consensus configuration because: %s.\n", err.Error())
+		return
+	}
+
 	var start, stop func()
-	if len(setupConfig.RMCAddresses) == 0 {
-		start, stop, err = run.NoBeacon(consensusConfig, tds, ps)
-	} else {
+	if options.setup {
+		setupConfig := config.NewSetup(member, committee)
+		if err := config.ValidSetup(setupConfig); err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid setup configuration because: %s.\n", err.Error())
+			return
+		}
 		start, stop, err = run.Process(setupConfig, consensusConfig, tds, ps)
+	} else {
+		start, stop, err = run.NoBeacon(consensusConfig, tds, ps)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
