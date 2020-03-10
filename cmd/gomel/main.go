@@ -126,7 +126,7 @@ func main() {
 	}
 	// get committee config
 	consensusConfig := config.New(member, committee)
-	if err := config.Valid(consensusConfig, false); err != nil {
+	if err := config.Valid(consensusConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid consensus configuration because: %s.\n", err.Error())
 		return
 	}
@@ -134,7 +134,7 @@ func main() {
 	var start, stop func()
 	if options.setup {
 		setupConfig := config.NewSetup(member, committee)
-		if err := config.Valid(setupConfig, true); options.setup && err != nil {
+		if err := config.ValidSetup(setupConfig); options.setup && err != nil {
 			fmt.Fprintf(os.Stderr, "Invalid setup configuration because: %s.\n", err.Error())
 			return
 		}
