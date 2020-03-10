@@ -26,8 +26,6 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, gomel.Adder, error) {
 	dag, adder := df.CreateDag(n)
 	preunitHashes := make(map[[3]int]*gomel.Hash)
 
-	var txID int
-
 	for scanner.Scan() {
 		text := scanner.Text()
 		// skip comments
@@ -61,10 +59,11 @@ func ReadDag(reader io.Reader, df DagFactory) (gomel.Dag, gomel.Adder, error) {
 				parentsHeights[creator] = height
 			}
 		}
-		unitData := make([]byte, 4)
-		binary.LittleEndian.PutUint32(unitData, uint32(txID))
-		pu := NewPreunit(uint16(puCreator), gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), unitData, []byte{}, nil)
-		txID++
+		unitData := make([]byte, 8)
+		binary.LittleEndian.PutUint64(unitData, uint64(puVersion))
+		rsData := make([]byte, 0)
+		var privateKey gomel.PrivateKey = nil
+		pu := NewPreunit(uint16(puCreator), gomel.NewCrown(parentsHeights, gomel.CombineHashes(parents)), unitData, rsData, privateKey)
 		preunitHashes[[3]int{puCreator, puHeight, puVersion}] = pu.Hash()
 		err := adder.AddPreunits(pu.Creator(), pu)
 		if err != nil {
