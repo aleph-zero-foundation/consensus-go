@@ -7,14 +7,16 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-type commonRandomPermutation struct {
+// CommonRandomPermutation is a type responsible for iterating units on level by the mean of a Common Random Permutation.
+type CommonRandomPermutation struct {
 	dag            gomel.Dag
 	randomSource   gomel.RandomSource
 	crpFixedPrefix uint16
 }
 
-func newCommonRandomPermutation(dag gomel.Dag, randomSource gomel.RandomSource, crpFixedPrefix uint16) *commonRandomPermutation {
-	return &commonRandomPermutation{dag: dag, randomSource: randomSource, crpFixedPrefix: crpFixedPrefix}
+// NewCommonRandomPermutation creates an instance of the CommonRandomPermutation type.
+func NewCommonRandomPermutation(dag gomel.Dag, randomSource gomel.RandomSource, crpFixedPrefix uint16) *CommonRandomPermutation {
+	return &CommonRandomPermutation{dag: dag, randomSource: randomSource, crpFixedPrefix: crpFixedPrefix}
 }
 
 // CRPIterate iterates over all the prime units on a given level in random order.
@@ -30,7 +32,7 @@ func newCommonRandomPermutation(dag gomel.Dag, randomSource gomel.RandomSource, 
 // - false when generating the suffix of the permutation failed (because the dag
 //   hasn't reached a level high enough to reveal the randomBytes needed)
 // - true otherwise
-func (crp *commonRandomPermutation) CRPIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
+func (crp *CommonRandomPermutation) CRPIterate(level int, previousTU gomel.Unit, work func(gomel.Unit) bool) bool {
 	prefix, suffix := splitProcesses(crp.dag.NProc(), crp.crpFixedPrefix, level, previousTU)
 
 	perm := defaultPermutation(crp.dag, level, prefix)

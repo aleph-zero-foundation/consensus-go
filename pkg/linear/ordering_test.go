@@ -1,4 +1,4 @@
-package linear
+package linear_test
 
 import (
 	"github.com/rs/zerolog"
@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	. "gitlab.com/alephledger/consensus-go/pkg/linear"
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
@@ -16,7 +17,7 @@ const (
 
 var _ = Describe("Ordering", func() {
 	var (
-		ordering *ordering
+		ordering *Ordering
 		dag      gomel.Dag
 		rs       gomel.RandomSource
 		err      error

@@ -14,7 +14,7 @@ import (
 // Extender reacts every time a new unit is inserted into the underlying dag. It tries to pick next timing unit.
 // If successful, Extender collects all the units belonging to that timing round, and linearly orders them.
 type Extender struct {
-	ordering     *ordering
+	ordering     *Ordering
 	pid          uint16
 	output       chan<- []gomel.Unit
 	trigger      chan struct{}

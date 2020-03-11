@@ -56,7 +56,7 @@ type conf struct {
 	// linear
 	OrderStartLevel               int
 	CRPFixedPrefix                uint16
-	FirstRoundZeroForCommonVote   int
+	ZeroVoteRoundForCommonVote    int
 	FirstDecidingRound            int
 	CommonVoteDeterministicPrefix int
 }
@@ -156,6 +156,6 @@ func requiredByLinear() Config {
 	return &conf{
 		FirstDecidingRound:            3,
 		CommonVoteDeterministicPrefix: 10,
-		FirstRoundZeroForCommonVote:   3,
+		ZeroVoteRoundForCommonVote:    3,
 	}
 }

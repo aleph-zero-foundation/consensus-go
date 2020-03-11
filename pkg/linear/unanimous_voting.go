@@ -23,19 +23,26 @@ type unanimousVoter struct {
 	dag                           gomel.Dag
 	rs                            gomel.RandomSource
 	uc                            gomel.Unit
-	firstRoundZeroForCommonVote   int
+	zeroVoteRoundForCommonVote    int
 	commonVoteDeterministicPrefix int
 	votingMemo                    map[gomel.Hash]vote
 }
 
-func newUnanimousVoter(uc gomel.Unit, dag gomel.Dag, rs gomel.RandomSource, commonVoteDeterministicPrefix int, firstRoundZeroForCommonVote int) *unanimousVoter {
+func newUnanimousVoter(
+	uc gomel.Unit,
+	dag gomel.Dag,
+	rs gomel.RandomSource,
+	commonVoteDeterministicPrefix int,
+	zeroVoteRoundForCommonVote int,
+) *unanimousVoter {
+
 	return &unanimousVoter{
 		dag:                           dag,
 		rs:                            rs,
 		uc:                            uc,
 		votingMemo:                    make(map[gomel.Hash]vote),
 		commonVoteDeterministicPrefix: commonVoteDeterministicPrefix,
-		firstRoundZeroForCommonVote:   firstRoundZeroForCommonVote,
+		zeroVoteRoundForCommonVote:    zeroVoteRoundForCommonVote,
 	}
 }
 
@@ -80,6 +87,10 @@ func (uv *unanimousVoter) VoteUsing(u gomel.Unit) (result vote) {
 	return *lastVote
 }
 
+func (uv *unanimousVoter) dispose() {
+	uv.votingMemo = make(map[gomel.Hash]vote)
+}
+
 func (uv *unanimousVoter) lazyCommonVote(level int) func() vote {
 	initialized := false
 	var commonVoteValue vote
@@ -114,7 +125,7 @@ func (uv *unanimousVoter) CommonVote(level int) vote {
 		return undecided
 	}
 	if round <= uv.commonVoteDeterministicPrefix {
-		if round == uv.firstRoundZeroForCommonVote {
+		if round == uv.zeroVoteRoundForCommonVote {
 			return unpopular
 		}
 		return popular
@@ -138,7 +149,12 @@ func superMajority(dag gomel.Dag, votes votingResult) vote {
 	return undecided
 }
 
-func voteUsingPrimeAncestors(uc, u gomel.Unit, dag gomel.Dag, voter func(uc, u gomel.Unit) (vote vote, finish bool)) (votesLevelBelow votingResult) {
+func voteUsingPrimeAncestors(
+	uc, u gomel.Unit,
+	dag gomel.Dag,
+	voter func(uc, u gomel.Unit) (vote vote, finish bool),
+) (votesLevelBelow votingResult) {
+
 	for pid := range u.Parents() {
 		floor := u.Floor(uint16(pid))
 		votesOne := false

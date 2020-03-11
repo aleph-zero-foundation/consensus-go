@@ -1,4 +1,4 @@
-package linear
+package linear_test
 
 import (
 	"math/rand"
@@ -6,12 +6,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	. "gitlab.com/alephledger/consensus-go/pkg/linear"
 	tests "gitlab.com/alephledger/consensus-go/pkg/tests"
 )
 
 var _ = Describe("Common Random Permutation", func() {
 
-	checkWithProvidedTimingUnit := func(dag gomel.Dag, crpIt *commonRandomPermutation, rs *testRandomSource, shouldBeEqual bool) {
+	checkWithProvidedTimingUnit := func(dag gomel.Dag, crpIt *CommonRandomPermutation, rs *testRandomSource, shouldBeEqual bool) {
 		permutation := []gomel.Unit{}
 		crpIt.CRPIterate(2, nil, func(u gomel.Unit) bool {
 			permutation = append(permutation, u)
@@ -25,38 +26,43 @@ var _ = Describe("Common Random Permutation", func() {
 			return true
 		})
 
-		if shouldBeEqual {
-			Expect(permutation).To(Equal(permutation2))
-		} else {
-			Expect(permutation).NotTo(Equal(permutation2))
-		}
-
 		tu = dag.UnitsOnLevel(1).Get(2)[0]
 		permutation3 := []gomel.Unit{}
 		crpIt.CRPIterate(2, tu, func(u gomel.Unit) bool {
 			permutation3 = append(permutation3, u)
 			return true
 		})
+
 		if shouldBeEqual {
+			Expect(permutation).To(Equal(permutation2))
 			Expect(permutation2).To(Equal(permutation3))
-			Expect(permutation).To(Equal(permutation3))
 		} else {
-			Expect(permutation2).NotTo(Equal(permutation3))
+			Expect(permutation).NotTo(Equal(permutation2))
 			Expect(permutation).NotTo(Equal(permutation3))
+			Expect(permutation2).NotTo(Equal(permutation3))
 		}
+	}
+
+	checkIfSameWithProvidedTimingUnit := func(dag gomel.Dag, crpIt *CommonRandomPermutation, rs *testRandomSource) {
+		checkWithProvidedTimingUnit(dag, crpIt, rs, true)
+	}
+
+	checkIfDifferentWithProvidedTimingUnit := func(dag gomel.Dag, crpIt *CommonRandomPermutation, rs *testRandomSource) {
+		checkWithProvidedTimingUnit(dag, crpIt, rs, false)
 	}
 
 	Context("with deterministic part covering all units on level", func() {
 		Context("providing a timing unit of creator different than pid 0", func() {
 			It("should return different permutations", func() {
+				nProc := uint16(4)
 				dag, _, err := tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs := newTestRandomSource()
-				crpFixedPrefix := uint16(4)
-				crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpFixedPrefix := nProc
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 				Expect(crpIt).NotTo(BeNil())
 
-				checkWithProvidedTimingUnit(dag, crpIt, rs, true)
+				checkIfSameWithProvidedTimingUnit(dag, crpIt, rs)
 				Expect(rs.called).To(BeFalse())
 			})
 		})
@@ -66,8 +72,8 @@ var _ = Describe("Common Random Permutation", func() {
 				nProc := uint16(4)
 				dag, _ := tests.NewTestDagFactory().CreateDag(nProc)
 				rs := tests.NewTestRandomSource()
-				crpFixedPrefix := uint16(10)
-				crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpFixedPrefix := nProc
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 
 				Expect(crpIt).NotTo(BeNil())
 
@@ -83,13 +89,13 @@ var _ = Describe("Common Random Permutation", func() {
 
 		Context("with enough units on level", func() {
 			It("should return true and all units", func() {
-				nProc := 4
+				nProc := uint16(4)
 				dag, _, err := tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs := tests.NewTestRandomSource()
 
-				crpFixedPrefix := uint16(10)
-				crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpFixedPrefix := nProc
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 
 				Expect(crpIt).NotTo(BeNil())
 
@@ -101,8 +107,8 @@ var _ = Describe("Common Random Permutation", func() {
 					return true
 				})
 				Expect(result).To(BeTrue())
-				Expect(len(perm)).To(Equal(nProc))
-				Expect(called).To(Equal(nProc))
+				Expect(len(perm)).To(Equal(int(nProc)))
+				Expect(called).To(Equal(int(nProc)))
 			})
 		})
 	})
@@ -114,7 +120,7 @@ var _ = Describe("Common Random Permutation", func() {
 			rs := newTestRandomSource()
 
 			crpFixedPrefix := uint16(1)
-			crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+			crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 
 			Expect(crpIt).NotTo(BeNil())
 
@@ -141,7 +147,7 @@ var _ = Describe("Common Random Permutation", func() {
 				rs := newDeterministicRandomSource(rsData)
 
 				crpFixedPrefix := uint16(0)
-				crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 
 				Expect(crpIt).NotTo(BeNil())
 
@@ -162,7 +168,7 @@ var _ = Describe("Common Random Permutation", func() {
 					rsData[level] = data
 				}
 				rs = newDeterministicRandomSource(rsData)
-				crpIt = newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpIt = NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 
 				permutation2 := []gomel.Unit{}
 				perm2 := map[gomel.Hash]bool{}
@@ -177,16 +183,31 @@ var _ = Describe("Common Random Permutation", func() {
 			})
 		})
 
-		Context("providing a timing unit of creator different than pid 0", func() {
-			It("should return different permutations", func() {
+		Context("providing a timing unit of creator different than pid 0 and crp prefix equal 0", func() {
+			It("should return same permutations", func() {
 				dag, _, err := tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
 				Expect(err).NotTo(HaveOccurred())
 				rs := newTestRandomSource()
 				crpFixedPrefix := uint16(0)
-				crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 				Expect(crpIt).NotTo(BeNil())
 
-				checkWithProvidedTimingUnit(dag, crpIt, rs, true)
+				checkIfSameWithProvidedTimingUnit(dag, crpIt, rs)
+				Expect(rs.called).To(BeTrue())
+			})
+		})
+
+		Context("providing a timing unit of creator different than pid 0 and crp prefix > 0 but < nProc", func() {
+			It("should return different permutations", func() {
+				nProc := uint16(4)
+				dag, _, err := tests.CreateDagFromTestFile("../testdata/dags/4/regular.txt", tests.NewTestDagFactory())
+				Expect(err).NotTo(HaveOccurred())
+				rs := newTestRandomSource()
+				crpFixedPrefix := nProc - 2
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				Expect(crpIt).NotTo(BeNil())
+
+				checkIfDifferentWithProvidedTimingUnit(dag, crpIt, rs)
 				Expect(rs.called).To(BeTrue())
 			})
 		})
@@ -199,7 +220,7 @@ var _ = Describe("Common Random Permutation", func() {
 
 				rs := newDeterministicRandomSource(map[int][]byte{})
 				crpFixedPrefix := uint16(4)
-				crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 				Expect(crpIt).NotTo(BeNil())
 
 				permutation := []gomel.Unit{}
@@ -227,7 +248,7 @@ var _ = Describe("Common Random Permutation", func() {
 
 				rs := newTestRandomSource()
 				crpFixedPrefix := uint16(4)
-				crpIt := newCommonRandomPermutation(dag, rs, crpFixedPrefix)
+				crpIt := NewCommonRandomPermutation(dag, rs, crpFixedPrefix)
 				Expect(crpIt).NotTo(BeNil())
 
 				permutation := []gomel.Unit{}
@@ -240,7 +261,7 @@ var _ = Describe("Common Random Permutation", func() {
 				Expect(ok).To(BeTrue())
 
 				rs = newTestRandomSource()
-				crpIt = newCommonRandomPermutation(dag2, rs, crpFixedPrefix)
+				crpIt = NewCommonRandomPermutation(dag2, rs, crpFixedPrefix)
 				Expect(crpIt).NotTo(BeNil())
 
 				permutation2 := []gomel.Unit{}

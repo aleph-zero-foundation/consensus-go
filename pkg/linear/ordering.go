@@ -8,40 +8,40 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-// ordering is a type implementing the ordering algorithm of units for a given dag.
-type ordering struct {
+// Ordering is a type implementing the Ordering algorithm of units for a given dag.
+type Ordering struct {
 	deciders                      map[gomel.Hash]*superMajorityDecider
 	dag                           gomel.Dag
 	randomSource                  gomel.RandomSource
 	lastTUs                       []gomel.Unit
 	currentTU                     gomel.Unit
 	lastDecideResult              bool
-	firstRoundZeroForCommonVote   int
+	zeroVoteRoundForCommonVote    int
 	firstDecidingRound            int
 	orderStartLevel               int
 	commonVoteDeterministicPrefix int
-	crpIterator                   *commonRandomPermutation
+	crpIterator                   *CommonRandomPermutation
 	log                           zerolog.Logger
 }
 
 // NewOrdering constructs an iterator like object that is responsible of ordering units in a given dag.
-func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, log zerolog.Logger) *ordering {
-	return &ordering{
+func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, log zerolog.Logger) *Ordering {
+	return &Ordering{
 		dag:                           dag,
 		randomSource:                  rs,
 		deciders:                      make(map[gomel.Hash]*superMajorityDecider),
-		lastTUs:                       make([]gomel.Unit, conf.FirstRoundZeroForCommonVote),
-		firstRoundZeroForCommonVote:   conf.FirstRoundZeroForCommonVote,
+		lastTUs:                       make([]gomel.Unit, conf.ZeroVoteRoundForCommonVote),
+		zeroVoteRoundForCommonVote:    conf.ZeroVoteRoundForCommonVote,
 		firstDecidingRound:            conf.FirstDecidingRound,
 		orderStartLevel:               conf.OrderStartLevel,
 		commonVoteDeterministicPrefix: conf.CommonVoteDeterministicPrefix,
-		crpIterator:                   newCommonRandomPermutation(dag, rs, conf.CRPFixedPrefix),
+		crpIterator:                   NewCommonRandomPermutation(dag, rs, conf.CRPFixedPrefix),
 		log:                           log,
 	}
 }
 
 // NextRound tries to pick the next timing unit. Returns nil if it cannot be decided yet.
-func (ord *ordering) NextRound() *timingRound {
+func (ord *Ordering) NextRound() *timingRound {
 	if ord.lastDecideResult {
 		ord.lastDecideResult = false
 	}
@@ -95,7 +95,7 @@ func (ord *ordering) NextRound() *timingRound {
 	return newTimingRound(ord.currentTU, ord.lastTUs)
 }
 
-func (ord *ordering) getDecider(uc gomel.Unit) *superMajorityDecider {
+func (ord *Ordering) getDecider(uc gomel.Unit) *superMajorityDecider {
 	var decider *superMajorityDecider
 	decider = ord.deciders[*uc.Hash()]
 	if decider == nil {
@@ -104,7 +104,7 @@ func (ord *ordering) getDecider(uc gomel.Unit) *superMajorityDecider {
 			ord.dag,
 			ord.randomSource,
 			ord.commonVoteDeterministicPrefix,
-			ord.firstRoundZeroForCommonVote,
+			ord.zeroVoteRoundForCommonVote,
 		)
 		ord.deciders[*uc.Hash()] = decider
 	}
