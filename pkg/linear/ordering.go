@@ -41,7 +41,7 @@ func NewOrdering(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, log z
 }
 
 // NextRound tries to pick the next timing unit. Returns nil if it cannot be decided yet.
-func (ord *Ordering) NextRound() *timingRound {
+func (ord *Ordering) NextRound() *TimingRound {
 	if ord.lastDecideResult {
 		ord.lastDecideResult = false
 	}

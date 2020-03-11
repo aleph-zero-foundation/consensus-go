@@ -18,7 +18,7 @@ type Extender struct {
 	pid          uint16
 	output       chan<- []gomel.Unit
 	trigger      chan struct{}
-	timingRounds chan *timingRound
+	timingRounds chan *TimingRound
 	wg           sync.WaitGroup
 	log          zerolog.Logger
 }
@@ -32,7 +32,7 @@ func NewExtender(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, outpu
 		pid:          conf.Pid,
 		output:       output,
 		trigger:      make(chan struct{}, 1),
-		timingRounds: make(chan *timingRound, 10),
+		timingRounds: make(chan *TimingRound, 10),
 		log:          logger,
 	}
 

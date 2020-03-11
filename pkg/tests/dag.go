@@ -316,6 +316,7 @@ func (dag *Dag) getPrimeUnitsOnLevel(level int) []gomel.Unit {
 	return result
 }
 
+// CollectUnits retrieves all units in depth-first order from a given dag.
 func CollectUnits(dag gomel.Dag) map[gomel.Unit]bool {
 	seenUnits := make(map[gomel.Unit]bool)
 	var dfs func(u gomel.Unit)
