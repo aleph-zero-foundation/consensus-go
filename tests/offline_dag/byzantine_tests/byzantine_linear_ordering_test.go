@@ -1238,7 +1238,7 @@ func testLongTimeUndecidedStrategy() error {
 			errorsCount := 0
 			for pid, dag := range dags {
 
-				ordering := linear.NewOrdering(
+				ordering := linear.NewExtender(
 					dag,
 					rss[pid],
 					conf,
