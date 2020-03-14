@@ -21,12 +21,10 @@ type conf struct {
 	Pid   uint16
 	NProc uint16
 	// epoch
-	EpochLength     int
-	NumberOfEpochs  int
-	CanSkipLevel    bool
-	OrderStartLevel int
-	CRPFixedPrefix  uint16
-	Checks          []gomel.UnitChecker
+	EpochLength    int
+	NumberOfEpochs int
+	CanSkipLevel   bool
+	Checks         []gomel.UnitChecker
 	// log
 	LogFile        string
 	LogLevel       int
@@ -55,6 +53,12 @@ type conf struct {
 	MCastNetType    string
 	GossipWorkers   [3]int // nIn, nOut, nIdle
 	FetchWorkers    [2]int // nIn, nOut
+	// linear
+	OrderStartLevel               int
+	CRPFixedPrefix                uint16
+	ZeroVoteRoundForCommonVote    int
+	FirstDecidingRound            int
+	CommonVoteDeterministicPrefix int
 }
 
 // AddCheck adds a unit checker to the given Config.
@@ -64,7 +68,7 @@ func AddCheck(c Config, check gomel.UnitChecker) {
 
 // NewSetup returns a Config for setup phase given Member and Committee data.
 func NewSetup(m *Member, c *Committee) Config {
-	cnf := &conf{}
+	cnf := requiredByLinear()
 	addKeys(cnf, m, c)
 	addSyncConf(cnf, c.SetupAddresses, true)
 	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".setup.log")
@@ -75,7 +79,7 @@ func NewSetup(m *Member, c *Committee) Config {
 
 // New returns a Config for regular consensus run from the given Member and Committee data.
 func New(m *Member, c *Committee) Config {
-	cnf := &conf{}
+	cnf := requiredByLinear()
 	addKeys(cnf, m, c)
 	addSyncConf(cnf, c.Addresses, false)
 	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".log")
@@ -86,7 +90,7 @@ func New(m *Member, c *Committee) Config {
 
 // Empty returns an empty Config populated by zero-values.
 func Empty() Config {
-	return &conf{}
+	return requiredByLinear()
 }
 
 func addKeys(cnf Config, m *Member, c *Committee) {
@@ -146,4 +150,12 @@ func addConsensusConf(cnf Config) {
 	cnf.EpochLength = 50
 	cnf.NumberOfEpochs = 2
 	cnf.Checks = consensusChecks
+}
+
+func requiredByLinear() Config {
+	return &conf{
+		FirstDecidingRound:            3,
+		CommonVoteDeterministicPrefix: 10,
+		ZeroVoteRoundForCommonVote:    3,
+	}
 }

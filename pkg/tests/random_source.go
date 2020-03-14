@@ -14,10 +14,6 @@ func NewTestRandomSource() gomel.RandomSource {
 	return &testRandomSource{}
 }
 
-// Bind the random source with the given dag.
-func (rs *testRandomSource) Bind(dag gomel.Dag) {
-}
-
 // RandomBytes returns a sequence of "random" bits for a given unit.
 // It bases the sequence only on the pid and level, ignoring the unit itself.
 func (rs *testRandomSource) RandomBytes(pid uint16, level int) []byte {

@@ -1238,12 +1238,10 @@ func testLongTimeUndecidedStrategy() error {
 			errorsCount := 0
 			for pid, dag := range dags {
 
-				output := make(chan []gomel.Unit)
 				ordering := linear.NewExtender(
 					dag,
 					rss[pid],
 					conf,
-					output,
 					logger,
 				)
 

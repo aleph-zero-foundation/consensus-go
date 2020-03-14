@@ -6,16 +6,18 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 )
 
-type timingRound struct {
+// TimingRound represents a single round of ordered units.
+type TimingRound struct {
 	currentTU gomel.Unit
 	lastTUs   []gomel.Unit
 }
 
-func newTimingRound(currentTimingUnit gomel.Unit, lastTimingUnits []gomel.Unit) *timingRound {
-	return &timingRound{currentTU: currentTimingUnit, lastTUs: lastTimingUnits}
+func newTimingRound(currentTimingUnit gomel.Unit, lastTimingUnits []gomel.Unit) *TimingRound {
+	return &TimingRound{currentTU: currentTimingUnit, lastTUs: lastTimingUnits}
 }
 
-func (tr *timingRound) OrderedUnits() []gomel.Unit {
+// OrderedUnits returns all units ordered in this timing round.
+func (tr *TimingRound) OrderedUnits() []gomel.Unit {
 	layers := getAntichainLayers(tr.currentTU, tr.lastTUs)
 	sortedUnits := mergeLayers(layers)
 	return sortedUnits

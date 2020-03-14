@@ -6,25 +6,37 @@ import (
 
 type superMajorityDecider struct {
 	*unanimousVoter
+	decision      vote
+	decisionLevel int
 }
 
-func newSuperMajorityDecider(dag gomel.Dag, rs gomel.RandomSource) *superMajorityDecider {
-	vote := newUnanimousVoter(dag, rs)
-	return &superMajorityDecider{vote}
+func newSuperMajorityDecider(
+	uc gomel.Unit,
+	dag gomel.Dag,
+	rs gomel.RandomSource,
+	commonVoteDeterministicPrefix int,
+	zeroVoteRoundForCommonVote int,
+) *superMajorityDecider {
+
+	voter := newUnanimousVoter(uc, dag, rs, commonVoteDeterministicPrefix, zeroVoteRoundForCommonVote)
+	return &superMajorityDecider{unanimousVoter: voter, decision: undecided, decisionLevel: -1}
 }
 
-// Decides if uc is popular (i.e. it can be used as a timing unit).
+// DecideUnitIsPopular decides if smd.uc is popular (i.e. it can be used as a timing unit).
 // Returns vote, level on which the decision was made and current dag level.
-func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel int) (decision vote, decisionLevel int) {
-	maxDecisionLevel := smd.getMaxDecideLevel(uc, dagMaxLevel)
+func (smd *superMajorityDecider) DecideUnitIsPopular(dagMaxLevel int) (decision vote, decisionLevel int) {
+	if smd.decision != undecided {
+		return smd.decision, decisionLevel
+	}
+	maxDecisionLevel := smd.getMaxDecideLevel(dagMaxLevel)
 
-	for level := uc.Level() + firstVotingRound + 1; level <= maxDecisionLevel; level++ {
+	for level := smd.uc.Level() + firstVotingRound + 1; level <= maxDecisionLevel; level++ {
 		decision := undecided
 
-		commonVote := smd.lazyCommonVote(uc, level)
+		commonVote := smd.lazyCommonVote(level)
 		smd.dag.UnitsOnLevel(level).Iterate(func(primes []gomel.Unit) bool {
 			for _, v := range primes {
-				vDecision := smd.decide(uc, v)
+				vDecision := smd.decide(v)
 				if vDecision != undecided && vDecision == commonVote() {
 					decision = vDecision
 					return false
@@ -34,6 +46,9 @@ func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel 
 		})
 
 		if decision != undecided {
+			smd.decision = decision
+			smd.decisionLevel = level
+			smd.unanimousVoter.dispose()
 			return decision, level
 		}
 	}
@@ -41,11 +56,11 @@ func (smd *superMajorityDecider) decideUnitIsPopular(uc gomel.Unit, dagMaxLevel 
 	return undecided, -1
 }
 
-func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
-	commonVote := smd.lazyCommonVote(uc, u.Level()-1)
+func (smd *superMajorityDecider) decide(u gomel.Unit) vote {
+	commonVote := smd.lazyCommonVote(u.Level() - 1)
 	var votingResult votingResult
-	result := voteUsingPrimeAncestors(uc, u, smd.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
-		result := smd.vote(uc, uPrA)
+	result := voteUsingPrimeAncestors(smd.uc, u, smd.dag, func(uc, uPrA gomel.Unit) (vote vote, finish bool) {
+		result := smd.VoteUsing(uPrA)
 		if result == undecided {
 			result = commonVote()
 		}
@@ -80,8 +95,8 @@ func (smd *superMajorityDecider) decide(uc, u gomel.Unit) vote {
 
 // getMaxDecideLevel returns a maximal level of a prime unit which can be used for deciding assuming that dag is on level
 // 'dagMaxLevel'.
-func (smd *superMajorityDecider) getMaxDecideLevel(uc gomel.Unit, dagMaxLevel int) int {
-	deterministicLevel := uc.Level() + commonVoteDeterministicPrefix
+func (smd *superMajorityDecider) getMaxDecideLevel(dagMaxLevel int) int {
+	deterministicLevel := smd.uc.Level() + int(smd.commonVoteDeterministicPrefix)
 	if dagMaxLevel-2 < deterministicLevel {
 		if deterministicLevel > dagMaxLevel {
 			return dagMaxLevel

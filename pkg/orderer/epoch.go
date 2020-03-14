@@ -15,7 +15,7 @@ type epoch struct {
 	id       gomel.EpochID
 	adder    gomel.Adder
 	dag      gomel.Dag
-	extender *linear.Extender
+	extender *linear.ExtenderService
 	rs       gomel.RandomSource
 	log      zerolog.Logger
 }
@@ -25,7 +25,7 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 	dg := dag.New(conf, id)
 	adr := adder.New(dg, conf, syncer, alert, log)
 	rs := rsf.NewRandomSource(dg)
-	ext := linear.NewExtender(dg, rs, conf, output, log)
+	ext := linear.NewExtenderService(dg, rs, conf, output, log)
 	dg.AfterInsert(func(_ gomel.Unit) { ext.Notify() })
 	dg.AfterInsert(func(u gomel.Unit) {
 		if u.Creator() != conf.Pid { // don't put our own units on the unit belt, creator already knows about them.
