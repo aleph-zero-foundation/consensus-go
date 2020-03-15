@@ -159,11 +159,7 @@ func (cr *Creator) update(u gomel.Unit) {
 	// the current epoch is finished) switch to a new epoch or close the creator.
 	data := cr.updateShares(u)
 	if data != nil {
-		if cr.epoch == gomel.EpochID(cr.conf.NumberOfEpochs-1) {
-			// TODO: add some heuristic to postpone calling stop, eg. seen units from all processes on highets level.
-		} else {
-			cr.newEpoch(cr.epoch+1, data)
-		}
+		cr.newEpoch(cr.epoch+1, data)
 		return
 	}
 
@@ -196,7 +192,9 @@ func (cr *Creator) updateCandidates(u gomel.Unit) {
 // resetCandidates resets the candidates and all related variables to the initial state
 // (a slice with NProc nils). This is useful when switching to a new epoch.
 func (cr *Creator) resetCandidates() {
-	cr.candidates = make([]gomel.Unit, cr.conf.NProc)
+	for ix := range cr.candidates {
+		cr.candidates[ix] = nil
+	}
 	cr.maxLvl = -1
 	cr.onMaxLvl = 0
 	cr.level = 0

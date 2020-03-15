@@ -1209,9 +1209,8 @@ func testLongTimeUndecidedStrategy() error {
 		initialVotingRound          = 1
 	)
 
-	// TODO
-	// conf := config.NewDefaultConfiguration()
 	conf := config.Empty()
+	conf.NProc = nProcesses
 
 	// NOTE following 4 lines are supposed to enforce a unit of creator 1 being first on crp for level 1
 	unitCreator := helpers.NewEachInSequenceUnitCreator(helpers.NewDefaultCreator(nProcesses))

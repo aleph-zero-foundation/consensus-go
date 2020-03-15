@@ -653,7 +653,7 @@ func (a *alertHandler) ResolveMissingCommitment(e error, pu gomel.Preunit, sourc
 
 // NewFork takes two preunits that prove that a fork happened, produces a forking proof and raises an alert.
 func (a *alertHandler) NewFork(u, v gomel.Preunit) {
-	if u.Creator() != v.Creator() || u.Height() != v.Height() || u.EpochID() != v.EpochID() {
+	if gomel.UnitID(u) != gomel.UnitID(v) {
 		return
 	}
 
