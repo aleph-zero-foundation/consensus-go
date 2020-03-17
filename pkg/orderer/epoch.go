@@ -33,7 +33,7 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 	rs := rsf.NewRandomSource(dg)
 
 	proxy := make(chan []gomel.Unit, 1)
-	ext := linear.NewExtender(dg, rs, conf, proxy, log)
+	ext := linear.NewExtenderService(dg, rs, conf, proxy, log)
 
 	dg.AfterInsert(func(_ gomel.Unit) { ext.Notify() })
 	dg.AfterInsert(func(u gomel.Unit) {

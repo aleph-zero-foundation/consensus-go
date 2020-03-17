@@ -38,7 +38,7 @@ type Creator struct {
 // send function is called on each created unit.
 // rsData provides random source data for the given level, parents and epoch.
 func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), rsData func(int, []gomel.Unit, gomel.EpochID) []byte, log zerolog.Logger) *Creator {
-	return &Creator{
+	cr := &Creator{
 		conf:       conf,
 		ds:         dataSource,
 		send:       send,
@@ -50,13 +50,19 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 		frozen:     make(map[uint16]bool),
 		log:        log,
 	}
+
+	return cr
 }
 
 // Work executes the main loop of the creator. Units appearing on unitBelt are examined and stored to
 // be used as parents of future units. When there are enough new parents, a new unit is produced.
 // lastTiming is a channel on which the last timing unit of each epoch is expected to appear.
 // This method is stopped by closing unitBelt channel.
-func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit) {
+func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
+	om := alerter.AddForkObserver(func(u, _ gomel.Preunit) {
+		cr.freezeParent(u.Creator())
+	})
+	defer om.RemoveObserver()
 	cr.newEpoch(gomel.EpochID(0), core.Data{})
 
 	var parents []gomel.Unit
@@ -226,7 +232,6 @@ func (cr *Creator) updateShares(u gomel.Unit) core.Data {
 
 // freezeParent tells the creator to stop updating parent candidates for the given pid
 // and use the corresponding parent of our last created unit instead. Returns that parent.
-// TODO: this should be called when a fork is discovered and we need to produce commitment.
 func (cr *Creator) freezeParent(pid uint16) gomel.Unit {
 	cr.mx.Lock()
 	defer cr.mx.Unlock()

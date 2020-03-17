@@ -2,6 +2,7 @@ package gomel
 
 import (
 	"gitlab.com/alephledger/core-go/pkg/network"
+	"gitlab.com/alephledger/core-go/pkg/utils"
 )
 
 // Alerter is responsible for raising alerts about forks and handling communication about commitments in case of fork.
@@ -18,6 +19,8 @@ type Alerter interface {
 	ResolveMissingCommitment(error, Preunit, uint16) error
 	//IsForker checks whether the alerter knows that the given pid is a forker.
 	IsForker(uint16) bool
+	// AddForkObserver allows one to receive notifications in case a fork is discovered.
+	AddForkObserver(func(Preunit, Preunit)) utils.ObserverManager
 	// Lock the state for the given process ID.
 	Lock(uint16)
 	// Unlock the state for the given process ID.
@@ -30,18 +33,28 @@ type Alerter interface {
 
 // NopAlerter is an alerter that does nothing.
 func NopAlerter() Alerter {
-	return &nopAl{}
+	return nopAl{}
 }
 
 type nopAl struct{}
+type nopObserverManager struct{}
 
-func (*nopAl) Start()                                                      {}
-func (*nopAl) Stop()                                                       {}
-func (*nopAl) NewFork(Preunit, Preunit)                                    {}
-func (*nopAl) HandleIncoming(network.Connection)                           {}
-func (*nopAl) Disambiguate([]Unit, Preunit) (Unit, error)                  { return nil, nil }
-func (*nopAl) RequestCommitment(Preunit, uint16) error                     { return nil }
-func (*nopAl) ResolveMissingCommitment(e error, _ Preunit, _ uint16) error { return e }
-func (*nopAl) IsForker(uint16) bool                                        { return false }
-func (*nopAl) Lock(uint16)                                                 {}
-func (*nopAl) Unlock(uint16)                                               {}
+func newNopObserverManager() utils.ObserverManager {
+	return nopObserverManager{}
+}
+
+func (nopObserverManager) RemoveObserver() {}
+
+func (nopAl) Start()                                                      {}
+func (nopAl) Stop()                                                       {}
+func (nopAl) NewFork(Preunit, Preunit)                                    {}
+func (nopAl) HandleIncoming(network.Connection)                           {}
+func (nopAl) Disambiguate([]Unit, Preunit) (Unit, error)                  { return nil, nil }
+func (nopAl) RequestCommitment(Preunit, uint16) error                     { return nil }
+func (nopAl) ResolveMissingCommitment(e error, _ Preunit, _ uint16) error { return e }
+func (nopAl) IsForker(uint16) bool                                        { return false }
+func (nopAl) AddForkObserver(func(Preunit, Preunit)) utils.ObserverManager {
+	return newNopObserverManager()
+}
+func (nopAl) Lock(uint16)   {}
+func (nopAl) Unlock(uint16) {}

@@ -64,7 +64,7 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	ord.wg.Add(1)
 	go func() {
 		defer ord.wg.Done()
-		ord.creator.Work(ord.unitBelt, ord.lastTiming)
+		ord.creator.Work(ord.unitBelt, ord.lastTiming, alerter)
 	}()
 
 	ord.wg.Add(1)
