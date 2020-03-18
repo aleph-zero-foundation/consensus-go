@@ -21,8 +21,7 @@ type epoch struct {
 	extender *linear.ExtenderService
 	rs       gomel.RandomSource
 	proxy    chan []gomel.Unit
-	finished bool
-	mx       sync.RWMutex
+	finished chan bool
 	wait     sync.WaitGroup
 	log      zerolog.Logger
 }
@@ -49,6 +48,7 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 		dag:      dg,
 		extender: ext,
 		rs:       rs,
+		finished: make(chan bool),
 		proxy:    proxy,
 		log:      log,
 	}
@@ -85,13 +85,14 @@ func (ep *epoch) allUnits() []gomel.Unit {
 }
 
 func (ep *epoch) IsFinished() bool {
-	ep.mx.RLock()
-	defer ep.mx.RUnlock()
-	return ep.finished
+	select {
+	case <-ep.finished:
+		return true
+	default:
+		return false
+	}
 }
 
 func (ep *epoch) finish() {
-	ep.mx.Lock()
-	defer ep.mx.Unlock()
-	ep.finished = true
+	close(ep.finished)
 }

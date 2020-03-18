@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/unit"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
@@ -31,6 +32,7 @@ type Creator struct {
 	shares     *shareDB
 	frozen     map[uint16]bool
 	mx         sync.Mutex
+	finished   bool
 	log        zerolog.Logger
 }
 
@@ -38,7 +40,7 @@ type Creator struct {
 // send function is called on each created unit.
 // rsData provides random source data for the given level, parents and epoch.
 func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), rsData func(int, []gomel.Unit, gomel.EpochID) []byte, log zerolog.Logger) *Creator {
-	cr := &Creator{
+	return &Creator{
 		conf:       conf,
 		ds:         dataSource,
 		send:       send,
@@ -50,8 +52,6 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 		frozen:     make(map[uint16]bool),
 		log:        log,
 	}
-
-	return cr
 }
 
 // Work executes the main loop of the creator. Units appearing on unitBelt are examined and stored to
@@ -59,6 +59,9 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 // lastTiming is a channel on which the last timing unit of each epoch is expected to appear.
 // This method is stopped by closing unitBelt channel.
 func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
+	defer func() {
+		cr.log.Info().Msg(logging.CreatorFinished)
+	}()
 	om := alerter.AddForkObserver(func(u, _ gomel.Preunit) {
 		cr.freezeParent(u.Creator())
 	})
@@ -69,6 +72,9 @@ func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Al
 	var level int
 
 	for u := range unitBelt {
+		if cr.finished {
+			return
+		}
 		cr.mx.Lock()
 		cr.update(u)
 		if cr.ready() {
@@ -154,7 +160,11 @@ func (cr *Creator) update(u gomel.Unit) {
 	// the first unit from a new epoch is always a dealing unit.
 	if u.EpochID() > cr.epoch {
 		if !EpochProof(u, cr.conf.WTKey) {
-			panic("creator received unit from new epoch without a correct proof")
+			cr.log.Warn().
+				Uint16(logging.Creator, u.Creator()).
+				Int(logging.Height, u.Height()).
+				Msg(logging.InvalidEpochProofFromFuture)
+			return
 		}
 		cr.newEpoch(u.EpochID(), u.Data())
 		return
@@ -162,7 +172,7 @@ func (cr *Creator) update(u gomel.Unit) {
 
 	// If this is a finishing unit try to extract threshold signature share from it.
 	// If there are enough shares to produce the signature (and therefore a proof that
-	// the current epoch is finished) switch to a new epoch or close the creator.
+	// the current epoch is finished) switch to a new epoch.
 	data := cr.updateShares(u)
 	if data != nil {
 		cr.newEpoch(cr.epoch+1, data)
@@ -277,6 +287,10 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epochDone = false
 	cr.resetCandidates()
 	cr.shares.reset()
+	if epoch >= gomel.EpochID(cr.conf.NumberOfEpochs) {
+		cr.finished = true
+		return
+	}
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 

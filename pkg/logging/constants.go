@@ -3,64 +3,68 @@ package logging
 // Shortcuts for event types.
 // Any event that happens multiple times should have a single character representation.
 const (
-	ServiceStarted      = "A"
-	ServiceStopped      = "B"
-	GotWTK              = "C"
-	UnitCreated         = "D"
-	NewEpoch            = "E"
-	EpochEnd            = "F"
-	NewTimingUnit       = "G"
-	OwnUnitOrdered      = "H"
-	LinearOrderExtended = "I"
-	UnitAdded           = "J"
-	AddUnits            = "K"
-	AddingStarted       = "L"
-	ForkDetected        = "M"
-	UnitBroadcasted     = "N"
-	SyncStarted         = "O"
-	SyncCompleted       = "P"
-	GetInfo             = "Q"
-	SendInfo            = "R"
-	GetUnits            = "S"
-	SendUnits           = "T"
-	SuccesfulAdd        = "U"
-	DuplicatedUnits     = "V"
-	DuplicatedPreunits  = "W"
-	UnknownParents      = "X"
-	MissingRandomBytes  = "Y"
-	UnitOrdered         = "Z"
-	InvalidControlHash  = "AA"
+	ServiceStarted              = "A"
+	ServiceStopped              = "B"
+	GotWTK                      = "C"
+	UnitCreated                 = "D"
+	NewEpoch                    = "E"
+	EpochEnd                    = "F"
+	NewTimingUnit               = "G"
+	OwnUnitOrdered              = "H"
+	LinearOrderExtended         = "I"
+	UnitAdded                   = "J"
+	AddUnits                    = "K"
+	AddingStarted               = "L"
+	ForkDetected                = "M"
+	UnitBroadcasted             = "N"
+	SyncStarted                 = "O"
+	SyncCompleted               = "P"
+	GetInfo                     = "Q"
+	SendInfo                    = "R"
+	GetUnits                    = "S"
+	SendUnits                   = "T"
+	SuccesfulAdd                = "U"
+	DuplicatedUnits             = "V"
+	DuplicatedPreunits          = "W"
+	UnknownParents              = "X"
+	MissingRandomBytes          = "Y"
+	UnitOrdered                 = "Z"
+	InvalidControlHash          = "AA"
+	InvalidEpochProofFromFuture = "AB"
+	CreatorFinished             = "AC"
 )
 
 // eventTypeDict maps short event names to human readable form.
 var eventTypeDict = map[string]string{
-	ServiceStarted:      "service started",
-	ServiceStopped:      "service stopped",
-	GotWTK:              "received weak threshold key from the setup phase",
-	UnitCreated:         "new unit created",
-	NewEpoch:            "new epoch started",
-	EpochEnd:            "epoch finished",
-	NewTimingUnit:       "new timing unit",
-	OwnUnitOrdered:      "unit created by this process has been ordered",
-	LinearOrderExtended: "linear order extended",
-	UnitAdded:           "unit added to the dag",
-	AddUnits:            "adding units started",
-	AddingStarted:       "adding a ready waiting preunit started",
-	ForkDetected:        "fork detected in adder",
-	UnitBroadcasted:     "sent a unit through multicast",
-	SyncStarted:         "new sync started",
-	SyncCompleted:       "sync completed",
-	GetInfo:             "receiving dag info started",
-	SendInfo:            "sending dag info started",
-	GetUnits:            "receiving preunits started",
-	SendUnits:           "sending units started",
-	SuccesfulAdd:        "added ready waiting preunits",
-	DuplicatedUnits:     "trying to add units already present in dag",
-	DuplicatedPreunits:  "trying to add preunits already present in adder",
-	UnknownParents:      "trying to add a unit with missing parents",
-	MissingRandomBytes:  "missing random bytes",
-	UnitOrdered:         "unit ordered",
-	InvalidControlHash:  "invalid control hash",
+	ServiceStarted:              "service started",
+	ServiceStopped:              "service stopped",
+	GotWTK:                      "received weak threshold key from the setup phase",
+	UnitCreated:                 "new unit created",
+	NewEpoch:                    "new epoch started",
+	EpochEnd:                    "epoch finished",
+	NewTimingUnit:               "new timing unit",
+	OwnUnitOrdered:              "unit created by this process has been ordered",
+	LinearOrderExtended:         "linear order extended",
+	UnitAdded:                   "unit added to the dag",
+	AddUnits:                    "adding units started",
+	AddingStarted:               "adding a ready waiting preunit started",
+	ForkDetected:                "fork detected in adder",
+	UnitBroadcasted:             "sent a unit through multicast",
+	SyncStarted:                 "new sync started",
+	SyncCompleted:               "sync completed",
+	GetInfo:                     "receiving dag info started",
+	SendInfo:                    "sending dag info started",
+	GetUnits:                    "receiving preunits started",
+	SendUnits:                   "sending units started",
+	SuccesfulAdd:                "added ready waiting preunits",
+	DuplicatedUnits:             "trying to add units already present in dag",
+	DuplicatedPreunits:          "trying to add preunits already present in adder",
+	UnknownParents:              "trying to add a unit with missing parents",
+	MissingRandomBytes:          "missing random bytes",
+	UnitOrdered:                 "unit ordered",
+	InvalidControlHash:          "invalid control hash",
+	InvalidEpochProofFromFuture: "invalid epoch's proof in a unit from a future epoch",
+	CreatorFinished:             "creator has finished its work",
 }
 
 // Field names.

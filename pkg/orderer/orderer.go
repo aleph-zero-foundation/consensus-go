@@ -98,7 +98,7 @@ func (ord *orderer) handleTimingRounds() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
-		if level := timingUnit.Level(); level == ord.blockLimit-1 {
+		if timingUnit.Level() == ord.blockLimit-1 {
 			ord.lastTiming <- timingUnit
 		}
 		epoch := timingUnit.EpochID()
