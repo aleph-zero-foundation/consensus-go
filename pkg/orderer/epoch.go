@@ -7,6 +7,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/adder"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
+	"gitlab.com/alephledger/consensus-go/pkg/creator"
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
@@ -57,7 +58,7 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 		defer epoch.wait.Done()
 		for round := range proxy {
 			timingUnit := round[len(round)-1]
-			if timingUnit.Level() >= conf.EpochLength {
+			if timingUnit.Level() >= conf.EpochLength && creator.EpochProof(timingUnit, conf.WTKey) {
 				epoch.finish()
 			}
 			output <- round
