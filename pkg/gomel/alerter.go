@@ -2,7 +2,6 @@ package gomel
 
 import (
 	"gitlab.com/alephledger/core-go/pkg/network"
-	"gitlab.com/alephledger/core-go/pkg/utils"
 )
 
 // Alerter is responsible for raising alerts about forks and handling communication about commitments in case of fork.
@@ -20,7 +19,7 @@ type Alerter interface {
 	//IsForker checks whether the alerter knows that the given pid is a forker.
 	IsForker(uint16) bool
 	// AddForkObserver allows one to receive notifications in case a fork is discovered.
-	AddForkObserver(func(Preunit, Preunit)) utils.ObserverManager
+	AddForkObserver(func(Preunit, Preunit)) ObserverManager
 	// Lock the state for the given process ID.
 	Lock(uint16)
 	// Unlock the state for the given process ID.
@@ -39,7 +38,7 @@ func NopAlerter() Alerter {
 type nopAl struct{}
 type nopObserverManager struct{}
 
-func newNopObserverManager() utils.ObserverManager {
+func newNopObserverManager() ObserverManager {
 	return nopObserverManager{}
 }
 
@@ -53,7 +52,7 @@ func (nopAl) Disambiguate([]Unit, Preunit) (Unit, error)                  { retu
 func (nopAl) RequestCommitment(Preunit, uint16) error                     { return nil }
 func (nopAl) ResolveMissingCommitment(e error, _ Preunit, _ uint16) error { return e }
 func (nopAl) IsForker(uint16) bool                                        { return false }
-func (nopAl) AddForkObserver(func(Preunit, Preunit)) utils.ObserverManager {
+func (nopAl) AddForkObserver(func(Preunit, Preunit)) ObserverManager {
 	return newNopObserverManager()
 }
 func (nopAl) Lock(uint16)   {}
