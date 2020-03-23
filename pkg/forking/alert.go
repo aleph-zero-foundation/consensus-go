@@ -22,6 +22,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	"gitlab.com/alephledger/core-go/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/utils"
 )
 
 const (
@@ -55,7 +56,7 @@ type alertHandler struct {
 	timeout     time.Duration
 	commitments *commitBase
 	locks       []sync.Mutex
-	observable  gomel.Observable
+	observable  utils.Observable
 	log         zerolog.Logger
 }
 
@@ -71,7 +72,7 @@ func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 		timeout:     conf.Timeout,
 		commitments: newCommitBase(),
 		locks:       make([]sync.Mutex, conf.NProc),
-		observable:  gomel.NewThreadSafeObservable(),
+		observable:  utils.NewThreadSafeObservable(),
 		log:         log,
 	}
 	config.AddCheck(conf, al.checkCommitment)
