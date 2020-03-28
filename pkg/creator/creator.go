@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/unit"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
@@ -31,6 +32,7 @@ type Creator struct {
 	shares     *shareDB
 	frozen     map[uint16]bool
 	mx         sync.Mutex
+	finished   bool
 	log        zerolog.Logger
 }
 
@@ -56,13 +58,23 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 // be used as parents of future units. When there are enough new parents, a new unit is produced.
 // lastTiming is a channel on which the last timing unit of each epoch is expected to appear.
 // This method is stopped by closing unitBelt channel.
-func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit) {
+func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
+	defer func() {
+		cr.log.Info().Msg(logging.CreatorFinished)
+	}()
+	om := alerter.AddForkObserver(func(u, _ gomel.Preunit) {
+		cr.freezeParent(u.Creator())
+	})
+	defer om.RemoveObserver()
 	cr.newEpoch(gomel.EpochID(0), core.Data{})
 
 	var parents []gomel.Unit
 	var level int
 
 	for u := range unitBelt {
+		if cr.finished {
+			return
+		}
 		cr.mx.Lock()
 		cr.update(u)
 		if cr.ready() {
@@ -148,7 +160,11 @@ func (cr *Creator) update(u gomel.Unit) {
 	// the first unit from a new epoch is always a dealing unit.
 	if u.EpochID() > cr.epoch {
 		if !EpochProof(u, cr.conf.WTKey) {
-			panic("creator received unit from new epoch without a correct proof")
+			cr.log.Warn().
+				Uint16(logging.Creator, u.Creator()).
+				Int(logging.Height, u.Height()).
+				Msg(logging.InvalidEpochProofFromFuture)
+			return
 		}
 		cr.newEpoch(u.EpochID(), u.Data())
 		return
@@ -156,14 +172,10 @@ func (cr *Creator) update(u gomel.Unit) {
 
 	// If this is a finishing unit try to extract threshold signature share from it.
 	// If there are enough shares to produce the signature (and therefore a proof that
-	// the current epoch is finished) switch to a new epoch or close the creator.
+	// the current epoch is finished) switch to a new epoch.
 	data := cr.updateShares(u)
 	if data != nil {
-		if cr.epoch == gomel.EpochID(cr.conf.NumberOfEpochs-1) {
-			// TODO: add some heuristic to postpone calling stop, eg. seen units from all processes on highets level.
-		} else {
-			cr.newEpoch(cr.epoch+1, data)
-		}
+		cr.newEpoch(cr.epoch+1, data)
 		return
 	}
 
@@ -196,7 +208,9 @@ func (cr *Creator) updateCandidates(u gomel.Unit) {
 // resetCandidates resets the candidates and all related variables to the initial state
 // (a slice with NProc nils). This is useful when switching to a new epoch.
 func (cr *Creator) resetCandidates() {
-	cr.candidates = make([]gomel.Unit, cr.conf.NProc)
+	for ix := range cr.candidates {
+		cr.candidates[ix] = nil
+	}
 	cr.maxLvl = -1
 	cr.onMaxLvl = 0
 	cr.level = 0
@@ -228,7 +242,6 @@ func (cr *Creator) updateShares(u gomel.Unit) core.Data {
 
 // freezeParent tells the creator to stop updating parent candidates for the given pid
 // and use the corresponding parent of our last created unit instead. Returns that parent.
-// TODO: this should be called when a fork is discovered and we need to produce commitment.
 func (cr *Creator) freezeParent(pid uint16) gomel.Unit {
 	cr.mx.Lock()
 	defer cr.mx.Unlock()
@@ -274,6 +287,10 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epochDone = false
 	cr.resetCandidates()
 	cr.shares.reset()
+	if epoch >= gomel.EpochID(cr.conf.NumberOfEpochs) {
+		cr.finished = true
+		return
+	}
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 

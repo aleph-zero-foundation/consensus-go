@@ -22,6 +22,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	"gitlab.com/alephledger/core-go/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/utils"
 )
 
 const (
@@ -55,6 +56,7 @@ type alertHandler struct {
 	timeout     time.Duration
 	commitments *commitBase
 	locks       []sync.Mutex
+	observable  utils.Observable
 	log         zerolog.Logger
 }
 
@@ -70,6 +72,7 @@ func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 		timeout:     conf.Timeout,
 		commitments: newCommitBase(),
 		locks:       make([]sync.Mutex, conf.NProc),
+		observable:  utils.NewThreadSafeObservable(),
 		log:         log,
 	}
 	config.AddCheck(conf, al.checkCommitment)
@@ -653,7 +656,7 @@ func (a *alertHandler) ResolveMissingCommitment(e error, pu gomel.Preunit, sourc
 
 // NewFork takes two preunits that prove that a fork happened, produces a forking proof and raises an alert.
 func (a *alertHandler) NewFork(u, v gomel.Preunit) {
-	if u.Creator() != v.Creator() || u.Height() != v.Height() || u.EpochID() != v.EpochID() {
+	if gomel.UnitID(u) != gomel.UnitID(v) {
 		return
 	}
 
@@ -673,4 +676,22 @@ func (a *alertHandler) NewFork(u, v gomel.Preunit) {
 
 	proof := newForkingProof(u, v, max)
 	a.raiseAlert(proof)
+	a.notifyObservers(u, v)
+}
+
+type forkData struct {
+	first, second gomel.Preunit
+}
+
+func (a *alertHandler) AddForkObserver(observer func(gomel.Preunit, gomel.Preunit)) utils.ObserverManager {
+	return a.observable.AddObserver(
+		func(data interface{}) {
+			fork := data.(forkData)
+			observer(fork.first, fork.second)
+		},
+	)
+}
+
+func (a *alertHandler) notifyObservers(u, v gomel.Preunit) {
+	a.observable.Notify(forkData{first: u, second: v})
 }

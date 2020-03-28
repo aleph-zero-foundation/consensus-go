@@ -64,13 +64,13 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	ord.wg.Add(1)
 	go func() {
 		defer ord.wg.Done()
-		ord.creator.Work(ord.unitBelt, ord.lastTiming)
+		ord.creator.Work(ord.unitBelt, ord.lastTiming, alerter)
 	}()
 
 	ord.wg.Add(1)
 	go func() {
 		defer ord.wg.Done()
-		ord.preblockMaker()
+		ord.handleTimingRounds()
 	}()
 
 	ord.log.Info().Msg(logging.ServiceStarted)
@@ -80,20 +80,21 @@ func (ord *orderer) Stop() {
 	ord.alerter.Stop()
 	ord.syncer.Stop()
 	if ord.previous != nil {
-		ord.previous.close()
+		ord.previous.Close()
 	}
-	ord.current.close()
+	ord.current.Close()
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
 	ord.log.Info().Msg(logging.ServiceStopped)
 }
 
-// preblockMaker waits for ordered round of units produced by Extenders and produces Preblocks based on them.
-// Since Extenders in multiple epochs can supply ordered rounds simultaneously, preblockMaker needs to ensure that
+// handleTimingRounds waits for ordered round of units produced by Extenders and produces Preblocks based on them.
+// Since Extenders in multiple epochs can supply ordered rounds simultaneously, handleTimingRounds needs to ensure that
 // Preblocks are produced in ascending order with respect to epochs. For the last ordered round
 // of the epoch, the timing unit defining it is sent to the creator (to produce signature shares.)
-func (ord *orderer) preblockMaker() {
+func (ord *orderer) handleTimingRounds() {
+	defer close(ord.lastTiming)
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
@@ -106,17 +107,15 @@ func (ord *orderer) preblockMaker() {
 		}
 		current = epoch
 	}
-	close(ord.lastTiming)
 }
 
 // AddPreunits sends preunits received from other committee members to their corresponding epochs.
 // It assumes preunits are ordered by ascending epochID and, within each epoch, they are topologically sorted.
 func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 	var errors []error
-	errorsSize := len(preunits)
 	getErrors := func() []error {
 		if errors == nil {
-			errors = make([]error, errorsSize)
+			errors = make([]error, len(preunits))
 		}
 		return errors
 	}
@@ -127,15 +126,7 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) []erro
 		for end < len(preunits) && preunits[end].EpochID() == epoch {
 			end++
 		}
-		ep, newer := ord.getEpoch(epoch)
-		if newer {
-			if creator.EpochProof(preunits[0], ord.conf.WTKey) {
-				ep = ord.newEpoch(epoch)
-			} else {
-				// TODO: don't do this if preunits[0] is too high
-				ord.syncer.RequestGossip(source)
-			}
-		}
+		ep := ord.retrieveEpoch(preunits[0], source)
 		if ep != nil {
 			errs := ep.adder.AddPreunits(source, preunits[:end]...)
 			copy(getErrors()[processed:], errs)
@@ -151,17 +142,14 @@ func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) []erro
 // and can contain multiple units with the same id (forks). Because of that the length
 // of the result can be different than the number of arguments.
 func (ord *orderer) UnitsByID(ids ...uint64) []gomel.Unit {
-	var result []gomel.Unit
+	result := make([]gomel.Unit, 0, len(ids))
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
 	for _, id := range ids {
 		_, _, epoch := gomel.DecodeID(id)
-		if epoch == ord.current.id {
-			result = append(result, ord.current.dag.GetByID(id)...)
-			continue
-		}
-		if epoch == ord.previous.id {
-			result = append(result, ord.previous.dag.GetByID(id)...)
+		ep, _ := ord.getEpoch(epoch)
+		if ep != nil {
+			result = append(result, ep.dag.GetByID(id)...)
 		}
 	}
 	return result
@@ -173,17 +161,23 @@ func (ord *orderer) UnitsByID(ids ...uint64) []gomel.Unit {
 func (ord *orderer) UnitsByHash(hashes ...*gomel.Hash) []gomel.Unit {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
-	result := ord.current.dag.GetUnits(hashes)
-	for i := range result {
-		if result[i] == nil {
-			result[i] = ord.previous.dag.GetUnit(hashes[i])
+	var result []gomel.Unit
+	if ord.current != nil {
+		result = ord.current.dag.GetUnits(hashes)
+	} else {
+		result = make([]gomel.Unit, len(hashes))
+	}
+	if ord.previous != nil {
+		for i := range result {
+			if result[i] == nil {
+				result[i] = ord.previous.dag.GetUnit(hashes[i])
+			}
 		}
 	}
 	return result
 }
 
 // MaxUnits returns maximal units per process from the chosen epoch.
-// TODO this is used only by Alerts, maybe a different signature would be more convenient?
 func (ord *orderer) MaxUnits(epoch gomel.EpochID) gomel.SlottedUnits {
 	ep, _ := ord.getEpoch(epoch)
 	if ep != nil {
@@ -193,15 +187,14 @@ func (ord *orderer) MaxUnits(epoch gomel.EpochID) gomel.SlottedUnits {
 }
 
 // GetInfo returns DagInfo of the dag from the most recent epoch.
-// TODO: don't always include previous info. Come up with heuristics for that.
 func (ord *orderer) GetInfo() [2]*gomel.DagInfo {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
 	var result [2]*gomel.DagInfo
-	if ord.previous != nil {
+	if ord.previous != nil && !ord.previous.IsFinished() {
 		result[0] = gomel.MaxView(ord.previous.dag)
 	}
-	if ord.current != nil {
+	if ord.current != nil && !ord.current.IsFinished() {
 		result[1] = gomel.MaxView(ord.current.dag)
 	}
 	return result
@@ -234,6 +227,19 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 	return result
 }
 
+func (ord *orderer) retrieveEpoch(pu gomel.Preunit, source uint16) *epoch {
+	epochID := pu.EpochID()
+	epoch, fromFuture := ord.getEpoch(epochID)
+	if fromFuture {
+		if creator.EpochProof(pu, ord.conf.WTKey) {
+			epoch = ord.newEpoch(epochID)
+		} else {
+			ord.syncer.RequestGossip(source)
+		}
+	}
+	return epoch
+}
+
 // getEpoch returns epoch with the given EpochID. If no such epoch is present,
 // the second returned value indicates if the requested epoch is newer than current.
 func (ord *orderer) getEpoch(epoch gomel.EpochID) (*epoch, bool) {
@@ -257,7 +263,7 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 	defer ord.mx.Unlock()
 	if ord.current == nil || epoch > ord.current.id {
 		if ord.previous != nil {
-			ord.previous.close()
+			ord.previous.Close()
 		}
 		ord.previous = ord.current
 		ord.current = newEpoch(epoch, ord.conf, ord.syncer, ord.rsf, ord.alerter, ord.unitBelt, ord.orderedUnits, ord.log)
