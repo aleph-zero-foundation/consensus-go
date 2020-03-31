@@ -22,9 +22,12 @@ func (s *server) multicast(unit gomel.Unit) {
 	s.multicastInProgress.Lock()
 	signedBy := s.getCommitteeSignatures(data, id)
 	s.multicastInProgress.Unlock()
+	var wg sync.WaitGroup
 	for pid, isSigned := range signedBy {
 		if isSigned {
+			wg.Add(1)
 			go func(pid uint16) {
+				defer wg.Done()
 				err := s.sendProof(pid, id)
 				if err != nil {
 					s.log.Error().Str("where", "rmcServer.SendProof").Msg(err.Error())
@@ -32,6 +35,7 @@ func (s *server) multicast(unit gomel.Unit) {
 			}(uint16(pid))
 		}
 	}
+	wg.Wait()
 }
 
 func (s *server) sendProof(receipient uint16, id uint64) error {
@@ -68,7 +72,8 @@ func (s *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 		}
 		gathering.Add(1)
 		go func(pid uint16) {
-			signedBy[pid] = s.getMemberSignature(data, id, pid, gathering)
+			defer gathering.Done()
+			signedBy[pid] = s.getMemberSignature(data, id, pid)
 		}(pid)
 	}
 	gathering.Wait()
@@ -79,8 +84,7 @@ func (s *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 // It retries until it gets a signature, or there are at least quorum signatures for this rmc-id
 // gathered from different recipients.
 // It returns whether it got a signature or not.
-func (s *server) getMemberSignature(data []byte, id uint64, receipient uint16, gathering *sync.WaitGroup) bool {
-	defer gathering.Done()
+func (s *server) getMemberSignature(data []byte, id uint64, receipient uint16) bool {
 	log := s.log.With().Uint16(logging.PID, receipient).Uint64(logging.OSID, id).Logger()
 	for s.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&s.quit) == 0 {
 		conn, err := s.netserv.Dial(receipient, s.timeout)

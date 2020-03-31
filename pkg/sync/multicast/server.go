@@ -6,7 +6,7 @@ package multicast
 
 import (
 	"math/rand"
-	"sync/atomic"
+	gsync "sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -37,8 +37,9 @@ type server struct {
 	requests []chan request
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
-	quit     int64
+	quit     bool
 	timeout  time.Duration
+	mx       gsync.RWMutex
 	log      zerolog.Logger
 }
 
@@ -73,7 +74,9 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-	atomic.StoreInt64(&s.quit, 1)
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.quit = true
 	for i := uint16(0); i < s.nProc; i++ {
 		close(s.requests[i])
 	}
@@ -81,6 +84,11 @@ func (s *server) StopOut() {
 }
 
 func (s *server) send(unit gomel.Unit) {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+	if s.quit {
+		return
+	}
 	if unit.Creator() != s.pid {
 		panic("Attempting to multicast unit that we didn't create")
 	}
@@ -93,8 +101,6 @@ func (s *server) send(unit gomel.Unit) {
 		if i == int(s.pid) {
 			continue
 		}
-		if atomic.LoadInt64(&s.quit) == 0 {
-			s.requests[i] <- request{encUnit, unit.Height()}
-		}
+		s.requests[i] <- request{encUnit, unit.Height()}
 	}
 }

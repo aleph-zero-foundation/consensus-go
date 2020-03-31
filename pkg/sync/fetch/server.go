@@ -5,7 +5,7 @@
 package fetch
 
 import (
-	"sync/atomic"
+	gsync "sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -24,7 +24,8 @@ type server struct {
 	syncIds  []uint32
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
-	quit     int64
+	mx       gsync.RWMutex
+	quit     bool
 	timeout  time.Duration
 	log      zerolog.Logger
 }
@@ -57,13 +58,18 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-	atomic.StoreInt64(&s.quit, 1)
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.quit = true
 	close(s.requests)
 	s.outPool.Stop()
 }
 
 func (s *server) trigger(pid uint16, ids []uint64) {
-	if atomic.LoadInt64(&s.quit) == 0 {
-		s.requests <- Request{pid, ids}
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+	if s.quit {
+		return
 	}
+	s.requests <- Request{pid, ids}
 }

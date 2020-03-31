@@ -33,6 +33,8 @@ type server struct {
 	timeout             time.Duration
 	log                 zerolog.Logger
 	quit                int64
+	mx                  sync.RWMutex
+	wg                  sync.WaitGroup
 }
 
 // NewServer returns a server that runs rmc protocol
@@ -65,12 +67,24 @@ func (s *server) StopIn() {
 
 // StopOut stops outgoing connections
 func (s *server) StopOut() {
+	s.mx.Lock()
+	defer s.mx.Unlock()
 	atomic.StoreInt64(&s.quit, 1)
+	s.wg.Wait()
 }
 
 func (s *server) send(unit gomel.Unit) {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+	if s.quit != 0 {
+		return
+	}
 	if unit.Creator() == s.pid {
-		go s.multicast(unit)
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			s.multicast(unit)
+		}()
 	}
 }
 
