@@ -45,7 +45,7 @@ func (units *unitBag) getMany(hashes []*gomel.Hash) []gomel.Unit {
 func (units *unitBag) getAll() []gomel.Unit {
 	units.RLock()
 	defer units.RUnlock()
-	result := make([]gomel.Unit, len(units.contents))
+	result := make([]gomel.Unit, 0, len(units.contents))
 	for _, u := range units.contents {
 		result = append(result, u)
 	}
