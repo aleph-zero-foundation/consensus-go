@@ -86,11 +86,10 @@ def run_protocol(conn, pid, delay='0'):
     with conn.cd(repo_path):
         conn.run('rm -f out')
         cmd = f'go run cmd/gomel/main.go \
-                    --pk {pid}.pk\
+                    --priv {pid}.pk\
                     --keys_addrs committee.ka\
-                    --config config.json \
-                    --dag {pid}.dag \
-                    --delay {int(float(delay))}'
+                    --delay {int(float(delay))}\
+                    --setup {delay=="0"}'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
@@ -101,11 +100,10 @@ def run_protocol_profiler(conn, pid, delay='0'):
     with conn.cd(repo_path):
         conn.run('rm -f out')
         cmd = f'go run cmd/gomel/main.go \
-                    --pk {pid}.pk\
+                    --priv {pid}.pk\
                     --keys_addrs committee.ka\
-                    --config config.json \
-                    --dag {pid}.dag \
-                    --delay {int(float(delay))}'
+                    --delay {int(float(delay))}\
+                    --setup {delay=="0"}'
         if int(pid) % 16 == 0 :
             cmd += ' --cpuprof cpuprof --memprof memprof --mf 5 --bf 0'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')

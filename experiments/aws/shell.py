@@ -560,7 +560,6 @@ def get_logs_from_region(region, ip2pid, logs_per_region=1, with_out=False, with
         if with_prof and int(pid) % 16 == 0:
             run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
 
-
 def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_out=False, with_prof=False):
     '''Retrieves all logs from instances.'''
 
