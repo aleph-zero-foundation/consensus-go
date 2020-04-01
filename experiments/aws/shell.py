@@ -446,9 +446,9 @@ def run_protocol(n_processes, regions=use_regions(), instance_type='t2.micro', p
     wait('open 22', regions)
 
     color_print('pack the repo')
-    call('rm -f repo.zip'.split())
-    call('zip -rq consensus-repo.zip ../../../core-go ../../cmd ../../pkg -x "*testdata*"', shell=True)
-    call('zip -rq core-repo.zip ../../../core-go ', shell=True)
+    call('rm -f consensus-repo.zip core-repo.zip'.split())
+    call('zip -rq consensus-repo.zip ../../cmd ../../pkg -x "*testdata*"', shell=True)
+    call('zip -rq core-repo.zip ../../../core-go/pkg', shell=True)
     run_task('send-repo', regions, parallel)
 
     color_print('send data: keys, addresses')

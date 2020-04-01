@@ -67,12 +67,12 @@ def send_repo(conn):
     project_path = '/home/ubuntu/go/src/gitlab.com/alephledger'
     conn.put('core-repo.zip', project_path)
     conn.run(f'rm -rf {project_path}/core-go')
-    conn.run(f'unzip -q {project_path}/project.zip -d {project_path}')
+    conn.run(f'unzip -q {project_path}/core-repo.zip -d {project_path}')
 
     repo_path = project_path + '/consensus-go'
     conn.put('consensus-repo.zip', repo_path)
     conn.run(f'rm -rf {repo_path}/pkg {repo_path}/cmd')
-    conn.run(f'unzip -q {repo_path}/repo.zip -d {repo_path}')
+    conn.run(f'unzip -q {repo_path}/consensus-repo.zip -d {repo_path}')
 
 #======================================================================================
 #                                   run experiments
