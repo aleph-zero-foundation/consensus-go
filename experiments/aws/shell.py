@@ -93,7 +93,7 @@ def launch_new_instances_in_region(n_processes=1, region_name=default_region(), 
     key_name = 'aleph'
     init_key_pair(region_name, key_name)
 
-    security_group_name = 'alephGMF2'
+    security_group_name = 'alephMFGR'
     security_group_id = security_group_id_by_region(region_name, security_group_name)
 
     image_id = image_id_in_region(region_name)

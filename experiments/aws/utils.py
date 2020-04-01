@@ -41,10 +41,10 @@ def create_security_group(region_name, security_group_name):
 
     # get the id of vpc in the given region
     vpc_id = vpc_id_in_region(region_name)
-    sg = ec2.create_security_group(GroupName=security_group_name, Description='ssh and gossip', VpcId=vpc_id)
+    sg = ec2.create_security_group(GroupName=security_group_name, Description='full sync', VpcId=vpc_id)
 
     # authorize incomming connections to port 22 for ssh, mainly for debugging
-    # and to ports 9000, 10000, 11000 for syncing the dags
+    # and to ports 9000, 10000, 11000, 12000 for syncing the dags
     sg.authorize_ingress(
         GroupName=security_group_name,
         IpPermissions=[
@@ -71,6 +71,12 @@ def create_security_group(region_name, security_group_name):
                 'IpProtocol': 'tcp',
                 'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
                 'ToPort': 11000,
+            },
+            {
+                'FromPort': 12000,
+                'IpProtocol': 'tcp',
+                'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                'ToPort': 12000,
             }
         ]
     )
@@ -223,27 +229,33 @@ def generate_keys(ip_list):
     n_processes = len(ip_list)
 
     os.chdir('data/')
-    with open('config.json', 'r') as f:
-        n_port = len(json.load(f)['Sync'])+1
-    keys_path = glob('*.keys')
+    keys_path = glob('*.pk')
     pubs = None
     print('removing old keys')
     for kp in keys_path:
         os.remove(kp)
+    sync = ['r', 'f', 'g', 'm']
     # we need to generate a new set of keys
     with open('addresses', 'w') as f:
         for ip in ip_list:
-            f.write('|')
-            for port in range(9,9+n_port):
+            # write beacon addresses
+            for i, port in enumerate(range(9,12)):
                 if port != 9:
                     f.write(' ')
-                f.write(f'{ip}:{port*1000}')
+                f.write(f'{sync[i]}{ip}:{port*1000}')
+            f.write('|')
+            # write consensus addresses
+            for i, port in enumerate(range(9,13)):
+                if port != 9:
+                    f.write(' ')
+                f.write(f'{sync[i]}{ip}:{port*1000}')
             f.write('\n')
 
     cmd = f'go run ../../../cmd/gomel-keys/main.go {n_processes} addresses'
     call(cmd.split())
 
     os.chdir('..')
+
 
 def available_regions():
     ''' Returns a list of all currently available regions.'''
