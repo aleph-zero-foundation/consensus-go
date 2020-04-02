@@ -116,6 +116,11 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 		// RandomBytes asked on too low level
 		return nil
 	}
+	wtk := b.wtk[pid]
+	if wtk == nil {
+		// we haven't received yet its wtk
+		return nil
+	}
 	shares := []*tss.Share{}
 	units := unitsOnLevel(b.dag, level)
 	for _, u := range units {
@@ -127,7 +132,7 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 			shares = append(shares, tss.SumShares(uShares))
 		}
 	}
-	coin, ok := b.wtk[pid].CombineShares(shares)
+	coin, ok := wtk.CombineShares(shares)
 	if !ok {
 		// Not enough shares
 		return nil
