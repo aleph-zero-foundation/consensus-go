@@ -77,6 +77,24 @@ def create_security_group(region_name, security_group_name):
                 'IpProtocol': 'tcp',
                 'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
                 'ToPort': 12000,
+            },
+            {
+                'FromPort': 13000,
+                'IpProtocol': 'tcp',
+                'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                'ToPort': 13000,
+            },
+            {
+                'FromPort': 14000,
+                'IpProtocol': 'tcp',
+                'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                'ToPort': 14000,
+            },
+            {
+                'FromPort': 15000,
+                'IpProtocol': 'tcp',
+                'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                'ToPort': 15000,
             }
         ]
     )
@@ -245,7 +263,7 @@ def generate_keys(ip_list):
                 f.write(f'{sync[i]}{ip}:{port*1000}')
             f.write('|')
             # write consensus addresses
-            for i, port in enumerate(range(9,13)):
+            for i, port in enumerate(range(12,16)):
                 if port != 9:
                     f.write(' ')
                 f.write(f'{sync[i]}{ip}:{port*1000}')

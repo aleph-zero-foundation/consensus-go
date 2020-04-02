@@ -93,7 +93,7 @@ def launch_new_instances_in_region(n_processes=1, region_name=default_region(), 
     key_name = 'aleph'
     init_key_pair(region_name, key_name)
 
-    security_group_name = 'alephMFGR'
+    security_group_name = 'alephB'
     security_group_id = security_group_id_by_region(region_name, security_group_name)
 
     image_id = image_id_in_region(region_name)
@@ -553,8 +553,6 @@ def get_logs_from_region(region, ip2pid, logs_per_region=1, with_out=False, with
             return
         pid = ip2pid[ip]
         run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
-        if pid == '0':
-            run_task_for_ip('get-dag', [ip], parallel=0, pids=[pid])
         if with_out:
             run_task_for_ip('get-out', [ip], parallel=0, pids=[pid])
         if with_prof and int(pid) % 16 == 0:

@@ -103,7 +103,7 @@ def run_protocol_profiler(conn, pid, delay='0'):
                     --priv {pid}.pk\
                     --keys_addrs committee.ka\
                     --delay {int(float(delay))}\
-                    --setup {delay=="0"}'
+                    --setup {"true" if delay=="0" else "false"}'
         if int(pid) % 16 == 0 :
             cmd += ' --cpuprof cpuprof --memprof memprof --mf 5 --bf 0'
         conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
@@ -121,7 +121,7 @@ def stop_world(conn):
 
 @task
 def get_profile(conn, pid):
-    ''' Retrieves aleph.log from the server.'''
+    ''' Retrieves cpuprof and memprof from the server.'''
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
@@ -155,9 +155,8 @@ def get_log(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'cp aleph.log {pid}.log')
-        conn.run(f'zip -q {pid}.log.zip {pid}.log')
-    conn.get(f'{repo_path}/{pid}.log.zip', f'../results/{pid}.log.zip')
+        conn.run(f'zip -q {pid}.logs.zip {pid}.log {pid}.setup.log')
+    conn.get(f'{repo_path}/{pid}.logs.zip', f'../results/{pid}.log.zip')
 
 #======================================================================================
 #                                        misc

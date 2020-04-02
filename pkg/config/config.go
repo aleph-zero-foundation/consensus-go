@@ -109,7 +109,7 @@ func addSyncConf(cnf Config, addresses map[string][]string, setup bool) {
 	cnf.FetchInterval = time.Second
 	cnf.GossipAbove = 50
 
-	cnf.RMCNetType = "pers"
+	cnf.RMCNetType = "tcp"
 	cnf.RMCAddresses = addresses["rmc"]
 
 	cnf.GossipNetType = "pers"
@@ -148,7 +148,7 @@ func addConsensusConf(cnf Config) {
 	cnf.OrderStartLevel = 0
 	cnf.CRPFixedPrefix = 4
 	cnf.EpochLength = 50
-	cnf.NumberOfEpochs = 2
+	cnf.NumberOfEpochs = 10
 	cnf.Checks = consensusChecks
 }
 
