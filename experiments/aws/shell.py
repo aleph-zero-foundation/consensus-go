@@ -593,7 +593,7 @@ def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_out=False, wit
         os.remove(path)
 
     color_print('zip the dir with all the files')
-    with zipfile.ZipFile(result_path+'.zip', 'w') as zf:
+    with zipfile.ZipFile(result_path+'.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
         # write logs
         for path in os.listdir(result_path):
             path = os.path.join(result_path, path)
