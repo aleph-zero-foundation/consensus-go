@@ -32,6 +32,11 @@ const (
 	InvalidControlHash          = "AA"
 	InvalidEpochProofFromFuture = "AB"
 	CreatorFinished             = "AC"
+	InvalidCreator              = "AD"
+	NotReadyToCreateUnit        = "AE"
+	CreatorSwitchedToNewEpoch   = "AF"
+	FreezedParent               = "AG"
+	UnableToRetrieveEpoch       = "AH"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -65,6 +70,11 @@ var eventTypeDict = map[string]string{
 	InvalidControlHash:          "invalid control hash",
 	InvalidEpochProofFromFuture: "invalid epoch's proof in a unit from a future epoch",
 	CreatorFinished:             "creator has finished its work",
+	InvalidCreator:              "invalid creator of a unit",
+	NotReadyToCreateUnit:        "creator is not ready to create a new unit",
+	CreatorSwitchedToNewEpoch:   "creator switched to a new epoch",
+	FreezedParent:               "creator freezed a parent due to some non-compliance",
+	UnableToRetrieveEpoch:       "unable to retrieve an epoch",
 }
 
 // Field names.

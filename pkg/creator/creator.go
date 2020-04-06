@@ -25,10 +25,10 @@ type Creator struct {
 	epoch      gomel.EpochID
 	epochDone  bool
 	candidates []gomel.Unit
-	maxLvl     int // max level of units in candidates
-	onMaxLvl   int // number of candidates on maxLvl
-	level      int // level of unit we could produce with current candidates
-	quorum     int
+	quorum     uint16
+	maxLvl     int    // max level of units in candidates
+	onMaxLvl   uint16 // number of candidates on maxLvl
+	level      int    // level of unit we could produce with current candidates
 	shares     *shareDB
 	frozen     map[uint16]bool
 	mx         sync.Mutex
@@ -47,7 +47,7 @@ func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), 
 		rsData:     rsData,
 		candidates: make([]gomel.Unit, conf.NProc),
 		maxLvl:     -1,
-		quorum:     int(gomel.MinimalQuorum(conf.NProc)),
+		quorum:     gomel.MinimalQuorum(conf.NProc),
 		shares:     newShareDB(conf),
 		frozen:     make(map[uint16]bool),
 		log:        log,
@@ -95,7 +95,11 @@ func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Al
 				}
 				// Step 3: create unit
 				cr.createUnit(parents, level, cr.getData(level, lastTiming))
+			} else {
+				cr.log.Info().Msg(logging.NotReadyToCreateUnit)
 			}
+		} else {
+			cr.log.Info().Msg(logging.NotReadyToCreateUnit)
 		}
 		cr.mx.Unlock()
 	}
@@ -248,6 +252,7 @@ func (cr *Creator) freezeParent(pid uint16) gomel.Unit {
 	u := cr.candidates[cr.conf.Pid].Parents()[pid]
 	cr.candidates[pid] = u
 	cr.frozen[pid] = true
+	cr.log.Info().Uint16(logging.Creator, pid).Msg(logging.FreezedParent)
 	return u
 }
 
@@ -277,6 +282,7 @@ func (cr *Creator) getParentsForLevel(level int) []gomel.Unit {
 func (cr *Creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	rsData := cr.rsData(level, parents, cr.epoch)
 	u := unit.New(cr.conf.Pid, cr.epoch, parents, level, data, rsData, cr.conf.PrivateKey)
+	cr.log.Info().Int(logging.Height, u.Height()).Msg(logging.UnitCreated)
 	cr.send(u)
 	cr.update(u)
 }
@@ -291,6 +297,7 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 		cr.finished = true
 		return
 	}
+	cr.log.Info().Uint32(logging.Epoch, uint32(epoch)).Msg(logging.CreatorSwitchedToNewEpoch)
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 

@@ -24,6 +24,7 @@ type orderer struct {
 	rsf          gomel.RandomSourceFactory
 	alerter      gomel.Alerter
 	toPreblock   gomel.PreblockMaker
+	ds           core.DataSource
 	creator      *creator.Creator
 	current      *epoch
 	previous     *epoch
@@ -37,27 +38,29 @@ type orderer struct {
 
 // New constructs a new orderer instance using provided config, data source, preblock maker, and logger.
 func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
-	ord := &orderer{
+	return &orderer{
 		blockLimit:   conf.OrderStartLevel + conf.EpochLength,
 		conf:         conf,
 		toPreblock:   toPreblock,
+		ds:           ds,
 		unitBelt:     make(chan gomel.Unit, beltSize),
 		lastTiming:   make(chan gomel.Unit, 10),
 		orderedUnits: make(chan []gomel.Unit, 10),
 		log:          log.With().Int(logging.Service, logging.OrderService).Logger(),
 	}
-	send := func(u gomel.Unit) {
-		ord.insert(u)
-		ord.syncer.Multicast(u)
-	}
-	ord.creator = creator.New(conf, ds, send, ord.rsData, log)
-	return ord
 }
 
 func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, alerter gomel.Alerter) {
 	ord.rsf = rsf
 	ord.syncer = syncer
 	ord.alerter = alerter
+
+	send := func(u gomel.Unit) {
+		ord.insert(u)
+		ord.syncer.Multicast(u)
+	}
+	ord.creator = creator.New(ord.conf, ord.ds, send, ord.rsData, ord.log)
+
 	syncer.Start()
 	alerter.Start()
 
@@ -291,7 +294,11 @@ func (ord *orderer) insert(unit gomel.Unit) {
 		if ep != nil {
 			ep.dag.Insert(unit)
 			ord.log.Info().Int(logging.Height, unit.Height()).Msg(logging.UnitAdded)
+		} else {
+			ord.log.Info().Uint32(logging.Epoch, uint32(unit.EpochID())).Msg(logging.UnableToRetrieveEpoch)
 		}
+	} else {
+		ord.log.Warn().Uint16(logging.Creator, unit.Creator()).Msg(logging.InvalidCreator)
 	}
 }
 
