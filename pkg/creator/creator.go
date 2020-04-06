@@ -95,11 +95,7 @@ func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Al
 				}
 				// Step 3: create unit
 				cr.createUnit(parents, level, cr.getData(level, lastTiming))
-			} else {
-				cr.log.Info().Msg(logging.NotReadyToCreateUnit)
 			}
-		} else {
-			cr.log.Info().Msg(logging.NotReadyToCreateUnit)
 		}
 		cr.mx.Unlock()
 	}
