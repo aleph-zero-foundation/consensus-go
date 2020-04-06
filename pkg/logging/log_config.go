@@ -23,9 +23,9 @@ func init() {
 	genesis = time.Now()
 
 	// short names of compulsory fields to save some space
-	zerolog.TimestampFieldName = Time
-	zerolog.LevelFieldName = Level
-	zerolog.MessageFieldName = Event
+	zerolog.TimestampFieldName = TimestampFieldName
+	zerolog.LevelFieldName = LevelFieldName
+	zerolog.MessageFieldName = MessageFieldName
 
 	// time logged as integer starting at 0, with the chosen unit
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix

@@ -146,3 +146,10 @@ var serviceTypeDict = map[int]string{
 
 // Genesis was better with Phil Collins.
 const Genesis = "genesis"
+
+// names for logger
+const (
+	TimestampFieldName = "aa"
+	LevelFieldName     = "ab"
+	MessageFieldName   = "ac"
+)
