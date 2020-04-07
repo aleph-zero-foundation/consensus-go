@@ -286,19 +286,27 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 // insert puts the provided unit directly into the corresponding epoch. If such epoch does not exist, creates it.
 // All correctness checks (epoch proof, adder, dag checks) are skipped. This method is meant for our own units only.
 func (ord *orderer) insert(unit gomel.Unit) {
-	if unit.Creator() == ord.conf.Pid {
-		ep, newer := ord.getEpoch(unit.EpochID())
-		if newer {
-			ep = ord.newEpoch(unit.EpochID())
-		}
-		if ep != nil {
-			ep.dag.Insert(unit)
-			ord.log.Info().Int(logging.Height, unit.Height()).Msg(logging.UnitAdded)
-		} else {
-			ord.log.Info().Uint32(logging.Epoch, uint32(unit.EpochID())).Msg(logging.UnableToRetrieveEpoch)
-		}
-	} else {
+	if unit.Creator() != ord.conf.Pid {
 		ord.log.Warn().Uint16(logging.Creator, unit.Creator()).Msg(logging.InvalidCreator)
+		return
+	}
+	ep, newer := ord.getEpoch(unit.EpochID())
+	if newer {
+		ep = ord.newEpoch(unit.EpochID())
+	}
+	if ep != nil {
+		ep.dag.Insert(unit)
+		ord.log.Info().
+			Uint32(logging.Epoch, uint32(unit.EpochID())).
+			Int(logging.Height, unit.Height()).
+			Int(logging.Level, unit.Level()).
+			Msg(logging.UnitAdded)
+	} else {
+		ord.log.Info().
+			Uint32(logging.Epoch, uint32(unit.EpochID())).
+			Int(logging.Height, unit.Height()).
+			Int(logging.Level, unit.Level()).
+			Msg(logging.UnableToRetrieveEpoch)
 	}
 }
 

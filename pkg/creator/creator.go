@@ -278,7 +278,11 @@ func (cr *Creator) getParentsForLevel(level int) []gomel.Unit {
 func (cr *Creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	rsData := cr.rsData(level, parents, cr.epoch)
 	u := unit.New(cr.conf.Pid, cr.epoch, parents, level, data, rsData, cr.conf.PrivateKey)
-	cr.log.Info().Int(logging.Height, u.Height()).Msg(logging.UnitCreated)
+	cr.log.Info().
+		Uint32(logging.Epoch, uint32(u.EpochID())).
+		Int(logging.Height, u.Height()).
+		Int(logging.Level, level).
+		Msg(logging.UnitCreated)
 	cr.send(u)
 	cr.update(u)
 }
