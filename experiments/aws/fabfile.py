@@ -85,12 +85,12 @@ def run_protocol(conn, pid, delay='0'):
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
         conn.run('rm -f out')
-        cmd = f'go run cmd/gomel/main.go \
-                    --priv {pid}.pk\
+        conn.run(f'PATH="$PATH:/snap/bin" && go build {repo_path}/cmd/gomel')
+        cmd = f'./gomel --priv {pid}.pk\
                     --keys_addrs committee.ka\
                     --delay {int(float(delay))}\
                     --setup {delay=="0"}'
-        conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
+        conn.run(f'dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
 def run_protocol_profiler(conn, pid, delay='0'):
@@ -99,21 +99,20 @@ def run_protocol_profiler(conn, pid, delay='0'):
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
         conn.run('rm -f out')
-        cmd = f'go run cmd/gomel/main.go \
-                    --priv {pid}.pk\
+        conn.run(f'PATH="$PATH:/snap/bin" && go build {repo_path}/cmd/gomel')
+        cmd = f'./gomel --priv {pid}.pk\
                     --keys_addrs committee.ka\
                     --delay {int(float(delay))}\
                     --setup {"true" if delay=="0" else "false"}'
         if int(pid) % 16 == 0 :
             cmd += ' --cpuprof cpuprof --memprof memprof --mf 5 --bf 0'
-        conn.run(f'PATH="$PATH:/snap/bin" && dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
+        conn.run(f'dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
 def stop_world(conn):
     ''' Kills the committee member.'''
 
-    conn.run('killall go')
-    conn.run('killall main')
+    conn.run('pkill --signal ABRT -f gomel')
 
 #======================================================================================
 #                                        get data
