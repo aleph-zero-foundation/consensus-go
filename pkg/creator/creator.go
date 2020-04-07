@@ -167,7 +167,6 @@ func (cr *Creator) update(u gomel.Unit) {
 			return
 		}
 		cr.newEpoch(u.EpochID(), u.Data())
-		return
 	}
 
 	// If this is a finishing unit try to extract threshold signature share from it.
