@@ -219,7 +219,7 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	// 4. Insert
 	ad.dag.Insert(freeUnit)
 
-	log.Info().Msg(logging.UnitAdded)
+	log.Info().Int(logging.Level, freeUnit.Level()).Msg(logging.UnitAdded)
 }
 
 func (ad *adder) handleInvalidControlHash(sourcePID uint16, witness gomel.Preunit, parentCandidates []gomel.Unit) {
