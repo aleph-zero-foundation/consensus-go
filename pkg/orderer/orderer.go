@@ -116,9 +116,10 @@ func (ord *orderer) handleTimingRounds() {
 // It assumes preunits are ordered by ascending epochID and, within each epoch, they are topologically sorted.
 func (ord *orderer) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 	var errors []error
+	errorsSize := len(preunits)
 	getErrors := func() []error {
 		if errors == nil {
-			errors = make([]error, len(preunits))
+			errors = make([]error, errorsSize)
 		}
 		return errors
 	}
