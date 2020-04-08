@@ -150,6 +150,12 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 // update takes a unit that has been received from unit belt and updates
 // creator internal state with information contained in that unit.
 func (cr *Creator) update(u gomel.Unit) {
+	cr.log.Debug().
+		Uint32(logging.Epoch, uint32(u.EpochID())).
+		Int(logging.Height, u.Height()).
+		Int(logging.Level, u.Level()).
+		Msg(logging.CreatorProcessingUnit)
+
 	// if the unit is from an older epoch or unit's creator is known to be a forker, we simply ignore it
 	if cr.frozen[u.Creator()] || u.EpochID() < cr.epoch {
 		return
