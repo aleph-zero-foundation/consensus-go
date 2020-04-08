@@ -298,6 +298,7 @@ func (ord *orderer) insert(unit gomel.Unit) {
 	if ep != nil {
 		ep.dag.Insert(unit)
 		ord.log.Info().
+			Uint16(logging.Creator, unit.Creator()).
 			Uint32(logging.Epoch, uint32(unit.EpochID())).
 			Int(logging.Height, unit.Height()).
 			Int(logging.Level, unit.Level()).
