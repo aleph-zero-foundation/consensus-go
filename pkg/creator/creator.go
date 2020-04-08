@@ -151,6 +151,7 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 // creator internal state with information contained in that unit.
 func (cr *Creator) update(u gomel.Unit) {
 	cr.log.Debug().
+		Uint16(logging.Creator, u.Creator()).
 		Uint32(logging.Epoch, uint32(u.EpochID())).
 		Int(logging.Height, u.Height()).
 		Int(logging.Level, u.Level()).
