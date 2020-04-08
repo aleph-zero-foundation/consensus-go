@@ -4,6 +4,8 @@ package run
 import (
 	"errors"
 
+	"github.com/rs/zerolog"
+
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/forking"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -88,7 +90,9 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 				// received termination signal from outside
 				return
 			}
-			log.Info().Msg(logging.GotWTK)
+
+			logWTK(log, wtkey)
+
 			conf.WTKey = wtkey
 			ord.Start(coin.NewFactory(conf.Pid, wtkey), syn, alrt)
 		}()
@@ -142,4 +146,17 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 		ord.Stop()
 	}
 	return start, stop, nil
+}
+
+func logWTK(log zerolog.Logger, wtkey *tss.WeakThresholdKey) {
+
+	providers := make([]uint16, 0, len(wtkey.ShareProviders()))
+	for provider := range wtkey.ShareProviders() {
+		providers = append(providers, provider)
+	}
+	log.Info().
+		Uint16(logging.WTKThreshold, wtkey.Threshold()).
+		Uints16(logging.WTKShareProviders, providers).
+		Msg(logging.GotWTK)
+
 }

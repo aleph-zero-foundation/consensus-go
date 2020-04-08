@@ -79,43 +79,47 @@ var eventTypeDict = map[string]string{
 
 // Field names.
 const (
-	Time        = "T"
-	Level       = "L"
-	Event       = "V"
-	Service     = "S"
-	Size        = "N"
-	Creator     = "C"
-	Height      = "H"
-	Epoch       = "E"
-	Lvl         = "Q"
-	Round       = "R"
-	ID          = "D"
-	PID         = "P"
-	ISID        = "I"
-	OSID        = "O"
-	Sent        = "A"
-	Recv        = "B"
-	ControlHash = "Z"
+	Time              = "T"
+	Level             = "L"
+	Event             = "V"
+	Service           = "S"
+	Size              = "N"
+	Creator           = "C"
+	Height            = "H"
+	Epoch             = "E"
+	Lvl               = "Q"
+	Round             = "R"
+	ID                = "D"
+	PID               = "P"
+	ISID              = "I"
+	OSID              = "O"
+	Sent              = "A"
+	Recv              = "B"
+	ControlHash       = "Z"
+	WTKThreshold      = "AJ"
+	WTKShareProviders = "AK"
 )
 
 // fieldNameDict maps short field names to human readable form.
 var fieldNameDict = map[string]string{
-	Time:    "time",
-	Level:   "level",
-	Event:   "event",
-	Service: "service",
-	Size:    "size",
-	Creator: "creator",
-	Height:  "height",
-	Epoch:   "epoch",
-	Lvl:     "level",
-	Round:   "round",
-	ID:      "ID",
-	PID:     "PID",
-	ISID:    "inSID",
-	OSID:    "outSID",
-	Sent:    "sent",
-	Recv:    "received",
+	Time:              "time",
+	Level:             "level",
+	Event:             "event",
+	Service:           "service",
+	Size:              "size",
+	Creator:           "creator",
+	Height:            "height",
+	Epoch:             "epoch",
+	Lvl:               "level",
+	Round:             "round",
+	ID:                "ID",
+	PID:               "PID",
+	ISID:              "inSID",
+	OSID:              "outSID",
+	Sent:              "sent",
+	Recv:              "received",
+	WTKThreshold:      "wtk-threshold",
+	WTKShareProviders: "wtk-share_providers",
 }
 
 // Service types.
