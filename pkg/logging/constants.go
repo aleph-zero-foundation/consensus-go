@@ -38,6 +38,8 @@ const (
 	UnableToRetrieveEpoch       = "AH"
 	CreatorProcessingUnit       = "AI"
 	PuttingOnCreatorsBelt       = "AL"
+	CreatorNotReadyAfterUpdate  = "AM"
+	CreatorNotReady             = "AN"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -77,6 +79,8 @@ var eventTypeDict = map[string]string{
 	UnableToRetrieveEpoch:       "unable to retrieve an epoch",
 	CreatorProcessingUnit:       "creator is processing a unit",
 	PuttingOnCreatorsBelt:       "unit was put on creator's belt",
+	CreatorNotReady:             "creator is not ready after update",
+	CreatorNotReadyAfterUpdate:  "creator was ready after update, but changed its mind after more updates",
 }
 
 // Field names.

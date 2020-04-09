@@ -95,7 +95,22 @@ func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Al
 				}
 				// Step 3: create unit
 				cr.createUnit(parents, level, cr.getData(level, lastTiming))
+			} else {
+				cr.log.Debug().
+					Uint16(logging.Creator, u.Creator()).
+					Uint32(logging.Epoch, uint32(u.EpochID())).
+					Int(logging.Height, u.Height()).
+					Int(logging.Level, u.Level()).
+					Msg(logging.CreatorNotReadyAfterUpdate)
 			}
+		} else {
+			cr.log.Debug().
+				Uint16(logging.Creator, u.Creator()).
+				Uint32(logging.Epoch, uint32(u.EpochID())).
+				Int(logging.Height, u.Height()).
+				Int(logging.Level, u.Level()).
+				Msg(logging.CreatorNotReady)
+
 		}
 		cr.mx.Unlock()
 	}
