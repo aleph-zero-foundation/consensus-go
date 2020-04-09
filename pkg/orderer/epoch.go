@@ -37,6 +37,12 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 
 	dg.AfterInsert(func(_ gomel.Unit) { ext.Notify() })
 	dg.AfterInsert(func(u gomel.Unit) {
+		log.Debug().
+			Uint16(logging.Creator, u.Creator()).
+			Uint32(logging.Epoch, uint32(u.EpochID())).
+			Int(logging.Height, u.Height()).
+			Int(logging.Level, u.Level()).
+			Msg(logging.CreatorProcessingUnit)
 		if u.Creator() != conf.Pid { // don't put our own units on the unit belt, creator already knows about them.
 			unitBelt <- u
 		}

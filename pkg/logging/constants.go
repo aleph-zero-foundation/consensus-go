@@ -37,6 +37,7 @@ const (
 	FreezedParent               = "AG"
 	UnableToRetrieveEpoch       = "AH"
 	CreatorProcessingUnit       = "AI"
+	PuttingOnCreatorsBelt       = "AL"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -75,6 +76,7 @@ var eventTypeDict = map[string]string{
 	FreezedParent:               "creator freezed a parent due to some non-compliance",
 	UnableToRetrieveEpoch:       "unable to retrieve an epoch",
 	CreatorProcessingUnit:       "creator is processing a unit",
+	PuttingOnCreatorsBelt:       "unit was put on creator's belt",
 }
 
 // Field names.
