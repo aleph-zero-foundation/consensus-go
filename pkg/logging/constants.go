@@ -40,6 +40,7 @@ const (
 	PuttingOnCreatorsBelt       = "AL"
 	CreatorNotReadyAfterUpdate  = "AM"
 	CreatorNotReady             = "AN"
+	BeforeSendingUnitToCreator  = "AO"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -81,6 +82,7 @@ var eventTypeDict = map[string]string{
 	PuttingOnCreatorsBelt:       "unit was put on creator's belt",
 	CreatorNotReady:             "creator is not ready after update",
 	CreatorNotReadyAfterUpdate:  "creator was ready after update, but changed its mind after more updates",
+	BeforeSendingUnitToCreator:  "called AfterInsert responsible for sending on creator's belt",
 }
 
 // Field names.
@@ -104,6 +106,7 @@ const (
 	ControlHash       = "Z"
 	WTKThreshold      = "AJ"
 	WTKShareProviders = "AK"
+	MaxOnLevel        = "AP"
 )
 
 // fieldNameDict maps short field names to human readable form.
@@ -126,6 +129,7 @@ var fieldNameDict = map[string]string{
 	Recv:              "received",
 	WTKThreshold:      "wtk-threshold",
 	WTKShareProviders: "wtk-share_providers",
+	MaxOnLevel:        "max_on_level",
 }
 
 // Service types.
@@ -139,6 +143,7 @@ const (
 	MCService
 	RMCService
 	AlertService
+	EpochService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
@@ -152,6 +157,7 @@ var serviceTypeDict = map[int]string{
 	MCService:       "MCAST",
 	RMCService:      "RMC",
 	AlertService:    "ALERT",
+	EpochService:    "EPOCH",
 }
 
 // Genesis was better with Phil Collins.

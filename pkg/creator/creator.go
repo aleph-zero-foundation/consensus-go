@@ -170,6 +170,7 @@ func (cr *Creator) update(u gomel.Unit) {
 		Uint32(logging.Epoch, uint32(u.EpochID())).
 		Int(logging.Height, u.Height()).
 		Int(logging.Level, u.Level()).
+		Uint16(logging.MaxOnLevel, cr.onMaxLvl).
 		Msg(logging.CreatorProcessingUnit)
 
 	// if the unit is from an older epoch or unit's creator is known to be a forker, we simply ignore it

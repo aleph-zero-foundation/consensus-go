@@ -27,7 +27,7 @@ type epoch struct {
 }
 
 func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gomel.RandomSourceFactory, alert gomel.Alerter, unitBelt chan<- gomel.Unit, output chan<- []gomel.Unit, log zerolog.Logger) *epoch {
-	log = log.With().Uint32(logging.Epoch, uint32(id)).Logger()
+	log = log.With().Int(logging.Service, logging.EpochService).Uint32(logging.Epoch, uint32(id)).Logger()
 	dg := dag.New(conf, id)
 	adr := adder.New(dg, conf, syncer, alert, log)
 	rs := rsf.NewRandomSource(dg)
@@ -37,12 +37,14 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 
 	dg.AfterInsert(func(_ gomel.Unit) { ext.Notify() })
 	dg.AfterInsert(func(u gomel.Unit) {
+
 		log.Debug().
 			Uint16(logging.Creator, u.Creator()).
 			Uint32(logging.Epoch, uint32(u.EpochID())).
 			Int(logging.Height, u.Height()).
 			Int(logging.Level, u.Level()).
-			Msg(logging.CreatorProcessingUnit)
+			Msg(logging.BeforeSendingUnitToCreator)
+
 		if u.Creator() != conf.Pid { // don't put our own units on the unit belt, creator already knows about them.
 			unitBelt <- u
 		}
