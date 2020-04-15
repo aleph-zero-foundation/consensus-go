@@ -18,6 +18,11 @@ func (s *server) In() {
 		s.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
 		return
 	}
+	s.log.Debug().
+		Uint32(logging.Epoch, uint32(preunit.EpochID())).
+		Uint16(logging.Creator, preunit.Creator()).
+		Int(logging.Height, preunit.Height()).
+		Msg(logging.MulticastReceivedPreunit)
 	logging.AddingErrors(s.orderer.AddPreunits(preunit.Creator(), preunit), s.log)
 }
 

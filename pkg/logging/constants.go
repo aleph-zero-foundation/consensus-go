@@ -41,6 +41,7 @@ const (
 	CreatorNotReadyAfterUpdate  = "AM"
 	CreatorNotReady             = "AN"
 	BeforeSendingUnitToCreator  = "AO"
+	MulticastReceivedPreunit    = "AQ"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -83,6 +84,7 @@ var eventTypeDict = map[string]string{
 	CreatorNotReady:             "creator is not ready after update",
 	CreatorNotReadyAfterUpdate:  "creator was ready after update, but changed its mind after more updates",
 	BeforeSendingUnitToCreator:  "called AfterInsert responsible for sending on creator's belt",
+	MulticastReceivedPreunit:    "mulicast has received a preunit",
 }
 
 // Field names.
