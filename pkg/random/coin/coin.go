@@ -153,6 +153,10 @@ func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 // and we should start an alert.
 func (c *coin) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) {
 	var rb []byte
+	// only share providers are expected to provide data related with random-source (see coin.checkCompliance)
+	if !c.shareProviders[c.pid] {
+		return rb, nil
+	}
 	if rbl := c.randomBytes.Get(level - 1); rbl != nil {
 		rb = make([]byte, bn256.SignatureLength)
 		copy(rb, rbl)
