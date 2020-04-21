@@ -18,47 +18,73 @@ import (
 // Creator collects data from its DataSource, and random source data using the provided function, then builds,
 // signs and sends (using a function given to the constructor) a new unit.
 type Creator struct {
-	conf       config.Config
-	ds         core.DataSource
-	send       func(gomel.Unit)
-	rsData     func(int, []gomel.Unit, gomel.EpochID) []byte
-	epoch      gomel.EpochID
-	epochDone  bool
-	candidates []gomel.Unit
-	quorum     uint16
-	maxLvl     int    // max level of units in candidates
-	onMaxLvl   uint16 // number of candidates on maxLvl
-	level      int    // level of unit we could produce with current candidates
-	shares     *shareDB
-	frozen     map[uint16]bool
-	mx         sync.Mutex
-	finished   bool
-	log        zerolog.Logger
+	conf              config.Config
+	ds                core.DataSource
+	send              func(gomel.Unit)
+	rsData            func(int, []gomel.Unit, gomel.EpochID) []byte
+	epoch             gomel.EpochID
+	epochDone         bool
+	candidates        []gomel.Unit
+	quorum            uint16
+	maxLvl            int    // max level of units in candidates
+	onMaxLvl          uint16 // number of candidates on maxLvl
+	level             int    // level of unit we could produce with current candidates
+	frozen            map[uint16]bool
+	mx                sync.Mutex
+	finished          bool
+	epochProofBuilder func(gomel.EpochID) EpochProofBuilder
+	epochProof        EpochProofBuilder
+	log               zerolog.Logger
 }
 
 // New constructs a creator that uses provided config, data source and logger.
 // send function is called on each created unit.
 // rsData provides random source data for the given level, parents and epoch.
-func New(conf config.Config, dataSource core.DataSource, send func(gomel.Unit), rsData func(int, []gomel.Unit, gomel.EpochID) []byte, log zerolog.Logger) *Creator {
+func New(
+	conf config.Config,
+	dataSource core.DataSource,
+	send func(gomel.Unit),
+	rsData func(int, []gomel.Unit, gomel.EpochID) []byte,
+	epochProofBuilder func(gomel.EpochID) EpochProofBuilder,
+	log zerolog.Logger,
+) *Creator {
+	return NewForEpoch(conf, dataSource, send, rsData, epochProofBuilder, gomel.EpochID(0), log)
+}
+
+// NewForEpoch constructs a creator that uses provided config, data source and logger.
+// send function is called on each created unit.
+// rsData provides random source data for the given level, parents and epoch.
+// It starts producing units for a given epoch.
+func NewForEpoch(
+	conf config.Config,
+	dataSource core.DataSource,
+	send func(gomel.Unit),
+	rsData func(int, []gomel.Unit, gomel.EpochID) []byte,
+	epochProofBuilder func(gomel.EpochID) EpochProofBuilder,
+	epoch gomel.EpochID,
+	log zerolog.Logger,
+
+) *Creator {
 	return &Creator{
-		conf:       conf,
-		ds:         dataSource,
-		send:       send,
-		rsData:     rsData,
-		candidates: make([]gomel.Unit, conf.NProc),
-		maxLvl:     -1,
-		quorum:     gomel.MinimalQuorum(conf.NProc),
-		shares:     newShareDB(conf),
-		frozen:     make(map[uint16]bool),
-		log:        log,
+		conf:              conf,
+		ds:                dataSource,
+		send:              send,
+		rsData:            rsData,
+		candidates:        make([]gomel.Unit, conf.NProc),
+		maxLvl:            -1,
+		quorum:            gomel.MinimalQuorum(conf.NProc),
+		frozen:            make(map[uint16]bool),
+		epochProofBuilder: epochProofBuilder,
+		epoch:             epoch,
+		log:               log,
 	}
 }
 
-// Work executes the main loop of the creator. Units appearing on unitBelt are examined and stored to
+// CreateUnits executes the main loop of the creator. Units appearing on unitBelt are examined and stored to
 // be used as parents of future units. When there are enough new parents, a new unit is produced.
 // lastTiming is a channel on which the last timing unit of each epoch is expected to appear.
 // This method is stopped by closing unitBelt channel.
-func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
+func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
 	defer func() {
 		cr.log.Info().Msg(logging.CreatorFinished)
 	}()
@@ -66,54 +92,52 @@ func (cr *Creator) Work(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Al
 		cr.freezeParent(u.Creator())
 	})
 	defer om.RemoveObserver()
-	cr.newEpoch(gomel.EpochID(0), core.Data{})
-
-	var parents []gomel.Unit
-	var level int
+	cr.newEpoch(cr.epoch, core.Data{})
 
 	for u := range unitBelt {
 		if cr.finished {
 			return
 		}
-		cr.mx.Lock()
-		cr.update(u)
-		if cr.ready() {
-			// Step 1: update candidates with all units waiting on the unit belt
-			n := len(unitBelt)
-			for i := 0; i < n; i++ {
-				cr.update(<-unitBelt)
-			}
-			if cr.ready() {
-				// we need to check that again, in case epoch changed in Step 1.
-				// Step 2: pick parents and level depending on creating strategy
-				if cr.conf.CanSkipLevel {
-					level = cr.level
-					parents = cr.getParents()
-				} else {
-					level = cr.candidates[cr.conf.Pid].Level() + 1
-					parents = cr.getParentsForLevel(level)
-				}
-				// Step 3: create unit
-				cr.createUnit(parents, level, cr.getData(level, lastTiming))
-			} else {
-				cr.log.Debug().
-					Uint16(logging.Creator, u.Creator()).
-					Uint32(logging.Epoch, uint32(u.EpochID())).
-					Int(logging.Height, u.Height()).
-					Int(logging.Level, u.Level()).
-					Msg(logging.CreatorNotReadyAfterUpdate)
-			}
-		} else {
-			cr.log.Debug().
-				Uint16(logging.Creator, u.Creator()).
-				Uint32(logging.Epoch, uint32(u.EpochID())).
-				Int(logging.Height, u.Height()).
-				Int(logging.Level, u.Level()).
-				Msg(logging.CreatorNotReady)
 
+		cr.mx.Lock()
+		// Step 1: update candidates with all units waiting on the unit belt
+		cr.update(u)
+		n := len(unitBelt)
+		for i := 0; i < n; i++ {
+			cr.update(<-unitBelt)
+		}
+		wasReady := false
+		for cr.ready() {
+			wasReady = true
+			// Step 2: get parents and level using current strategy
+			parents, level := cr.buildParents()
+			// Step 3: create unit
+			cr.createUnit(parents, level, cr.getData(level, lastTiming))
 		}
 		cr.mx.Unlock()
+		if !wasReady {
+			cr.log.Debug().
+				Uint32(logging.Epoch, uint32(cr.epoch)).
+				Int(logging.Level, cr.level).
+				Uint16(logging.Size, cr.onMaxLvl).
+				Msg(logging.CreatorNotReadyAfterUpdate)
+		}
+
+		if cr.finished {
+			return
+		}
 	}
+}
+
+func (cr *Creator) buildParents() (parents []gomel.Unit, level int) {
+	if cr.conf.CanSkipLevel {
+		level = cr.level
+		parents = cr.getParents()
+	} else {
+		level = cr.candidates[cr.conf.Pid].Level() + 1
+		parents = cr.getParentsForLevel(level)
+	}
+	return
 }
 
 // ready checks if the creator is ready to produce a new unit. Usually that means:
@@ -148,14 +172,9 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 					// the epoch we just finished is the last epoch we were supposed to produce
 					return core.Data{}
 				}
-				msg := encodeProof(timingUnit)
-				share := cr.conf.WTKey.CreateShare(msg)
-				if share != nil {
-					return encodeShare(share, msg)
-				}
-				return core.Data{}
+				return cr.epochProof.BuildShare(timingUnit)
 			}
-			panic("TIME TRAVEL ERROR: lastTiming received a unit from the future")
+			cr.log.Warn().Uint32(logging.Epoch, uint32(timingUnit.EpochID())).Msg(logging.LastTimingUnitIsFromTheFuture)
 		default:
 			return core.Data{}
 		}
@@ -182,7 +201,7 @@ func (cr *Creator) update(u gomel.Unit) {
 	// Since units appear on the belt in order they were added to the dag,
 	// the first unit from a new epoch is always a dealing unit.
 	if u.EpochID() > cr.epoch {
-		if !EpochProof(u, cr.conf.WTKey) {
+		if !cr.epochProof.Verify(u) {
 			cr.log.Warn().
 				Uint16(logging.Creator, u.Creator()).
 				Int(logging.Height, u.Height()).
@@ -195,9 +214,9 @@ func (cr *Creator) update(u gomel.Unit) {
 	// If this is a finishing unit try to extract threshold signature share from it.
 	// If there are enough shares to produce the signature (and therefore a proof that
 	// the current epoch is finished) switch to a new epoch.
-	data := cr.updateShares(u)
-	if data != nil {
-		cr.newEpoch(cr.epoch+1, data)
+	epochProof := cr.epochProof.TryBuilding(u)
+	if epochProof != nil {
+		cr.newEpoch(cr.epoch+1, epochProof)
 		return
 	}
 
@@ -227,39 +246,15 @@ func (cr *Creator) updateCandidates(u gomel.Unit) {
 	}
 }
 
-// resetCandidates resets the candidates and all related variables to the initial state
+// resetEpoch resets the candidates and all related variables to the initial state
 // (a slice with NProc nils). This is useful when switching to a new epoch.
-func (cr *Creator) resetCandidates() {
+func (cr *Creator) resetEpoch() {
 	for ix := range cr.candidates {
 		cr.candidates[ix] = nil
 	}
 	cr.maxLvl = -1
 	cr.onMaxLvl = 0
 	cr.level = 0
-}
-
-// updateShares extracts threshold signature shares from finishing units.
-// If there are enough shares to combine, it produces the signature and
-// converts it to core.Data. Otherwise, nil is returned.
-func (cr *Creator) updateShares(u gomel.Unit) core.Data {
-	// ignore regular units and finishing units with empty data
-	if u.Level() < cr.conf.OrderStartLevel+cr.conf.EpochLength || len(u.Data()) == 0 {
-		return nil
-	}
-	share, msg, err := decodeShare(u.Data())
-	if err != nil {
-		cr.log.Error().Str("where", "creator.decodeShare").Msg(err.Error())
-		return nil
-	}
-	if !cr.conf.WTKey.VerifyShare(share, msg) {
-		cr.log.Error().Str("where", "creator.verifyShare").Msg(err.Error())
-		return nil
-	}
-	sig := cr.shares.Add(share, msg)
-	if sig != nil {
-		return encodeSignature(sig, msg)
-	}
-	return nil
 }
 
 // freezeParent tells the creator to stop updating parent candidates for the given pid
@@ -313,8 +308,8 @@ func (cr *Creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epoch = epoch
 	cr.epochDone = false
-	cr.resetCandidates()
-	cr.shares.Reset()
+	cr.resetEpoch()
+	cr.epochProof = cr.epochProofBuilder(epoch)
 	if epoch >= gomel.EpochID(cr.conf.NumberOfEpochs) {
 		cr.finished = true
 		return
