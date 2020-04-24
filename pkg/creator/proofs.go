@@ -87,25 +87,30 @@ func decodeSignature(data core.Data) (*tss.Signature, []byte, error) {
 // shareDB is a simple storage for threshold signature shares indexed by the message they sign.
 type shareDB struct {
 	conf config.Config
-	data map[string][]*tss.Share
+	data map[string]map[uint16]*tss.Share
 }
 
 // newShareDB constructs a storage for shares that uses the provided weak threshold key for combining shares.
 func newShareDB(conf config.Config) *shareDB {
-	return &shareDB{conf: conf, data: make(map[string][]*tss.Share)}
+	return &shareDB{conf: conf, data: make(map[string]map[uint16]*tss.Share)}
 }
 
 // add puts the share that signs msg to the storage. If there are enough shares (for that msg),
 // they are combined and the resulting signature is returned. Otherwise, returns nil.
-func (db *shareDB) add(share *tss.Share, msg []byte) *tss.Signature {
+func (db *shareDB) Add(share *tss.Share, msg []byte) *tss.Signature {
 	key := string(msg)
-	if shares, ok := db.data[key]; ok {
-		db.data[key] = append(shares, share)
-	} else {
-		db.data[key] = []*tss.Share{share}
+	shares, ok := db.data[key]
+	if !ok {
+		shares = make(map[uint16]*tss.Share)
+		db.data[key] = shares
 	}
-	if len(db.data[key]) >= int(db.conf.WTKey.Threshold()) {
-		if sig, ok := db.conf.WTKey.CombineShares(db.data[key]); ok {
+	shares[share.Owner()] = share
+	if len(shares) >= int(db.conf.WTKey.Threshold()) {
+		shareSlice := make([]*tss.Share, 0, len(shares))
+		for _, share := range shares {
+			shareSlice = append(shareSlice, share)
+		}
+		if sig, ok := db.conf.WTKey.CombineShares(shareSlice); ok {
 			return sig
 		}
 	}
@@ -113,6 +118,6 @@ func (db *shareDB) add(share *tss.Share, msg []byte) *tss.Signature {
 }
 
 // reset empties the storage and brings it back to the initial state.
-func (db *shareDB) reset() {
-	db.data = make(map[string][]*tss.Share)
+func (db *shareDB) Reset() {
+	db.data = make(map[string]map[uint16]*tss.Share)
 }

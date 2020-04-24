@@ -239,7 +239,7 @@ func (cr *Creator) updateShares(u gomel.Unit) core.Data {
 		cr.log.Error().Str("where", "creator.verifyShare").Msg(err.Error())
 		return nil
 	}
-	sig := cr.shares.add(share, msg)
+	sig := cr.shares.Add(share, msg)
 	if sig != nil {
 		return encodeSignature(sig, msg)
 	}
@@ -298,7 +298,7 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epoch = epoch
 	cr.epochDone = false
 	cr.resetCandidates()
-	cr.shares.reset()
+	cr.shares.Reset()
 	if epoch >= gomel.EpochID(cr.conf.NumberOfEpochs) {
 		cr.finished = true
 		return
