@@ -100,7 +100,7 @@ func (c *coin) update(u gomel.Unit) {
 
 // checkCompliance checks if the random source data included in the unit
 // is correct. The following rules should be satisfied:
-//  (1) A dealing unit created by a share providers should contain a marshalled share
+//  (1) A dealing unit created by a share provider should contain a marshalled share
 //  (2) A non-dealing prime unit should start with random bytes from the previous level,
 //  followed by a marshalled coin share, if the creator is a share provider.
 //  (3) Every other unit's random source data should be empty.
@@ -153,8 +153,8 @@ func (c *coin) checkCompliance(u gomel.Unit, _ gomel.Dag) error {
 // and we should start an alert.
 func (c *coin) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) {
 	var rb []byte
-	// only share providers are expected to provide data related with random-source (see coin.checkCompliance)
-	if !c.shareProviders[c.pid] {
+	// only share providers are expected to provide data related with random-source in their dealing units (see coin.checkCompliance)
+	if level == 0 && !c.shareProviders[c.pid] {
 		return rb, nil
 	}
 	if rbl := c.randomBytes.Get(level - 1); rbl != nil {
