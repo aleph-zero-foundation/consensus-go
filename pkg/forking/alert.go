@@ -13,7 +13,6 @@ import (
 	"errors"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -21,7 +20,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
-	"gitlab.com/alephledger/core-go/pkg/rmc"
+	rmc "gitlab.com/alephledger/core-go/pkg/rmcbox"
 	"gitlab.com/alephledger/core-go/pkg/utils"
 )
 
@@ -53,7 +52,6 @@ type alertHandler struct {
 	keys        []gomel.PublicKey
 	rmc         *rmc.RMC
 	netserv     network.Server
-	timeout     time.Duration
 	commitments *commitBase
 	locks       []sync.Mutex
 	observable  utils.Observable
@@ -69,7 +67,6 @@ func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 		orderer:     orderer,
 		rmc:         rmc,
 		netserv:     netserv,
-		timeout:     conf.Timeout,
 		commitments: newCommitBase(),
 		locks:       make([]sync.Mutex, conf.NProc),
 		observable:  utils.NewThreadSafeObservable(),
@@ -142,12 +139,11 @@ func (a *alertHandler) sendFinished(forker, pid uint16) {
 	}
 	id := comm.rmcID()
 	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
-	conn, err := a.netserv.Dial(pid, a.timeout)
+	conn, err := a.netserv.Dial(pid)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(a.timeout)
 	log.Info().Msg(logging.SyncStarted)
 	err = rmc.Greet(conn, a.myPid, id, finished)
 	if err != nil {
@@ -289,11 +285,10 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 // In this case we send the finished alert, in a separate communication.
 func (a *alertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 	log := a.log.With().Uint16(logging.PID, pid).Logger()
-	conn, err := a.netserv.Dial(pid, a.timeout)
+	conn, err := a.netserv.Dial(pid)
 	if err != nil {
 		return err
 	}
-	conn.TimeoutAfter(a.timeout)
 	log.Info().Msg(logging.SyncStarted)
 	defer conn.Close()
 	err = rmc.Greet(conn, a.myPid, 0, request)
@@ -459,11 +454,10 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 	success := false
 	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
 	for a.rmc.Status(id) != rmc.Finished {
-		conn, err := a.netserv.Dial(pid, a.timeout)
+		conn, err := a.netserv.Dial(pid)
 		if err != nil {
 			continue
 		}
-		conn.TimeoutAfter(a.timeout)
 		log.Info().Msg(logging.SyncStarted)
 		err = a.attemptGather(conn, data, id, pid)
 		if err != nil {
@@ -477,7 +471,7 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 	gathering.Done()
 	gathering.Wait()
 	if success {
-		conn, err := a.netserv.Dial(pid, a.timeout)
+		conn, err := a.netserv.Dial(pid)
 		if err != nil {
 			return
 		}

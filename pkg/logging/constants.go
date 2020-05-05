@@ -148,20 +148,24 @@ const (
 	RMCService
 	AlertService
 	EpochService
+	PersistentConnections
+	NetworkService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
 var serviceTypeDict = map[int]string{
-	CreateService:   "CREATOR",
-	OrderService:    "ORDERER",
-	AdderService:    "ADDER",
-	ExtenderService: "EXTENDER",
-	GossipService:   "GOSSIP",
-	FetchService:    "FETCH",
-	MCService:       "MCAST",
-	RMCService:      "RMC",
-	AlertService:    "ALERT",
-	EpochService:    "EPOCH",
+	CreateService:         "CREATOR",
+	OrderService:          "ORDERER",
+	AdderService:          "ADDER",
+	ExtenderService:       "EXTENDER",
+	GossipService:         "GOSSIP",
+	FetchService:          "FETCH",
+	MCService:             "MCAST",
+	RMCService:            "RMC",
+	AlertService:          "ALERT",
+	EpochService:          "EPOCH",
+	PersistentConnections: "PERSISTENT",
+	NetworkService:        "NETWORK",
 }
 
 // Genesis was better with Phil Collins.

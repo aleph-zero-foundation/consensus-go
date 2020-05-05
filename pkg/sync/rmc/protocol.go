@@ -9,7 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
-	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/rmcbox"
 )
 
 func (s *server) multicast(unit gomel.Unit) {
@@ -39,7 +39,7 @@ func (s *server) multicast(unit gomel.Unit) {
 }
 
 func (s *server) sendProof(receipient uint16, id uint64) error {
-	conn, err := s.netserv.Dial(receipient, s.timeout)
+	conn, err := s.netserv.Dial(receipient)
 	if err != nil {
 		return err
 	}
@@ -87,11 +87,10 @@ func (s *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 func (s *server) getMemberSignature(data []byte, id uint64, receipient uint16) bool {
 	log := s.log.With().Uint16(logging.PID, receipient).Uint64(logging.OSID, id).Logger()
 	for s.state.Status(id) != rmcbox.Finished && atomic.LoadInt64(&s.quit) == 0 {
-		conn, err := s.netserv.Dial(receipient, s.timeout)
+		conn, err := s.netserv.Dial(receipient)
 		if err != nil {
 			continue
 		}
-		conn.TimeoutAfter(s.timeout)
 		log.Info().Msg(logging.SyncStarted)
 		err = s.attemptGather(conn, data, id, receipient)
 		if err == nil {
@@ -142,12 +141,11 @@ func (s *server) sendProve(conn network.Connection, id uint64) error {
 }
 
 func (s *server) in() {
-	conn, err := s.netserv.Listen(s.timeout)
+	conn, err := s.netserv.Listen()
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.timeout)
 
 	pid, id, msgType, err := rmcbox.AcceptGreeting(conn)
 	if err != nil {
