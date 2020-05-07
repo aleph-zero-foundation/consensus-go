@@ -112,13 +112,13 @@ func addSyncConf(cnf Config, addresses map[string][]string, setup bool) {
 	cnf.RMCNetType = "tcp"
 	cnf.RMCAddresses = addresses["rmc"]
 
-	cnf.GossipNetType = "pers"
+	cnf.GossipNetType = "tcp"
 	cnf.GossipAddresses = addresses["gossip"]
 
-	cnf.FetchNetType = "pers"
+	cnf.FetchNetType = "tcp"
 	cnf.FetchAddresses = addresses["fetch"]
 
-	cnf.MCastNetType = "pers"
+	cnf.MCastNetType = "tcp"
 	cnf.MCastAddresses = addresses["mcast"]
 
 	n := int(cnf.NProc)

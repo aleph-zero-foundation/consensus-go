@@ -24,6 +24,7 @@ type unit struct {
 func FromPreunit(pu gomel.Preunit, parents []gomel.Unit, dag gomel.Dag) gomel.Unit {
 	var u unit
 	u.parents = parents
+	u.epochID = pu.EpochID()
 	// Setting height, creator, signature, version, hash
 	d := dag.(*Dag)
 	setBasicInfo(&u, d, pu)

@@ -3,6 +3,7 @@ package creator
 import (
 	"encoding/binary"
 
+	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/core-go/pkg/core"
@@ -95,7 +96,7 @@ func newShareDB(conf config.Config) *shareDB {
 	return &shareDB{conf: conf, data: make(map[string]map[uint16]*tss.Share)}
 }
 
-// add puts the share that signs msg to the storage. If there are enough shares (for that msg),
+// Add puts the share that signs msg to the storage. If there are enough shares (for that msg),
 // they are combined and the resulting signature is returned. Otherwise, returns nil.
 func (db *shareDB) Add(share *tss.Share, msg []byte) *tss.Signature {
 	key := string(msg)
@@ -117,7 +118,71 @@ func (db *shareDB) Add(share *tss.Share, msg []byte) *tss.Signature {
 	return nil
 }
 
-// reset empties the storage and brings it back to the initial state.
-func (db *shareDB) Reset() {
-	db.data = make(map[string]map[uint16]*tss.Share)
+// EpochProofBuilder is a type responsible for building and verifying so called epoch-proofs.
+type EpochProofBuilder interface {
+	// Verify checks if given unit is a valid proof of epoch pu.EpochID()-1.
+	Verify(gomel.Preunit) bool
+	// TryBuilding attempts to construct an epoch-proof.
+	TryBuilding(gomel.Unit) core.Data
+	// BuildShare creates our share of the epoch-proof.
+	BuildShare(lastTimingUnit gomel.Unit) core.Data
+}
+
+type epochProofImpl struct {
+	conf   config.Config
+	epoch  gomel.EpochID
+	shares *shareDB
+	log    zerolog.Logger
+}
+
+// NewProofBuilder creates an instance of the EpochProofBuilder type.
+func NewProofBuilder(conf config.Config, log zerolog.Logger) func(gomel.EpochID) EpochProofBuilder {
+	return func(epoch gomel.EpochID) EpochProofBuilder {
+		return &epochProofImpl{
+			conf:   conf,
+			epoch:  epoch,
+			shares: newShareDB(conf),
+			log:    log,
+		}
+	}
+}
+
+func (epi *epochProofImpl) BuildShare(lastTimingUnit gomel.Unit) core.Data {
+	msg := encodeProof(lastTimingUnit)
+	share := epi.conf.WTKey.CreateShare(msg)
+	if share != nil {
+		return encodeShare(share, msg)
+	}
+	return core.Data{}
+}
+
+func (epi *epochProofImpl) Verify(pu gomel.Preunit) bool {
+	if epi.epoch+1 != pu.EpochID() {
+		return false
+	}
+	return EpochProof(pu, epi.conf.WTKey)
+}
+
+// updateShares extracts threshold signature shares from finishing units.
+// If there are enough shares to combine, it produces the signature and
+// converts it to core.Data. Otherwise, nil is returned.
+func (epi *epochProofImpl) TryBuilding(u gomel.Unit) core.Data {
+	// ignore regular units and finishing units with empty data
+	if u.Level() < epi.conf.OrderStartLevel+epi.conf.EpochLength || len(u.Data()) == 0 {
+		return nil
+	}
+	share, msg, err := decodeShare(u.Data())
+	if err != nil {
+		epi.log.Error().Str("where", "creator.decodeShare").Msg(err.Error())
+		return nil
+	}
+	if !epi.conf.WTKey.VerifyShare(share, msg) {
+		epi.log.Error().Str("where", "creator.verifyShare").Msg(err.Error())
+		return nil
+	}
+	sig := epi.shares.Add(share, msg)
+	if sig != nil {
+		return encodeSignature(sig, msg)
+	}
+	return nil
 }

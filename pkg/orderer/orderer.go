@@ -59,7 +59,8 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 		ord.insert(u)
 		ord.syncer.Multicast(u)
 	}
-	ord.creator = creator.New(ord.conf, ord.ds, send, ord.rsData, ord.log)
+	epochProofBuilder := creator.NewProofBuilder(ord.conf, ord.log)
+	ord.creator = creator.New(ord.conf, ord.ds, send, ord.rsData, epochProofBuilder, ord.log)
 
 	syncer.Start()
 	alerter.Start()
@@ -67,7 +68,7 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	ord.wg.Add(1)
 	go func() {
 		defer ord.wg.Done()
-		ord.creator.Work(ord.unitBelt, ord.lastTiming, alerter)
+		ord.creator.CreateUnits(ord.unitBelt, ord.lastTiming, alerter)
 	}()
 
 	ord.wg.Add(1)

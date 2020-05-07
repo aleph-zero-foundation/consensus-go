@@ -23,8 +23,14 @@ type preunit struct {
 
 // NewPreunit creates a preunit.
 func NewPreunit(creator uint16, crown *gomel.Crown, data core.Data, rsData []byte, priv gomel.PrivateKey) gomel.Preunit {
+	return NewPreunitFromEpoch(gomel.EpochID(0), creator, crown, data, rsData, priv)
+}
+
+// NewPreunitFromEpoch creates a preunit.
+func NewPreunitFromEpoch(epoch gomel.EpochID, creator uint16, crown *gomel.Crown, data core.Data, rsData []byte, priv gomel.PrivateKey) gomel.Preunit {
 	pu := &preunit{
 		creator:   creator,
+		epochID:   epoch,
 		crown:     *crown,
 		data:      data,
 		signature: make([]byte, 64),
