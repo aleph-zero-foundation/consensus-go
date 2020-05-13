@@ -134,7 +134,7 @@ func (e *encoder) encodeChunk(units []gomel.Unit) error {
 	if err != nil {
 		return err
 	}
-	for _, u := range topSort(units) {
+	for _, u := range sortChunk(units) {
 		err = e.encodeUnit(u)
 		if err != nil {
 			return err
