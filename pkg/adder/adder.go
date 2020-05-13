@@ -136,6 +136,9 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	if wp, ok := ad.waiting[*pu.Hash()]; ok {
 		return gomel.NewDuplicatePreunit(wp.pu)
 	}
+	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
+		return gomel.NewDuplicateUnit(u)
+	}
 	id := gomel.UnitID(pu)
 	if fork, ok := ad.waitingByID[id]; ok {
 		ad.log.Warn().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.ForkDetected)
