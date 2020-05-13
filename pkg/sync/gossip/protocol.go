@@ -146,7 +146,8 @@ func (p *server) Out() {
 	log.Debug().Msg(logging.GetInfo)
 	theirDagInfo, err := encoding.ReadDagInfos(conn)
 	if err != nil {
-		log.Error().Str("where", "gossip.out.getDagInfo").Msg(err.Error())
+		// errors here happen when the remote side rejects our gossip attempt, hence they are not "true" errors
+		log.Debug().Str("where", "gossip.out.getDagInfo").Msg(err.Error())
 		return
 	}
 
