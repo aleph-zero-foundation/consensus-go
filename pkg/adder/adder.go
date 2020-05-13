@@ -105,26 +105,27 @@ func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 	}
 	alreadyInDag := ad.dag.GetUnits(hashes)
 
+	failed := make([]bool, len(preunits))
 	for i, pu := range preunits {
 		if alreadyInDag[i] == nil {
 			err := ad.checkCorrectness(pu)
 			if err != nil {
+				//ad.log.Warn().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint32(logging.Epoch, uint32(pu.EpochID())).Uint16(logging.PID, source).Msg("invalid signature")
 				getErrors()[i] = err
-				preunits[i] = nil
+				failed[i] = true
 			}
 		} else {
 			getErrors()[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
-			preunits[i] = nil
+			failed[i] = true
 		}
 	}
 
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
 	for i, pu := range preunits {
-		if pu == nil {
-			continue
+		if !failed[i] {
+			getErrors()[i] = ad.addToWaiting(pu, source)
 		}
-		getErrors()[i] = ad.addToWaiting(pu, source)
 	}
 	return errors
 }
