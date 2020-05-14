@@ -154,8 +154,6 @@ func main() {
 			break
 		}
 	}
-
-	close(ps)
 	stop()
 
 	if options.memProfFilename != "" {

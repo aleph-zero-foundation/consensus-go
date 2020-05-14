@@ -65,6 +65,11 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 
 	makePreblock := func(units []gomel.Unit) {
 		ps <- gomel.ToPreblock(units)
+		timingUnit := units[len(units)-1]
+		if timingUnit.Level() == conf.OrderStartLevel+conf.EpochLength-1 && timingUnit.EpochID() == gomel.EpochID(conf.NumberOfEpochs-1) {
+			// we have just sent the last preblock of the last epoch, it's safe to quit
+			close(ps)
+		}
 	}
 
 	ord := orderer.New(conf, ds, makePreblock, log)
@@ -149,7 +154,6 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 }
 
 func logWTK(log zerolog.Logger, wtkey *tss.WeakThresholdKey) {
-
 	providers := make([]uint16, 0, len(wtkey.ShareProviders()))
 	for provider := range wtkey.ShareProviders() {
 		providers = append(providers, provider)
