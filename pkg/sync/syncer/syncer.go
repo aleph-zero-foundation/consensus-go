@@ -1,8 +1,6 @@
 package syncer
 
 import (
-	"time"
-
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -86,8 +84,6 @@ func (s *syncer) Stop() {
 	for _, server := range s.servers {
 		server.StopOut()
 	}
-	// let other processes sync with us some more
-	time.Sleep(5 * time.Second)
 	for _, server := range s.servers {
 		server.StopIn()
 	}

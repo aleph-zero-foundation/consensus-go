@@ -154,6 +154,7 @@ func main() {
 			break
 		}
 	}
+	time.Sleep(10 * time.Second)
 	stop()
 
 	if options.memProfFilename != "" {
