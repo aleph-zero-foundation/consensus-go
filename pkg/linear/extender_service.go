@@ -47,6 +47,7 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 func (ext *ExtenderService) Close() {
 	close(ext.trigger)
 	ext.wg.Wait()
+	ext.log.Info().Msg(logging.ServiceStopped)
 }
 
 // Notify ExtenderService to attempt choosing next timing units.

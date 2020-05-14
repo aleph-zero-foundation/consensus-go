@@ -77,7 +77,7 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 		ord.handleTimingRounds()
 	}()
 
-	ord.log.Info().Msg(logging.ServiceStarted)
+	ord.log.Log().Msg(logging.ServiceStarted)
 }
 
 func (ord *orderer) Stop() {
@@ -92,7 +92,7 @@ func (ord *orderer) Stop() {
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
-	ord.log.Info().Msg(logging.ServiceStopped)
+	ord.log.Log().Msg(logging.ServiceStopped)
 }
 
 // handleTimingRounds waits for ordered round of units produced by Extenders and produces Preblocks based on them.

@@ -65,7 +65,6 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 			}
 		}(ad.ready[i])
 	}
-	ad.log.Info().Msg(logging.ServiceStarted)
 	return ad
 }
 

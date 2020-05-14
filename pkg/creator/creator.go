@@ -86,7 +86,7 @@ func NewForEpoch(
 // This method is stopped by closing unitBelt channel.
 func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
 	defer func() {
-		cr.log.Info().Msg(logging.CreatorFinished)
+		cr.log.Log().Msg(logging.CreatorFinished)
 	}()
 	om := alerter.AddForkObserver(func(u, _ gomel.Preunit) {
 		cr.freezeParent(u.Creator())
@@ -314,7 +314,7 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 		cr.finished = true
 		return
 	}
-	cr.log.Info().Uint32(logging.Epoch, uint32(epoch)).Msg(logging.CreatorSwitchedToNewEpoch)
+	cr.log.Log().Uint32(logging.Epoch, uint32(epoch)).Msg(logging.CreatorSwitchedToNewEpoch)
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 

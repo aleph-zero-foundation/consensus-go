@@ -39,13 +39,13 @@ func NewAlerter(conf config.Config, orderer gomel.Orderer, netserv network.Serve
 func (s *service) Start() {
 	s.listens.Add(1)
 	go s.handleConns()
-	s.log.Info().Msg(logging.ServiceStarted)
+	s.log.Log().Msg(logging.ServiceStarted)
 }
 
 func (s *service) Stop() {
 	atomic.StoreInt64(&s.quit, 1)
 	s.listens.Wait()
-	s.log.Info().Msg(logging.ServiceStopped)
+	s.log.Log().Msg(logging.ServiceStopped)
 }
 
 func (s *service) handleConns() {

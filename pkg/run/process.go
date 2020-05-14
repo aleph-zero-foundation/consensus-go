@@ -158,7 +158,7 @@ func logWTK(log zerolog.Logger, wtkey *tss.WeakThresholdKey) {
 	for provider := range wtkey.ShareProviders() {
 		providers = append(providers, provider)
 	}
-	log.Info().
+	log.Log().
 		Uint16(logging.WTKThreshold, wtkey.Threshold()).
 		Uints16(logging.WTKShareProviders, providers).
 		Msg(logging.GotWTK)
