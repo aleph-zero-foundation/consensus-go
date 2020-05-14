@@ -66,7 +66,7 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 	makePreblock := func(units []gomel.Unit) {
 		ps <- gomel.ToPreblock(units)
 		timingUnit := units[len(units)-1]
-		if timingUnit.Level() == conf.OrderStartLevel+conf.EpochLength-1 && timingUnit.EpochID() == gomel.EpochID(conf.NumberOfEpochs-1) {
+		if timingUnit.Level() == conf.LastLevel && timingUnit.EpochID() == gomel.EpochID(conf.NumberOfEpochs-1) {
 			// we have just sent the last preblock of the last epoch, it's safe to quit
 			close(ps)
 		}

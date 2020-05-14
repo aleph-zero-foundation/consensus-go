@@ -23,6 +23,7 @@ type conf struct {
 	// epoch
 	EpochLength    int
 	NumberOfEpochs int
+	LastLevel      int // LastLevel = EpochLength + OrderStartLevel - 1
 	CanSkipLevel   bool
 	Checks         []gomel.UnitChecker
 	// log
@@ -73,7 +74,7 @@ func NewSetup(m *Member, c *Committee) Config {
 	addSyncConf(cnf, c.SetupAddresses, true)
 	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".setup.log")
 	addSetupConf(cnf)
-
+	addLastLevel(cnf)
 	return cnf
 }
 
@@ -84,7 +85,7 @@ func New(m *Member, c *Committee) Config {
 	addSyncConf(cnf, c.Addresses, false)
 	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".log")
 	addConsensusConf(cnf)
-
+	addLastLevel(cnf)
 	return cnf
 }
 
@@ -105,7 +106,7 @@ func addKeys(cnf Config, m *Member, c *Committee) {
 }
 
 func addSyncConf(cnf Config, addresses map[string][]string, setup bool) {
-	cnf.Timeout = time.Second
+	cnf.Timeout = 5 * time.Second
 	cnf.FetchInterval = time.Second
 	cnf.GossipAbove = 50
 
@@ -147,8 +148,8 @@ func addConsensusConf(cnf Config) {
 	cnf.CanSkipLevel = true
 	cnf.OrderStartLevel = 0
 	cnf.CRPFixedPrefix = 4
-	cnf.EpochLength = 50
-	cnf.NumberOfEpochs = 10
+	cnf.EpochLength = 30
+	cnf.NumberOfEpochs = 3
 	cnf.Checks = consensusChecks
 }
 
@@ -158,4 +159,8 @@ func requiredByLinear() Config {
 		CommonVoteDeterministicPrefix: 10,
 		ZeroVoteRoundForCommonVote:    3,
 	}
+}
+
+func addLastLevel(cnf Config) {
+	cnf.LastLevel = cnf.EpochLength + cnf.OrderStartLevel - 1
 }
