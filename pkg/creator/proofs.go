@@ -81,12 +81,14 @@ func encodeSignature(sig *tss.Signature, msg []byte) core.Data {
 
 // decodeSignature reads signature and the signed message from Data contained in some unit.
 func decodeSignature(data core.Data) (*tss.Signature, []byte, error) {
+	msg := make([]byte, proofLength)
+	copy(msg, data[:proofLength])
 	result := new(tss.Signature)
 	err := result.Unmarshal(data[proofLength:])
 	if err != nil {
 		return nil, nil, err
 	}
-	return result, data[:proofLength], nil
+	return result, msg, nil
 }
 
 // shareDB is a simple storage for threshold signature shares indexed by the message they sign.
