@@ -86,7 +86,9 @@ func (ord *orderer) Stop() {
 	if ord.previous != nil {
 		ord.previous.Close()
 	}
-	ord.current.Close()
+	if ord.current != nil {
+		ord.current.Close()
+	}
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
