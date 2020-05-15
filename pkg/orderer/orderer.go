@@ -289,7 +289,7 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 func (ord *orderer) finishEpoch(epoch gomel.EpochID) {
 	ep, _ := ord.getEpoch(epoch)
 	if ep != nil {
-		ep.finish()
+		ep.Finish()
 	}
 }
 
