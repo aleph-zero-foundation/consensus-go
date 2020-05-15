@@ -87,7 +87,7 @@ func (ext *ExtenderService) roundSorter() {
 				Uint32(logging.Epoch, uint32(u.EpochID())).
 				Msg(logging.UnitOrdered)
 			if u.Creator() == ext.pid {
-				ext.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
+				ext.log.Info().Int(logging.Height, u.Height()).Int(logging.Level, u.Level()).Msg(logging.OwnUnitOrdered)
 			}
 		}
 		ext.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)

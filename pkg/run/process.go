@@ -106,6 +106,7 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 	stop := func() {
 		close(wtkchan)
 		<-started
+		netserv.Stop()
 		ord.Stop()
 	}
 	return start, stop, nil
