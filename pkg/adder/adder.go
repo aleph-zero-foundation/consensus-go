@@ -109,7 +109,6 @@ func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 		if alreadyInDag[i] == nil {
 			err := ad.checkCorrectness(pu)
 			if err != nil {
-				//ad.log.Warn().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint32(logging.Epoch, uint32(pu.EpochID())).Uint16(logging.PID, source).Msg("invalid signature")
 				getErrors()[i] = err
 				failed[i] = true
 			}
