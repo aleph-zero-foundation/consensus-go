@@ -60,6 +60,8 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	epochProofBuilder := creator.NewProofBuilder(ord.conf, ord.log)
 	ord.creator = creator.New(ord.conf, ord.ds, send, ord.rsData, epochProofBuilder, ord.log)
 
+	ord.newEpoch(gomel.EpochID(0))
+
 	syncer.Start()
 	alerter.Start()
 
@@ -84,9 +86,7 @@ func (ord *orderer) Stop() {
 	if ord.previous != nil {
 		ord.previous.Close()
 	}
-	if ord.current != nil {
-		ord.current.Close()
-	}
+	ord.current.Close()
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
@@ -168,11 +168,7 @@ func (ord *orderer) UnitsByHash(hashes ...*gomel.Hash) []gomel.Unit {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
 	var result []gomel.Unit
-	if ord.current != nil {
-		result = ord.current.dag.GetUnits(hashes)
-	} else {
-		result = make([]gomel.Unit, len(hashes))
-	}
+	result = ord.current.dag.GetUnits(hashes)
 	if ord.previous != nil {
 		for i := range result {
 			if result[i] == nil {
@@ -200,7 +196,7 @@ func (ord *orderer) GetInfo() [2]*gomel.DagInfo {
 	if ord.previous != nil && !ord.previous.IsFinished() {
 		result[0] = gomel.MaxView(ord.previous.dag)
 	}
-	if ord.current != nil && !ord.current.IsFinished() {
+	if !ord.current.IsFinished() {
 		result[1] = gomel.MaxView(ord.current.dag)
 	}
 	return result
@@ -221,16 +217,14 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 		if ord.previous != nil && dagInfo.Epoch == ord.previous.id {
 			result = append(result, ord.previous.unitsAbove(dagInfo.Heights)...)
 		}
-		if ord.current != nil && dagInfo.Epoch == ord.current.id {
+		if dagInfo.Epoch == ord.current.id {
 			result = append(result, ord.current.unitsAbove(dagInfo.Heights)...)
 		}
 	}
 	deltaResolver(info[0])
 	deltaResolver(info[1])
-	if ord.current != nil {
-		if info[0] != nil && info[0].Epoch < ord.current.id && info[1] != nil && info[1].Epoch < ord.current.id {
-			result = append(result, ord.current.allUnits()...)
-		}
+	if info[0] != nil && info[0].Epoch < ord.current.id && info[1] != nil && info[1].Epoch < ord.current.id {
+		result = append(result, ord.current.allUnits()...)
 	}
 	return result
 }
@@ -253,7 +247,7 @@ func (ord *orderer) retrieveEpoch(pu gomel.Preunit, source uint16) *epoch {
 func (ord *orderer) getEpoch(epoch gomel.EpochID) (*epoch, bool) {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
-	if ord.current == nil || epoch > ord.current.id {
+	if epoch > ord.current.id {
 		return nil, true
 	}
 	if epoch == ord.current.id {
@@ -269,7 +263,7 @@ func (ord *orderer) getEpoch(epoch gomel.EpochID) (*epoch, bool) {
 func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 	ord.mx.Lock()
 	defer ord.mx.Unlock()
-	if ord.current == nil || epoch > ord.current.id {
+	if epoch > ord.current.id {
 		if ord.previous != nil {
 			ord.previous.Close()
 		}

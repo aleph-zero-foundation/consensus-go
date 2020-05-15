@@ -39,7 +39,7 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 	ext.wg.Add(2)
 	go ext.timingUnitDecider()
 	go ext.roundSorter()
-
+	ext.log.Info().Msg(logging.ServiceStarted)
 	return ext
 }
 
