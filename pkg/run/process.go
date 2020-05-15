@@ -78,7 +78,7 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 	if err != nil {
 		return nil, nil, err
 	}
-	netserv, err := tcp.NewServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses)
+	netserv, err := tcp.NewServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses, log)
 	if err != nil {
 		return nil, nil, err
 	}

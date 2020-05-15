@@ -7,7 +7,6 @@ package multicast
 import (
 	"math/rand"
 	gsync "sync"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -38,7 +37,6 @@ type server struct {
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
 	quit     bool
-	timeout  time.Duration
 	mx       gsync.RWMutex
 	log      zerolog.Logger
 }
@@ -56,7 +54,6 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		orderer:  orderer,
 		netserv:  netserv,
 		requests: requests,
-		timeout:  conf.Timeout,
 		log:      log,
 	}
 	s.outPool = sync.NewPerPidPool(conf.NProc, outPoolSize, s.Out)

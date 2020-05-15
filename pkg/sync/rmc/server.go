@@ -5,7 +5,6 @@ package rmc
 
 import (
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -30,7 +29,6 @@ type server struct {
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
 	inPool              gsync.WorkerPool
-	timeout             time.Duration
 	log                 zerolog.Logger
 	quit                bool
 	mx                  sync.RWMutex
@@ -46,7 +44,6 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		orderer: orderer,
 		netserv: netserv,
 		state:   rmcbox.New(conf.RMCPublicKeys, conf.RMCPrivateKey),
-		timeout: conf.Timeout,
 		log:     log,
 	}
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
@@ -108,12 +105,11 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 
 func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
 	id := gomel.UnitID(u)
-	conn, err := s.netserv.Dial(source, s.timeout)
+	conn, err := s.netserv.Dial(source)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.timeout)
 	err = rmcbox.Greet(conn, s.pid, id, msgRequestFinished)
 	if err != nil {
 		return err

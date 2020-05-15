@@ -51,11 +51,10 @@ func (s *service) Stop() {
 func (s *service) handleConns() {
 	defer s.listens.Done()
 	for atomic.LoadInt64(&s.quit) == 0 {
-		conn, err := s.netserv.Listen(s.timeout)
+		conn, err := s.netserv.Listen()
 		if err != nil {
 			continue
 		}
-		conn.TimeoutAfter(s.timeout)
 		s.listens.Add(1)
 		go func() {
 			defer s.listens.Done()

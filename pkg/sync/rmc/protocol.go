@@ -41,7 +41,7 @@ func (s *server) multicast(unit gomel.Unit) {
 }
 
 func (s *server) sendProof(recipient uint16, id uint64) error {
-	conn, err := s.netserv.Dial(recipient, s.timeout)
+	conn, err := s.netserv.Dial(recipient)
 	if err != nil {
 		return err
 	}
@@ -89,13 +89,13 @@ func (s *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 func (s *server) getMemberSignature(data []byte, id uint64, recipient uint16) bool {
 	log := s.log.With().Uint16(logging.PID, recipient).Uint64(logging.OSID, id).Logger()
 	for s.state.Status(id) != rmcbox.Finished {
-		conn, err := s.netserv.Dial(recipient, s.timeout)
+		conn, err := s.netserv.Dial(recipient)
 		if err != nil {
 			log.Error().Str("where", "rmc.getMemberSignature.Dial").Msg(err.Error())
 			time.Sleep(50 * time.Millisecond)
 			continue
 		}
-		conn.TimeoutAfter(s.timeout)
+
 		log.Info().Msg(logging.SyncStarted)
 		err = s.attemptGather(conn, data, id, recipient)
 		if err != nil {
@@ -131,12 +131,11 @@ func (s *server) attemptGather(conn network.Connection, data []byte, id uint64, 
 }
 
 func (s *server) in() {
-	conn, err := s.netserv.Listen(s.timeout)
+	conn, err := s.netserv.Listen()
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.timeout)
 
 	pid, id, msgType, err := rmcbox.AcceptGreeting(conn)
 	if err != nil {
@@ -157,7 +156,7 @@ func (s *server) in() {
 				log.Error().Str("where", "rmc.in.DecodePreunit").Msg(err.Error())
 				return
 			}
-			logging.AddingErrors(s.orderer.AddPreunits(pu.Creator(), pu), 1, log)
+			logging.AddingErrors(s.orderer.AddPreunits(pu.Creator(), pu), log)
 		}
 
 	case msgRequestFinished:

@@ -142,12 +142,12 @@ func (a *alertHandler) sendFinished(forker, pid uint16) {
 	}
 	id := comm.rmcID()
 	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
-	conn, err := a.netserv.Dial(pid, a.timeout)
+	conn, err := a.netserv.Dial(pid)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(a.timeout)
+
 	log.Info().Msg(logging.SyncStarted)
 	err = rmc.Greet(conn, a.myPid, id, finished)
 	if err != nil {
@@ -289,11 +289,11 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 // In this case we send the finished alert, in a separate communication.
 func (a *alertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 	log := a.log.With().Uint16(logging.PID, pid).Logger()
-	conn, err := a.netserv.Dial(pid, a.timeout)
+	conn, err := a.netserv.Dial(pid)
 	if err != nil {
 		return err
 	}
-	conn.TimeoutAfter(a.timeout)
+
 	log.Info().Msg(logging.SyncStarted)
 	defer conn.Close()
 	err = rmc.Greet(conn, a.myPid, 0, request)
@@ -459,11 +459,11 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 	success := false
 	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
 	for a.rmc.Status(id) != rmc.Finished {
-		conn, err := a.netserv.Dial(pid, a.timeout)
+		conn, err := a.netserv.Dial(pid)
 		if err != nil {
 			continue
 		}
-		conn.TimeoutAfter(a.timeout)
+
 		log.Info().Msg(logging.SyncStarted)
 		err = a.attemptGather(conn, data, id, pid)
 		if err != nil {
@@ -477,7 +477,7 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 	gathering.Done()
 	gathering.Wait()
 	if success {
-		conn, err := a.netserv.Dial(pid, a.timeout)
+		conn, err := a.netserv.Dial(pid)
 		if err != nil {
 			return
 		}
