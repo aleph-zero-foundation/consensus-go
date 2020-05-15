@@ -8,26 +8,21 @@ package handshake
 import (
 	"encoding/binary"
 	"io"
-
-	"gitlab.com/alephledger/core-go/pkg/network"
 )
 
 // Greet sends a greeting to the given conn.
-func Greet(conn network.Connection, pid uint16, sid uint32) error {
+func Greet(w io.Writer, pid uint16, sid uint32) error {
 	var data [6]byte
 	binary.LittleEndian.PutUint16(data[0:], pid)
 	binary.LittleEndian.PutUint32(data[2:], sid)
-	_, err := conn.Write(data[:])
-	if err != nil {
-		return err
-	}
-	return conn.Flush()
+	_, err := w.Write(data[:])
+	return err
 }
 
 // AcceptGreeting accepts a greeting and returns the information it learned from it.
-func AcceptGreeting(conn network.Connection) (pid uint16, sid uint32, err error) {
+func AcceptGreeting(r io.Reader) (pid uint16, sid uint32, err error) {
 	var data [6]byte
-	_, err = io.ReadFull(conn, data[:])
+	_, err = io.ReadFull(r, data[:])
 	if err != nil {
 		return
 	}
