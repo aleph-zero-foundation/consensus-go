@@ -93,15 +93,19 @@ var _ = Describe("Protocol", func() {
 		missing  []uint64
 	)
 
+	const (
+		timeout = time.Second
+	)
+
 	BeforeEach(func() {
-		netservs = ctests.NewNetwork(10)
+		netservs = ctests.NewNetwork(10, timeout)
 	})
 
 	JustBeforeEach(func() {
 		config1 := config.Empty()
 		config1.NProc = 2
 		config1.Pid = 0
-		config1.Timeout = time.Second
+		config1.Timeout = timeout
 		if adder1 == nil {
 			panic("adder1 is nil")
 		}
@@ -109,7 +113,7 @@ var _ = Describe("Protocol", func() {
 		config2 := config.Empty()
 		config2.NProc = 2
 		config2.Pid = 1
-		config2.Timeout = time.Second
+		config2.Timeout = timeout
 		serv2, _ = NewServer(config2, adder2, netservs[1], zerolog.Nop())
 		tserv1 = serv1.(testServer)
 		tserv2 = serv2.(testServer)

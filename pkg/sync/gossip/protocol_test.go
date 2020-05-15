@@ -65,20 +65,21 @@ func (ua *unitsAdder) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 type testNetworkServer struct {
 	network.Server
 	connectivity []bool
+	timeout      time.Duration
 }
 
-func (ns testNetworkServer) Dial(k uint16, timeout time.Duration) (network.Connection, error) {
+func (ns testNetworkServer) Dial(k uint16) (network.Connection, error) {
 	if !ns.connectivity[k] {
-		<-time.After(timeout)
+		<-time.After(ns.timeout)
 		return nil, errors.New("unable to connect")
 	}
-	return ns.Server.Dial(k, timeout)
+	return ns.Server.Dial(k)
 }
 
-func newNetwork(length int, connectivity [][]bool) []network.Server {
-	network := ctests.NewNetwork(length)
+func newNetwork(length int, connectivity [][]bool, timeout time.Duration) []network.Server {
+	network := ctests.NewNetwork(length, timeout)
 	for ix := range network {
-		network[ix] = &testNetworkServer{Server: network[ix], connectivity: connectivity[ix]}
+		network[ix] = &testNetworkServer{Server: network[ix], connectivity: connectivity[ix], timeout: timeout}
 	}
 	return network
 }
@@ -91,6 +92,10 @@ var _ = Describe("Protocol", func() {
 		servs    []sync.Server
 		tservs   []testServer
 		netservs []network.Server
+	)
+
+	const (
+		timeout = 10 * time.Millisecond
 	)
 
 	BeforeEach(func() {
@@ -193,9 +198,9 @@ var _ = Describe("Protocol", func() {
 				connectivity := prepareRingConnectivity(nProc)
 				connectivity[0][2] = false
 				connectivity[2][0] = false
-				netservs = newNetwork(nProc, connectivity)
+				netservs = newNetwork(nProc, connectivity, timeout)
 				dags = prepareSmallDags(nProc)
-				init(10 * time.Millisecond)
+				init(timeout)
 
 				// expected number of rounds to cover whole network
 				expectedTime := 4
@@ -213,9 +218,9 @@ var _ = Describe("Protocol", func() {
 			It("should after enough long time make all dags contain same units", func() {
 				nProc := 10
 				connectivity := prepareRingConnectivity(nProc)
-				netservs = newNetwork(nProc, connectivity)
+				netservs = newNetwork(nProc, connectivity, timeout)
 				dags = prepareSmallDags(nProc)
-				init(10 * time.Millisecond)
+				init(timeout)
 
 				// expected number of rounds to cover whole network
 				expectedTime := 2 * nProc

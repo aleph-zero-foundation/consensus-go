@@ -53,8 +53,12 @@ var _ = Describe("Protocol", func() {
 		pu        gomel.Preunit
 	)
 
+	const (
+		timeout = 10 * time.Second
+	)
+
 	BeforeEach(func() {
-		netservs = ctests.NewNetwork(4)
+		netservs = ctests.NewNetwork(4, timeout)
 	})
 
 	AfterEach(func() {
@@ -70,7 +74,7 @@ var _ = Describe("Protocol", func() {
 			config := config.Empty()
 			config.NProc = 4
 			config.Pid = uint16(i)
-			config.Timeout = 10 * time.Second
+			config.Timeout = timeout
 			serv, mltcst := NewServer(config, adders[i], netservs[i], zerolog.Nop())
 			servs = append(servs, serv)
 			tservs = append(tservs, serv.(testServer))

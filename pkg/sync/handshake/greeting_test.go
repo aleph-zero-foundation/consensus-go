@@ -18,8 +18,12 @@ var _ = Describe("Greeting", func() {
 		servs []network.Server
 	)
 
+	const (
+		timeout = time.Second
+	)
+
 	BeforeEach(func() {
-		servs = ctests.NewNetwork(2)
+		servs = ctests.NewNetwork(2, timeout)
 	})
 
 	Context("correctly", func() {
@@ -28,13 +32,13 @@ var _ = Describe("Greeting", func() {
 			var wg sync.WaitGroup
 			wg.Add(2)
 			go func() {
-				conn, err := servs[1].Dial(0, time.Second)
+				conn, err := servs[1].Dial(0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(Greet(conn, 1, 2)).To(Succeed())
 				wg.Done()
 			}()
 			go func() {
-				conn, err := servs[0].Listen(time.Second)
+				conn, err := servs[0].Listen()
 				Expect(err).NotTo(HaveOccurred())
 				pid, sid, err := AcceptGreeting(conn)
 				Expect(err).NotTo(HaveOccurred())
