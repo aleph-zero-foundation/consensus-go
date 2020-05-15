@@ -76,6 +76,6 @@ func (ep *epoch) IsFinished() bool {
 	}
 }
 
-func (ep *epoch) finish() {
+func (ep *epoch) Finish() {
 	close(ep.finished)
 }
