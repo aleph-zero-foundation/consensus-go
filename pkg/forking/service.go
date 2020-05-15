@@ -11,7 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
-	"gitlab.com/alephledger/core-go/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/rmcbox"
 )
 
 type service struct {
@@ -25,7 +25,7 @@ type service struct {
 
 // NewAlerter constructs an alerting service for the given dag with the given configuration.
 func NewAlerter(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (gomel.Alerter, error) {
-	rmc := rmc.New(conf.RMCPublicKeys, conf.RMCPrivateKey)
+	rmc := rmcbox.New(conf.RMCPublicKeys, conf.RMCPrivateKey)
 	a := newAlertHandler(conf, orderer, rmc, netserv, log)
 	s := &service{
 		alertHandler: a,

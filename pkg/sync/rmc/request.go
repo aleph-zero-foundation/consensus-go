@@ -1,9 +1,9 @@
 package rmc
 
 const (
-	sendData byte = iota
-	sendProof
-	requestFinished
+	msgSendData byte = iota
+	msgSendProof
+	msgRequestFinished
 )
 
 // request represents a request to a multicast server

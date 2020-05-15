@@ -21,7 +21,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
-	"gitlab.com/alephledger/core-go/pkg/rmc"
+	rmc "gitlab.com/alephledger/core-go/pkg/rmcbox"
 	"gitlab.com/alephledger/core-go/pkg/utils"
 )
 
