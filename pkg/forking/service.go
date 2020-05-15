@@ -3,7 +3,6 @@ package forking
 import (
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -17,7 +16,6 @@ import (
 type service struct {
 	*alertHandler
 	netserv network.Server
-	timeout time.Duration
 	listens sync.WaitGroup
 	quit    int64
 	log     zerolog.Logger
@@ -30,7 +28,6 @@ func NewAlerter(conf config.Config, orderer gomel.Orderer, netserv network.Serve
 	s := &service{
 		alertHandler: a,
 		netserv:      netserv,
-		timeout:      conf.Timeout,
 		log:          log.With().Int(logging.Service, logging.AlertService).Logger(),
 	}
 	return s, nil

@@ -13,7 +13,6 @@ import (
 	"errors"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -53,7 +52,6 @@ type alertHandler struct {
 	keys        []gomel.PublicKey
 	rmc         *rmc.RMC
 	netserv     network.Server
-	timeout     time.Duration
 	commitments *commitBase
 	locks       []sync.Mutex
 	observable  utils.Observable
@@ -69,7 +67,6 @@ func newAlertHandler(conf config.Config, orderer gomel.Orderer, rmc *rmc.RMC, ne
 		orderer:     orderer,
 		rmc:         rmc,
 		netserv:     netserv,
-		timeout:     conf.Timeout,
 		commitments: newCommitBase(),
 		locks:       make([]sync.Mutex, conf.NProc),
 		observable:  utils.NewThreadSafeObservable(),
@@ -147,7 +144,6 @@ func (a *alertHandler) sendFinished(forker, pid uint16) {
 		return
 	}
 	defer conn.Close()
-
 	log.Info().Msg(logging.SyncStarted)
 	err = rmc.Greet(conn, a.myPid, id, finished)
 	if err != nil {
@@ -463,7 +459,6 @@ func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, 
 		if err != nil {
 			continue
 		}
-
 		log.Info().Msg(logging.SyncStarted)
 		err = a.attemptGather(conn, data, id, pid)
 		if err != nil {

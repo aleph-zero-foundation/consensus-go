@@ -91,6 +91,10 @@ var _ = Describe("Alert", func() {
 		stop     int64
 	)
 
+	const (
+		timeout = 2 * time.Second
+	)
+
 	KeepHandling := func(pid uint16) {
 		defer GinkgoRecover()
 		defer wg.Done()
@@ -138,7 +142,7 @@ var _ = Describe("Alert", func() {
 		alerters = make([]gomel.Alerter, nProc)
 		dags = make([]gomel.Dag, nProc)
 		rss = make([]gomel.RandomSource, nProc)
-		netservs = ctests.NewNetwork(int(nProc), time.Second)
+		netservs = ctests.NewNetwork(int(nProc), timeout)
 		orderers = make([]*orderer, nProc)
 		stop = 0
 		for i := range dags {

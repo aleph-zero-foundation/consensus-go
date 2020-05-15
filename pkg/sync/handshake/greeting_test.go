@@ -18,8 +18,12 @@ var _ = Describe("Greeting", func() {
 		servs []network.Server
 	)
 
+	const (
+		timeout = time.Second
+	)
+
 	BeforeEach(func() {
-		servs = ctests.NewNetwork(2, time.Second)
+		servs = ctests.NewNetwork(2, timeout)
 	})
 
 	Context("correctly", func() {

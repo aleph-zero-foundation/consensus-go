@@ -50,6 +50,6 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-	s.peerManager.stop()
 	s.outPool.Stop()
+	s.peerManager.stop()
 }
