@@ -54,7 +54,7 @@ var _ = Describe("Protocol", func() {
 	)
 
 	BeforeEach(func() {
-		netservs = ctests.NewNetwork(4)
+		netservs = ctests.NewNetwork(4, time.Second)
 	})
 
 	AfterEach(func() {

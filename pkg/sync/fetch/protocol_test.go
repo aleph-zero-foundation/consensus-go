@@ -94,7 +94,7 @@ var _ = Describe("Protocol", func() {
 	)
 
 	BeforeEach(func() {
-		netservs = ctests.NewNetwork(10)
+		netservs = ctests.NewNetwork(10, time.Second)
 	})
 
 	JustBeforeEach(func() {

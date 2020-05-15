@@ -95,11 +95,10 @@ var _ = Describe("Alert", func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for atomic.LoadInt64(&stop) == 0 {
-			conn, err := netservs[pid].Listen(2 * time.Second)
+			conn, err := netservs[pid].Listen()
 			if err != nil {
 				continue
 			}
-			conn.TimeoutAfter(time.Second)
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -108,11 +107,10 @@ var _ = Describe("Alert", func() {
 		}
 		// Clean up pending alerts, assume done if timeout.
 		for i := 0; i < int(nProc); i++ {
-			conn, err := netservs[pid].Listen(2 * time.Second)
+			conn, err := netservs[pid].Listen()
 			if err != nil {
 				return
 			}
-			conn.TimeoutAfter(time.Second)
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -140,7 +138,7 @@ var _ = Describe("Alert", func() {
 		alerters = make([]gomel.Alerter, nProc)
 		dags = make([]gomel.Dag, nProc)
 		rss = make([]gomel.RandomSource, nProc)
-		netservs = ctests.NewNetwork(int(nProc))
+		netservs = ctests.NewNetwork(int(nProc), time.Second)
 		orderers = make([]*orderer, nProc)
 		stop = 0
 		for i := range dags {
