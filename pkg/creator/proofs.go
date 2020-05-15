@@ -57,8 +57,10 @@ func decodeProof(msg []byte) (int, uint16, gomel.EpochID, *gomel.Hash) {
 
 // encodeShare converts signature share and the signed message into Data that can be put into unit.
 func encodeShare(share *tss.Share, msg []byte) core.Data {
-	result := append([]byte{}, msg...)
-	result = append(result, share.Marshal()...)
+	sh := share.Marshal()
+	result := make([]byte, 0, len(msg)+len(sh))
+	result = append(result, msg...)
+	result = append(result, sh...)
 	return core.Data(result)
 }
 
@@ -74,8 +76,10 @@ func decodeShare(data core.Data) (*tss.Share, []byte, error) {
 
 // encodeSignature converts signature and the signed message into Data that can be put into unit.
 func encodeSignature(sig *tss.Signature, msg []byte) core.Data {
-	result := append([]byte{}, msg...)
-	result = append(result, sig.Marshal()...)
+	sg := sig.Marshal()
+	result := make([]byte, 0, len(msg)+len(sg))
+	result = append(result, msg...)
+	result = append(result, sg...)
 	return core.Data(result)
 }
 
