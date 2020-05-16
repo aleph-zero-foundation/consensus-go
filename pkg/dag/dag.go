@@ -24,8 +24,8 @@ func New(conf config.Config, epochID gomel.EpochID) gomel.Dag {
 		nProc:       conf.NProc,
 		epochID:     epochID,
 		units:       newUnitBag(),
-		levelUnits:  newFiberMap(conf.NProc, 10),
-		heightUnits: newFiberMap(conf.NProc, 10),
+		levelUnits:  newFiberMap(conf.NProc, conf.EpochLength),
+		heightUnits: newFiberMap(conf.NProc, conf.EpochLength),
 		maxUnits:    newSlottedUnits(conf.NProc),
 		checks:      append([]gomel.UnitChecker(nil), conf.Checks...),
 	}

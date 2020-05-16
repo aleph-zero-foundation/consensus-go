@@ -34,7 +34,7 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 		pid:          conf.Pid,
 		output:       output,
 		trigger:      make(chan struct{}, 1),
-		timingRounds: make(chan *TimingRound, 10),
+		timingRounds: make(chan *TimingRound, conf.EpochLength),
 		log:          logger,
 	}
 

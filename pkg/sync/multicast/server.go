@@ -17,9 +17,8 @@ import (
 )
 
 const (
-	requestSize = 10
 	outPoolSize = 4
-	inPoolSize  = 2
+	inPoolSize  = 4
 )
 
 // request represents a request to send the encoded unit to the committee member indicated by pid.
@@ -46,7 +45,7 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 	nProc := conf.NProc
 	requests := make([]chan request, nProc)
 	for i := uint16(0); i < nProc; i++ {
-		requests[i] = make(chan request, requestSize)
+		requests[i] = make(chan request, conf.EpochLength)
 	}
 	s := &server{
 		pid:      conf.Pid,

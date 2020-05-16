@@ -13,10 +13,6 @@ import (
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
-const (
-	beltSize = 10000
-)
-
 type orderer struct {
 	conf         config.Config
 	syncer       gomel.Syncer
@@ -41,9 +37,9 @@ func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker,
 		conf:         conf,
 		toPreblock:   toPreblock,
 		ds:           ds,
-		unitBelt:     make(chan gomel.Unit, beltSize),
-		lastTiming:   make(chan gomel.Unit, 10),
-		orderedUnits: make(chan []gomel.Unit, 10),
+		unitBelt:     make(chan gomel.Unit, conf.EpochLength*int(conf.NProc)),
+		lastTiming:   make(chan gomel.Unit, conf.NumberOfEpochs),
+		orderedUnits: make(chan []gomel.Unit, conf.EpochLength),
 		log:          log.With().Int(logging.Service, logging.OrderService).Logger(),
 	}
 }

@@ -10,10 +10,6 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
-const (
-	channelLength = 32
-)
-
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with
 // missing parents is waiting until all the parents are available. Then it's considered
 // 'ready' and added to per-pid channel, from where it's picked by the worker.
@@ -56,7 +52,7 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 		if uint16(i) == ad.conf.Pid {
 			continue
 		}
-		ad.ready[i] = make(chan *waitingPreunit, channelLength)
+		ad.ready[i] = make(chan *waitingPreunit, conf.EpochLength)
 		ad.wg.Add(1)
 		go func(ch chan *waitingPreunit) {
 			defer ad.wg.Done()
