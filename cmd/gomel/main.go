@@ -111,7 +111,12 @@ func main() {
 	// mock data source and preblock sink.
 	tds := tests.RandomDataSource(300 * options.txpu)
 	ps := make(chan *core.Preblock)
-	go tests.CountingPreblockConsumer(ps, os.Stdout)
+
+	done := make(chan struct{})
+	go func() {
+		tests.ControlSumPreblockConsumer(ps, os.Stdout)
+		close(done)
+	}()
 
 	// get member
 	member, err := getMember(options.privFilename)
@@ -151,7 +156,7 @@ func main() {
 
 	// run process
 	start()
-	time.Sleep(10 * time.Second)
+	<-done
 	stop()
 
 	// dump profiles
