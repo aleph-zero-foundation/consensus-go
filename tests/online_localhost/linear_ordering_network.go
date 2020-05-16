@@ -14,10 +14,10 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
-	"gitlab.com/alephledger/consensus-go/pkg/tests"
 	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/crypto/bn256"
 	"gitlab.com/alephledger/core-go/pkg/crypto/p2p"
+	"gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 func generateKeys(nProcesses uint16) (pubKeys []gomel.PublicKey, privKeys []gomel.PrivateKey) {
@@ -95,7 +95,6 @@ func createAndStartProcess(
 	p2pPubKeys []*p2p.PublicKey,
 	p2pSecKey *p2p.SecretKey,
 	numberOfPreblocks int,
-	dagFinished *sync.WaitGroup,
 	finished *sync.WaitGroup,
 ) error {
 	member := config.Member{
@@ -147,39 +146,30 @@ func createAndStartProcess(
 	}
 
 	// Mock data source and preblock sink.
-	tds := tests.NewDataSource(10)
+	tds := tests.RandomDataSource(10)
 	ps := make(chan *core.Preblock)
+
+	var wait sync.WaitGroup
+	wait.Add(1)
+	go func() {
+		defer wait.Done()
+		tests.NopPreblockConsumer(ps)
+	}()
 
 	go func() {
 		defer finished.Done()
 
-		var wait sync.WaitGroup
-		seenPB, expectedPB := 0, cnf.EpochLength*cnf.NumberOfEpochs
-		wait.Add(1)
-		go func() {
-			defer wait.Done()
-			for range ps {
-				seenPB++
-				if seenPB >= expectedPB {
-					break
-				}
-			}
-		}()
-
-		mainStart, mainStop, err := run.Process(setupCnf, cnf, tds, ps)
+		start, stop, err := run.Process(setupCnf, cnf, tds, ps)
 		if err != nil {
 			log.Err(err).Msg("failed to initialize a process")
 			panic(err)
 		}
-		mainStart()
+		start()
 
-		// await for all expected preblocks
+		// wait for all expected preblocks
 		wait.Wait()
 
-		dagFinished.Done()
-		dagFinished.Wait()
-
-		mainStop()
+		stop()
 	}()
 	return nil
 }
@@ -248,8 +238,6 @@ func main() {
 	p2pPubKeys, p2pSecKeys := generateP2PKeys(nProc)
 
 	var allDone sync.WaitGroup
-	var dagsFinished sync.WaitGroup
-	dagsFinished.Add(len(gossipAddresses))
 	for id := range gossipAddresses {
 		allDone.Add(1)
 		err := createAndStartProcess(
@@ -267,7 +255,6 @@ func main() {
 
 			pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id],
 			*numberOfPreblocks,
-			&dagsFinished,
 			&allDone,
 		)
 		if err != nil {
