@@ -19,6 +19,8 @@ type ExtenderService struct {
 	output       chan<- []gomel.Unit
 	trigger      chan struct{}
 	timingRounds chan *TimingRound
+	finished     bool
+	mx           sync.RWMutex
 	wg           sync.WaitGroup
 	log          zerolog.Logger
 }
@@ -45,16 +47,23 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 
 // Close stops the extender.
 func (ext *ExtenderService) Close() {
+	ext.mx.Lock()
+	ext.finished = true
 	close(ext.trigger)
+	ext.mx.Unlock()
 	ext.wg.Wait()
 	ext.log.Info().Msg(logging.ServiceStopped)
 }
 
 // Notify ExtenderService to attempt choosing next timing units.
 func (ext *ExtenderService) Notify() {
-	select {
-	case ext.trigger <- struct{}{}:
-	default:
+	ext.mx.RLock()
+	defer ext.mx.RUnlock()
+	if !ext.finished {
+		select {
+		case ext.trigger <- struct{}{}:
+		default:
+		}
 	}
 }
 
