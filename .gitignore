@@ -9,3 +9,7 @@
 # keys
 *.pk
 *.ka
+# aws keys
+*.pem
+*.pub
+*.fingerprint
