@@ -39,7 +39,7 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 	ext.wg.Add(2)
 	go ext.timingUnitDecider()
 	go ext.roundSorter()
-
+	ext.log.Info().Msg(logging.ServiceStarted)
 	return ext
 }
 
@@ -47,6 +47,7 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 func (ext *ExtenderService) Close() {
 	close(ext.trigger)
 	ext.wg.Wait()
+	ext.log.Info().Msg(logging.ServiceStopped)
 }
 
 // Notify ExtenderService to attempt choosing next timing units.
@@ -86,7 +87,7 @@ func (ext *ExtenderService) roundSorter() {
 				Uint32(logging.Epoch, uint32(u.EpochID())).
 				Msg(logging.UnitOrdered)
 			if u.Creator() == ext.pid {
-				ext.log.Info().Int(logging.Height, u.Height()).Msg(logging.OwnUnitOrdered)
+				ext.log.Info().Int(logging.Height, u.Height()).Int(logging.Level, u.Level()).Msg(logging.OwnUnitOrdered)
 			}
 		}
 		ext.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)

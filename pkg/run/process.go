@@ -23,6 +23,7 @@ import (
 // Given two Config objects (one for the setup phase and one for the main consensus), data source and preblock sink,
 // Process initializes two orderers and a channel between them used to pass the result of the setup phase.
 // Returns two functions that can be used to, respectively, start and stop the whole system.
+// The provided preblock sink gets closed after Process produces the last preblock.
 func Process(setupConf, conf config.Config, ds core.DataSource, ps core.PreblockSink) (start func(), stop func(), err error) {
 	wtkchan := make(chan *tss.WeakThresholdKey, 1)
 	startSetup, stopSetup, setupErr := setup(setupConf, wtkchan)
@@ -65,6 +66,11 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 
 	makePreblock := func(units []gomel.Unit) {
 		ps <- gomel.ToPreblock(units)
+		timingUnit := units[len(units)-1]
+		if timingUnit.Level() == conf.LastLevel && timingUnit.EpochID() == gomel.EpochID(conf.NumberOfEpochs-1) {
+			// we have just sent the last preblock of the last epoch, it's safe to quit
+			close(ps)
+		}
 	}
 
 	ord := orderer.New(conf, ds, makePreblock, log)
@@ -72,7 +78,7 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 	if err != nil {
 		return nil, nil, err
 	}
-	netserv, err := tcp.NewServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses)
+	netserv, err := tcp.NewServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses, log)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,6 +106,7 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 	stop := func() {
 		close(wtkchan)
 		<-started
+		netserv.Stop()
 		ord.Stop()
 	}
 	return start, stop, nil
@@ -149,12 +156,11 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 }
 
 func logWTK(log zerolog.Logger, wtkey *tss.WeakThresholdKey) {
-
 	providers := make([]uint16, 0, len(wtkey.ShareProviders()))
 	for provider := range wtkey.ShareProviders() {
 		providers = append(providers, provider)
 	}
-	log.Info().
+	log.Log().
 		Uint16(logging.WTKThreshold, wtkey.Threshold()).
 		Uints16(logging.WTKShareProviders, providers).
 		Msg(logging.GotWTK)

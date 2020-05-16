@@ -57,7 +57,11 @@ func decodeProof(msg []byte) (int, uint16, gomel.EpochID, *gomel.Hash) {
 
 // encodeShare converts signature share and the signed message into Data that can be put into unit.
 func encodeShare(share *tss.Share, msg []byte) core.Data {
-	return core.Data(append(msg, share.Marshal()...))
+	sh := share.Marshal()
+	result := make([]byte, 0, len(msg)+len(sh))
+	result = append(result, msg...)
+	result = append(result, sh...)
+	return core.Data(result)
 }
 
 // decodeShare reads signature share and the signed message from Data contained in some unit.
@@ -72,7 +76,11 @@ func decodeShare(data core.Data) (*tss.Share, []byte, error) {
 
 // encodeSignature converts signature and the signed message into Data that can be put into unit.
 func encodeSignature(sig *tss.Signature, msg []byte) core.Data {
-	return core.Data(append(msg, sig.Marshal()...))
+	sg := sig.Marshal()
+	result := make([]byte, 0, len(msg)+len(sg))
+	result = append(result, msg...)
+	result = append(result, sg...)
+	return core.Data(result)
 }
 
 // decodeSignature reads signature and the signed message from Data contained in some unit.
@@ -82,7 +90,9 @@ func decodeSignature(data core.Data) (*tss.Signature, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return result, data[:proofLength], nil
+	msg := make([]byte, proofLength)
+	copy(msg, data[:proofLength])
+	return result, msg, nil
 }
 
 // shareDB is a simple storage for threshold signature shares indexed by the message they sign.

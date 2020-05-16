@@ -148,6 +148,7 @@ const (
 	RMCService
 	AlertService
 	EpochService
+	NetworkService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
@@ -162,6 +163,7 @@ var serviceTypeDict = map[int]string{
 	RMCService:      "RMC",
 	AlertService:    "ALERT",
 	EpochService:    "EPOCH",
+	NetworkService:  "NETWORK",
 }
 
 // Genesis was better with Phil Collins.

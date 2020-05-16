@@ -83,8 +83,13 @@ func computeLayer(u gomel.Unit, layers map[gomel.Unit]int) int {
 	return layers[u]
 }
 
-// topSort sorts the given slice of units in the topological order.
-func topSort(units []gomel.Unit) []gomel.Unit {
+// sortChunk sorts the given slice of units according to the following convention:
+// * units are in ascending order wrt to EpochID
+// * within each epoch units are sorted topologically (first parents, then children)
+func sortChunk(units []gomel.Unit) []gomel.Unit {
+	if len(units) == 0 {
+		return units
+	}
 	layers := map[gomel.Unit]int{}
 	for _, u := range units {
 		layers[u] = -1
@@ -93,16 +98,26 @@ func topSort(units []gomel.Unit) []gomel.Unit {
 		layers[u] = computeLayer(u, layers)
 	}
 	maxLayer := -1
+	minEpoch := units[0].EpochID()
+	maxEpoch := units[0].EpochID()
 	for _, u := range units {
 		if layers[u] > maxLayer {
 			maxLayer = layers[u]
 		}
+		if u.EpochID() > maxEpoch {
+			maxEpoch = u.EpochID()
+		}
+		if u.EpochID() < minEpoch {
+			minEpoch = u.EpochID()
+		}
 	}
 	result := make([]gomel.Unit, 0, len(units))
-	for layer := 0; layer <= maxLayer; layer++ {
-		for _, u := range units {
-			if layers[u] == layer {
-				result = append(result, u)
+	for epoch := minEpoch; epoch <= maxEpoch; epoch++ {
+		for layer := 0; layer <= maxLayer; layer++ {
+			for _, u := range units {
+				if u.EpochID() == epoch && layers[u] == layer {
+					result = append(result, u)
+				}
 			}
 		}
 	}

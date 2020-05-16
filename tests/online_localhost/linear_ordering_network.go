@@ -180,8 +180,6 @@ func createAndStartProcess(
 		dagFinished.Wait()
 
 		mainStop()
-
-		close(ps)
 	}()
 	return nil
 }

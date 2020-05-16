@@ -105,26 +105,26 @@ func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 	}
 	alreadyInDag := ad.dag.GetUnits(hashes)
 
+	failed := make([]bool, len(preunits))
 	for i, pu := range preunits {
 		if alreadyInDag[i] == nil {
 			err := ad.checkCorrectness(pu)
 			if err != nil {
 				getErrors()[i] = err
-				preunits[i] = nil
+				failed[i] = true
 			}
 		} else {
 			getErrors()[i] = gomel.NewDuplicateUnit(alreadyInDag[i])
-			preunits[i] = nil
+			failed[i] = true
 		}
 	}
 
 	ad.mx.Lock()
 	defer ad.mx.Unlock()
 	for i, pu := range preunits {
-		if pu == nil {
-			continue
+		if !failed[i] {
+			getErrors()[i] = ad.addToWaiting(pu, source)
 		}
-		getErrors()[i] = ad.addToWaiting(pu, source)
 	}
 	return errors
 }
@@ -134,6 +134,9 @@ func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
 func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	if wp, ok := ad.waiting[*pu.Hash()]; ok {
 		return gomel.NewDuplicatePreunit(wp.pu)
+	}
+	if u := ad.dag.GetUnit(pu.Hash()); u != nil {
+		return gomel.NewDuplicateUnit(u)
 	}
 	id := gomel.UnitID(pu)
 	if fork, ok := ad.waitingByID[id]; ok {

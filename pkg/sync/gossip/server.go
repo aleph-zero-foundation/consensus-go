@@ -4,8 +4,6 @@
 package gossip
 
 import (
-	"time"
-
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -22,7 +20,6 @@ type server struct {
 	syncIds     []uint32
 	outPool     sync.WorkerPool
 	inPool      sync.WorkerPool
-	timeout     time.Duration
 	log         zerolog.Logger
 }
 
@@ -36,7 +33,6 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		netserv:     netserv,
 		peerManager: newPeerManager(conf.NProc, pid, conf.GossipWorkers[2]),
 		syncIds:     make([]uint32, conf.NProc),
-		timeout:     conf.Timeout,
 		log:         log,
 	}
 	s.inPool = sync.NewPool(conf.GossipWorkers[0], s.In)
@@ -54,6 +50,6 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-	s.peerManager.stop()
 	s.outPool.Stop()
+	s.peerManager.stop()
 }

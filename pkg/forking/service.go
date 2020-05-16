@@ -3,7 +3,6 @@ package forking
 import (
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -11,13 +10,12 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
-	"gitlab.com/alephledger/core-go/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/rmcbox"
 )
 
 type service struct {
 	*alertHandler
 	netserv network.Server
-	timeout time.Duration
 	listens sync.WaitGroup
 	quit    int64
 	log     zerolog.Logger
@@ -25,12 +23,11 @@ type service struct {
 
 // NewAlerter constructs an alerting service for the given dag with the given configuration.
 func NewAlerter(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (gomel.Alerter, error) {
-	rmc := rmc.New(conf.RMCPublicKeys, conf.RMCPrivateKey)
+	rmc := rmcbox.New(conf.RMCPublicKeys, conf.RMCPrivateKey)
 	a := newAlertHandler(conf, orderer, rmc, netserv, log)
 	s := &service{
 		alertHandler: a,
 		netserv:      netserv,
-		timeout:      conf.Timeout,
 		log:          log.With().Int(logging.Service, logging.AlertService).Logger(),
 	}
 	return s, nil
@@ -39,23 +36,22 @@ func NewAlerter(conf config.Config, orderer gomel.Orderer, netserv network.Serve
 func (s *service) Start() {
 	s.listens.Add(1)
 	go s.handleConns()
-	s.log.Info().Msg(logging.ServiceStarted)
+	s.log.Log().Msg(logging.ServiceStarted)
 }
 
 func (s *service) Stop() {
 	atomic.StoreInt64(&s.quit, 1)
 	s.listens.Wait()
-	s.log.Info().Msg(logging.ServiceStopped)
+	s.log.Log().Msg(logging.ServiceStopped)
 }
 
 func (s *service) handleConns() {
 	defer s.listens.Done()
 	for atomic.LoadInt64(&s.quit) == 0 {
-		conn, err := s.netserv.Listen(s.timeout)
+		conn, err := s.netserv.Listen()
 		if err != nil {
 			continue
 		}
-		conn.TimeoutAfter(s.timeout)
 		s.listens.Add(1)
 		go func() {
 			defer s.listens.Done()

@@ -34,7 +34,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 	// init fetch
 	var netserv network.Server
 	var err error
-	netserv, s.subservices, err = getNetServ(conf.FetchNetType, conf.Pid, conf.FetchAddresses, s.subservices)
+	netserv, s.subservices, err = getNetServ(conf.FetchNetType, conf.Pid, conf.FetchAddresses, s.subservices, conf.Timeout, log)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 	s.servers = append(s.servers, serv)
 	s.fetch = ftrigger
 	// init gossip
-	netserv, s.subservices, err = getNetServ(conf.GossipNetType, conf.Pid, conf.GossipAddresses, s.subservices)
+	netserv, s.subservices, err = getNetServ(conf.GossipNetType, conf.Pid, conf.GossipAddresses, s.subservices, conf.Timeout, log)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 	s.gossip = gtrigger
 	if setup {
 		// init rmc
-		netserv, s.subservices, err = getNetServ(conf.RMCNetType, conf.Pid, conf.RMCAddresses, s.subservices)
+		netserv, s.subservices, err = getNetServ(conf.RMCNetType, conf.Pid, conf.RMCAddresses, s.subservices, conf.Timeout, log)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +59,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 		s.servers = append(s.servers, serv)
 	} else {
 		// init mcast
-		netserv, s.subservices, err = getNetServ(conf.MCastNetType, conf.Pid, conf.MCastAddresses, s.subservices)
+		netserv, s.subservices, err = getNetServ(conf.MCastNetType, conf.Pid, conf.MCastAddresses, s.subservices, conf.Timeout, log)
 		if err != nil {
 			return nil, err
 		}
@@ -83,39 +83,75 @@ func (s *syncer) Start() {
 }
 
 func (s *syncer) Stop() {
-	for _, server := range s.servers {
-		server.StopOut()
-	}
-	// let other processes sync with us some more
-	time.Sleep(5 * time.Second)
-	for _, server := range s.servers {
-		server.StopIn()
-	}
 	for _, service := range s.subservices {
 		service.Stop()
 	}
+	for _, server := range s.servers {
+		server.StopOut()
+	}
+	for _, server := range s.servers {
+		server.StopIn()
+	}
+}
+
+type networkService struct {
+	wrapped network.Server
+}
+
+func newNetworkService(netserv network.Server) core.Service {
+	return &networkService{wrapped: netserv}
+}
+
+func (ns *networkService) Start() error {
+	return nil
+}
+
+func (ns *networkService) Stop() {
+	ns.wrapped.Stop()
 }
 
 // Return network.Server of the type indicated by "net". If needed, append a corresponding service to the given slice. Defaults to "tcp".
-func getNetServ(net string, pid uint16, addresses []string, services []core.Service) (network.Server, []core.Service, error) {
+func getNetServ(net string, pid uint16, addresses []string, services []core.Service, timeout time.Duration, log zerolog.Logger) (network.Server, []core.Service, error) {
 	switch net {
 	case "udp":
-		netserv, err := udp.NewServer(addresses[pid], addresses)
+		netLogger := log.With().Int(logging.Service, logging.NetworkService).Logger()
+		netserv, err := udp.NewServer(addresses[pid], addresses, netLogger)
 		if err != nil {
 			return nil, services, err
 		}
+		netService := newNetworkService(netserv)
+		services = append(services, netService)
+
 		return netserv, services, nil
 	case "pers":
-		netserv, service, err := persistent.NewServer(addresses[pid], addresses)
+		netLogger := log.With().Int(logging.Service, logging.NetworkService).Logger()
+		netserv, err := tcp.NewServer(addresses[pid], addresses, netLogger)
 		if err != nil {
 			return nil, services, err
 		}
-		return netserv, append(services, service), nil
+		netserv = network.NewTimeoutConnectionServer(netserv, timeout)
+		netService := newNetworkService(netserv)
+		services = append(services, netService)
+
+		var service core.Service
+
+		netserv, service, err = persistent.NewServer(addresses[pid], addresses, timeout)
+		if err != nil {
+			return nil, services, err
+		}
+		services = append(services, service)
+
+		return netserv, services, nil
 	default:
-		netserv, err := tcp.NewServer(addresses[pid], addresses)
+		netLogger := log.With().Int(logging.Service, logging.NetworkService).Logger()
+		netserv, err := tcp.NewServer(addresses[pid], addresses, netLogger)
 		if err != nil {
 			return nil, services, err
 		}
+		netserv = network.NewTimeoutConnectionServer(netserv, timeout)
+		netService := newNetworkService(netserv)
+		services = append(services, netService)
+
 		return netserv, services, nil
 	}
 }

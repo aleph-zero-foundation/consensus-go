@@ -5,8 +5,6 @@ package rmc
 
 import (
 	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -14,11 +12,12 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/core-go/pkg/network"
-	rmcbox "gitlab.com/alephledger/core-go/pkg/rmc"
+	"gitlab.com/alephledger/core-go/pkg/rmcbox"
 )
 
 const (
-	inPoolSize = 2
+	inPoolSize  = 8
+	rmcMismatch = "unit differs from successfully RMCd unit"
 )
 
 // server is a multicast server
@@ -30,9 +29,8 @@ type server struct {
 	state               *rmcbox.RMC
 	multicastInProgress sync.Mutex
 	inPool              gsync.WorkerPool
-	timeout             time.Duration
 	log                 zerolog.Logger
-	quit                int64
+	quit                bool
 	mx                  sync.RWMutex
 	wg                  sync.WaitGroup
 }
@@ -46,9 +44,7 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		orderer: orderer,
 		netserv: netserv,
 		state:   rmcbox.New(conf.RMCPublicKeys, conf.RMCPrivateKey),
-		timeout: conf.Timeout,
 		log:     log,
-		quit:    0,
 	}
 	s.inPool = gsync.NewPool(inPoolSize*nProc, s.in)
 	config.AddCheck(conf, s.finishedRMC)
@@ -69,14 +65,14 @@ func (s *server) StopIn() {
 func (s *server) StopOut() {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	atomic.StoreInt64(&s.quit, 1)
+	s.quit = true
 	s.wg.Wait()
 }
 
 func (s *server) send(unit gomel.Unit) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
-	if s.quit != 0 {
+	if s.quit {
 		return
 	}
 	if unit.Creator() == s.pid {
@@ -108,14 +104,17 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 }
 
 func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
-	conn, err := s.netserv.Dial(source, s.timeout)
+	id := gomel.UnitID(u)
+	conn, err := s.netserv.Dial(source)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(s.timeout)
-	id := gomel.UnitID(u)
-	err = rmcbox.Greet(conn, s.pid, id, requestFinished)
+	err = rmcbox.Greet(conn, s.pid, id, msgRequestFinished)
+	if err != nil {
+		return err
+	}
+	err = conn.Flush()
 	if err != nil {
 		return err
 	}
@@ -131,12 +130,4 @@ func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
 		return gomel.NewComplianceError(rmcMismatch)
 	}
 	return nil
-}
-
-const rmcMismatch = "unit differs from successfully RMCd unit"
-
-type unfinishedRMC struct{}
-
-func (e *unfinishedRMC) Error() string {
-	return "This instance of RMC is not yet finished"
 }

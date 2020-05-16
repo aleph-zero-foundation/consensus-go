@@ -86,7 +86,7 @@ func NewForEpoch(
 // This method is stopped by closing unitBelt channel.
 func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
 	defer func() {
-		cr.log.Info().Msg(logging.CreatorFinished)
+		cr.log.Log().Msg(logging.CreatorFinished)
 	}()
 	om := alerter.AddForkObserver(func(u, _ gomel.Preunit) {
 		cr.freezeParent(u.Creator())
@@ -95,10 +95,6 @@ func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter g
 	cr.newEpoch(cr.epoch, core.Data{})
 
 	for u := range unitBelt {
-		if cr.finished {
-			return
-		}
-
 		cr.mx.Lock()
 		// Step 1: update candidates with all units waiting on the unit belt
 		cr.update(u)
@@ -115,6 +111,7 @@ func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter g
 			cr.createUnit(parents, level, cr.getData(level, lastTiming))
 		}
 		cr.mx.Unlock()
+
 		if !wasReady {
 			cr.log.Debug().
 				Uint32(logging.Epoch, uint32(cr.epoch)).
@@ -122,7 +119,6 @@ func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter g
 				Uint16(logging.Size, cr.onMaxLvl).
 				Msg(logging.CreatorNotReadyAfterUpdate)
 		}
-
 		if cr.finished {
 			return
 		}
@@ -314,7 +310,7 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 		cr.finished = true
 		return
 	}
-	cr.log.Info().Uint32(logging.Epoch, uint32(epoch)).Msg(logging.CreatorSwitchedToNewEpoch)
+	cr.log.Log().Uint32(logging.Epoch, uint32(epoch)).Msg(logging.CreatorSwitchedToNewEpoch)
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 

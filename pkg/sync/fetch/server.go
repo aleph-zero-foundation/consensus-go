@@ -6,7 +6,6 @@ package fetch
 
 import (
 	gsync "sync"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -26,7 +25,6 @@ type server struct {
 	inPool   sync.WorkerPool
 	mx       gsync.RWMutex
 	quit     bool
-	timeout  time.Duration
 	log      zerolog.Logger
 }
 
@@ -40,7 +38,6 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		netserv:  netserv,
 		requests: requests,
 		syncIds:  make([]uint32, nProc),
-		timeout:  conf.Timeout,
 		log:      log,
 	}
 	s.inPool = sync.NewPool(conf.FetchWorkers[0], s.In)

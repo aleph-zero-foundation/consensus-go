@@ -18,7 +18,6 @@ const (
 )
 
 type orderer struct {
-	blockLimit   int
 	conf         config.Config
 	syncer       gomel.Syncer
 	rsf          gomel.RandomSourceFactory
@@ -39,7 +38,6 @@ type orderer struct {
 // New constructs a new orderer instance using provided config, data source, preblock maker, and logger.
 func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker, log zerolog.Logger) gomel.Orderer {
 	return &orderer{
-		blockLimit:   conf.OrderStartLevel + conf.EpochLength,
 		conf:         conf,
 		toPreblock:   toPreblock,
 		ds:           ds,
@@ -62,6 +60,8 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	epochProofBuilder := creator.NewProofBuilder(ord.conf, ord.log)
 	ord.creator = creator.New(ord.conf, ord.ds, send, ord.rsData, epochProofBuilder, ord.log)
 
+	ord.newEpoch(gomel.EpochID(0))
+
 	syncer.Start()
 	alerter.Start()
 
@@ -77,7 +77,7 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 		ord.handleTimingRounds()
 	}()
 
-	ord.log.Info().Msg(logging.ServiceStarted)
+	ord.log.Log().Msg(logging.ServiceStarted)
 }
 
 func (ord *orderer) Stop() {
@@ -86,11 +86,13 @@ func (ord *orderer) Stop() {
 	if ord.previous != nil {
 		ord.previous.Close()
 	}
-	ord.current.Close()
+	if ord.current != nil {
+		ord.current.Close()
+	}
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
-	ord.log.Info().Msg(logging.ServiceStopped)
+	ord.log.Log().Msg(logging.ServiceStopped)
 }
 
 // handleTimingRounds waits for ordered round of units produced by Extenders and produces Preblocks based on them.
@@ -102,11 +104,12 @@ func (ord *orderer) handleTimingRounds() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
-		if timingUnit.Level() == ord.blockLimit-1 {
+		if timingUnit.Level() == ord.conf.LastLevel {
 			ord.lastTiming <- timingUnit
+			ord.finishEpoch(timingUnit.EpochID())
 		}
 		epoch := timingUnit.EpochID()
-		if epoch >= current && timingUnit.Level() < ord.blockLimit {
+		if epoch >= current && timingUnit.Level() <= ord.conf.LastLevel {
 			ord.toPreblock(round)
 		}
 		current = epoch
@@ -283,6 +286,13 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 		return ord.previous
 	}
 	return nil
+}
+
+func (ord *orderer) finishEpoch(epoch gomel.EpochID) {
+	ep, _ := ord.getEpoch(epoch)
+	if ep != nil {
+		ep.Finish()
+	}
 }
 
 // insert puts the provided unit directly into the corresponding epoch. If such epoch does not exist, creates it.

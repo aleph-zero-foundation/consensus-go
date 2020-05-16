@@ -7,12 +7,11 @@ import (
 )
 
 func (p *server) In() {
-	conn, err := p.netserv.Listen(p.timeout)
+	conn, err := p.netserv.Listen()
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
 	pid, sid, err := handshake.AcceptGreeting(conn)
 	if err != nil {
 		p.log.Error().Str("where", "fetch.in.greeting").Msg(err.Error())
@@ -54,12 +53,11 @@ func (p *server) Out() {
 		return
 	}
 	remotePid := r.Pid
-	conn, err := p.netserv.Dial(remotePid, p.timeout)
+	conn, err := p.netserv.Dial(remotePid)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	conn.TimeoutAfter(p.timeout)
 	sid := p.syncIds[remotePid]
 	p.syncIds[remotePid]++
 	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
