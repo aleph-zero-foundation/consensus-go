@@ -13,3 +13,6 @@
 *.pem
 *.pub
 *.fingerprint
+# aws experiments
+*.zip
+experiments/aws/data/addresses
