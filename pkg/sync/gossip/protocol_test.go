@@ -122,7 +122,7 @@ var _ = Describe("Protocol", func() {
 				config.NProc = uint16(size)
 				config.Pid = uint16(i)
 				config.Timeout = connectionTimeout
-				config.GossipWorkers[0], config.GossipWorkers[1], config.GossipWorkers[2] = 1, 1, 1
+				config.GossipWorkers[0], config.GossipWorkers[1] = 1, 1
 				servs[i], _ = NewServer(config, adders[i], netservs[i], zerolog.Nop())
 				tservs[i] = servs[i].(testServer)
 			}

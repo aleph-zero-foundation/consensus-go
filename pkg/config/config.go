@@ -43,6 +43,7 @@ type conf struct {
 	// sync
 	GossipAbove     int
 	FetchInterval   time.Duration
+	GossipInterval  time.Duration
 	Timeout         time.Duration
 	RMCAddresses    []string
 	RMCNetType      string
@@ -52,7 +53,7 @@ type conf struct {
 	FetchNetType    string
 	MCastAddresses  []string
 	MCastNetType    string
-	GossipWorkers   [3]int // nIn, nOut, nIdle
+	GossipWorkers   [2]int // nIn, nOut
 	FetchWorkers    [2]int // nIn, nOut
 	// linear
 	OrderStartLevel               int
@@ -108,6 +109,7 @@ func addKeys(cnf Config, m *Member, c *Committee) {
 func addSyncConf(cnf Config, addresses map[string][]string, setup bool) {
 	cnf.Timeout = 5 * time.Second
 	cnf.FetchInterval = time.Second
+	cnf.GossipInterval = 100 * time.Millisecond
 	cnf.GossipAbove = 50
 
 	cnf.RMCNetType = "tcp"
@@ -123,7 +125,7 @@ func addSyncConf(cnf Config, addresses map[string][]string, setup bool) {
 	cnf.MCastAddresses = addresses["mcast"]
 
 	n := int(cnf.NProc)
-	cnf.GossipWorkers = [3]int{n/20 + 1, n/40 + 1, 1}
+	cnf.GossipWorkers = [2]int{n/20 + 1, n/40 + 1}
 	cnf.FetchWorkers = [2]int{n / 2, n / 4}
 }
 

@@ -44,6 +44,7 @@ const (
 	FreezedParent         = "m"
 	FutureLastTiming      = "n"
 	UnableToRetrieveEpoch = "o"
+	RequestOverload       = "p"
 )
 
 // eventTypeDict maps short event names to human readable form.
@@ -88,6 +89,7 @@ var eventTypeDict = map[string]string{
 	FreezedParent:         "creator freezed a parent due to some non-compliance",
 	FutureLastTiming:      "creator received timing unit from newer epoch that he's seen",
 	UnableToRetrieveEpoch: "unable to retrieve an epoch",
+	RequestOverload:       "sync server overloaded with requests",
 }
 
 // Field names.

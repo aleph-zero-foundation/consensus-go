@@ -11,6 +11,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/core-go/pkg/network"
 )
@@ -19,25 +20,23 @@ type server struct {
 	pid      uint16
 	orderer  gomel.Orderer
 	netserv  network.Server
-	requests chan Request
+	requests chan request
 	syncIds  []uint32
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
 	mx       gsync.RWMutex
-	quit     bool
+	closed   bool
 	log      zerolog.Logger
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
 func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Fetch) {
-	nProc := int(conf.NProc)
-	requests := make(chan Request, nProc)
 	s := &server{
 		pid:      conf.Pid,
 		orderer:  orderer,
 		netserv:  netserv,
-		requests: requests,
-		syncIds:  make([]uint32, nProc),
+		requests: make(chan request, conf.NProc),
+		syncIds:  make([]uint32, conf.NProc),
 		log:      log,
 	}
 	s.inPool = sync.NewPool(conf.FetchWorkers[0], s.In)
@@ -57,7 +56,7 @@ func (s *server) StopIn() {
 func (s *server) StopOut() {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	s.quit = true
+	s.closed = true
 	close(s.requests)
 	s.outPool.Stop()
 }
@@ -65,8 +64,11 @@ func (s *server) StopOut() {
 func (s *server) trigger(pid uint16, ids []uint64) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
-	if s.quit {
-		return
+	if !s.closed {
+		select {
+		case s.requests <- request{pid, ids}:
+		default:
+			s.log.Warn().Msg(lg.RequestOverload)
+		}
 	}
-	s.requests <- Request{pid, ids}
 }

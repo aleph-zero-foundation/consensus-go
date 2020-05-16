@@ -2,7 +2,9 @@
 package orderer
 
 import (
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -28,6 +30,7 @@ type orderer struct {
 	orderedUnits chan []gomel.Unit
 	mx           sync.RWMutex
 	wg           sync.WaitGroup
+	ticker       *time.Ticker
 	log          zerolog.Logger
 }
 
@@ -61,16 +64,26 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	syncer.Start()
 	alerter.Start()
 
+	// start creator
 	ord.wg.Add(1)
 	go func() {
 		defer ord.wg.Done()
 		ord.creator.CreateUnits(ord.unitBelt, ord.lastTiming, alerter)
 	}()
 
+	// start preblock builder
 	ord.wg.Add(1)
 	go func() {
 		defer ord.wg.Done()
 		ord.handleTimingRounds()
+	}()
+
+	// start random gossip requesting
+	ord.ticker = time.NewTicker(ord.conf.GossipInterval)
+	go func() {
+		for range ord.ticker.C {
+			ord.syncer.RequestGossip(uint16(rand.Intn(int(ord.conf.NProc))))
+		}
 	}()
 
 	ord.log.Log().Msg(lg.ServiceStarted)
@@ -87,6 +100,7 @@ func (ord *orderer) Stop() {
 	}
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
+	ord.ticker.Stop()
 	ord.wg.Wait()
 	ord.log.Log().Msg(lg.ServiceStopped)
 }
@@ -100,14 +114,17 @@ func (ord *orderer) handleTimingRounds() {
 	current := gomel.EpochID(0)
 	for round := range ord.orderedUnits {
 		timingUnit := round[len(round)-1]
+		epoch := timingUnit.EpochID()
 		if timingUnit.Level() == ord.conf.LastLevel {
 			ord.lastTiming <- timingUnit
-			ord.finishEpoch(timingUnit.EpochID())
+			ord.finishEpoch(epoch)
+			if int(epoch) == ord.conf.NumberOfEpochs-1 {
+				ord.ticker.Stop()
+			}
 		}
-		epoch := timingUnit.EpochID()
 		if epoch >= current && timingUnit.Level() <= ord.conf.LastLevel {
 			ord.toPreblock(round)
-			ord.log.Info().Int(lg.Level, timingUnit.Level()).Uint32(lg.Epoch, uint32(timingUnit.EpochID())).Msg(lg.PreblockProduced)
+			ord.log.Info().Int(lg.Level, timingUnit.Level()).Uint32(lg.Epoch, uint32(epoch)).Msg(lg.PreblockProduced)
 		}
 		current = epoch
 	}

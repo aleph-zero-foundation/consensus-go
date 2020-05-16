@@ -35,10 +35,12 @@ func (p *server) In() {
 		return
 	}
 
-	if !p.peerManager.begin(pid) {
+	select {
+	case <-p.tokens[pid]:
+	default:
 		return
 	}
-	defer p.peerManager.done(pid)
+	defer func() { p.tokens[pid] <- struct{}{} }()
 
 	log := p.log.With().Uint16(lg.PID, pid).Uint32(lg.ISID, sid).Logger()
 	log.Info().Msg(lg.SyncStarted)
@@ -104,11 +106,14 @@ func (p *server) In() {
     6. Add the received units to the dag.
 */
 func (p *server) Out() {
-	remotePid, ok := p.peerManager.nextPeer()
-	if !ok {
+	remotePid := <-p.requests
+
+	select {
+	case <-p.tokens[remotePid]:
+	default:
 		return
 	}
-	defer p.peerManager.done(remotePid)
+	defer func() { p.tokens[remotePid] <- struct{}{} }()
 
 	conn, err := p.netserv.Dial(remotePid)
 	if err != nil {
