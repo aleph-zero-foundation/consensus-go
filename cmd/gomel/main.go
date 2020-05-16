@@ -111,7 +111,7 @@ func main() {
 	// mock data source and preblock sink.
 	tds := tests.RandomDataSource(300 * options.txpu)
 	ps := make(chan *core.Preblock)
-	go tests.NopPreblockConsumer(ps)
+	go tests.CountingPreblockConsumer(ps, os.Stdout)
 
 	// get member
 	member, err := getMember(options.privFilename)
