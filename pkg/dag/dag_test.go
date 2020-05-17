@@ -65,13 +65,11 @@ var _ = Describe("Units", func() {
 	)
 
 	Describe("small", func() {
-		JustBeforeEach(func() {
-			units = collectUnits(dag)
-		})
 		Describe("Checking reflexivity of Above", func() {
 			BeforeEach(func() {
 				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/4/one_unit.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
+				units = collectUnits(dag)
 			})
 			It("Should return true", func() {
 				u := units[0][0][0]
@@ -82,6 +80,7 @@ var _ = Describe("Units", func() {
 			BeforeEach(func() {
 				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/single_unit_with_two_parents.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
+				units = collectUnits(dag)
 			})
 			It("Should be true in one direction and false in the other", func() {
 				u0 := units[0][0][0]
@@ -97,6 +96,7 @@ var _ = Describe("Units", func() {
 			BeforeEach(func() {
 				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/six_units.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
+				units = collectUnits(dag)
 			})
 			It("Should be true if two relations are true", func() {
 				u0 := units[0][0][0]
@@ -115,6 +115,7 @@ var _ = Describe("Units", func() {
 			BeforeEach(func() {
 				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/forked_dealing.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
+				units = collectUnits(dag)
 			})
 			It("Should return false for both below queries.", func() {
 				u0 := units[0][0][0]
@@ -127,6 +128,7 @@ var _ = Describe("Units", func() {
 			BeforeEach(func() {
 				dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/fork_4u.txt", df)
 				Expect(readingErr).NotTo(HaveOccurred())
+				units = collectUnits(dag)
 			})
 			It("Should correctly answer all pairs of below queries.", func() {
 				uBase := units[0][0][0]
@@ -146,6 +148,7 @@ var _ = Describe("Units", func() {
 				BeforeEach(func() {
 					dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/only_dealing.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
+					units = collectUnits(dag)
 				})
 				It("Should return floors containing no units", func() {
 					for pid := uint16(0); pid < dag.NProc(); pid++ {
@@ -160,6 +163,7 @@ var _ = Describe("Units", func() {
 				BeforeEach(func() {
 					dag, _, readingErr = tests.CreateDagFromTestFile("../testdata/dags/10/single_unit_with_two_parents.txt", df)
 					Expect(readingErr).NotTo(HaveOccurred())
+					units = collectUnits(dag)
 				})
 				It("Should contain correct floor", func() {
 					floor0 := units[0][1][0].Floor(0)
