@@ -21,8 +21,10 @@ func (s *server) In() {
 }
 
 func (s *server) Out(pid uint16) {
-	r, ok := <-s.requests[pid]
-	if !ok {
+	var r *request
+	select {
+	case r = <-s.requests[pid]:
+	case <-s.stopOut:
 		return
 	}
 	conn, err := s.netserv.Dial(pid)

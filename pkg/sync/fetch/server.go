@@ -5,8 +5,6 @@
 package fetch
 
 import (
-	gsync "sync"
-
 	"github.com/rs/zerolog"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -20,12 +18,11 @@ type server struct {
 	pid      uint16
 	orderer  gomel.Orderer
 	netserv  network.Server
-	requests chan request
+	requests chan *request
 	syncIds  []uint32
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
-	mx       gsync.RWMutex
-	closed   bool
+	stopOut  chan struct{}
 	log      zerolog.Logger
 }
 
@@ -35,8 +32,9 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		pid:      conf.Pid,
 		orderer:  orderer,
 		netserv:  netserv,
-		requests: make(chan request, conf.NProc),
+		requests: make(chan *request, conf.NProc),
 		syncIds:  make([]uint32, conf.NProc),
+		stopOut:  make(chan struct{}),
 		log:      log,
 	}
 	s.inPool = sync.NewPool(conf.FetchWorkers[0], s.In)
@@ -54,21 +52,14 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	s.closed = true
-	close(s.requests)
+	close(s.stopOut)
 	s.outPool.Stop()
 }
 
 func (s *server) trigger(pid uint16, ids []uint64) {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
-	if !s.closed {
-		select {
-		case s.requests <- request{pid, ids}:
-		default:
-			s.log.Warn().Msg(lg.RequestOverload)
-		}
+	select {
+	case s.requests <- &request{pid, ids}:
+	default:
+		s.log.Warn().Msg(lg.RequestOverload)
 	}
 }

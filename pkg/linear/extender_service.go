@@ -18,9 +18,8 @@ type ExtenderService struct {
 	pid          uint16
 	output       chan<- []gomel.Unit
 	trigger      chan struct{}
+	finished     chan struct{}
 	timingRounds chan *TimingRound
-	finished     bool
-	mx           sync.RWMutex
 	wg           sync.WaitGroup
 	log          zerolog.Logger
 }
@@ -34,6 +33,7 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 		pid:          conf.Pid,
 		output:       output,
 		trigger:      make(chan struct{}, 1),
+		finished:     make(chan struct{}),
 		timingRounds: make(chan *TimingRound, conf.EpochLength),
 		log:          logger,
 	}
@@ -47,23 +47,16 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 
 // Close stops the extender.
 func (ext *ExtenderService) Close() {
-	ext.mx.Lock()
-	ext.finished = true
-	close(ext.trigger)
-	ext.mx.Unlock()
+	close(ext.finished)
 	ext.wg.Wait()
 	ext.log.Info().Msg(lg.ServiceStopped)
 }
 
 // Notify ExtenderService to attempt choosing next timing units.
 func (ext *ExtenderService) Notify() {
-	ext.mx.RLock()
-	defer ext.mx.RUnlock()
-	if !ext.finished {
-		select {
-		case ext.trigger <- struct{}{}:
-		default:
-		}
+	select {
+	case ext.trigger <- struct{}{}:
+	default:
 	}
 }
 
@@ -71,14 +64,19 @@ func (ext *ExtenderService) Notify() {
 // For each picked timing unit, it sends a timingRound object to timingRounds channel.
 func (ext *ExtenderService) timingUnitDecider() {
 	defer ext.wg.Done()
-	for range ext.trigger {
-		round := ext.ordering.NextRound()
-		for round != nil {
-			ext.timingRounds <- round
-			round = ext.ordering.NextRound()
+	for {
+		select {
+		case <-ext.trigger:
+			round := ext.ordering.NextRound()
+			for round != nil {
+				ext.timingRounds <- round
+				round = ext.ordering.NextRound()
+			}
+		case <-ext.finished:
+			close(ext.timingRounds)
+			return
 		}
 	}
-	close(ext.timingRounds)
 }
 
 // roundSorter picks information about newly picked timing unit from the timingRounds channel,

@@ -106,7 +106,12 @@ func (p *server) In() {
     6. Add the received units to the dag.
 */
 func (p *server) Out() {
-	remotePid := <-p.requests
+	var remotePid uint16
+	select {
+	case remotePid = <-p.requests:
+	case <-p.stopOut:
+		return
+	}
 
 	select {
 	case <-p.tokens[remotePid]:

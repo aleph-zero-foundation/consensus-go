@@ -4,8 +4,6 @@
 package gossip
 
 import (
-	gsync "sync"
-
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -20,12 +18,11 @@ type server struct {
 	orderer  gomel.Orderer
 	netserv  network.Server
 	requests chan uint16
-	tokens   []chan struct{}
 	syncIds  []uint32
+	tokens   []chan struct{}
 	outPool  sync.WorkerPool
 	inPool   sync.WorkerPool
-	mx       gsync.Mutex
-	closed   bool
+	stopOut  chan struct{}
 	log      zerolog.Logger
 }
 
@@ -37,8 +34,9 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 		orderer:  orderer,
 		netserv:  netserv,
 		requests: make(chan uint16, conf.NProc),
-		tokens:   make([]chan struct{}, conf.NProc),
 		syncIds:  make([]uint32, conf.NProc),
+		tokens:   make([]chan struct{}, conf.NProc),
+		stopOut:  make(chan struct{}),
 		log:      log,
 	}
 	for i := range s.tokens {
@@ -60,21 +58,14 @@ func (s *server) StopIn() {
 }
 
 func (s *server) StopOut() {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	s.closed = true
-	close(s.requests)
+	close(s.stopOut)
 	s.outPool.Stop()
 }
 
 func (s *server) request(pid uint16) {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	if !s.closed {
-		select {
-		case s.requests <- pid:
-		default:
-			s.log.Warn().Msg(lg.RequestOverload)
-		}
+	select {
+	case s.requests <- pid:
+	default:
+		s.log.Warn().Msg(lg.RequestOverload)
 	}
 }

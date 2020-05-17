@@ -48,8 +48,10 @@ func (p *server) In() {
 }
 
 func (p *server) Out() {
-	r, ok := <-p.requests
-	if !ok {
+	var r *request
+	select {
+	case r = <-p.requests:
+	case <-p.stopOut:
 		return
 	}
 	remotePid := r.Pid

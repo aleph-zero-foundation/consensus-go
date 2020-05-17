@@ -20,7 +20,7 @@ type epoch struct {
 	dag      gomel.Dag
 	extender *linear.ExtenderService
 	rs       gomel.RandomSource
-	finished chan bool
+	more     chan bool
 	log      zerolog.Logger
 }
 
@@ -47,7 +47,7 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 		dag:      dg,
 		extender: ext,
 		rs:       rs,
-		finished: make(chan bool),
+		more:     make(chan bool),
 		log:      log,
 	}
 }
@@ -67,16 +67,17 @@ func (ep *epoch) allUnits() []gomel.Unit {
 	return ep.dag.UnitsAbove(nil)
 }
 
-// IsFinished checks if this epoch is still interested in accepting new units.
-func (ep *epoch) IsFinished() bool {
+// WantsMoreUnits checks if this epoch is still interested in accepting new units.
+func (ep *epoch) WantsMoreUnits() bool {
 	select {
-	case <-ep.finished:
+	case <-ep.more:
 		return true
 	default:
 		return false
 	}
 }
 
-func (ep *epoch) Finish() {
-	close(ep.finished)
+// NoMore marks the epoch as not interested in accepting new units.
+func (ep *epoch) NoMoreUnits() {
+	close(ep.more)
 }

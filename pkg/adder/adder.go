@@ -27,8 +27,7 @@ type adder struct {
 	waiting     map[gomel.Hash]*waitingPreunit
 	waitingByID map[uint64]*waitingPreunit
 	missing     map[uint64]*missingPreunit
-	active      bool
-	rmx         sync.RWMutex
+	finished    chan struct{}
 	mx          sync.Mutex
 	wg          sync.WaitGroup
 	log         zerolog.Logger
@@ -45,7 +44,7 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 		waiting:     make(map[gomel.Hash]*waitingPreunit),
 		waitingByID: make(map[uint64]*waitingPreunit),
 		missing:     make(map[uint64]*missingPreunit),
-		active:      true,
+		finished:    make(chan struct{}),
 		log:         log.With().Int(lg.Service, lg.AdderService).Logger(),
 	}
 	for i := range ad.ready {
@@ -56,8 +55,13 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 		ad.wg.Add(1)
 		go func(ch chan *waitingPreunit) {
 			defer ad.wg.Done()
-			for wp := range ch {
-				ad.handleReady(wp)
+			for {
+				select {
+				case wp := <-ch:
+					ad.handleReady(wp)
+				case <-ad.finished:
+					return
+				}
 			}
 		}(ad.ready[i])
 	}
@@ -67,16 +71,7 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 
 // Close stops the adder.
 func (ad *adder) Close() {
-	ad.rmx.Lock()
-	ad.active = false
-	ad.rmx.Unlock()
-	for i, c := range ad.ready {
-		// this channel was never instantiated
-		if uint16(i) == ad.conf.Pid {
-			continue
-		}
-		close(c)
-	}
+	close(ad.finished)
 	ad.wg.Wait()
 	ad.log.Info().Msg(lg.ServiceStopped)
 }
@@ -157,9 +152,7 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 // If yes, the preunit is sent to the channel corresponding to its dedicated worker.
 // Atomic flag prevents send on a closed channel after Stop().
 func (ad *adder) sendIfReady(wp *waitingPreunit) {
-	ad.rmx.RLock()
-	defer ad.rmx.RUnlock()
-	if wp.waitingParents == 0 && wp.missingParents == 0 && ad.active {
+	if wp.waitingParents == 0 && wp.missingParents == 0 {
 		ad.ready[wp.pu.Creator()] <- wp
 	}
 }

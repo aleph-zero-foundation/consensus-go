@@ -213,10 +213,10 @@ func (ord *orderer) GetInfo() [2]*gomel.DagInfo {
 	ord.mx.RLock()
 	defer ord.mx.RUnlock()
 	var result [2]*gomel.DagInfo
-	if ord.previous != nil && !ord.previous.IsFinished() {
+	if ord.previous != nil && !ord.previous.WantsMoreUnits() {
 		result[0] = gomel.MaxView(ord.previous.dag)
 	}
-	if ord.current != nil && !ord.current.IsFinished() {
+	if ord.current != nil && !ord.current.WantsMoreUnits() {
 		result[1] = gomel.MaxView(ord.current.dag)
 	}
 	return result
@@ -251,6 +251,8 @@ func (ord *orderer) Delta(info [2]*gomel.DagInfo) []gomel.Unit {
 	return result
 }
 
+// retrieveEpoch returns an epoch for the given preunit. If the preunit comes from a future epoch,
+// it is checked for new epoch proof. If failed, requests gossip with source of the preunit.
 func (ord *orderer) retrieveEpoch(pu gomel.Preunit, source uint16) *epoch {
 	epochID := pu.EpochID()
 	epoch, fromFuture := ord.getEpoch(epochID)
@@ -302,10 +304,11 @@ func (ord *orderer) newEpoch(epoch gomel.EpochID) *epoch {
 	return nil
 }
 
+// finishEpoch marks the chosen epoch as not interested in accepting new units.
 func (ord *orderer) finishEpoch(epoch gomel.EpochID) {
 	ep, _ := ord.getEpoch(epoch)
 	if ep != nil {
-		ep.Finish()
+		ep.NoMoreUnits()
 	}
 }
 
