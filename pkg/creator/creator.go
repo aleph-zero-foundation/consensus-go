@@ -31,7 +31,6 @@ type Creator struct {
 	level             int    // level of unit we could produce with current candidates
 	frozen            map[uint16]bool
 	mx                sync.Mutex
-	finished          bool
 	epochProofBuilder func(gomel.EpochID) EpochProofBuilder
 	epochProof        EpochProofBuilder
 	log               zerolog.Logger
@@ -102,22 +101,13 @@ func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter g
 		for i := 0; i < n; i++ {
 			cr.update(<-unitBelt)
 		}
-		wasReady := false
 		for cr.ready() {
-			wasReady = true
 			// Step 2: get parents and level using current strategy
 			parents, level := cr.buildParents()
 			// Step 3: create unit
 			cr.createUnit(parents, level, cr.getData(level, lastTiming))
 		}
 		cr.mx.Unlock()
-
-		if !wasReady {
-			cr.log.Debug().Uint32(lg.Epoch, uint32(cr.epoch)).Int(lg.Level, cr.level).Uint16(lg.Size, cr.onMaxLvl).Msg(lg.CreatorNotReady)
-		}
-		if cr.finished {
-			return
-		}
 	}
 }
 
@@ -144,7 +134,7 @@ func (cr *Creator) ready() bool {
 // For finishing units it's either nil or, if available, an encoded threshold signature share
 // of hash and id of the last timing unit (obtained from preblockMaker on lastTiming channel)
 func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
-	if level < cr.conf.OrderStartLevel+cr.conf.EpochLength {
+	if level <= cr.conf.LastLevel {
 		if cr.ds != nil {
 			return cr.ds.GetData()
 		}
@@ -249,7 +239,7 @@ func (cr *Creator) freezeParent(pid uint16) gomel.Unit {
 	u := cr.candidates[cr.conf.Pid].Parents()[pid]
 	cr.candidates[pid] = u
 	cr.frozen[pid] = true
-	cr.log.Info().Uint16(lg.Creator, pid).Msg(lg.FreezedParent)
+	cr.log.Warn().Uint16(lg.Creator, pid).Msg(lg.FreezedParent)
 	return u
 }
 
