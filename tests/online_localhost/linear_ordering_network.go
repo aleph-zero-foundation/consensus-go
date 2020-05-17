@@ -133,13 +133,13 @@ func createAndStartProcess(
 
 	setupCnf := config.NewSetup(&member, &committee)
 	cnf.OrderStartLevel = 6
-	setupCnf.LogFile = "setup_log" + strconv.Itoa(int(id)) + ".log"
+	setupCnf.LogFile = "setup" + strconv.Itoa(int(id))
 	setupCnf.LogHuman = cnf.LogHuman
 	setupCnf.LogBuffer = 100000
 	setupCnf.LogLevel = 0
 
 	logConfig := cnf
-	logConfig.LogFile = "log" + strconv.Itoa(int(id)) + ".log"
+	logConfig.LogFile = "cons" + strconv.Itoa(int(id))
 	log, err := logging.NewLogger(logConfig)
 	if err != nil {
 		return err
@@ -200,7 +200,7 @@ func readOrderFromLogs(logfile string) [][2]int {
 		json.Unmarshal([]byte(scanner.Text()), &data)
 		if service, ok := data[logging.Service]; ok {
 			if int(service.(float64)) == logging.ExtenderService {
-				if event, ok := data[logging.Event]; ok {
+				if event, ok := data[logging.Message]; ok {
 					if event.(string) == logging.UnitOrdered {
 						result = append(result, [2]int{int(data[logging.Creator].(float64)), int(data[logging.Height].(float64))})
 					}
@@ -265,13 +265,13 @@ func main() {
 	// wait for all processes to finish
 	allDone.Wait()
 	// Sanity checks
-	if checkOrderingFromLogs(nProc, "setup_log") {
+	if checkOrderingFromLogs(nProc, "setup") {
 		fmt.Println("Ordering in setup OK")
 	} else {
 		fmt.Println("Processes obtained different orderings in setup!")
 		os.Exit(1)
 	}
-	if checkOrderingFromLogs(nProc, "log") {
+	if checkOrderingFromLogs(nProc, "cons") {
 		fmt.Println("Ordering in main is OK")
 	} else {
 		fmt.Println("Processes obtained different orderings in main!")
