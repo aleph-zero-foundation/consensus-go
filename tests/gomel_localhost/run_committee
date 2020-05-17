@@ -1,0 +1,30 @@
+#!/bin/bash
+set -e
+
+if [ "$#" -ne 4 ] ; then
+  echo "Usage: \"${0##*/} [NProc] [Epochs] [Units] [0/1](Setup)\"" >&2
+  exit 1
+fi
+
+rm -f *.pk *.log *.json *.out
+
+go run $GOMEL/cmd/gomel-keys $1 addresses
+
+for (( PID=0; PID<$1; PID++ )) ; do
+    go run $GOMEL/cmd/gomel --priv $PID.pk --keys_addrs committee.ka --epochs=$2 --units=$3 --setup=$4 > $PID.out &
+done
+
+wait
+
+if [ `ls -1 *.json 2>/dev/null | wc -l` != 0 ] ; then # check if there are any .json files
+    for i in *.json ; do
+        go run $GOMEL/cmd/log4humanz $i > ${i%.json}.log
+    done
+fi
+
+grep "|service:ORDERER|  STOPPED" *.log
+echo "Errors reported:"
+grep  "|error|" *.log -c
+grep "Control sum: " *.out
+
+
