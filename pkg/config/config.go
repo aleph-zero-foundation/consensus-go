@@ -27,11 +27,10 @@ type conf struct {
 	CanSkipLevel   bool
 	Checks         []gomel.UnitChecker
 	// log
-	LogFile        string
-	LogLevel       int
-	LogHuman       bool
-	LogBuffer      int
-	LogMemInterval int
+	LogFile   string
+	LogLevel  int
+	LogHuman  bool
+	LogBuffer int
 	// keys
 	WTKey         *tss.WeakThresholdKey
 	PrivateKey    gomel.PrivateKey
@@ -134,7 +133,6 @@ func addLogConf(cnf Config, logFile string) {
 	cnf.LogBuffer = 100000
 	cnf.LogHuman = false
 	cnf.LogLevel = 1
-	cnf.LogMemInterval = 5
 }
 
 func addSetupConf(cnf Config) {
