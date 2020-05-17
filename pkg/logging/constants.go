@@ -82,7 +82,7 @@ var eventTypeDict = map[string]string{
 	GotWTK:                "received weak threshold key from the setup phase",
 	CreatorFinished:       "creator has finished its work",
 	ForkDetected:          "fork detected in adder",
-	MissingRandomBytes:    "missing random bytes",
+	MissingRandomBytes:    "too early to choose the next timing unit, no random bytes for required level",
 	InvalidControlHash:    "invalid control hash",
 	InvalidEpochProof:     "invalid epoch's proof in a unit from a future epoch",
 	InvalidCreator:        "invalid creator of a unit",

@@ -81,7 +81,7 @@ func (ext *Extender) NextRound() *TimingRound {
 		return true
 	})
 	if !randomBytesPresent {
-		ext.log.Warn().Int(lg.Round, level).Msg(lg.MissingRandomBytes)
+		ext.log.Debug().Int(lg.Round, level).Msg(lg.MissingRandomBytes)
 	}
 	if !decided {
 		return nil
