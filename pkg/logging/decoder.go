@@ -36,14 +36,14 @@ func (d *decoder) Write(p []byte) (n int, err error) {
 }
 
 func decode(data *map[string]interface{}) string {
-	if event, ok := (*data)[MessageFieldName]; ok && event == Genesis {
+	if event, ok := (*data)[Message]; ok && event == Genesis {
 		return fmt.Sprintln("Beginning of time at ", (*data)[Genesis])
 	}
 	ret := ""
-	if val, ok := (*data)[TimestampFieldName]; ok {
-		ret += fmt.Sprintf("%8v|", val)
+	if val, ok := (*data)[Time]; ok {
+		ret += fmt.Sprintf("%12.0f|", val)
 	}
-	if val, ok := (*data)[LevelFieldName]; ok {
+	if val, ok := (*data)[LogLevel]; ok {
 		i, _ := strconv.Atoi(val.(string))
 		ret += fmt.Sprintf("%5v|", zerolog.Level(i))
 	}
@@ -52,7 +52,7 @@ func decode(data *map[string]interface{}) string {
 	}
 	slice := make([]string, 0)
 	for k := range *data {
-		if k == TimestampFieldName || k == Service || k == MessageFieldName || k == LevelFieldName {
+		if k == Time || k == Service || k == Message || k == LogLevel {
 			continue
 		}
 		slice = append(slice, k)
@@ -65,7 +65,7 @@ func decode(data *map[string]interface{}) string {
 			ret += fmt.Sprintf("%8s = %-8v|", k, (*data)[k])
 		}
 	}
-	if val, ok := (*data)[MessageFieldName]; ok {
+	if val, ok := (*data)[Message]; ok {
 		s := val.(string)
 		if _, in := eventTypeDict[s]; in {
 			s = eventTypeDict[s]

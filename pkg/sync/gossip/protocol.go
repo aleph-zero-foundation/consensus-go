@@ -2,7 +2,7 @@ package gossip
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
@@ -31,7 +31,7 @@ func (p *server) In() {
 		return
 	}
 	if pid >= p.nProc {
-		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
+		p.log.Warn().Uint16(lg.PID, pid).Msg("Called by a stranger")
 		return
 	}
 
@@ -40,11 +40,11 @@ func (p *server) In() {
 	}
 	defer p.peerManager.done(pid)
 
-	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
-	log.Info().Msg(logging.SyncStarted)
+	log := p.log.With().Uint16(lg.PID, pid).Uint32(lg.ISID, sid).Logger()
+	log.Info().Msg(lg.SyncStarted)
 
 	// 1. receive dag info
-	log.Debug().Msg(logging.GetInfo)
+	log.Debug().Msg(lg.GetInfo)
 	theirDagInfo, err := encoding.ReadDagInfos(conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getDagInfo").Msg(err.Error())
@@ -55,7 +55,7 @@ func (p *server) In() {
 	dagInfo := p.orderer.GetInfo()
 
 	// 3. send dag info
-	log.Debug().Msg(logging.SendInfo)
+	log.Debug().Msg(lg.SendInfo)
 	if err := encoding.WriteDagInfos(dagInfo, conn); err != nil {
 		log.Error().Str("where", "gossip.in.sendDagInfo").Msg(err.Error())
 		return
@@ -63,7 +63,7 @@ func (p *server) In() {
 
 	// 4. send units
 	units := p.orderer.Delta(theirDagInfo)
-	log.Debug().Int(logging.Sent, len(units)).Msg(logging.SendUnits)
+	log.Debug().Int(lg.Sent, len(units)).Msg(lg.SendUnits)
 	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.sendUnits").Msg(err.Error())
@@ -77,7 +77,7 @@ func (p *server) In() {
 	}
 
 	// 5. receive units
-	log.Debug().Msg(logging.GetUnits)
+	log.Debug().Msg(lg.GetUnits)
 	theirPreunitsReceived, err := encoding.ReadChunk(conn)
 	nReceived := len(theirPreunitsReceived)
 	if err != nil {
@@ -86,8 +86,9 @@ func (p *server) In() {
 	}
 
 	// 6. add units
-	logging.AddingErrors(p.orderer.AddPreunits(pid, theirPreunitsReceived...), log)
-	log.Info().Int(logging.Recv, nReceived).Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
+	errs := p.orderer.AddPreunits(pid, theirPreunitsReceived...)
+	lg.AddingErrors(errs, len(theirPreunitsReceived), log)
+	log.Info().Int(lg.Recv, nReceived).Int(lg.Sent, len(units)).Msg(lg.SyncCompleted)
 }
 
 // out handles the outgoing connection using info from the dag.
@@ -118,8 +119,8 @@ func (p *server) Out() {
 	// handshake
 	sid := p.syncIds[remotePid]
 	p.syncIds[remotePid]++
-	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
-	log.Info().Msg(logging.SyncStarted)
+	log := p.log.With().Uint16(lg.PID, remotePid).Uint32(lg.OSID, sid).Logger()
+	log.Info().Msg(lg.SyncStarted)
 
 	err = handshake.Greet(conn, p.pid, sid)
 	if err != nil {
@@ -129,7 +130,7 @@ func (p *server) Out() {
 
 	// 2. send dag info
 	dagInfo := p.orderer.GetInfo()
-	log.Debug().Msg(logging.SendInfo)
+	log.Debug().Msg(lg.SendInfo)
 	if err := encoding.WriteDagInfos(dagInfo, conn); err != nil {
 		log.Error().Str("where", "gossip.out.sendDagInfo").Msg(err.Error())
 		return
@@ -141,7 +142,7 @@ func (p *server) Out() {
 	}
 
 	// 3. receive dag info
-	log.Debug().Msg(logging.GetInfo)
+	log.Debug().Msg(lg.GetInfo)
 	theirDagInfo, err := encoding.ReadDagInfos(conn)
 	if err != nil {
 		// errors here happen when the remote side rejects our gossip attempt, hence they are not "true" errors
@@ -150,7 +151,7 @@ func (p *server) Out() {
 	}
 
 	// 4. receive units
-	log.Debug().Msg(logging.GetUnits)
+	log.Debug().Msg(lg.GetUnits)
 	theirPreunitsReceived, err := encoding.ReadChunk(conn)
 	nReceived := len(theirPreunitsReceived)
 	if err != nil {
@@ -160,7 +161,7 @@ func (p *server) Out() {
 
 	// 5. send units
 	units := p.orderer.Delta(theirDagInfo)
-	log.Debug().Int(logging.Sent, len(units)).Msg(logging.SendUnits)
+	log.Debug().Int(lg.Sent, len(units)).Msg(lg.SendUnits)
 	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.sendUnits").Msg(err.Error())
@@ -173,6 +174,7 @@ func (p *server) Out() {
 	}
 
 	// 6. add units to dag
-	logging.AddingErrors(p.orderer.AddPreunits(remotePid, theirPreunitsReceived...), log)
-	log.Info().Int(logging.Recv, nReceived).Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
+	errs := p.orderer.AddPreunits(remotePid, theirPreunitsReceived...)
+	lg.AddingErrors(errs, len(theirPreunitsReceived), log)
+	log.Info().Int(lg.Recv, nReceived).Int(lg.Sent, len(units)).Msg(lg.SyncCompleted)
 }

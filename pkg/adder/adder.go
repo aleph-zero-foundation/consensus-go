@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // adder is a buffer zone where preunits wait to be added to dag. A preunit with
@@ -46,7 +46,7 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 		waitingByID: make(map[uint64]*waitingPreunit),
 		missing:     make(map[uint64]*missingPreunit),
 		active:      true,
-		log:         log.With().Int(logging.Service, logging.AdderService).Logger(),
+		log:         log.With().Int(lg.Service, lg.AdderService).Logger(),
 	}
 	for i := range ad.ready {
 		if uint16(i) == ad.conf.Pid {
@@ -61,7 +61,7 @@ func New(dag gomel.Dag, conf config.Config, syncer gomel.Syncer, alert gomel.Ale
 			}
 		}(ad.ready[i])
 	}
-	ad.log.Info().Msg(logging.ServiceStarted)
+	ad.log.Info().Msg(lg.ServiceStarted)
 	return ad
 }
 
@@ -78,7 +78,7 @@ func (ad *adder) Close() {
 		close(c)
 	}
 	ad.wg.Wait()
-	ad.log.Info().Msg(logging.ServiceStopped)
+	ad.log.Info().Msg(lg.ServiceStopped)
 }
 
 // AddPreunits checks basic correctness of a slice of preunits and then adds correct ones to the buffer zone.
@@ -87,7 +87,7 @@ func (ad *adder) Close() {
 //   DuplicateUnit, DuplicatePreunit - if such a unit is already in dag/waiting
 //   UnknownParents - in that case the preunit is normally added and processed, error is returned only for log purpose.
 func (ad *adder) AddPreunits(source uint16, preunits ...gomel.Preunit) []error {
-	ad.log.Debug().Int(logging.Size, len(preunits)).Uint16(logging.PID, source).Msg(logging.AddUnits)
+	ad.log.Debug().Int(lg.Size, len(preunits)).Uint16(lg.PID, source).Msg(lg.AddPreunits)
 	var errors []error
 	getErrors := func() []error {
 		if errors == nil {
@@ -136,7 +136,7 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	}
 	id := gomel.UnitID(pu)
 	if fork, ok := ad.waitingByID[id]; ok {
-		ad.log.Warn().Int(logging.Height, pu.Height()).Uint16(logging.Creator, pu.Creator()).Uint16(logging.PID, source).Msg(logging.ForkDetected)
+		ad.log.Warn().Int(lg.Height, pu.Height()).Uint16(lg.Creator, pu.Creator()).Uint16(lg.PID, source).Msg(lg.ForkDetected)
 		ad.alert.NewFork(pu, fork.pu)
 	}
 	wp := &waitingPreunit{pu: pu, id: id, source: source}
@@ -145,7 +145,7 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 	maxHeights := ad.checkParents(wp)
 	ad.checkIfMissing(wp)
 	if wp.missingParents > 0 {
-		ad.log.Debug().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Int(logging.Size, wp.missingParents).Msg(logging.UnknownParents)
+		ad.log.Debug().Int(lg.Height, wp.pu.Height()).Uint16(lg.Creator, wp.pu.Creator()).Uint16(lg.PID, wp.source).Int(lg.Size, wp.missingParents).Msg(lg.UnknownParents)
 		ad.fetchMissing(wp, maxHeights)
 		return gomel.NewUnknownParents(wp.missingParents)
 	}
@@ -167,8 +167,8 @@ func (ad *adder) sendIfReady(wp *waitingPreunit) {
 // handleReady takes a waitingPreunit that is ready and adds it to the dag.
 func (ad *adder) handleReady(wp *waitingPreunit) {
 	defer ad.remove(wp)
-	log := ad.log.With().Int(logging.Height, wp.pu.Height()).Uint16(logging.Creator, wp.pu.Creator()).Uint16(logging.PID, wp.source).Logger()
-	log.Debug().Msg(logging.AddingStarted)
+	log := ad.log.With().Int(lg.Height, wp.pu.Height()).Uint16(lg.Creator, wp.pu.Creator()).Uint16(lg.PID, wp.source).Logger()
+	log.Debug().Msg(lg.PreunitReady)
 
 	// 1. Decode Parents
 	parents, err := ad.dag.DecodeParents(wp.pu)
@@ -192,11 +192,7 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	}
 	if *gomel.CombineHashes(gomel.ToHashes(parents)) != wp.pu.View().ControlHash {
 		wp.failed = true
-		ad.log.Info().
-			Bytes(logging.ControlHash, wp.pu.View().ControlHash[:]).
-			Uint16(logging.PID, wp.source).
-			Ints(logging.Height, wp.pu.View().Heights).
-			Msg(logging.InvalidControlHash)
+		ad.log.Warn().Bytes(lg.ControlHash, wp.pu.View().ControlHash[:]).Uint16(lg.PID, wp.source).Ints(lg.Height, wp.pu.View().Heights).Msg(lg.InvalidControlHash)
 		ad.handleInvalidControlHash(wp.source, wp.pu, parents)
 		return
 	}
@@ -218,7 +214,7 @@ func (ad *adder) handleReady(wp *waitingPreunit) {
 	// 4. Insert
 	ad.dag.Insert(freeUnit)
 
-	log.Info().Int(logging.Level, freeUnit.Level()).Msg(logging.UnitAdded)
+	log.Debug().Int(lg.Level, freeUnit.Level()).Msg(lg.UnitAdded)
 }
 
 func (ad *adder) handleInvalidControlHash(sourcePID uint16, witness gomel.Preunit, parentCandidates []gomel.Unit) {

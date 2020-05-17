@@ -2,7 +2,7 @@ package fetch
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/handshake"
 )
 
@@ -18,11 +18,11 @@ func (p *server) In() {
 		return
 	}
 	if pid >= uint16(len(p.syncIds)) {
-		p.log.Warn().Uint16(logging.PID, pid).Msg("Called by a stranger")
+		p.log.Warn().Uint16(lg.PID, pid).Msg("Called by a stranger")
 		return
 	}
-	log := p.log.With().Uint16(logging.PID, pid).Uint32(logging.ISID, sid).Logger()
-	log.Info().Msg(logging.SyncStarted)
+	log := p.log.With().Uint16(lg.PID, pid).Uint32(lg.ISID, sid).Logger()
+	log.Info().Msg(lg.SyncStarted)
 	unitIDs, err := receiveRequests(conn)
 	if err != nil {
 		log.Error().Str("where", "fetch.in.receiveRequests").Msg(err.Error())
@@ -33,7 +33,7 @@ func (p *server) In() {
 		log.Error().Str("where", "fetch.in.getUnits").Msg(err.Error())
 		return
 	}
-	log.Debug().Int(logging.Sent, len(units)).Msg(logging.SendUnits)
+	log.Debug().Int(lg.Sent, len(units)).Msg(lg.SendUnits)
 	err = encoding.WriteChunk(units, conn)
 	if err != nil {
 		log.Error().Str("where", "fetch.in.sendUnits").Msg(err.Error())
@@ -44,7 +44,7 @@ func (p *server) In() {
 		log.Error().Str("where", "fetch.in.flush").Msg(err.Error())
 		return
 	}
-	log.Info().Int(logging.Sent, len(units)).Msg(logging.SyncCompleted)
+	log.Info().Int(lg.Sent, len(units)).Msg(lg.SyncCompleted)
 }
 
 func (p *server) Out() {
@@ -60,8 +60,8 @@ func (p *server) Out() {
 	defer conn.Close()
 	sid := p.syncIds[remotePid]
 	p.syncIds[remotePid]++
-	log := p.log.With().Uint16(logging.PID, remotePid).Uint32(logging.OSID, sid).Logger()
-	log.Info().Msg(logging.SyncStarted)
+	log := p.log.With().Uint16(lg.PID, remotePid).Uint32(lg.OSID, sid).Logger()
+	log.Info().Msg(lg.SyncStarted)
 
 	err = handshake.Greet(conn, p.pid, sid)
 	if err != nil {
@@ -73,13 +73,14 @@ func (p *server) Out() {
 		log.Error().Str("where", "fetch.out.sendRequests").Msg(err.Error())
 		return
 	}
-	log.Debug().Msg(logging.GetUnits)
+	log.Debug().Msg(lg.GetUnits)
 	units, err := encoding.ReadChunk(conn)
 	nReceived := len(units)
 	if err != nil {
 		log.Error().Str("where", "fetch.out.receivePreunits").Msg(err.Error())
 		return
 	}
-	logging.AddingErrors(p.orderer.AddPreunits(remotePid, units...), log)
-	log.Info().Int(logging.Recv, nReceived).Msg(logging.SyncCompleted)
+	errs := p.orderer.AddPreunits(remotePid, units...)
+	lg.AddingErrors(errs, len(units), log)
+	log.Info().Int(lg.Recv, nReceived).Msg(lg.SyncCompleted)
 }

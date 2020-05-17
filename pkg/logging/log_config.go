@@ -23,9 +23,9 @@ func init() {
 	genesis = time.Now()
 
 	// short names of compulsory fields to save some space
-	zerolog.TimestampFieldName = TimestampFieldName
-	zerolog.LevelFieldName = LevelFieldName
-	zerolog.MessageFieldName = MessageFieldName
+	zerolog.TimestampFieldName = Time
+	zerolog.LevelFieldName = LogLevel
+	zerolog.MessageFieldName = Message
 
 	// time logged as integer starting at 0, with the chosen unit
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
@@ -42,9 +42,15 @@ func init() {
 
 // NewLogger creates a new zerolog logger based on the given configuration values.
 func NewLogger(conf config.Config) (zerolog.Logger, error) {
-	var output io.Writer
+	var filename string
+	if conf.LogHuman {
+		filename = conf.LogFile + ".log"
+	} else {
+		filename = conf.LogFile + ".json"
+	}
 
-	output, err := os.Create(conf.LogFile)
+	var output io.Writer
+	output, err := os.Create(filename)
 	if err != nil {
 		return zerolog.Logger{}.Level(zerolog.Disabled), err
 	}

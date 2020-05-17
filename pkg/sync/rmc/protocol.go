@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	"gitlab.com/alephledger/core-go/pkg/rmcbox"
 )
@@ -87,7 +87,7 @@ func (s *server) getCommitteeSignatures(data []byte, id uint64) []bool {
 // gathered from different recipients.
 // It returns whether it got a signature or not.
 func (s *server) getMemberSignature(data []byte, id uint64, recipient uint16) bool {
-	log := s.log.With().Uint16(logging.PID, recipient).Uint64(logging.OSID, id).Logger()
+	log := s.log.With().Uint16(lg.PID, recipient).Uint64(lg.OSID, id).Logger()
 	for s.state.Status(id) != rmcbox.Finished {
 		conn, err := s.netserv.Dial(recipient)
 		if err != nil {
@@ -96,14 +96,14 @@ func (s *server) getMemberSignature(data []byte, id uint64, recipient uint16) bo
 			continue
 		}
 
-		log.Info().Msg(logging.SyncStarted)
+		log.Info().Msg(lg.SyncStarted)
 		err = s.attemptGather(conn, data, id, recipient)
 		if err != nil {
 			log.Error().Str("where", "rmc.attemptGather").Msg(err.Error())
 			time.Sleep(50 * time.Millisecond)
 			continue
 		}
-		log.Info().Msg(logging.SyncCompleted)
+		log.Info().Msg(lg.SyncCompleted)
 		return true
 	}
 	return false
@@ -142,8 +142,8 @@ func (s *server) in() {
 		s.log.Error().Str("where", "rmc.in.AcceptGreeting").Msg(err.Error())
 		return
 	}
-	log := s.log.With().Uint16(logging.PID, pid).Uint64(logging.ISID, id).Logger()
-	log.Info().Msg(logging.SyncStarted)
+	log := s.log.With().Uint16(lg.PID, pid).Uint64(lg.ISID, id).Logger()
+	log.Info().Msg(lg.SyncStarted)
 
 	switch msgType {
 	case msgSendData:
@@ -156,7 +156,7 @@ func (s *server) in() {
 				log.Error().Str("where", "rmc.in.DecodePreunit").Msg(err.Error())
 				return
 			}
-			logging.AddingErrors(s.orderer.AddPreunits(pu.Creator(), pu), log)
+			lg.AddingErrors(s.orderer.AddPreunits(pu.Creator(), pu), 1, log)
 		}
 
 	case msgRequestFinished:
@@ -172,7 +172,7 @@ func (s *server) in() {
 		}
 
 	}
-	log.Info().Msg(logging.SyncCompleted)
+	log.Info().Msg(lg.SyncCompleted)
 }
 
 func (s *server) acceptProof(id uint64, conn network.Connection, log zerolog.Logger) bool {

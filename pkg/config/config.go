@@ -72,7 +72,7 @@ func NewSetup(m *Member, c *Committee) Config {
 	cnf := requiredByLinear()
 	addKeys(cnf, m, c)
 	addSyncConf(cnf, c.SetupAddresses, true)
-	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".setup.log")
+	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".setup")
 	addSetupConf(cnf)
 	addLastLevel(cnf)
 	return cnf
@@ -83,7 +83,7 @@ func New(m *Member, c *Committee) Config {
 	cnf := requiredByLinear()
 	addKeys(cnf, m, c)
 	addSyncConf(cnf, c.Addresses, false)
-	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".log")
+	addLogConf(cnf, strconv.Itoa(int(cnf.Pid)))
 	addConsensusConf(cnf)
 	addLastLevel(cnf)
 	return cnf

@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // ExtenderService is a component working on a dag that extends a partial order of units defined by dag to a linear order.
@@ -27,7 +27,7 @@ type ExtenderService struct {
 
 // NewExtenderService constructs an extender working on the given dag and sending rounds of ordered units to the given output.
 func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, output chan<- []gomel.Unit, log zerolog.Logger) *ExtenderService {
-	logger := log.With().Int(logging.Service, logging.ExtenderService).Logger()
+	logger := log.With().Int(lg.Service, lg.ExtenderService).Logger()
 	ordering := NewExtender(dag, rs, conf, logger)
 	ext := &ExtenderService{
 		ordering:     ordering,
@@ -41,7 +41,7 @@ func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config
 	ext.wg.Add(2)
 	go ext.timingUnitDecider()
 	go ext.roundSorter()
-	ext.log.Info().Msg(logging.ServiceStarted)
+	ext.log.Info().Msg(lg.ServiceStarted)
 	return ext
 }
 
@@ -52,7 +52,7 @@ func (ext *ExtenderService) Close() {
 	close(ext.trigger)
 	ext.mx.Unlock()
 	ext.wg.Wait()
-	ext.log.Info().Msg(logging.ServiceStopped)
+	ext.log.Info().Msg(lg.ServiceStopped)
 }
 
 // Notify ExtenderService to attempt choosing next timing units.
@@ -90,15 +90,11 @@ func (ext *ExtenderService) roundSorter() {
 		units := round.OrderedUnits()
 		ext.output <- units
 		for _, u := range units {
-			ext.log.Info().
-				Uint16(logging.Creator, u.Creator()).
-				Int(logging.Height, u.Height()).
-				Uint32(logging.Epoch, uint32(u.EpochID())).
-				Msg(logging.UnitOrdered)
+			ext.log.Debug().Uint16(lg.Creator, u.Creator()).Int(lg.Height, u.Height()).Uint32(lg.Epoch, uint32(u.EpochID())).Msg(lg.UnitOrdered)
 			if u.Creator() == ext.pid {
-				ext.log.Info().Int(logging.Height, u.Height()).Int(logging.Level, u.Level()).Msg(logging.OwnUnitOrdered)
+				ext.log.Info().Int(lg.Height, u.Height()).Int(lg.Level, u.Level()).Msg(lg.OwnUnitOrdered)
 			}
 		}
-		ext.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
+		ext.log.Info().Int(lg.Size, len(units)).Msg(lg.LinearOrderExtended)
 	}
 }

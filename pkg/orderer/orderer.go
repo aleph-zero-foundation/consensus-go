@@ -9,7 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/creator"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
 
@@ -40,7 +40,7 @@ func New(conf config.Config, ds core.DataSource, toPreblock gomel.PreblockMaker,
 		unitBelt:     make(chan gomel.Unit, conf.EpochLength*int(conf.NProc)),
 		lastTiming:   make(chan gomel.Unit, conf.NumberOfEpochs),
 		orderedUnits: make(chan []gomel.Unit, conf.EpochLength),
-		log:          log.With().Int(logging.Service, logging.OrderService).Logger(),
+		log:          log.With().Int(lg.Service, lg.OrderService).Logger(),
 	}
 }
 
@@ -54,7 +54,7 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 		ord.syncer.Multicast(u)
 	}
 	epochProofBuilder := creator.NewProofBuilder(ord.conf, ord.log)
-	ord.creator = creator.New(ord.conf, ord.ds, send, ord.rsData, epochProofBuilder, ord.log)
+	ord.creator = creator.New(ord.conf, ord.ds, send, ord.rsData, epochProofBuilder, ord.log.With().Int(lg.Service, lg.CreatorService).Logger())
 
 	ord.newEpoch(gomel.EpochID(0))
 
@@ -73,7 +73,7 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 		ord.handleTimingRounds()
 	}()
 
-	ord.log.Log().Msg(logging.ServiceStarted)
+	ord.log.Log().Msg(lg.ServiceStarted)
 }
 
 func (ord *orderer) Stop() {
@@ -88,7 +88,7 @@ func (ord *orderer) Stop() {
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
 	ord.wg.Wait()
-	ord.log.Log().Msg(logging.ServiceStopped)
+	ord.log.Log().Msg(lg.ServiceStopped)
 }
 
 // handleTimingRounds waits for ordered round of units produced by Extenders and produces Preblocks based on them.
@@ -107,6 +107,7 @@ func (ord *orderer) handleTimingRounds() {
 		epoch := timingUnit.EpochID()
 		if epoch >= current && timingUnit.Level() <= ord.conf.LastLevel {
 			ord.toPreblock(round)
+			ord.log.Info().Int(lg.Level, timingUnit.Level()).Uint32(lg.Epoch, uint32(timingUnit.EpochID())).Msg(lg.PreblockProduced)
 		}
 		current = epoch
 	}
@@ -295,7 +296,7 @@ func (ord *orderer) finishEpoch(epoch gomel.EpochID) {
 // All correctness checks (epoch proof, adder, dag checks) are skipped. This method is meant for our own units only.
 func (ord *orderer) insert(unit gomel.Unit) {
 	if unit.Creator() != ord.conf.Pid {
-		ord.log.Warn().Uint16(logging.Creator, unit.Creator()).Msg(logging.InvalidCreator)
+		ord.log.Warn().Uint16(lg.Creator, unit.Creator()).Msg(lg.InvalidCreator)
 		return
 	}
 	ep, newer := ord.getEpoch(unit.EpochID())
@@ -304,18 +305,9 @@ func (ord *orderer) insert(unit gomel.Unit) {
 	}
 	if ep != nil {
 		ep.dag.Insert(unit)
-		ord.log.Info().
-			Uint16(logging.Creator, unit.Creator()).
-			Uint32(logging.Epoch, uint32(unit.EpochID())).
-			Int(logging.Height, unit.Height()).
-			Int(logging.Level, unit.Level()).
-			Msg(logging.UnitAdded)
+		ord.log.Info().Uint16(lg.Creator, unit.Creator()).Uint32(lg.Epoch, uint32(unit.EpochID())).Int(lg.Height, unit.Height()).Int(lg.Level, unit.Level()).Msg(lg.UnitAdded)
 	} else {
-		ord.log.Info().
-			Uint32(logging.Epoch, uint32(unit.EpochID())).
-			Int(logging.Height, unit.Height()).
-			Int(logging.Level, unit.Level()).
-			Msg(logging.UnableToRetrieveEpoch)
+		ord.log.Warn().Uint32(lg.Epoch, uint32(unit.EpochID())).Int(lg.Height, unit.Height()).Int(lg.Level, unit.Level()).Msg(lg.UnableToRetrieveEpoch)
 	}
 }
 

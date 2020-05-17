@@ -3,142 +3,142 @@ package logging
 // Shortcuts for event types.
 // Any event that happens multiple times should have a single character representation.
 const (
-	ServiceStarted                = "A"
-	ServiceStopped                = "B"
-	GotWTK                        = "C"
-	UnitCreated                   = "D"
-	NewEpoch                      = "E"
-	EpochEnd                      = "F"
-	NewTimingUnit                 = "G"
-	OwnUnitOrdered                = "H"
-	LinearOrderExtended           = "I"
-	UnitAdded                     = "J"
-	AddUnits                      = "K"
-	AddingStarted                 = "L"
-	ForkDetected                  = "M"
-	UnitBroadcasted               = "N"
-	SyncStarted                   = "O"
-	SyncCompleted                 = "P"
-	GetInfo                       = "Q"
-	SendInfo                      = "R"
-	GetUnits                      = "S"
-	SendUnits                     = "T"
-	SuccesfulAdd                  = "U"
-	DuplicatedUnits               = "V"
-	DuplicatedPreunits            = "W"
-	UnknownParents                = "X"
-	MissingRandomBytes            = "Y"
-	UnitOrdered                   = "Z"
-	InvalidControlHash            = "AA"
-	InvalidEpochProofFromFuture   = "AB"
-	CreatorFinished               = "AC"
-	InvalidCreator                = "AD"
-	CreatorSwitchedToNewEpoch     = "AF"
-	FreezedParent                 = "AG"
-	UnableToRetrieveEpoch         = "AH"
-	CreatorProcessingUnit         = "AI"
-	PuttingOnCreatorsBelt         = "AL"
-	CreatorNotReadyAfterUpdate    = "AM"
-	CreatorNotReady               = "AN"
-	BeforeSendingUnitToCreator    = "AO"
-	MulticastReceivedPreunit      = "AQ"
-	LastTimingUnitIsFromTheFuture = "AR"
+	// Frequent events
+	UnitCreated           = "A"
+	CreatorNotReady       = "B"
+	CreatorProcessingUnit = "C"
+	SendingUnitToCreator  = "D"
+	AddPreunits           = "E"
+	PreunitReady          = "F"
+	UnitAdded             = "G"
+	ReadyToAdd            = "H"
+	DuplicatedUnits       = "I"
+	DuplicatedPreunits    = "J"
+	UnknownParents        = "K"
+	NewTimingUnit         = "L"
+	OwnUnitOrdered        = "M"
+	LinearOrderExtended   = "N"
+	UnitOrdered           = "O"
+	SentUnit              = "P"
+	PreunitReceived       = "Q"
+	SyncStarted           = "R"
+	SyncCompleted         = "S"
+	GetInfo               = "T"
+	SendInfo              = "U"
+	GetUnits              = "V"
+	SendUnits             = "W"
+	PreblockProduced      = "Y"
+	// Rare events
+	NewEpoch              = "a"
+	EpochEnd              = "b"
+	SkippingEpoch         = "c"
+	ServiceStarted        = "d"
+	ServiceStopped        = "e"
+	GotWTK                = "f"
+	CreatorFinished       = "g"
+	ForkDetected          = "h"
+	MissingRandomBytes    = "i"
+	InvalidControlHash    = "j"
+	InvalidEpochProof     = "k"
+	InvalidCreator        = "l"
+	FreezedParent         = "m"
+	FutureLastTiming      = "n"
+	UnableToRetrieveEpoch = "o"
 )
 
 // eventTypeDict maps short event names to human readable form.
 var eventTypeDict = map[string]string{
-	ServiceStarted:                "service started",
-	ServiceStopped:                "service stopped",
-	GotWTK:                        "received weak threshold key from the setup phase",
-	UnitCreated:                   "new unit created",
-	NewEpoch:                      "new epoch started",
-	EpochEnd:                      "epoch finished",
-	NewTimingUnit:                 "new timing unit",
-	OwnUnitOrdered:                "unit created by this process has been ordered",
-	LinearOrderExtended:           "linear order extended",
-	UnitAdded:                     "unit added to the dag",
-	AddUnits:                      "adding units started",
-	AddingStarted:                 "adding a ready waiting preunit started",
-	ForkDetected:                  "fork detected in adder",
-	UnitBroadcasted:               "sent a unit through multicast",
-	SyncStarted:                   "new sync started",
-	SyncCompleted:                 "sync completed",
-	GetInfo:                       "receiving dag info started",
-	SendInfo:                      "sending dag info started",
-	GetUnits:                      "receiving preunits started",
-	SendUnits:                     "sending units started",
-	SuccesfulAdd:                  "added ready waiting preunits",
-	DuplicatedUnits:               "trying to add units already present in dag",
-	DuplicatedPreunits:            "trying to add preunits already present in adder",
-	UnknownParents:                "trying to add a unit with missing parents",
-	MissingRandomBytes:            "missing random bytes",
-	UnitOrdered:                   "unit ordered",
-	InvalidControlHash:            "invalid control hash",
-	InvalidEpochProofFromFuture:   "invalid epoch's proof in a unit from a future epoch",
-	CreatorFinished:               "creator has finished its work",
-	InvalidCreator:                "invalid creator of a unit",
-	CreatorSwitchedToNewEpoch:     "creator switched to a new epoch",
-	FreezedParent:                 "creator freezed a parent due to some non-compliance",
-	UnableToRetrieveEpoch:         "unable to retrieve an epoch",
-	CreatorProcessingUnit:         "creator is processing a unit",
-	PuttingOnCreatorsBelt:         "unit was put on creator's belt",
-	CreatorNotReady:               "creator is not ready after update",
-	CreatorNotReadyAfterUpdate:    "creator was ready after update, but changed its mind after more updates",
-	BeforeSendingUnitToCreator:    "called AfterInsert responsible for sending on creator's belt",
-	LastTimingUnitIsFromTheFuture: "TIME TRAVEL ERROR: lastTiming received a unit from the future",
-	MulticastReceivedPreunit:      "mulicast has received a preunit",
+	UnitCreated:           "new unit created",
+	CreatorNotReady:       "creator not ready after update",
+	CreatorProcessingUnit: "creator processing a unit from the belt",
+	SendingUnitToCreator:  "putting a newly added unit on creator's belt",
+	AddPreunits:           "putting preunits in adder started",
+	PreunitReady:          "adding a ready waiting preunit started",
+	UnitAdded:             "unit added to the dag",
+	ReadyToAdd:            "added ready waiting preunits",
+	DuplicatedUnits:       "trying to add units already present in dag",
+	DuplicatedPreunits:    "trying to add preunits already present in adder",
+	UnknownParents:        "trying to add a unit with missing parents",
+	NewTimingUnit:         "new timing unit",
+	OwnUnitOrdered:        "unit created by this process has been ordered",
+	LinearOrderExtended:   "linear order extended",
+	UnitOrdered:           "unit ordered",
+	SentUnit:              "sent a unit through multicast",
+	PreunitReceived:       "multicast has received a preunit",
+	SyncStarted:           "new sync started",
+	SyncCompleted:         "sync completed",
+	GetInfo:               "receiving dag info started",
+	SendInfo:              "sending dag info started",
+	GetUnits:              "receiving preunits started",
+	SendUnits:             "sending units started",
+	PreblockProduced:      "new preblock",
+
+	NewEpoch:              "new epoch",
+	EpochEnd:              "epoch finished",
+	SkippingEpoch:         "creator skipping epoch without finishing it",
+	ServiceStarted:        "STARTED",
+	ServiceStopped:        "STOPPED",
+	GotWTK:                "received weak threshold key from the setup phase",
+	CreatorFinished:       "creator has finished its work",
+	ForkDetected:          "fork detected in adder",
+	MissingRandomBytes:    "missing random bytes",
+	InvalidControlHash:    "invalid control hash",
+	InvalidEpochProof:     "invalid epoch's proof in a unit from a future epoch",
+	InvalidCreator:        "invalid creator of a unit",
+	FreezedParent:         "creator freezed a parent due to some non-compliance",
+	FutureLastTiming:      "creator received timing unit from newer epoch that he's seen",
+	UnableToRetrieveEpoch: "unable to retrieve an epoch",
 }
 
 // Field names.
 const (
-	Time              = "T"
-	Level             = "L"
-	Event             = "V"
-	Service           = "S"
-	Size              = "N"
-	Creator           = "C"
-	Height            = "H"
-	Epoch             = "E"
-	Lvl               = "Q"
-	Round             = "R"
-	ID                = "D"
-	PID               = "P"
-	ISID              = "I"
-	OSID              = "O"
 	Sent              = "A"
 	Recv              = "B"
-	ControlHash       = "Z"
-	WTKThreshold      = "AJ"
-	WTKShareProviders = "AK"
-	MaxOnLevel        = "AP"
+	Creator           = "C"
+	ID                = "D"
+	Epoch             = "E"
+	ControlHash       = "F"
+	Height            = "H"
+	ISID              = "I"
+	WTKShareProviders = "J"
+	WTKThreshold      = "K"
+	LogLevel          = "L"
+	Message           = "M"
+	Size              = "N"
+	OSID              = "O"
+	PID               = "P"
+	Level             = "Q"
+	Round             = "R"
+	Service           = "S"
+	Time              = "T"
 )
 
 // fieldNameDict maps short field names to human readable form.
 var fieldNameDict = map[string]string{
-	Time:              "time",
-	Level:             "level",
-	Event:             "event",
-	Service:           "service",
-	Size:              "size",
-	Creator:           "creator",
-	Height:            "height",
-	Epoch:             "epoch",
-	Lvl:               "level",
-	Round:             "round",
-	ID:                "ID",
-	PID:               "PID",
-	ISID:              "inSID",
-	OSID:              "outSID",
 	Sent:              "sent",
 	Recv:              "received",
-	WTKThreshold:      "wtk-threshold",
-	WTKShareProviders: "wtk-share_providers",
-	MaxOnLevel:        "max_on_level",
+	Creator:           "creator",
+	ID:                "ID",
+	Epoch:             "epoch",
+	ControlHash:       "hash",
+	Height:            "height",
+	ISID:              "inSID",
+	WTKShareProviders: "wtkSP",
+	WTKThreshold:      "wtkThr",
+	LogLevel:          "lvl",
+	Message:           "msg",
+	Size:              "size",
+	OSID:              "outSID",
+	PID:               "PID",
+	Level:             "level",
+	Round:             "round",
+	Service:           "service",
+	Time:              "time",
 }
 
 // Service types.
 const (
-	CreateService int = iota
+	CreatorService int = iota
 	OrderService
 	AdderService
 	ExtenderService
@@ -147,13 +147,12 @@ const (
 	MCService
 	RMCService
 	AlertService
-	EpochService
 	NetworkService
 )
 
 // serviceTypeDict maps integer service types to human readable names.
 var serviceTypeDict = map[int]string{
-	CreateService:   "CREATOR",
+	CreatorService:  "CREATOR",
 	OrderService:    "ORDERER",
 	AdderService:    "ADDER",
 	ExtenderService: "EXTENDER",
@@ -162,16 +161,8 @@ var serviceTypeDict = map[int]string{
 	MCService:       "MCAST",
 	RMCService:      "RMC",
 	AlertService:    "ALERT",
-	EpochService:    "EPOCH",
 	NetworkService:  "NETWORK",
 }
 
 // Genesis was better with Phil Collins.
 const Genesis = "genesis"
-
-// names for logger
-const (
-	TimestampFieldName = "aa"
-	LevelFieldName     = "ab"
-	MessageFieldName   = "ac"
-)

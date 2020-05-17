@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/unit"
 	"gitlab.com/alephledger/core-go/pkg/core"
 )
@@ -86,7 +86,7 @@ func NewForEpoch(
 // This method is stopped by closing unitBelt channel.
 func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter gomel.Alerter) {
 	defer func() {
-		cr.log.Log().Msg(logging.CreatorFinished)
+		cr.log.Log().Msg(lg.CreatorFinished)
 	}()
 	om := alerter.AddForkObserver(func(u, _ gomel.Preunit) {
 		cr.freezeParent(u.Creator())
@@ -113,11 +113,7 @@ func (cr *Creator) CreateUnits(unitBelt, lastTiming <-chan gomel.Unit, alerter g
 		cr.mx.Unlock()
 
 		if !wasReady {
-			cr.log.Debug().
-				Uint32(logging.Epoch, uint32(cr.epoch)).
-				Int(logging.Level, cr.level).
-				Uint16(logging.Size, cr.onMaxLvl).
-				Msg(logging.CreatorNotReadyAfterUpdate)
+			cr.log.Debug().Uint32(lg.Epoch, uint32(cr.epoch)).Int(lg.Level, cr.level).Uint16(lg.Size, cr.onMaxLvl).Msg(lg.CreatorNotReady)
 		}
 		if cr.finished {
 			return
@@ -170,7 +166,7 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 				}
 				return cr.epochProof.BuildShare(timingUnit)
 			}
-			cr.log.Warn().Uint32(logging.Epoch, uint32(timingUnit.EpochID())).Msg(logging.LastTimingUnitIsFromTheFuture)
+			cr.log.Warn().Uint32(lg.Epoch, uint32(timingUnit.EpochID())).Msg(lg.FutureLastTiming)
 		default:
 			return core.Data{}
 		}
@@ -180,13 +176,7 @@ func (cr *Creator) getData(level int, lastTiming <-chan gomel.Unit) core.Data {
 // update takes a unit that has been received from unit belt and updates
 // creator internal state with information contained in that unit.
 func (cr *Creator) update(u gomel.Unit) {
-	cr.log.Debug().
-		Uint16(logging.Creator, u.Creator()).
-		Uint32(logging.Epoch, uint32(u.EpochID())).
-		Int(logging.Height, u.Height()).
-		Int(logging.Level, u.Level()).
-		Uint16(logging.MaxOnLevel, cr.onMaxLvl).
-		Msg(logging.CreatorProcessingUnit)
+	cr.log.Debug().Uint16(lg.Creator, u.Creator()).Uint32(lg.Epoch, uint32(u.EpochID())).Int(lg.Height, u.Height()).Int(lg.Level, u.Level()).Uint16(lg.Size, cr.onMaxLvl).Msg(lg.CreatorProcessingUnit)
 
 	// if the unit is from an older epoch or unit's creator is known to be a forker, we simply ignore it
 	if cr.frozen[u.Creator()] || u.EpochID() < cr.epoch {
@@ -198,12 +188,10 @@ func (cr *Creator) update(u gomel.Unit) {
 	// the first unit from a new epoch is always a dealing unit.
 	if u.EpochID() > cr.epoch {
 		if !cr.epochProof.Verify(u) {
-			cr.log.Warn().
-				Uint16(logging.Creator, u.Creator()).
-				Int(logging.Height, u.Height()).
-				Msg(logging.InvalidEpochProofFromFuture)
+			cr.log.Warn().Uint16(lg.Creator, u.Creator()).Int(lg.Height, u.Height()).Msg(lg.InvalidEpochProof)
 			return
 		}
+		cr.log.Warn().Int(lg.Level, cr.level).Uint32(lg.Epoch, uint32(cr.epoch)).Msg(lg.SkippingEpoch)
 		cr.newEpoch(u.EpochID(), u.Data())
 	}
 
@@ -261,7 +249,7 @@ func (cr *Creator) freezeParent(pid uint16) gomel.Unit {
 	u := cr.candidates[cr.conf.Pid].Parents()[pid]
 	cr.candidates[pid] = u
 	cr.frozen[pid] = true
-	cr.log.Info().Uint16(logging.Creator, pid).Msg(logging.FreezedParent)
+	cr.log.Info().Uint16(lg.Creator, pid).Msg(lg.FreezedParent)
 	return u
 }
 
@@ -291,11 +279,7 @@ func (cr *Creator) getParentsForLevel(level int) []gomel.Unit {
 func (cr *Creator) createUnit(parents []gomel.Unit, level int, data core.Data) {
 	rsData := cr.rsData(level, parents, cr.epoch)
 	u := unit.New(cr.conf.Pid, cr.epoch, parents, level, data, rsData, cr.conf.PrivateKey)
-	cr.log.Info().
-		Uint32(logging.Epoch, uint32(u.EpochID())).
-		Int(logging.Height, u.Height()).
-		Int(logging.Level, level).
-		Msg(logging.UnitCreated)
+	cr.log.Info().Uint32(lg.Epoch, uint32(u.EpochID())).Int(lg.Height, u.Height()).Int(lg.Level, level).Msg(lg.UnitCreated)
 	cr.send(u)
 	cr.update(u)
 }
@@ -306,11 +290,7 @@ func (cr *Creator) newEpoch(epoch gomel.EpochID, data core.Data) {
 	cr.epochDone = false
 	cr.resetEpoch()
 	cr.epochProof = cr.epochProofBuilder(epoch)
-	if epoch >= gomel.EpochID(cr.conf.NumberOfEpochs) {
-		cr.finished = true
-		return
-	}
-	cr.log.Log().Uint32(logging.Epoch, uint32(epoch)).Msg(logging.CreatorSwitchedToNewEpoch)
+	cr.log.Log().Uint32(lg.Epoch, uint32(epoch)).Msg(lg.NewEpoch)
 	cr.createUnit(make([]gomel.Unit, cr.conf.NProc), 0, data)
 }
 

@@ -7,8 +7,11 @@ import (
 )
 
 // AddingErrors logs information about errors from AddPreunits to provided logger.
-func AddingErrors(errors []error, log zerolog.Logger) {
-	if !(len(errors) > 0) {
+// size argument is needed to know how many preunits were added in case
+// everything went fine and errors is nil.
+func AddingErrors(errors []error, size int, log zerolog.Logger) {
+	if len(errors) == 0 {
+		log.Info().Int(Size, size).Msg(ReadyToAdd)
 		return
 	}
 	ok, units, preunits := 0, 0, 0
@@ -25,7 +28,7 @@ func AddingErrors(errors []error, log zerolog.Logger) {
 		case *gomel.UnknownParents:
 			log.Info().Int(Size, e.Amount).Msg(UnknownParents)
 		default:
-			log.Error().Str("where", "adding").Msg(err.Error())
+			log.Error().Str("where", "AddPreunits").Msg(err.Error())
 		}
 
 	}
@@ -36,6 +39,6 @@ func AddingErrors(errors []error, log zerolog.Logger) {
 		log.Info().Int(Size, preunits).Msg(DuplicatedPreunits)
 	}
 	if ok > 0 {
-		log.Info().Int(Size, ok).Msg(SuccesfulAdd)
+		log.Info().Int(Size, ok).Msg(ReadyToAdd)
 	}
 }
