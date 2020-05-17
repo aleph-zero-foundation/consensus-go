@@ -90,6 +90,7 @@ var _ = Describe("Protocol", func() {
 		dags     []gomel.Dag
 		adders   []*unitsAdder
 		servs    []sync.Server
+		req      []func(uint16)
 		tservs   []testServer
 		netservs []network.Server
 	)
@@ -117,13 +118,14 @@ var _ = Describe("Protocol", func() {
 			}
 			servs = make([]sync.Server, size)
 			tservs = make([]testServer, size)
+			req = make([]func(uint16), size)
 			for i := 0; i < size; i++ {
 				config := config.Empty()
 				config.NProc = uint16(size)
 				config.Pid = uint16(i)
 				config.Timeout = connectionTimeout
 				config.GossipWorkers[0], config.GossipWorkers[1] = 1, 1
-				servs[i], _ = NewServer(config, adders[i], netservs[i], zerolog.Nop())
+				servs[i], req[i] = NewServer(config, adders[i], netservs[i], zerolog.Nop())
 				tservs[i] = servs[i].(testServer)
 			}
 		}
@@ -181,11 +183,12 @@ var _ = Describe("Protocol", func() {
 					}(serv)
 				}
 				done.Add(len(tservs))
-				for _, serv := range tservs {
-					go func(serv testServer) {
+				for j, serv := range tservs {
+					go func(i int, serv testServer) {
 						defer done.Done()
+						req[i]((uint16((i + 1) % len(tservs))))
 						serv.Out()
-					}(serv)
+					}(j, serv)
 				}
 				done.Wait()
 			}
