@@ -81,7 +81,9 @@ func (s *SyncBytesSlice) AppendOrIgnore(length int, data []byte) {
 	s.Lock()
 	defer s.Unlock()
 	if len(s.contents) == length {
-		s.contents = append(s.contents, data)
+		bs := make([]byte, len(data))
+		copy(bs, data)
+		s.contents = append(s.contents, bs)
 	}
 }
 
