@@ -98,6 +98,8 @@ func randomPermutation(rs gomel.RandomSource, dag gomel.Dag, level int, pids []u
 		if randomBytes == nil {
 			return nil, false
 		}
+		// NOTE: it is risky to directly append to this returned value, so we need to copy it first
+		randomBytes = append([]byte{}, randomBytes...)
 		rbLen := len(randomBytes)
 		for _, u := range units {
 			randomBytes = append(randomBytes[:rbLen], (*u.Hash())[:]...)
