@@ -116,11 +116,14 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 		// RandomBytes asked on too low level
 		return nil
 	}
-	wtk := b.wtk[pid]
-	if wtk == nil {
-		// we haven't received yet its wtk
+	// NOTE: this line assumes that call to Beacon.update on the dealing unit of `pid` happens-before insertion into dag
+	// and further also this call. This should be trivially satisfied, since update is called by a dag's BeforeInsert callback
+	// and dag itself is thread-safe.
+	if len(b.dag.MaximalUnitsPerProcess().Get(pid)) == 0 {
+		// then we haven't received its wtk or we are still processing it
 		return nil
 	}
+	wtk := b.wtk[pid]
 	shares := []*tss.Share{}
 	units := unitsOnLevel(b.dag, level)
 	for _, u := range units {
