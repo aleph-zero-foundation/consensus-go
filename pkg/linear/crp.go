@@ -89,12 +89,15 @@ func randomPermutation(rs gomel.RandomSource, dag gomel.Dag, level int, pids []u
 	priority := make(map[gomel.Unit][]byte)
 
 	for _, pid := range pids {
+		units := dag.UnitsOnLevel(level).Get(pid)
+		if len(units) == 0 {
+			continue
+		}
 		randomBytes := rs.RandomBytes(pid, level+5)
 		if randomBytes == nil {
 			return nil, false
 		}
 		rbLen := len(randomBytes)
-		units := dag.UnitsOnLevel(level).Get(pid)
 		for _, u := range units {
 			randomBytes = append(randomBytes[:rbLen], (*u.Hash())[:]...)
 			priority[u] = make([]byte, 32)
