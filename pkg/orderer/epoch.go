@@ -77,7 +77,7 @@ func (ep *epoch) WantsMoreUnits() bool {
 	}
 }
 
-// NoMore marks the epoch as not interested in accepting new units.
+// NoMoreUnits marks the epoch as not interested in accepting new units.
 func (ep *epoch) NoMoreUnits() {
 	close(ep.more)
 }

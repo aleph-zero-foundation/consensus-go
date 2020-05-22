@@ -141,8 +141,8 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 		ord.Start(rsf, syn, gomel.NopAlerter())
 	}
 	stop := func() {
-		close(wtkchan)
 		ord.Stop()
+		close(wtkchan)
 	}
 	return start, stop, nil
 }

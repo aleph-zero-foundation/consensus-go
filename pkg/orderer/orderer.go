@@ -82,7 +82,12 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 	ord.ticker = time.NewTicker(ord.conf.GossipInterval)
 	go func() {
 		for range ord.ticker.C {
-			ord.syncer.RequestGossip(uint16(rand.Intn(int(ord.conf.NProc))))
+			// choose pid randomly amongst other NProc-1 committee members
+			pidToCall := uint16(rand.Intn(int(ord.conf.NProc - 1)))
+			if pidToCall >= ord.conf.Pid {
+				pidToCall++
+			}
+			ord.syncer.RequestGossip(pidToCall)
 		}
 	}()
 

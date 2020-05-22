@@ -64,7 +64,7 @@ func getOptions() cliOptions {
 	flag.IntVar(&result.data, "data", 0, "size [kB] of random data to be put in every unit (-1 to enable reading unit data from stdin)")
 	flag.IntVar(&result.epochs, "epochs", 0, "number of epochs to run")
 	flag.IntVar(&result.units, "units", 0, "number of levels to produce in each epoch")
-	flag.IntVar(&result.output, "output", 2, "type of preblock consumer (0 ignore, 1 control sum, 2 data")
+	flag.IntVar(&result.output, "output", 1, "type of preblock consumer (0 ignore, 1 control sum, 2 data")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
@@ -141,7 +141,7 @@ func main() {
 	if options.data == -1 {
 		dataSource = tests.StdinDataSource()
 	} else {
-		dataSource = tests.RandomDataSource(300 * options.data)
+		dataSource = tests.RandomDataSource(1024 * options.data)
 	}
 
 	// create preblock sink with mock consumer
