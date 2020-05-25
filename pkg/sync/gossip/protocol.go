@@ -35,10 +35,12 @@ func (p *server) In() {
 		return
 	}
 
-	if !p.peerManager.begin(pid) {
+	select {
+	case <-p.tokens[pid]:
+	default:
 		return
 	}
-	defer p.peerManager.done(pid)
+	defer func() { p.tokens[pid] <- struct{}{} }()
 
 	log := p.log.With().Uint16(lg.PID, pid).Uint32(lg.ISID, sid).Logger()
 	log.Info().Msg(lg.SyncStarted)
@@ -79,7 +81,6 @@ func (p *server) In() {
 	// 5. receive units
 	log.Debug().Msg(lg.GetUnits)
 	theirPreunitsReceived, err := encoding.ReadChunk(conn)
-	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.in.getPreunits").Msg(err.Error())
 		return
@@ -88,7 +89,7 @@ func (p *server) In() {
 	// 6. add units
 	errs := p.orderer.AddPreunits(pid, theirPreunitsReceived...)
 	lg.AddingErrors(errs, len(theirPreunitsReceived), log)
-	log.Info().Int(lg.Recv, nReceived).Int(lg.Sent, len(units)).Msg(lg.SyncCompleted)
+	log.Info().Int(lg.Recv, len(theirPreunitsReceived)).Int(lg.Sent, len(units)).Msg(lg.SyncCompleted)
 }
 
 // out handles the outgoing connection using info from the dag.
@@ -104,11 +105,19 @@ func (p *server) In() {
     6. Add the received units to the dag.
 */
 func (p *server) Out() {
-	remotePid, ok := p.peerManager.nextPeer()
-	if !ok {
+	var remotePid uint16
+	select {
+	case remotePid = <-p.requests:
+	case <-p.stopOut:
 		return
 	}
-	defer p.peerManager.done(remotePid)
+
+	select {
+	case <-p.tokens[remotePid]:
+	default:
+		return
+	}
+	defer func() { p.tokens[remotePid] <- struct{}{} }()
 
 	conn, err := p.netserv.Dial(remotePid)
 	if err != nil {
@@ -153,7 +162,6 @@ func (p *server) Out() {
 	// 4. receive units
 	log.Debug().Msg(lg.GetUnits)
 	theirPreunitsReceived, err := encoding.ReadChunk(conn)
-	nReceived := len(theirPreunitsReceived)
 	if err != nil {
 		log.Error().Str("where", "gossip.out.getPreunits").Msg(err.Error())
 		return
@@ -176,5 +184,5 @@ func (p *server) Out() {
 	// 6. add units to dag
 	errs := p.orderer.AddPreunits(remotePid, theirPreunitsReceived...)
 	lg.AddingErrors(errs, len(theirPreunitsReceived), log)
-	log.Info().Int(lg.Recv, nReceived).Int(lg.Sent, len(units)).Msg(lg.SyncCompleted)
+	log.Info().Int(lg.Recv, len(theirPreunitsReceived)).Int(lg.Sent, len(units)).Msg(lg.SyncCompleted)
 }
