@@ -104,7 +104,6 @@ func consensus(conf config.Config, wtkchan chan *tss.WeakThresholdKey, ds core.D
 		}()
 	}
 	stop := func() {
-		close(wtkchan)
 		<-started
 		netserv.Stop()
 		ord.Stop()
@@ -123,19 +122,13 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 		return nil, nil, err
 	}
 
-	ch := make(chan uint16)
 	extractHead := func(units []gomel.Unit) {
 		head := units[len(units)-1]
 		if head.Level() == conf.OrderStartLevel {
-			ch <- units[len(units)-1].Creator()
+			wtkchan <- rsf.GetWTK(head.Creator())
 			return
 		}
 		panic("Setup phase: wrong level")
-	}
-	makeWTK := func() {
-		if head, ok := <-ch; ok {
-			wtkchan <- rsf.GetWTK(head)
-		}
 	}
 
 	ord := orderer.New(conf, nil, extractHead, log)
@@ -145,11 +138,10 @@ func setup(conf config.Config, wtkchan chan *tss.WeakThresholdKey) (func(), func
 	}
 
 	start := func() {
-		go makeWTK()
 		ord.Start(rsf, syn, gomel.NopAlerter())
 	}
 	stop := func() {
-		close(ch)
+		close(wtkchan)
 		ord.Stop()
 	}
 	return start, stop, nil

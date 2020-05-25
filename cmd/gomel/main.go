@@ -13,8 +13,8 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/run"
-	"gitlab.com/alephledger/consensus-go/pkg/tests"
 	"gitlab.com/alephledger/core-go/pkg/core"
+	"gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 func getMember(filename string) (*config.Member, error) {
@@ -108,9 +108,15 @@ func main() {
 
 	fmt.Fprintln(os.Stdout, "Starting process...")
 
-	// Mock data source and preblock sink.
-	tds := tests.NewDataSource(300 * options.txpu)
+	// mock data source and preblock sink.
+	tds := tests.RandomDataSource(300 * options.txpu)
 	ps := make(chan *core.Preblock)
+
+	done := make(chan struct{})
+	go func() {
+		tests.ControlSumPreblockConsumer(ps, os.Stdout)
+		close(done)
+	}()
 
 	// get member
 	member, err := getMember(options.privFilename)
@@ -131,6 +137,7 @@ func main() {
 		return
 	}
 
+	// initialize process
 	var start, stop func()
 	if options.setup {
 		setupConfig := config.NewSetup(member, committee)
@@ -146,17 +153,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
 		return
 	}
+
+	// run process
 	start()
-	seenPB, expectedPB := 0, consensusConfig.EpochLength*consensusConfig.NumberOfEpochs
-	for range ps {
-		seenPB++
-		if seenPB == expectedPB {
-			break
-		}
-	}
-	time.Sleep(10 * time.Second)
+	<-done
 	stop()
 
+	// dump profiles
 	if options.memProfFilename != "" {
 		f, err := os.Create(options.memProfFilename)
 		if err != nil {

@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
 	"gitlab.com/alephledger/core-go/pkg/core"
+	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
 
 type privateKeyStub struct {
@@ -41,7 +42,7 @@ func (testEpochProofBuilder) BuildShare(lastTimingUnit gomel.Unit) core.Data {
 }
 
 func newCreator(cnf config.Config, send func(gomel.Unit)) *creator.Creator {
-	dataSource := tests.NewDataSource(10)
+	dataSource := ctests.RandomDataSource(10)
 	rsData := func(int, []gomel.Unit, gomel.EpochID) []byte {
 		return nil
 	}
@@ -340,7 +341,7 @@ var _ = Describe("creator", func() {
 				unitRec <- u
 			}
 
-			dataSource := tests.NewDataSource(10)
+			dataSource := ctests.RandomDataSource(10)
 			rsDataProvider := func(int, []gomel.Unit, gomel.EpochID) []byte {
 				return nil
 			}
