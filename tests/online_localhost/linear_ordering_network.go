@@ -95,6 +95,7 @@ func createAndStartProcess(
 	p2pPubKeys []*p2p.PublicKey,
 	p2pSecKey *p2p.SecretKey,
 	numberOfPreblocks int,
+	dagFinished *sync.WaitGroup,
 	finished *sync.WaitGroup,
 ) error {
 	member := config.Member{
@@ -169,6 +170,9 @@ func createAndStartProcess(
 		// wait for all expected preblocks
 		wait.Wait()
 
+		dagFinished.Done()
+		dagFinished.Wait()
+
 		stop()
 	}()
 	return nil
@@ -238,6 +242,8 @@ func main() {
 	p2pPubKeys, p2pSecKeys := generateP2PKeys(nProc)
 
 	var allDone sync.WaitGroup
+	var dagsFinished sync.WaitGroup
+	dagsFinished.Add(len(gossipAddresses))
 	for id := range gossipAddresses {
 		allDone.Add(1)
 		err := createAndStartProcess(
@@ -255,6 +261,7 @@ func main() {
 
 			pubKeys, privKeys[id], verKeys, sekKeys[id], p2pPubKeys, p2pSecKeys[id],
 			*numberOfPreblocks,
+			&dagsFinished,
 			&allDone,
 		)
 		if err != nil {
