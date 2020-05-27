@@ -150,12 +150,11 @@ func (ad *adder) addToWaiting(pu gomel.Preunit, source uint16) error {
 
 // sendIfReady checks if a waitingPreunit is ready (has no waiting or missing parents).
 // If yes, the preunit is sent to the channel corresponding to its dedicated worker.
-// Atomic flag prevents send on a closed channel after Stop().
 func (ad *adder) sendIfReady(wp *waitingPreunit) {
-	select {
-	case <-ad.finished:
-	default:
-		if wp.waitingParents == 0 && wp.missingParents == 0 {
+	if wp.waitingParents == 0 && wp.missingParents == 0 {
+		select {
+		case <-ad.finished:
+		default:
 			ad.ready[wp.pu.Creator()] <- wp
 		}
 	}
