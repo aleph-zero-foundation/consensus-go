@@ -57,7 +57,7 @@ func (dag *dag) NProc() uint16 {
 	return dag.nProc
 }
 
-// PrimeUnits returns the prime units at the requested level, indexed by their creator ids.
+// UnitsOnLevel returns the prime units at the requested level, indexed by their creator ids.
 func (dag *dag) UnitsOnLevel(level int) gomel.SlottedUnits {
 	res, err := dag.levelUnits.getFiber(level)
 	if err != nil {
