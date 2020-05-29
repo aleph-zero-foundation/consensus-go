@@ -10,6 +10,7 @@ package beacon
 import (
 	"encoding/binary"
 	"errors"
+	"sync/atomic"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
@@ -33,12 +34,17 @@ func nonce(level int) []byte {
 	return data
 }
 
+type wtkData struct {
+	wtk    *tss.WeakThresholdKey
+	stored int64
+}
+
 // Beacon is a struct representing the beacon random source.
 type Beacon struct {
 	pid  uint16
 	conf config.Config
 	dag  gomel.Dag
-	wtk  []*tss.WeakThresholdKey
+	wtk  []wtkData
 	tks  []*tss.ThresholdKey
 	// vote[i][j] is the vote of i-th process on the j-th tss
 	// it is nil when j-th dealing unit is not below
@@ -76,7 +82,7 @@ func New(conf config.Config) (*Beacon, error) {
 	b := &Beacon{
 		pid:            conf.Pid,
 		conf:           conf,
-		wtk:            make([]*tss.WeakThresholdKey, conf.NProc),
+		wtk:            make([]wtkData, conf.NProc),
 		tks:            make([]*tss.ThresholdKey, conf.NProc),
 		votes:          make([][]*vote, conf.NProc),
 		shareProviders: make([]map[uint16]bool, conf.NProc),
@@ -116,11 +122,11 @@ func (b *Beacon) RandomBytes(pid uint16, level int) []byte {
 		// RandomBytes asked on too low level
 		return nil
 	}
-	wtk := b.wtk[pid]
-	if wtk == nil {
-		// we haven't received yet its wtk
+	if atomic.LoadInt64(&b.wtk[pid].stored) == 0 {
+		// we haven't received its wtk or we are still processing it
 		return nil
 	}
+	wtk := b.wtk[pid].wtk
 	shares := []*tss.Share{}
 	units := unitsOnLevel(b.dag, level)
 	for _, u := range units {
@@ -229,8 +235,9 @@ func (b *Beacon) update(u gomel.Unit) {
 				b.subcoins[u.Creator()][pid] = true
 			}
 		}
-		b.wtk[u.Creator()] = tss.CreateWTK(coinsToMerge, providers)
+		b.wtk[u.Creator()] = wtkData{wtk: tss.CreateWTK(coinsToMerge, providers)}
 		b.shareProviders[u.Creator()] = providers
+		atomic.StoreInt64(&b.wtk[u.Creator()].stored, 1)
 	}
 	if u.Level() >= sharesLevel {
 		shares, _ := unmarshallShares(u.RandomSourceData(), b.conf.NProc)
@@ -312,7 +319,7 @@ func (b *Beacon) DataToInclude(parents []gomel.Unit, level int) ([]byte, error) 
 // GetWTK returns a weak threshold key obtained by using this beacon.
 // Head should be the creator of the timing unit chosen on the 6th level.
 func (b *Beacon) GetWTK(head uint16) *tss.WeakThresholdKey {
-	return b.wtk[head]
+	return b.wtk[head].wtk
 }
 
 // unitsOnLevel returns all the prime units in the dag on a given level
