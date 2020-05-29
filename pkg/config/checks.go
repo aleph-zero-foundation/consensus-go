@@ -149,9 +149,6 @@ func valid(cnf Config) error {
 	if cnf.LogBuffer == 0 {
 		return gomel.NewConfigError("Log buffer cannot be 0")
 	}
-	if cnf.LogMemInterval == 0 {
-		return gomel.NewConfigError("LogMem interval cannot be 0")
-	}
 
 	// keys checks
 	if err := checkKeys(cnf); err != nil {

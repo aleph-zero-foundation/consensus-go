@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
-	"syscall"
 	"time"
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
@@ -47,8 +46,11 @@ type cliOptions struct {
 	cpuProfFilename   string
 	memProfFilename   string
 	traceFilename     string
+	data              int
+	epochs            int
+	units             int
+	output            int
 	setup             bool
-	txpu              int
 	mutexFraction     int
 	blockFraction     int
 	delay             int64
@@ -59,10 +61,13 @@ func getOptions() cliOptions {
 	flag.BoolVar(&result.setup, "setup", true, "a flag whether a setup should be run")
 	flag.StringVar(&result.privFilename, "priv", "", "a file with private keys and process id")
 	flag.StringVar(&result.keysAddrsFilename, "keys_addrs", "", "a file with keys and associated addresses")
+	flag.IntVar(&result.data, "data", 0, "size [kB] of random data to be put in every unit (-1 to enable reading unit data from stdin)")
+	flag.IntVar(&result.epochs, "epochs", 0, "number of epochs to run")
+	flag.IntVar(&result.units, "units", 0, "number of levels to produce in each epoch")
+	flag.IntVar(&result.output, "output", 1, "type of preblock consumer (0 ignore, 1 control sum, 2 data")
 	flag.StringVar(&result.cpuProfFilename, "cpuprof", "", "the name of the file with cpu-profile results")
 	flag.StringVar(&result.memProfFilename, "memprof", "", "the name of the file with mem-profile results")
 	flag.StringVar(&result.traceFilename, "trace", "", "the name of the file with trace-profile results")
-	flag.IntVar(&result.txpu, "txpu", 0, "number of transactions to put to every unit")
 	flag.IntVar(&result.mutexFraction, "mf", 0, "the sampling fraction of mutex contention events")
 	flag.IntVar(&result.blockFraction, "bf", 0, "the sampling fraction of goroutine blocking events")
 	flag.Int64Var(&result.delay, "delay", 0, "number of seconds to wait before running the protocol")
@@ -71,18 +76,15 @@ func getOptions() cliOptions {
 }
 
 func main() {
-	// temporary trick to capture stdout and stderr on remote instances
-	logFile, _ := os.OpenFile("out", os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0644)
-	syscall.Dup2(int(logFile.Fd()), 1)
-	syscall.Dup2(int(logFile.Fd()), 2)
-
 	options := getOptions()
 
+	// wait if asked to
 	if options.delay != 0 {
 		duration := time.Duration(options.delay) * time.Second
 		time.Sleep(duration)
 	}
 
+	// set up profilers
 	if options.cpuProfFilename != "" {
 		f, err := os.Create(options.cpuProfFilename)
 		if err != nil {
@@ -108,16 +110,6 @@ func main() {
 
 	fmt.Fprintln(os.Stdout, "Starting process...")
 
-	// mock data source and preblock sink.
-	tds := tests.RandomDataSource(300 * options.txpu)
-	ps := make(chan *core.Preblock)
-
-	done := make(chan struct{})
-	go func() {
-		tests.ControlSumPreblockConsumer(ps, os.Stdout)
-		close(done)
-	}()
-
 	// get member
 	member, err := getMember(options.privFilename)
 	if err != nil {
@@ -136,6 +128,36 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid consensus configuration because: %s.\n", err.Error())
 		return
 	}
+	if options.epochs != 0 {
+		consensusConfig.NumberOfEpochs = options.epochs
+	}
+	if options.units != 0 {
+		consensusConfig.EpochLength = options.units
+		consensusConfig.LastLevel = consensusConfig.EpochLength + consensusConfig.OrderStartLevel - 1
+	}
+
+	// create mock data source
+	var dataSource core.DataSource
+	if options.data == -1 {
+		dataSource = tests.StdinDataSource()
+	} else {
+		dataSource = tests.RandomDataSource(1024 * options.data)
+	}
+
+	// create preblock sink with mock consumer
+	preblockSink := make(chan *core.Preblock)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		switch options.output {
+		case 1:
+			tests.ControlSumPreblockConsumer(preblockSink, os.Stdout)
+		case 2:
+			tests.DataExtractingPreblockConsumer(preblockSink, os.Stdout)
+		default:
+			tests.NopPreblockConsumer(preblockSink)
+		}
+	}()
 
 	// initialize process
 	var start, stop func()
@@ -145,9 +167,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Invalid setup configuration because: %s.\n", err.Error())
 			return
 		}
-		start, stop, err = run.Process(setupConfig, consensusConfig, tds, ps)
+		start, stop, err = run.Process(setupConfig, consensusConfig, dataSource, preblockSink)
 	} else {
-		start, stop, err = run.NoBeacon(consensusConfig, tds, ps)
+		start, stop, err = run.NoBeacon(consensusConfig, dataSource, preblockSink)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Process died with %s.\n", err.Error())
@@ -172,5 +194,7 @@ func main() {
 		}
 	}
 
+	// give logger a chance to finish
+	time.Sleep(time.Second)
 	fmt.Fprintf(os.Stdout, "All done!\n")
 }

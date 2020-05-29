@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
@@ -38,7 +38,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 	if err != nil {
 		return nil, err
 	}
-	serv, ftrigger := fetch.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.FetchService).Logger())
+	serv, ftrigger := fetch.NewServer(conf, orderer, netserv, log.With().Int(lg.Service, lg.FetchService).Logger())
 	s.servers = append(s.servers, serv)
 	s.fetch = ftrigger
 	// init gossip
@@ -46,7 +46,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 	if err != nil {
 		return nil, err
 	}
-	serv, gtrigger := gossip.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.GossipService).Logger())
+	serv, gtrigger := gossip.NewServer(conf, orderer, netserv, log.With().Int(lg.Service, lg.GossipService).Logger())
 	s.servers = append(s.servers, serv)
 	s.gossip = gtrigger
 	if setup {
@@ -55,7 +55,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 		if err != nil {
 			return nil, err
 		}
-		serv, s.mcast = rmc.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.RMCService).Logger())
+		serv, s.mcast = rmc.NewServer(conf, orderer, netserv, log.With().Int(lg.Service, lg.RMCService).Logger())
 		s.servers = append(s.servers, serv)
 	} else {
 		// init mcast
@@ -63,7 +63,7 @@ func New(conf config.Config, orderer gomel.Orderer, log zerolog.Logger, setup bo
 		if err != nil {
 			return nil, err
 		}
-		serv, s.mcast = multicast.NewServer(conf, orderer, netserv, log.With().Int(logging.Service, logging.MCService).Logger())
+		serv, s.mcast = multicast.NewServer(conf, orderer, netserv, log.With().Int(lg.Service, lg.MCService).Logger())
 		s.servers = append(s.servers, serv)
 	}
 	return s, nil
@@ -114,7 +114,7 @@ func (ns *networkService) Stop() {
 func getNetServ(net string, pid uint16, addresses []string, services []core.Service, timeout time.Duration, log zerolog.Logger) (network.Server, []core.Service, error) {
 	switch net {
 	case "udp":
-		netLogger := log.With().Int(logging.Service, logging.NetworkService).Logger()
+		netLogger := log.With().Int(lg.Service, lg.NetworkService).Logger()
 		netserv, err := udp.NewServer(addresses[pid], addresses, netLogger)
 		if err != nil {
 			return nil, services, err
@@ -124,7 +124,7 @@ func getNetServ(net string, pid uint16, addresses []string, services []core.Serv
 
 		return netserv, services, nil
 	case "pers":
-		netLogger := log.With().Int(logging.Service, logging.NetworkService).Logger()
+		netLogger := log.With().Int(lg.Service, lg.NetworkService).Logger()
 		netserv, err := tcp.NewServer(addresses[pid], addresses, netLogger)
 		if err != nil {
 			return nil, services, err
@@ -143,7 +143,7 @@ func getNetServ(net string, pid uint16, addresses []string, services []core.Serv
 
 		return netserv, services, nil
 	default:
-		netLogger := log.With().Int(logging.Service, logging.NetworkService).Logger()
+		netLogger := log.With().Int(lg.Service, lg.NetworkService).Logger()
 		netserv, err := tcp.NewServer(addresses[pid], addresses, netLogger)
 		if err != nil {
 			return nil, services, err

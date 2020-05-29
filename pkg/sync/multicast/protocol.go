@@ -2,7 +2,7 @@ package multicast
 
 import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 func (s *server) In() {
@@ -17,17 +17,14 @@ func (s *server) In() {
 		s.log.Error().Str("where", "multicast.in.decode").Msg(err.Error())
 		return
 	}
-	s.log.Debug().
-		Uint32(logging.Epoch, uint32(preunit.EpochID())).
-		Uint16(logging.Creator, preunit.Creator()).
-		Int(logging.Height, preunit.Height()).
-		Msg(logging.MulticastReceivedPreunit)
-	logging.AddingErrors(s.orderer.AddPreunits(preunit.Creator(), preunit), s.log)
+	lg.AddingErrors(s.orderer.AddPreunits(preunit.Creator(), preunit), 1, s.log)
 }
 
 func (s *server) Out(pid uint16) {
-	r, ok := <-s.requests[pid]
-	if !ok {
+	var r *request
+	select {
+	case r = <-s.requests[pid]:
+	case <-s.stopOut:
 		return
 	}
 	conn, err := s.netserv.Dial(pid)
@@ -45,5 +42,5 @@ func (s *server) Out(pid uint16) {
 		s.log.Error().Str("where", "multicast.out.flush").Msg(err.Error())
 		return
 	}
-	s.log.Info().Int(logging.Height, r.height).Uint16(logging.PID, pid).Msg(logging.SyncCompleted)
+	s.log.Info().Int(lg.Height, r.height).Uint16(lg.PID, pid).Msg(lg.SentUnit)
 }

@@ -80,9 +80,9 @@ func (fm *fiberMap) get(heights []int) ([][]gomel.Unit, int) {
 		}
 		if su, ok := fm.content[h]; ok {
 			result[pid] = su.Get(uint16(pid))
-			if len(result[pid]) == 0 {
-				unknown++
-			}
+		}
+		if len(result[pid]) == 0 {
+			unknown++
 		}
 	}
 	return result, unknown

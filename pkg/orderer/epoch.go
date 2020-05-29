@@ -8,7 +8,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/dag"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/linear"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // epoch is a wrapper around a triple (adder, dag, extender) that is processing units from a particular epoch.
@@ -20,12 +20,12 @@ type epoch struct {
 	dag      gomel.Dag
 	extender *linear.ExtenderService
 	rs       gomel.RandomSource
-	finished chan bool
+	more     chan bool
 	log      zerolog.Logger
 }
 
 func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gomel.RandomSourceFactory, alert gomel.Alerter, unitBelt chan<- gomel.Unit, output chan<- []gomel.Unit, log zerolog.Logger) *epoch {
-	log = log.With().Uint32(logging.Epoch, uint32(id)).Logger()
+	log = log.With().Uint32(lg.Epoch, uint32(id)).Logger()
 	dg := dag.New(conf, id)
 	adr := adder.New(dg, conf, syncer, alert, log)
 	rs := rsf.NewRandomSource(dg)
@@ -33,20 +33,21 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 
 	dg.AfterInsert(func(_ gomel.Unit) { ext.Notify() })
 	dg.AfterInsert(func(u gomel.Unit) {
-		log.Debug().Uint16(logging.Creator, u.Creator()).Uint32(logging.Epoch, uint32(u.EpochID())).Int(logging.Height, u.Height()).Int(logging.Level, u.Level()).Msg(logging.BeforeSendingUnitToCreator)
+		log.Debug().Uint16(lg.Creator, u.Creator()).Uint32(lg.Epoch, uint32(u.EpochID())).Int(lg.Height, u.Height()).Int(lg.Level, u.Level()).Msg(lg.SendingUnitToCreator)
 		if u.Creator() != conf.Pid { // don't put our own units on the unit belt, creator already knows about them.
+			log.Debug().Uint16(lg.Creator, u.Creator()).Int(lg.Height, u.Height()).Int(lg.Level, u.Level()).Msg(lg.SendingUnitToCreator)
 			unitBelt <- u
 		}
 	})
 
-	log.Log().Msg(logging.NewEpoch)
+	log.Log().Msg(lg.NewEpoch)
 	return &epoch{
 		id:       id,
 		adder:    adr,
 		dag:      dg,
 		extender: ext,
 		rs:       rs,
-		finished: make(chan bool),
+		more:     make(chan bool),
 		log:      log,
 	}
 }
@@ -55,7 +56,7 @@ func newEpoch(id gomel.EpochID, conf config.Config, syncer gomel.Syncer, rsf gom
 func (ep *epoch) Close() {
 	ep.adder.Close()
 	ep.extender.Close()
-	ep.log.Log().Msg(logging.EpochEnd)
+	ep.log.Log().Msg(lg.EpochEnd)
 }
 
 func (ep *epoch) unitsAbove(heights []int) []gomel.Unit {
@@ -66,16 +67,17 @@ func (ep *epoch) allUnits() []gomel.Unit {
 	return ep.dag.UnitsAbove(nil)
 }
 
-// IsFinished checks if this epoch is still interested in accepting new units.
-func (ep *epoch) IsFinished() bool {
+// WantsMoreUnits checks if this epoch is still interested in accepting new units.
+func (ep *epoch) WantsMoreUnits() bool {
 	select {
-	case <-ep.finished:
+	case <-ep.more:
 		return true
 	default:
 		return false
 	}
 }
 
-func (ep *epoch) Finish() {
-	close(ep.finished)
+// NoMoreUnits marks the epoch as not interested in accepting new units.
+func (ep *epoch) NoMoreUnits() {
+	close(ep.more)
 }

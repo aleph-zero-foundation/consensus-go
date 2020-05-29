@@ -8,7 +8,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	"gitlab.com/alephledger/core-go/pkg/rmcbox"
 )
@@ -28,7 +28,7 @@ func NewAlerter(conf config.Config, orderer gomel.Orderer, netserv network.Serve
 	s := &service{
 		alertHandler: a,
 		netserv:      netserv,
-		log:          log.With().Int(logging.Service, logging.AlertService).Logger(),
+		log:          log.With().Int(lg.Service, lg.AlertService).Logger(),
 	}
 	return s, nil
 }
@@ -36,13 +36,13 @@ func NewAlerter(conf config.Config, orderer gomel.Orderer, netserv network.Serve
 func (s *service) Start() {
 	s.listens.Add(1)
 	go s.handleConns()
-	s.log.Log().Msg(logging.ServiceStarted)
+	s.log.Log().Msg(lg.ServiceStarted)
 }
 
 func (s *service) Stop() {
 	atomic.StoreInt64(&s.quit, 1)
 	s.listens.Wait()
-	s.log.Log().Msg(logging.ServiceStopped)
+	s.log.Log().Msg(lg.ServiceStopped)
 }
 
 func (s *service) handleConns() {

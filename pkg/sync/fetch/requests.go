@@ -9,8 +9,8 @@ import (
 	"gitlab.com/alephledger/core-go/pkg/network"
 )
 
-// Request is a query for fetch server to perform a sync with the given process and request particular units.
-type Request struct {
+// request is a query for fetch server to perform a sync with the given process and request particular units.
+type request struct {
 	Pid     uint16
 	UnitIDs []uint64
 }

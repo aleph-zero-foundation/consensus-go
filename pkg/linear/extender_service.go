@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // ExtenderService is a component working on a dag that extends a partial order of units defined by dag to a linear order.
@@ -18,52 +18,45 @@ type ExtenderService struct {
 	pid          uint16
 	output       chan<- []gomel.Unit
 	trigger      chan struct{}
+	finished     chan struct{}
 	timingRounds chan *TimingRound
-	finished     bool
-	mx           sync.RWMutex
 	wg           sync.WaitGroup
 	log          zerolog.Logger
 }
 
 // NewExtenderService constructs an extender working on the given dag and sending rounds of ordered units to the given output.
 func NewExtenderService(dag gomel.Dag, rs gomel.RandomSource, conf config.Config, output chan<- []gomel.Unit, log zerolog.Logger) *ExtenderService {
-	logger := log.With().Int(logging.Service, logging.ExtenderService).Logger()
+	logger := log.With().Int(lg.Service, lg.ExtenderService).Logger()
 	ordering := NewExtender(dag, rs, conf, logger)
 	ext := &ExtenderService{
 		ordering:     ordering,
 		pid:          conf.Pid,
 		output:       output,
 		trigger:      make(chan struct{}, 1),
-		timingRounds: make(chan *TimingRound, 10),
+		finished:     make(chan struct{}),
+		timingRounds: make(chan *TimingRound, conf.EpochLength),
 		log:          logger,
 	}
 
 	ext.wg.Add(2)
 	go ext.timingUnitDecider()
 	go ext.roundSorter()
-	ext.log.Info().Msg(logging.ServiceStarted)
+	ext.log.Info().Msg(lg.ServiceStarted)
 	return ext
 }
 
 // Close stops the extender.
 func (ext *ExtenderService) Close() {
-	ext.mx.Lock()
-	ext.finished = true
-	close(ext.trigger)
-	ext.mx.Unlock()
+	close(ext.finished)
 	ext.wg.Wait()
-	ext.log.Info().Msg(logging.ServiceStopped)
+	ext.log.Info().Msg(lg.ServiceStopped)
 }
 
 // Notify ExtenderService to attempt choosing next timing units.
 func (ext *ExtenderService) Notify() {
-	ext.mx.RLock()
-	defer ext.mx.RUnlock()
-	if !ext.finished {
-		select {
-		case ext.trigger <- struct{}{}:
-		default:
-		}
+	select {
+	case ext.trigger <- struct{}{}:
+	default:
 	}
 }
 
@@ -71,14 +64,19 @@ func (ext *ExtenderService) Notify() {
 // For each picked timing unit, it sends a timingRound object to timingRounds channel.
 func (ext *ExtenderService) timingUnitDecider() {
 	defer ext.wg.Done()
-	for range ext.trigger {
-		round := ext.ordering.NextRound()
-		for round != nil {
-			ext.timingRounds <- round
-			round = ext.ordering.NextRound()
+	for {
+		select {
+		case <-ext.trigger:
+			round := ext.ordering.NextRound()
+			for round != nil {
+				ext.timingRounds <- round
+				round = ext.ordering.NextRound()
+			}
+		case <-ext.finished:
+			close(ext.timingRounds)
+			return
 		}
 	}
-	close(ext.timingRounds)
 }
 
 // roundSorter picks information about newly picked timing unit from the timingRounds channel,
@@ -90,15 +88,11 @@ func (ext *ExtenderService) roundSorter() {
 		units := round.OrderedUnits()
 		ext.output <- units
 		for _, u := range units {
-			ext.log.Info().
-				Uint16(logging.Creator, u.Creator()).
-				Int(logging.Height, u.Height()).
-				Uint32(logging.Epoch, uint32(u.EpochID())).
-				Msg(logging.UnitOrdered)
+			ext.log.Debug().Uint16(lg.Creator, u.Creator()).Int(lg.Height, u.Height()).Uint32(lg.Epoch, uint32(u.EpochID())).Msg(lg.UnitOrdered)
 			if u.Creator() == ext.pid {
-				ext.log.Info().Int(logging.Height, u.Height()).Int(logging.Level, u.Level()).Msg(logging.OwnUnitOrdered)
+				ext.log.Info().Int(lg.Height, u.Height()).Int(lg.Level, u.Level()).Msg(lg.OwnUnitOrdered)
 			}
 		}
-		ext.log.Info().Int(logging.Size, len(units)).Msg(logging.LinearOrderExtended)
+		ext.log.Info().Int(lg.Size, len(units)).Msg(lg.LinearOrderExtended)
 	}
 }

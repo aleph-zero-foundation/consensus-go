@@ -27,11 +27,10 @@ type conf struct {
 	CanSkipLevel   bool
 	Checks         []gomel.UnitChecker
 	// log
-	LogFile        string
-	LogLevel       int
-	LogHuman       bool
-	LogBuffer      int
-	LogMemInterval int
+	LogFile   string
+	LogLevel  int
+	LogHuman  bool
+	LogBuffer int
 	// keys
 	WTKey         *tss.WeakThresholdKey
 	PrivateKey    gomel.PrivateKey
@@ -72,7 +71,7 @@ func NewSetup(m *Member, c *Committee) Config {
 	cnf := requiredByLinear()
 	addKeys(cnf, m, c)
 	addSyncConf(cnf, c.SetupAddresses, true)
-	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".setup.log")
+	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".setup")
 	addSetupConf(cnf)
 	addLastLevel(cnf)
 	return cnf
@@ -83,7 +82,7 @@ func New(m *Member, c *Committee) Config {
 	cnf := requiredByLinear()
 	addKeys(cnf, m, c)
 	addSyncConf(cnf, c.Addresses, false)
-	addLogConf(cnf, strconv.Itoa(int(cnf.Pid))+".log")
+	addLogConf(cnf, strconv.Itoa(int(cnf.Pid)))
 	addConsensusConf(cnf)
 	addLastLevel(cnf)
 	return cnf
@@ -132,7 +131,6 @@ func addLogConf(cnf Config, logFile string) {
 	cnf.LogBuffer = 100000
 	cnf.LogHuman = false
 	cnf.LogLevel = 1
-	cnf.LogMemInterval = 5
 }
 
 func addSetupConf(cnf Config) {

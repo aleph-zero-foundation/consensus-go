@@ -5,7 +5,7 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 )
 
 // Extender is a type that implements an algorithm that extends order of units provided by an instance of a Dag to a linear order.
@@ -65,13 +65,7 @@ func (ext *Extender) NextRound() *TimingRound {
 		decider := ext.getDecider(uc)
 		decision, decidedOn := decider.DecideUnitIsPopular(dagMaxLevel)
 		if decision == popular {
-			ext.log.
-				Info().
-				Int(logging.Height, decidedOn).
-				Int(logging.Size, dagMaxLevel).
-				Int(logging.Round, level).
-				Msg(logging.NewTimingUnit)
-
+			ext.log.Info().Int(lg.Height, decidedOn).Int(lg.Size, dagMaxLevel).Int(lg.Round, level).Msg(lg.NewTimingUnit)
 			ext.lastTUs = ext.lastTUs[1:]
 			ext.lastTUs = append(ext.lastTUs, ext.currentTU)
 			ext.currentTU = uc
@@ -87,7 +81,7 @@ func (ext *Extender) NextRound() *TimingRound {
 		return true
 	})
 	if !randomBytesPresent {
-		ext.log.Info().Int(logging.Round, level).Msg(logging.MissingRandomBytes)
+		ext.log.Debug().Int(lg.Round, level).Msg(lg.MissingRandomBytes)
 	}
 	if !decided {
 		return nil

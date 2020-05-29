@@ -11,7 +11,9 @@ import (
 func ToPreblock(round []Unit) *core.Preblock {
 	data := make([]core.Data, 0, len(round))
 	for _, u := range round {
-		data = append(data, u.Data())
+		if !Dealing(u) { // data in dealing units doesn't come from users, these are new epoch proofs
+			data = append(data, u.Data())
+		}
 	}
 	randomBytes := round[len(round)-1].RandomSourceData()[:bn256.SignatureLength]
 	return core.NewPreblock(data, randomBytes)

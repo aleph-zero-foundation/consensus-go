@@ -18,7 +18,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/logging"
+	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	rmc "gitlab.com/alephledger/core-go/pkg/rmcbox"
 	"gitlab.com/alephledger/core-go/pkg/utils"
@@ -84,8 +84,8 @@ func (a *alertHandler) HandleIncoming(conn network.Connection) {
 		a.log.Error().Str("where", "alertHandler.handleIncoming.AcceptGreeting").Msg(err.Error())
 		return
 	}
-	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.ISID, id).Logger()
-	log.Info().Msg(logging.SyncStarted)
+	log := a.log.With().Uint16(lg.PID, pid).Uint64(lg.ISID, id).Logger()
+	log.Info().Msg(lg.SyncStarted)
 
 	switch msgType {
 	case alert:
@@ -138,13 +138,13 @@ func (a *alertHandler) sendFinished(forker, pid uint16) {
 		return
 	}
 	id := comm.rmcID()
-	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
+	log := a.log.With().Uint16(lg.PID, pid).Uint64(lg.OSID, id).Logger()
 	conn, err := a.netserv.Dial(pid)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
-	log.Info().Msg(logging.SyncStarted)
+	log.Info().Msg(lg.SyncStarted)
 	err = rmc.Greet(conn, a.myPid, id, finished)
 	if err != nil {
 		log.Error().Str("where", "alertHandler.sendFinished.Greet").Msg(err.Error())
@@ -277,20 +277,20 @@ func (a *alertHandler) handleCommitmentRequest(conn network.Connection, log zero
 		log.Error().Str("where", "alertHandler.handleCommitmentRequest.Flush 2").Msg(err.Error())
 		return
 	}
-	log.Info().Msg(logging.SyncCompleted)
+	log.Info().Msg(lg.SyncCompleted)
 }
 
 // RequestCommitment to the given preunit, from pid.
 // The other party might reply indicating that they were not aware of the fork.
 // In this case we send the finished alert, in a separate communication.
 func (a *alertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
-	log := a.log.With().Uint16(logging.PID, pid).Logger()
+	log := a.log.With().Uint16(lg.PID, pid).Logger()
 	conn, err := a.netserv.Dial(pid)
 	if err != nil {
 		return err
 	}
 
-	log.Info().Msg(logging.SyncStarted)
+	log.Info().Msg(lg.SyncStarted)
 	defer conn.Close()
 	err = rmc.Greet(conn, a.myPid, 0, request)
 	if err != nil {
@@ -334,7 +334,7 @@ func (a *alertHandler) RequestCommitment(pu gomel.Preunit, pid uint16) error {
 		log.Error().Str("where", "alertHandler.RequestCommitment.addBatch").Msg(err.Error())
 		return err
 	}
-	log.Info().Msg(logging.SyncCompleted)
+	log.Info().Msg(lg.SyncCompleted)
 	return nil
 }
 
@@ -367,7 +367,7 @@ func (a *alertHandler) acceptAlert(id uint64, pid uint16, conn network.Connectio
 	if err != nil {
 		log.Error().Str("where", "alertHandler.acceptAlert.maybeSign").Msg(err.Error())
 	} else {
-		log.Info().Msg(logging.SyncCompleted)
+		log.Info().Msg(lg.SyncCompleted)
 	}
 	a.Lock(forker)
 	defer a.Unlock(forker)
@@ -453,18 +453,18 @@ func (a *alertHandler) decodeAlertID(id uint64, pid uint16) (uint16, uint16, gom
 func (a *alertHandler) sendAlert(data []byte, id uint64, pid uint16, gathering, wg *sync.WaitGroup) {
 	defer wg.Done()
 	success := false
-	log := a.log.With().Uint16(logging.PID, pid).Uint64(logging.OSID, id).Logger()
+	log := a.log.With().Uint16(lg.PID, pid).Uint64(lg.OSID, id).Logger()
 	for a.rmc.Status(id) != rmc.Finished {
 		conn, err := a.netserv.Dial(pid)
 		if err != nil {
 			continue
 		}
-		log.Info().Msg(logging.SyncStarted)
+		log.Info().Msg(lg.SyncStarted)
 		err = a.attemptGather(conn, data, id, pid)
 		if err != nil {
 			log.Error().Str("where", "alertHandler.sendAlert.attemptGather").Msg(err.Error())
 		} else {
-			log.Info().Msg(logging.SyncCompleted)
+			log.Info().Msg(lg.SyncCompleted)
 			success = true
 			break
 		}
