@@ -14,9 +14,9 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
@@ -89,7 +89,7 @@ var _ = Describe("Protocol", func() {
 	var (
 		dags     []gomel.Dag
 		adders   []*unitsAdder
-		servs    []sync.Server
+		servs    []core.Service
 		req      []func(uint16)
 		tservs   []testServer
 		netservs []network.Server
@@ -116,7 +116,7 @@ var _ = Describe("Protocol", func() {
 				adder := &unitsAdder{Orderer: tests.NewOrderer(), Adder: tests.NewAdder(dag), dag: dag}
 				adders = append(adders, adder)
 			}
-			servs = make([]sync.Server, size)
+			servs = make([]core.Service, size)
 			tservs = make([]testServer, size)
 			req = make([]func(uint16), size)
 			for i := 0; i < size; i++ {

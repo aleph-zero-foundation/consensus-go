@@ -9,6 +9,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 )
 
@@ -27,7 +28,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for the outgoing part and nIn for the incoming part of the gossip protocol.
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Gossip) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (core.Service, sync.Gossip) {
 	s := &server{
 		nProc:    conf.NProc,
 		pid:      conf.Pid,
@@ -48,18 +49,16 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 	return s, s.request
 }
 
-func (s *server) Start() {
+func (s *server) Start() error {
 	s.outPool.Start()
 	s.inPool.Start()
+	return nil
 }
 
-func (s *server) StopIn() {
-	s.inPool.Stop()
-}
-
-func (s *server) StopOut() {
+func (s *server) Stop() {
 	close(s.stopOut)
 	s.outPool.Stop()
+	s.inPool.Stop() // this can take a while, they could be hanging on netserv.Listen()
 }
 
 func (s *server) request(pid uint16) {

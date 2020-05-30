@@ -14,6 +14,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/multicast"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
@@ -46,7 +47,7 @@ var _ = Describe("Protocol", func() {
 	var (
 		dags      []gomel.Dag
 		adders    []*unitsAdder
-		servs     []sync.Server
+		servs     []core.Service
 		tservs    []testServer
 		netservs  []network.Server
 		multicast sync.Multicast

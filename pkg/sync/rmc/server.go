@@ -11,6 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	gsync "gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	"gitlab.com/alephledger/core-go/pkg/rmcbox"
 )
@@ -36,7 +37,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs rmc protocol
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (gsync.Server, gsync.Multicast) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (core.Service, gsync.Multicast) {
 	nProc := int(conf.NProc)
 	s := &server{
 		pid:     conf.Pid,
@@ -52,21 +53,22 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 }
 
 // Start starts worker pools
-func (s *server) Start() {
+func (s *server) Start() error {
 	s.inPool.Start()
+	return nil
 }
 
 // StopIn stops incoming connections
 func (s *server) StopIn() {
-	s.inPool.Stop()
 }
 
 // StopOut stops outgoing connections
-func (s *server) StopOut() {
+func (s *server) Stop() {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 	s.quit = true
 	s.wg.Wait()
+	s.inPool.Stop()
 }
 
 func (s *server) send(unit gomel.Unit) {

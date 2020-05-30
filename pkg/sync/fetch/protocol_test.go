@@ -14,6 +14,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/fetch"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
@@ -83,8 +84,8 @@ var _ = Describe("Protocol", func() {
 		dag2     gomel.Dag
 		adder1   *unitsAdder
 		adder2   gomel.Orderer
-		serv1    sync.Server
-		serv2    sync.Server
+		serv1    core.Service
+		serv2    core.Service
 		request  sync.Fetch
 		tserv1   testServer
 		tserv2   testServer
