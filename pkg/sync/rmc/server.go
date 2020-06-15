@@ -96,7 +96,7 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 	var pu gomel.Preunit
 	var err error
 	if s.state.Status(rmcID) != rmcbox.Finished {
-		pu, err = s.fetchFinishedFromQuorum(u)
+		pu, err = s.fetchFinishedFromAll(u)
 	} else {
 		pu, err = encoding.DecodePreunit(s.state.Data(rmcID))
 	}
@@ -109,63 +109,62 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 	return nil
 }
 
-func fetchProof(u gomel.Unit) error {
-}
-
-func (s *server) fetchFinishedFromQuorum(u gomel.Unit) (gomel.Preunit, error) {
-	var wg sync.WaitGroup
+func (s *server) fetchFinishedFromAll(u gomel.Unit) (gomel.Preunit, error) {
 	finished := make(chan struct{})
 	asked := s.nProc - 1
-	semaphore := make(chan struct{}, asked)
-	result := make(chan gomel.Preunit, 1)
+	result := make(chan gomel.Preunit)
+	errors := make(chan struct{}, asked)
+	var wg sync.WaitGroup
 	for pid := uint16(0); pid < s.nProc; pid++ {
 		if pid == s.pid {
 			continue
 		}
 		wg.Add(1)
-		go func() {
+		go func(pid uint16) {
 			defer wg.Done()
-			var finishedPu gomel.Preunit
-			defer func() {
-				result <- finishedPu
-			}()
 
 			select {
-			case semaphore <- struct{}{}:
 			case <-finished:
 				return
 			default:
-				return
 			}
-			conn, err := s.netserv.Dial(source)
+
+			conn, err := s.netserv.Dial(pid)
 			if err != nil {
-				log.Error().Str("where", "rmc.fetchFinishedFromQuorum.Dial").Msg(err.Error())
+				s.log.Error().Str("where", "rmc.fetchFinishedFromAll.Dial").Msg(err.Error())
+				errors <- struct{}{}
 				return
 			}
 			defer func() {
 				err := conn.Close()
 				if err != nil {
-					log.Error().Str("where", "rmc.fetchFinishedFromQuorum.Close").Msg(err.Error())
+					s.log.Error().Str("where", "rmc.fetchFinishedFromAll.Close").Msg(err.Error())
 				}
 			}()
+
 			select {
 			case <-finished:
 				return
 			default:
 			}
+
 			pu, err := s.fetchFinished(u, conn)
 			if err != nil {
-				log.Error().Str("where", "rmc.fetchFinishedFromQuorum.fetchFinished").Msg(err.Error())
+				s.log.Error().Str("where", "rmc.fetchFinishedFromAll.fetchFinished").Msg(err.Error())
+				errors <- struct{}{}
 				return
 			}
-			finishedPu = pu
-		}()
+			select {
+			case result <- pu:
+			case <-finished:
+			}
+		}(pid)
 	}
 	var finishedPu gomel.Preunit
-	for count := uint16(0); count < asked; count++ {
-		pu := <-result
-		if pu != nil && finishedPu == nil {
-			finishedPu = pu
+	for count := uint16(0); count < asked && finishedPu == nil; count++ {
+		select {
+		case finishedPu = <-result:
+		case <-errors:
 		}
 	}
 	close(finished)
@@ -173,19 +172,16 @@ func (s *server) fetchFinishedFromQuorum(u gomel.Unit) (gomel.Preunit, error) {
 	if finishedPu != nil {
 		return finishedPu, nil
 	}
-	return nil, fmt.Errorf("rmc.fetchFinishedFromQuorum: unable to fetch a finished unit (creator=%d, height=%d, hash=%v)", u.Creator(), u.Height(), *u.Hash())
+	return nil, fmt.Errorf(
+		"rmc.fetchFinishedFromAll: unable to fetch a finished unit (creator=%d, height=%d, hash=%v)",
+		u.Creator(), u.Height(), *u.Hash())
 }
 
 func (s *server) fetchFinished(u gomel.Unit, conn network.Connection) (gomel.Preunit, error) {
 	id := gomel.UnitID(u)
-	conn, err := s.netserv.Dial(source)
+	err := rmcbox.Greet(conn, s.pid, id, msgRequestFinished)
 	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = rmcbox.Greet(conn, s.pid, id, msgRequestFinished)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	err = conn.Flush()
 	if err != nil {
