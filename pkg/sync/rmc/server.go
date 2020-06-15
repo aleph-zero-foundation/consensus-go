@@ -4,6 +4,7 @@
 package rmc
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -92,20 +93,90 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 		return nil
 	}
 	rmcID := gomel.UnitID(u)
+	var pu gomel.Preunit
+	var err error
 	if s.state.Status(rmcID) != rmcbox.Finished {
-		return s.fetchFinished(u, u.Creator())
+		pu, err = s.fetchFinishedFromQuorum(u)
+	} else {
+		pu, err = encoding.DecodePreunit(s.state.Data(rmcID))
 	}
-	pu, err := encoding.DecodePreunit(s.state.Data(rmcID))
 	if err != nil {
 		return err
 	}
-	if *pu.Hash() != *u.Hash() {
+	if !gomel.Equal(pu, u) {
 		return gomel.NewComplianceError(rmcMismatch)
 	}
 	return nil
 }
 
-func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
+func fetchProof(u gomel.Unit) error {
+}
+
+func (s *server) fetchFinishedFromQuorum(u gomel.Unit) (gomel.Preunit, error) {
+	var wg sync.WaitGroup
+	finished := make(chan struct{})
+	asked := s.nProc - 1
+	semaphore := make(chan struct{}, asked)
+	result := make(chan gomel.Preunit, 1)
+	for pid := uint16(0); pid < s.nProc; pid++ {
+		if pid == s.pid {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var finishedPu gomel.Preunit
+			defer func() {
+				result <- finishedPu
+			}()
+
+			select {
+			case semaphore <- struct{}{}:
+			case <-finished:
+				return
+			default:
+				return
+			}
+			conn, err := s.netserv.Dial(source)
+			if err != nil {
+				log.Error().Str("where", "rmc.fetchFinishedFromQuorum.Dial").Msg(err.Error())
+				return
+			}
+			defer func() {
+				err := conn.Close()
+				if err != nil {
+					log.Error().Str("where", "rmc.fetchFinishedFromQuorum.Close").Msg(err.Error())
+				}
+			}()
+			select {
+			case <-finished:
+				return
+			default:
+			}
+			pu, err := s.fetchFinished(u, conn)
+			if err != nil {
+				log.Error().Str("where", "rmc.fetchFinishedFromQuorum.fetchFinished").Msg(err.Error())
+				return
+			}
+			finishedPu = pu
+		}()
+	}
+	var finishedPu gomel.Preunit
+	for count := uint16(0); count < asked; count++ {
+		pu := <-result
+		if pu != nil && finishedPu == nil {
+			finishedPu = pu
+		}
+	}
+	close(finished)
+	wg.Wait()
+	if finishedPu != nil {
+		return finishedPu, nil
+	}
+	return nil, fmt.Errorf("rmc.fetchFinishedFromQuorum: unable to fetch a finished unit (creator=%d, height=%d, hash=%v)", u.Creator(), u.Height(), *u.Hash())
+}
+
+func (s *server) fetchFinished(u gomel.Unit, conn network.Connection) (gomel.Preunit, error) {
 	id := gomel.UnitID(u)
 	conn, err := s.netserv.Dial(source)
 	if err != nil {
@@ -118,18 +189,15 @@ func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
 	}
 	err = conn.Flush()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	data, err := s.state.AcceptFinished(id, u.Creator(), conn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pu, err := encoding.DecodePreunit(data)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if *pu.Hash() != *u.Hash() {
-		return gomel.NewComplianceError(rmcMismatch)
-	}
-	return nil
+	return pu, nil
 }
