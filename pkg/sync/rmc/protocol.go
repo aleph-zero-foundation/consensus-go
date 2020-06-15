@@ -1,6 +1,7 @@
 package rmc
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -196,7 +197,7 @@ func (s *server) acceptData(id uint64, sender uint16, conn network.Connection, l
 		return
 	}
 	if id != gomel.UnitID(pu) {
-		log.Error().Str("what", "wrong preunit id").Msg(err.Error())
+		log.Error().Str("what", "wrong preunit id").Msg(fmt.Sprintf("wrong preunit id - expected %d, received %d", id, gomel.UnitID(pu)))
 		return
 	}
 	err = s.state.SendSignature(id, conn)
