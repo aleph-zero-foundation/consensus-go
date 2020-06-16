@@ -115,13 +115,20 @@ func (s *server) fetchFinishedFromAll(u gomel.Unit) (gomel.Preunit, error) {
 	result := make(chan gomel.Preunit)
 	errors := make(chan struct{}, asked)
 	var wg sync.WaitGroup
-	for pid := uint16(0); pid < s.nProc; pid++ {
-		if pid == s.pid {
-			continue
-		}
+	callForPid := func(pid uint16) {
 		wg.Add(1)
 		go func(pid uint16) {
 			defer wg.Done()
+
+			var finishedPu gomel.Preunit
+			defer func() {
+				if finishedPu != nil {
+					select {
+					case result <- finishedPu:
+					case <-finished:
+					}
+				}
+			}()
 
 			select {
 			case <-finished:
@@ -154,11 +161,15 @@ func (s *server) fetchFinishedFromAll(u gomel.Unit) (gomel.Preunit, error) {
 				errors <- struct{}{}
 				return
 			}
-			select {
-			case result <- pu:
-			case <-finished:
-			}
+			finishedPu = pu
 		}(pid)
+	}
+	callForPid(u.Creator())
+	for pid := uint16(0); pid < s.nProc; pid++ {
+		if pid == s.pid || pid == u.Creator() {
+			continue
+		}
+		callForPid(pid)
 	}
 	var finishedPu gomel.Preunit
 	for count := uint16(0); count < asked && finishedPu == nil; count++ {
