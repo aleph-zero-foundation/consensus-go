@@ -176,6 +176,11 @@ func (s *server) acceptProof(id uint64, conn network.Connection, log zerolog.Log
 }
 
 func (s *server) acceptData(id uint64, sender uint16, conn network.Connection, log zerolog.Logger) {
+	_, creator, _ := gomel.DecodeID(id)
+	if creator != sender {
+		log.Error().Str("where", "rmc.in.AcceptData").Msg("pid and id mismatch")
+		return
+	}
 	data, err := s.state.AcceptData(id, sender, conn)
 	if err != nil {
 		log.Error().Str("where", "rmc.in.AcceptData").Msg(err.Error())
