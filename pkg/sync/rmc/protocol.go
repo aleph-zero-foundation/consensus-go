@@ -161,17 +161,7 @@ func (s *server) in() {
 		}
 
 	case msgRequestFinished:
-		err := s.state.SendFinished(id, conn)
-		if err != nil {
-			log.Error().Str("where", "rmc.in.SendFinished").Msg(err.Error())
-			return
-		}
-		err = conn.Flush()
-		if err != nil {
-			log.Error().Str("where", "rmc.in.Flush").Msg(err.Error())
-			return
-		}
-
+		s.sendFinished(id, conn, log)
 	}
 	log.Info().Msg(lg.SyncCompleted)
 }
@@ -203,6 +193,23 @@ func (s *server) acceptData(id uint64, sender uint16, conn network.Connection, l
 	err = s.state.SendSignature(id, conn)
 	if err != nil {
 		log.Error().Str("where", "rmc.in.SendSignature").Msg(err.Error())
+		return
+	}
+	err = conn.Flush()
+	if err != nil {
+		log.Error().Str("where", "rmc.in.Flush").Msg(err.Error())
+		return
+	}
+}
+
+func (s *server) sendFinished(id uint64, conn network.Connection, log zerolog.Logger) {
+	if s.state.Status(id) != rmcbox.Finished {
+		log.Error().Str("where", "rmc.in.SendFinished").Msg("requested to send finished, but we are not the finished state yet")
+		return
+	}
+	err := s.state.SendFinished(id, conn)
+	if err != nil {
+		log.Error().Str("where", "rmc.in.SendFinished").Msg(err.Error())
 		return
 	}
 	err = conn.Flush()
