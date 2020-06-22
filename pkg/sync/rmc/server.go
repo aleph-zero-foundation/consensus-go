@@ -5,6 +5,7 @@ package rmc
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -109,12 +110,26 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 	return nil
 }
 
+func hashToInt64(hash gomel.Hash) int64 {
+	var result int64
+	for _, v := range hash[:] {
+		result += int64(v)
+	}
+	return result
+}
+
 func (s *server) fetchFinishedFromAll(u gomel.Unit) (gomel.Preunit, error) {
 	pu, err := s.fetchFinished(u, u.Creator())
 	if err != nil {
 		s.log.Error().Str("where", "rmc.fetchFinishedFromAll.callForPid").Msg(err.Error())
 	}
-	for pid := uint16(0); pu == nil && pid < s.nProc; pid++ {
+	// call all other nodes in random order
+	rand := rand.New(rand.NewSource(hashToInt64(*u.Hash())))
+	for _, pidi := range rand.Perm(int(s.nProc)) {
+		if pu != nil {
+			break
+		}
+		pid := uint16(pidi)
 		if pid == s.pid || pid == u.Creator() {
 			continue
 		}
