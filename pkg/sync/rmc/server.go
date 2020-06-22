@@ -110,101 +110,56 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 }
 
 func (s *server) fetchFinishedFromAll(u gomel.Unit) (gomel.Preunit, error) {
-	finished := make(chan struct{})
-	asked := s.nProc - 1
-	result := make(chan gomel.Preunit)
-	errors := make(chan struct{}, asked)
-	var wg sync.WaitGroup
-	callForPid := func(pid uint16) {
-		wg.Add(1)
-		go func(pid uint16) {
-			defer wg.Done()
-
-			var finishedPu gomel.Preunit
-			defer func() {
-				if finishedPu != nil {
-					select {
-					case result <- finishedPu:
-					case <-finished:
-					}
-				}
-			}()
-
-			select {
-			case <-finished:
-				return
-			default:
-			}
-
-			conn, err := s.netserv.Dial(pid)
-			if err != nil {
-				s.log.Error().Str("where", "rmc.fetchFinishedFromAll.Dial").Msg(err.Error())
-				errors <- struct{}{}
-				return
-			}
-			defer func() {
-				err := conn.Close()
-				if err != nil {
-					s.log.Error().Str("where", "rmc.fetchFinishedFromAll.Close").Msg(err.Error())
-				}
-			}()
-
-			select {
-			case <-finished:
-				return
-			default:
-			}
-
-			pu, err := s.fetchFinished(u, conn)
-			if err != nil {
-				s.log.Error().Str("where", "rmc.fetchFinishedFromAll.fetchFinished").Msg(err.Error())
-				errors <- struct{}{}
-				return
-			}
-			finishedPu = pu
-		}(pid)
+	pu, err := s.fetchFinished(u, u.Creator())
+	if err != nil {
+		s.log.Error().Str("where", "rmc.fetchFinishedFromAll.callForPid").Msg(err.Error())
 	}
-	callForPid(u.Creator())
-	for pid := uint16(0); pid < s.nProc; pid++ {
+	for pid := uint16(0); pu == nil && pid < s.nProc; pid++ {
 		if pid == s.pid || pid == u.Creator() {
 			continue
 		}
-		callForPid(pid)
-	}
-	var finishedPu gomel.Preunit
-	for count := uint16(0); count < asked && finishedPu == nil; count++ {
-		select {
-		case finishedPu = <-result:
-		case <-errors:
+		pu, err = s.fetchFinished(u, pid)
+		if err != nil {
+			s.log.Error().Str("where", "rmc.fetchFinishedFromAll.callForPid").Msg(err.Error())
+			continue
 		}
 	}
-	close(finished)
-	wg.Wait()
-	if finishedPu != nil {
-		return finishedPu, nil
+	if pu == nil {
+		return nil, fmt.Errorf(
+			"rmc.fetchFinishedFromAll: unable to fetch a finished unit (creator=%d, height=%d, hash=%v)",
+			u.Creator(), u.Height(), *u.Hash())
 	}
-	return nil, fmt.Errorf(
-		"rmc.fetchFinishedFromAll: unable to fetch a finished unit (creator=%d, height=%d, hash=%v)",
-		u.Creator(), u.Height(), *u.Hash())
+	return pu, nil
 }
 
-func (s *server) fetchFinished(u gomel.Unit, conn network.Connection) (gomel.Preunit, error) {
-	id := gomel.UnitID(u)
-	err := rmcbox.Greet(conn, s.pid, id, msgRequestFinished)
+func (s *server) fetchFinished(u gomel.Unit, pid uint16) (gomel.Preunit, error) {
+	conn, err := s.netserv.Dial(pid)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rmc.fetchFinishedFromAll.Dial for PID=%d: %v", pid, err)
+	}
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			s.log.Error().Str("where", "rmc.fetchFinishedFromAll.Close").Msg(fmt.Sprintf("error while closing connection for PID=%d: %v", pid, err))
+		}
+	}()
+
+	id := gomel.UnitID(u)
+	err = rmcbox.Greet(conn, s.pid, id, msgRequestFinished)
+	if err != nil {
+		return nil, fmt.Errorf("rmc.fetchFinished.Greet for PID=%d: %v", pid, err)
 	}
 	err = conn.Flush()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rmc.fetchFinished.Flush for PID=%d: %v", pid, err)
 	}
 	data, err := s.state.AcceptFinished(id, u.Creator(), conn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rmc.fetchFinished.AcceptFinished for PID=%d: %v", pid, err)
 	}
 	pu, err := encoding.DecodePreunit(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rmc.fetchFinished.DecodePreunit for PID=%d: %v", pid, err)
 	}
 	return pu, nil
 }
