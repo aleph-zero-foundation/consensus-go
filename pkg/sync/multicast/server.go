@@ -12,6 +12,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/encoding"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 )
 
@@ -39,7 +40,7 @@ type server struct {
 }
 
 // NewServer returns a server that runs the multicast protocol.
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Multicast) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (core.Service, sync.Multicast) {
 	nProc := conf.NProc
 	requests := make([]chan *request, nProc)
 	for i := uint16(0); i < nProc; i++ {
@@ -59,18 +60,16 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 	return s, s.send
 }
 
-func (s *server) Start() {
+func (s *server) Start() error {
 	s.outPool.Start()
 	s.inPool.Start()
+	return nil
 }
 
-func (s *server) StopIn() {
-	s.inPool.Stop()
-}
-
-func (s *server) StopOut() {
+func (s *server) Stop() {
 	close(s.stopOut)
 	s.outPool.Stop()
+	s.inPool.Stop()
 }
 
 func (s *server) send(unit gomel.Unit) {

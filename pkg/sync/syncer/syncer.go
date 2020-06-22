@@ -23,7 +23,7 @@ type syncer struct {
 	gossip      sync.Gossip
 	fetch       sync.Fetch
 	mcast       sync.Multicast
-	servers     []sync.Server
+	servers     []core.Service
 	subservices []core.Service
 }
 
@@ -87,10 +87,7 @@ func (s *syncer) Stop() {
 		service.Stop()
 	}
 	for _, server := range s.servers {
-		server.StopOut()
-	}
-	for _, server := range s.servers {
-		server.StopIn()
+		server.Stop()
 	}
 }
 

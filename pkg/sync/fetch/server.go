@@ -11,6 +11,7 @@ import (
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
 	lg "gitlab.com/alephledger/consensus-go/pkg/logging"
 	"gitlab.com/alephledger/consensus-go/pkg/sync"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 )
 
@@ -27,7 +28,7 @@ type server struct {
 }
 
 // NewServer runs a pool of nOut workers for outgoing part and nIn for incoming part of the given protocol
-func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (sync.Server, sync.Fetch) {
+func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server, log zerolog.Logger) (core.Service, sync.Fetch) {
 	s := &server{
 		pid:      conf.Pid,
 		orderer:  orderer,
@@ -42,18 +43,16 @@ func NewServer(conf config.Config, orderer gomel.Orderer, netserv network.Server
 	return s, s.trigger
 }
 
-func (s *server) Start() {
+func (s *server) Start() error {
 	s.outPool.Start()
 	s.inPool.Start()
+	return nil
 }
 
-func (s *server) StopIn() {
-	s.inPool.Stop()
-}
-
-func (s *server) StopOut() {
+func (s *server) Stop() {
 	close(s.stopOut)
 	s.outPool.Stop()
+	s.inPool.Stop() // this can take a while, they could be hanging on netserv.Listen()
 }
 
 func (s *server) trigger(pid uint16, ids []uint64) {

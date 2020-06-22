@@ -14,9 +14,9 @@ import (
 
 	"gitlab.com/alephledger/consensus-go/pkg/config"
 	"gitlab.com/alephledger/consensus-go/pkg/gomel"
-	"gitlab.com/alephledger/consensus-go/pkg/sync"
 	. "gitlab.com/alephledger/consensus-go/pkg/sync/gossip"
 	"gitlab.com/alephledger/consensus-go/pkg/tests"
+	"gitlab.com/alephledger/core-go/pkg/core"
 	"gitlab.com/alephledger/core-go/pkg/network"
 	ctests "gitlab.com/alephledger/core-go/pkg/tests"
 )
@@ -89,7 +89,8 @@ var _ = Describe("Protocol", func() {
 	var (
 		dags     []gomel.Dag
 		adders   []*unitsAdder
-		servs    []sync.Server
+		servs    []core.Service
+		req      []func(uint16)
 		tservs   []testServer
 		netservs []network.Server
 	)
@@ -115,15 +116,16 @@ var _ = Describe("Protocol", func() {
 				adder := &unitsAdder{Orderer: tests.NewOrderer(), Adder: tests.NewAdder(dag), dag: dag}
 				adders = append(adders, adder)
 			}
-			servs = make([]sync.Server, size)
+			servs = make([]core.Service, size)
 			tservs = make([]testServer, size)
+			req = make([]func(uint16), size)
 			for i := 0; i < size; i++ {
 				config := config.Empty()
 				config.NProc = uint16(size)
 				config.Pid = uint16(i)
 				config.Timeout = connectionTimeout
-				config.GossipWorkers[0], config.GossipWorkers[1], config.GossipWorkers[2] = 1, 1, 1
-				servs[i], _ = NewServer(config, adders[i], netservs[i], zerolog.Nop())
+				config.GossipWorkers[0], config.GossipWorkers[1] = 1, 1
+				servs[i], req[i] = NewServer(config, adders[i], netservs[i], zerolog.Nop())
 				tservs[i] = servs[i].(testServer)
 			}
 		}
@@ -181,11 +183,12 @@ var _ = Describe("Protocol", func() {
 					}(serv)
 				}
 				done.Add(len(tservs))
-				for _, serv := range tservs {
-					go func(serv testServer) {
+				for j, serv := range tservs {
+					go func(i int, serv testServer) {
 						defer done.Done()
+						req[i]((uint16((i + 1) % len(tservs))))
 						serv.Out()
-					}(serv)
+					}(j, serv)
 				}
 				done.Wait()
 			}

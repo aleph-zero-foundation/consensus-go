@@ -2,7 +2,9 @@
 package orderer
 
 import (
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -28,6 +30,7 @@ type orderer struct {
 	orderedUnits chan []gomel.Unit
 	mx           sync.RWMutex
 	wg           sync.WaitGroup
+	ticker       *time.Ticker
 	log          zerolog.Logger
 }
 
@@ -75,6 +78,19 @@ func (ord *orderer) Start(rsf gomel.RandomSourceFactory, syncer gomel.Syncer, al
 		ord.handleTimingRounds()
 	}()
 
+	// start random gossip requesting
+	ord.ticker = time.NewTicker(ord.conf.GossipInterval)
+	go func() {
+		for range ord.ticker.C {
+			// choose pid randomly amongst other NProc-1 committee members
+			pidToCall := uint16(rand.Intn(int(ord.conf.NProc - 1)))
+			if pidToCall >= ord.conf.Pid {
+				pidToCall++
+			}
+			ord.syncer.RequestGossip(pidToCall)
+		}
+	}()
+
 	ord.log.Log().Msg(lg.ServiceStarted)
 }
 
@@ -89,6 +105,7 @@ func (ord *orderer) Stop() {
 	}
 	close(ord.orderedUnits)
 	close(ord.unitBelt)
+	ord.ticker.Stop()
 	ord.wg.Wait()
 	ord.log.Log().Msg(lg.ServiceStopped)
 }
@@ -106,6 +123,9 @@ func (ord *orderer) handleTimingRounds() {
 		if timingUnit.Level() == ord.conf.LastLevel {
 			ord.lastTiming <- timingUnit
 			ord.finishEpoch(epoch)
+			if int(epoch) == ord.conf.NumberOfEpochs-1 {
+				ord.ticker.Stop()
+			}
 		}
 		if epoch >= current && timingUnit.Level() <= ord.conf.LastLevel {
 			ord.toPreblock(round)
