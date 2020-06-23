@@ -4,6 +4,8 @@
 package rmc
 
 import (
+	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -92,44 +94,87 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 		return nil
 	}
 	rmcID := gomel.UnitID(u)
+	var pu gomel.Preunit
+	var err error
 	if s.state.Status(rmcID) != rmcbox.Finished {
-		return s.fetchFinished(u, u.Creator())
+		pu, err = s.fetchFinishedFromAll(u)
+	} else {
+		pu, err = encoding.DecodePreunit(s.state.Data(rmcID))
 	}
-	pu, err := encoding.DecodePreunit(s.state.Data(rmcID))
 	if err != nil {
 		return err
 	}
-	if *pu.Hash() != *u.Hash() {
+	if !gomel.Equal(pu, u) {
 		return gomel.NewComplianceError(rmcMismatch)
 	}
 	return nil
 }
 
-func (s *server) fetchFinished(u gomel.Unit, source uint16) error {
-	id := gomel.UnitID(u)
-	conn, err := s.netserv.Dial(source)
-	if err != nil {
-		return err
+func hashToInt64(hash gomel.Hash) int64 {
+	var result int64
+	for _, v := range hash[:] {
+		result += int64(v)
 	}
-	defer conn.Close()
+	return result
+}
+
+func (s *server) fetchFinishedFromAll(u gomel.Unit) (gomel.Preunit, error) {
+	pu, err := s.fetchFinished(u, u.Creator())
+	if err != nil {
+		s.log.Error().Str("where", "rmc.fetchFinishedFromAll.callForPid").Msg(err.Error())
+	}
+	// call all other nodes in random order
+	rand := rand.New(rand.NewSource(hashToInt64(*u.Hash())))
+	for _, pidi := range rand.Perm(int(s.nProc)) {
+		if pu != nil {
+			break
+		}
+		pid := uint16(pidi)
+		if pid == s.pid || pid == u.Creator() {
+			continue
+		}
+		pu, err = s.fetchFinished(u, pid)
+		if err != nil {
+			s.log.Error().Str("where", "rmc.fetchFinishedFromAll.callForPid").Msg(err.Error())
+			continue
+		}
+	}
+	if pu == nil {
+		return nil, fmt.Errorf(
+			"rmc.fetchFinishedFromAll: unable to fetch a finished unit (creator=%d, height=%d, hash=%v)",
+			u.Creator(), u.Height(), *u.Hash())
+	}
+	return pu, nil
+}
+
+func (s *server) fetchFinished(u gomel.Unit, pid uint16) (gomel.Preunit, error) {
+	conn, err := s.netserv.Dial(pid)
+	if err != nil {
+		return nil, fmt.Errorf("rmc.fetchFinishedFromAll.Dial for PID=%d: %v", pid, err)
+	}
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			s.log.Error().Str("where", "rmc.fetchFinishedFromAll.Close").Msg(fmt.Sprintf("error while closing connection for PID=%d: %v", pid, err))
+		}
+	}()
+
+	id := gomel.UnitID(u)
 	err = rmcbox.Greet(conn, s.pid, id, msgRequestFinished)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("rmc.fetchFinished.Greet for PID=%d: %v", pid, err)
 	}
 	err = conn.Flush()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("rmc.fetchFinished.Flush for PID=%d: %v", pid, err)
 	}
 	data, err := s.state.AcceptFinished(id, u.Creator(), conn)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("rmc.fetchFinished.AcceptFinished for PID=%d: %v", pid, err)
 	}
 	pu, err := encoding.DecodePreunit(data)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("rmc.fetchFinished.DecodePreunit for PID=%d: %v", pid, err)
 	}
-	if *pu.Hash() != *u.Hash() {
-		return gomel.NewComplianceError(rmcMismatch)
-	}
-	return nil
+	return pu, nil
 }
