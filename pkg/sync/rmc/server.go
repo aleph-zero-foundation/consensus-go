@@ -112,8 +112,8 @@ func (s *server) finishedRMC(u gomel.Unit, _ gomel.Dag) error {
 
 func hashToInt64(hash gomel.Hash) int64 {
 	var result int64
-	for _, v := range hash[:] {
-		result += int64(v)
+	for p, v := range hash[:] {
+		result += int64(v) * (1 << p)
 	}
 	return result
 }
