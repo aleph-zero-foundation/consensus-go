@@ -85,18 +85,8 @@ def latency_in_region(region_name):
     return latency
 
 
-def launch_new_instances_in_region(n_processes=1, region_name=default_region(), instance_type='t2.micro'):
-    '''Launches n_processes in a given region.'''
-
-    print('launching instances in', region_name)
-
-    key_name = 'aleph'
-    init_key_pair(region_name, key_name)
-
-    security_group_name = 'alephB'
-    security_group_id = security_group_id_by_region(region_name, security_group_name)
-
-    image_id = image_id_in_region(region_name)
+def create_instances(region_name, image_id, n_processes, instance_type, key_name, security_group_id):
+    ''' Creates instances. '''
 
     ec2 = boto3.resource('ec2', region_name)
     instances = ec2.create_instances(ImageId=image_id,
@@ -115,6 +105,18 @@ def launch_new_instances_in_region(n_processes=1, region_name=default_region(), 
                                  SecurityGroupIds = [security_group_id])
 
     return instances
+
+
+def launch_new_instances_in_region(n_processes=1, region_name=default_region(), instance_type='t2.micro'):
+    '''Launches n_processes in a given region.'''
+
+    print('launching instances in', region_name)
+
+    init_key_pair(region_name)
+    security_group_id = security_group_id_by_region(region_name)
+    image_id = image_id_in_region(region_name)
+
+    return create_instances(region_name, image_id, n_processes, instance_type, 'aleph', security_group_id)
 
 
 def all_instances_in_region(region_name=default_region(), states=['running', 'pending']):
@@ -463,11 +465,18 @@ def run_protocol(n_processes, regions=use_regions(), instance_type='t2.micro', p
 
     return pids, ip2pid
 
-def create_images(regions=use_regions()):
+def create_images(regions=use_regions(), image_name='gomel'):
     '''Creates images with golang set up for gomel.'''
 
+    base_region = regions[0]
     print('launching a machine')
-    instance = launch_new_instances_in_region(1, regions[0], 't2.micro')[0]
+
+    init_key_pair(base_region)
+    security_group_id = security_group_id_by_region(base_region)
+    image_id = image_id_in_region(base_region, 'ubuntu')
+
+    instance = create_instances(base_region, image_id, 1, 't2.micro', 'aleph', security_group_id)[0]
+
 
     print('waiting for transition from pending to running')
     wait('running', regions[:1])
@@ -479,17 +488,14 @@ def create_images(regions=use_regions()):
 
     print('installing dependencies')
     # install dependencies on hosts
-    run_task_in_region('setup', regions[0])
+    run_task_in_region('setup', base_region)
 
     print('wait till installation finishes')
     # wait till installing finishes
     sleep(60)
     wait_install(regions[:1])
 
-    print('clone repo')
-    run_task_in_region('clone-repo', regions[0])
-
-    print('creating image in region', regions[0])
+    print('creating image in region', base_region)
     image = instance.create_image(
         BlockDeviceMappings=[
             {
@@ -502,7 +508,7 @@ def create_images(regions=use_regions()):
             },
         ],
         Description='image for running gomel experiments',
-        Name='gomel',
+        Name=image_name,
     )
 
     print('waiting for image to be available')
@@ -522,7 +528,7 @@ def create_images(regions=use_regions()):
             Name=image.name,
             Description=image.description,
             SourceImageId=image.image_id,
-            SourceRegion=regions[0]
+            SourceRegion=base_region
         )
 
     print('\ndone')

@@ -20,6 +20,9 @@ go get github.com/rs/zerolog
 go get github.com/cloudflare/bn256
 
 echo create gomel dir >> setup.log
-mkdir -p go/src/gitlab.com/alephledger
+mkdir -p go/src/gitlab.com/alephledger/consensus-go
+
+echo create core dir >> setup.log
+mkdir -p go/src/gitlab.com/alephledger/core-go
 
 echo done >> setup.log

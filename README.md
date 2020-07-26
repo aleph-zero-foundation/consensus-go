@@ -31,7 +31,9 @@ The implementation requires go version 1.12 and currently supports only Linux. I
 
 
 `go get github.com/onsi/ginkgo/ginkgo`
+
 `go get github.com/onsi/gomega/... `
+
 `go get -v -d -t ./... `
 
 
@@ -51,6 +53,7 @@ There are two types of experiments that can be performed:
   - Install packages needed for orchestrating experiments: `GNU parallel` and Python 3 packages: `fabric, boto3, ipython`
   - Then, go to `experiments/aws` and run `python shell.py`. This opens a shell with procedures orchestrating experiments. The main procedure is
   `run_protocol(n_processes, regions, instance_type)` that runs `n_processes` spread uniformly across specified `regions`. It uses EC2 machines of `instance_type`.
+  - Before running any experiments, it is required to create OS images in all AWS regions in which machines will be spawned. Run `create_images(regions)`, where `regions` is a list of all AWS regions of interest.
   - The most basic experiment can be run with `run_protocol(7, use_regions(), 't2.micro')`. It spawns 7 machines in 7 different regions: 4 in US and 3 in EU. As of time of writing, AWS EC2 was providing users with a limited time of free usage of machines of type `t2.micro` and some quota for free storage and data transfer, so such an experiment can be conducted free of charge.
   - The parameters of the protocol are defined in the file `pkg/config/config.go`.
   - After the experiment is finished, the logs containing useful data of the experiment can be downloaded with `get_logs` procedure.
