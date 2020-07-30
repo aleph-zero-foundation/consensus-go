@@ -34,7 +34,7 @@ The implementation requires go version 1.12 and currently supports only Linux. I
 
 `go get github.com/onsi/gomega/... `
 
-`go get -v -d -t ./... `
+`go get -v -d -t ./... ` - this should be run from `consensus-go` directory
 
 
 # Unit tests
@@ -50,7 +50,7 @@ There are two types of experiments that can be performed:
 1. Local: go to `experiments/local/single_machine` and run `./run.sh addrs True`
 2. Remote using AWS EC2:
   - Create an account on AWS, set up credentials, and a default region as described [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html#configuration).
-  - Install packages needed for orchestrating experiments: `GNU parallel` and Python 3 packages: `fabric, boto3, ipython`
+  - Install packages needed for orchestrating experiments: `GNU parallel, zip, unzip` and Python 3 packages: `fabric, boto3, ipython, tqdm, matplotlib`
   - Then, go to `experiments/aws` and run `python shell.py`. This opens a shell with procedures orchestrating experiments. The main procedure is
   `run_protocol(n_processes, regions, instance_type)` that runs `n_processes` spread uniformly across specified `regions`. It uses EC2 machines of `instance_type`.
   - Before running any experiments, it is required to create OS images in all AWS regions in which machines will be spawned. Run `create_images(regions)`, where `regions` is a list of all AWS regions of interest.

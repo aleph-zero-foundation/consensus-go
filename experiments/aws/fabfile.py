@@ -84,12 +84,11 @@ def run_protocol(conn, pid, delay='0'):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run('rm -f out')
         conn.run(f'PATH="$PATH:/snap/bin" && go build {repo_path}/cmd/gomel')
         cmd = f'./gomel --priv {pid}.pk\
                     --keys_addrs committee.ka\
                     --delay {int(float(delay))}\
-                    --setup {delay=="0"}'
+                    --setup False'
         conn.run(f'dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
@@ -98,7 +97,6 @@ def run_protocol_profiler(conn, pid, delay='0'):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run('rm -f out')
         conn.run(f'PATH="$PATH:/snap/bin" && go build {repo_path}/cmd/gomel')
         cmd = f'./gomel --priv {pid}.pk\
                     --keys_addrs committee.ka\
@@ -137,16 +135,6 @@ def get_dag(conn, pid):
     with conn.cd(repo_path):
         conn.run(f'zip -q {pid}.dag.zip {pid}.dag')
     conn.get(f'{repo_path}/{pid}.dag.zip', f'../results/{pid}.dag.zip')
-
-@task
-def get_out(conn, pid):
-    ''' Retrieves aleph stdout from the server.'''
-
-    repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
-    with conn.cd(repo_path):
-        conn.run(f'cp out {pid}.out')
-        conn.run(f'zip -q {pid}.out.zip {pid}.out')
-    conn.get(f'{repo_path}/{pid}.out.zip', f'../results/{pid}.out.zip')
 
 @task
 def get_log(conn, pid):

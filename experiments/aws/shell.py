@@ -552,20 +552,25 @@ def memory_usage(regions):
 
     return np.min(mems), np.mean(mems), np.max(mems)
 
-def get_logs_from_region(region, ip2pid, logs_per_region=1, with_out=False, with_prof=False):
+def get_logs_from_region(region, ip2pid, logs_per_region=1, with_prof=False):
     color_print(f'collecting logs in {region}')
     for k, ip in enumerate(instances_ip_in_region(region)):
         if k == logs_per_region:
             return
         pid = ip2pid[ip]
         run_task_for_ip('get-log', [ip], parallel=0, pids=[pid])
-        if with_out:
-            run_task_for_ip('get-out', [ip], parallel=0, pids=[pid])
         if with_prof and int(pid) % 16 == 0:
             run_task_for_ip('get-profile', [ip], parallel=0, pids=[pid])
 
-def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_out=False, with_prof=False):
+def get_logs(regions, name, logs_per_region=1, with_prof=False, pids=None, ip2pid=None):
     '''Retrieves all logs from instances.'''
+
+    if pids is None:
+        pids, ip2pid, c = {}, {}, [], 0
+        for r in regions:
+            ipl = instances_ip_in_region(r)
+            pids[r] = [str(pid) for pid in range(c,c+len(ipl))]
+            ip2pid.update({ip:pid for (ip, pid) in zip(ipl, pids[r])})
 
     if not os.path.exists('../results'):
         os.makedirs('../results')
@@ -575,9 +580,7 @@ def get_logs(regions, pids, ip2pid, name, logs_per_region=1, with_out=False, wit
         print('sth is in dir ../results; aborting')
         return
 
-    Parallel(n_jobs=N_JOBS)(delayed(get_logs_from_region)(region, ip2pid, logs_per_region, with_out, with_prof) for region in regions)
-    # for region in regions:
-    #     get_logs_from_region(region, ip2pid, logs_per_region, with_out, with_prof)
+    Parallel(n_jobs=N_JOBS)(delayed(get_logs_from_region)(region, ip2pid, logs_per_region, with_prof) for region in regions)
 
     color_print(f'{len(os.listdir("../results"))} files in ../results')
 

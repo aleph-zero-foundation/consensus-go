@@ -9,7 +9,7 @@ from glob import glob
 import boto3
 
 
-def image_id_in_region(region_name, image_name='gome'):
+def image_id_in_region(region_name, image_name='gomel'):
     '''Find id of os image we use. The id may differ for different regions'''
 
     if image_name == 'ubuntu':
