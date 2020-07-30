@@ -1,8 +1,8 @@
 SKIP = 0
 
 driver.add_pipeline('Create service', [
-    Filter(Event, [UnitCreated, PrimeUnitCreated]),
-    Histogram('parents', [UnitCreated, PrimeUnitCreated], lambda entry: entry[NParents]),
+    Filter(Event, [UnitCreated]),
+    Histogram('parents', [UnitCreated], lambda entry: entry[NParents]),
     Timer('unit creation intervals', SKIP)
 ])
 
@@ -14,8 +14,8 @@ driver.add_pipeline('Timing units', [
 ])
 
 driver.add_pipeline('Latency', [
-    Filter(Event, [UnitCreated, PrimeUnitCreated, OwnUnitOrdered]),
-    Delay('Latency', [UnitCreated, PrimeUnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
+    Filter(Event, [UnitCreated, OwnUnitOrdered]),
+    Delay('Latency', [UnitCreated], OwnUnitOrdered, lambda entry: entry[Height], SKIP),
 ])
 
 driver.add_pipeline('Gossip stats', [

@@ -571,6 +571,7 @@ def get_logs(regions, name, logs_per_region=1, with_prof=False, pids=None, ip2pi
             ipl = instances_ip_in_region(r)
             pids[r] = [str(pid) for pid in range(c,c+len(ipl))]
             ip2pid.update({ip:pid for (ip, pid) in zip(ipl, pids[r])})
+            c += len(ipl)
 
     if not os.path.exists('../results'):
         os.makedirs('../results')

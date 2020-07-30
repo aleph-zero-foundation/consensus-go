@@ -132,7 +132,7 @@ func addLogConf(cnf Config, logFile string) {
 	cnf.LogFile = logFile
 	cnf.LogBuffer = 100000
 	cnf.LogHuman = false
-	cnf.LogLevel = 1
+	cnf.LogLevel = 7
 }
 
 func addSetupConf(cnf Config) {

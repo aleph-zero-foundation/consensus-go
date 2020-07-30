@@ -21,10 +21,6 @@ class CreateCounter(Plugin):
         if entry[Event] == UnitCreated:
             self.nonprimes += 1
             self.streak += 1
-        elif entry[Event] == PrimeUnitCreated:
-            self.primes += 1
-            self.streaks.append(self.streak)
-            self.streak = 0
         elif entry[Event] == NotEnoughParents:
             self.noparents += 1
         return entry
