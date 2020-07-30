@@ -88,7 +88,7 @@ def run_protocol(conn, pid, delay='0'):
         cmd = f'./gomel --priv {pid}.pk\
                     --keys_addrs committee.ka\
                     --delay {int(float(delay))}\
-                    --setup False'
+                    --setup {delay == "0"}'
         conn.run(f'dtach -n `mktemp -u /tmp/dtach.XXXX` {cmd}')
 
 @task
@@ -142,7 +142,7 @@ def get_log(conn, pid):
 
     repo_path = '/home/ubuntu/go/src/gitlab.com/alephledger/consensus-go'
     with conn.cd(repo_path):
-        conn.run(f'zip -q {pid}.logs.zip {pid}.log {pid}.setup.log')
+        conn.run(f'zip -q {pid}.logs.zip {pid}.json {pid}.setup.json')
     conn.get(f'{repo_path}/{pid}.logs.zip', f'../results/{pid}.log.zip')
 
 #======================================================================================

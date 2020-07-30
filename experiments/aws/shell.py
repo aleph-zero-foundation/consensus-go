@@ -249,7 +249,7 @@ def wait_in_region(target_state, region_name=default_region()):
         for i in instances:
             cmd = f'fab -i key_pairs/aleph.pem -H ubuntu@{i.public_ip_address} test'
             while call(cmd.split(), stderr=DEVNULL):
-                pass
+                sleep(.1)
     if target_state == 'ssh ready':
         ids = [instance.id for instance in instances]
         initializing = True
@@ -566,7 +566,7 @@ def get_logs(regions, name, logs_per_region=1, with_prof=False, pids=None, ip2pi
     '''Retrieves all logs from instances.'''
 
     if pids is None:
-        pids, ip2pid, c = {}, {}, [], 0
+        pids, ip2pid, c = {}, {}, 0
         for r in regions:
             ipl = instances_ip_in_region(r)
             pids[r] = [str(pid) for pid in range(c,c+len(ipl))]
