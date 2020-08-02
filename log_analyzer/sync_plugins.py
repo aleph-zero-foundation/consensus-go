@@ -13,11 +13,11 @@ class MulticastStats(Plugin):
     def process(self, entry):
         if entry[Service] != MCService:
             return entry
-        if entry[Event] == AddedBCUnit:
+        if entry[Message] == AddedBCUnit:
             self.succ += 1
-        elif entry[Event] == UnknownParents:
+        elif entry[Message] == UnknownParents:
             self.miss += 1
-        elif entry[Event] in [DuplicateUnit, DuplicatePreunit]:
+        elif entry[Message] in [DuplicateUnit, DuplicatePreunit]:
             self.dupl += 1
         elif entry[Level] == 3 and 'multicast.In' in entry['where']:
             self.err += 1
@@ -61,12 +61,12 @@ class FetchStats(Plugin):
         if key not in self.data:
             self.data[key] = {'dupl':0, 'fail':False}
 
-        if entry[Event] == SyncStarted:
+        if entry[Message] == SyncStarted:
             self.data[key]['start'] = entry[Time]
-        elif entry[Event] == SyncCompleted:
+        elif entry[Message] == SyncCompleted:
             self.data[key]['end'] = entry[Time]
             self.data[key]['recv'] = entry[Recv]
-        elif entry[Event] in [DuplicateUnit, DuplicatePreunit]:
+        elif entry[Message] in [DuplicateUnit, DuplicatePreunit]:
             self.data[key]['dupl'] += 1
         elif entry[Level] == '3':
             self.data[key]['fail'] = True
@@ -159,9 +159,9 @@ class GossipStats(Plugin):
         if key not in d:
             d[key] = {'addexc':False, 'fail':False, 'dupl':0}
 
-        if entry[Event] == SyncStarted:
+        if entry[Message] == SyncStarted:
             d[key]['start'] = entry[Time]
-        elif entry[Event] == SyncCompleted:
+        elif entry[Message] == SyncCompleted:
             sent = entry[Sent] + entry.get(FreshSent,0)
             recv = entry[Recv] + entry.get(FreshRecv,0)
             if self.ig and sent == 0 and recv == 0: #empty sync, remove
@@ -172,9 +172,7 @@ class GossipStats(Plugin):
             d[key]['recv'] = recv
             d[key]['fsent'] = entry.get(FreshSent,0)
             d[key]['frecv'] = entry.get(FreshRecv,0)
-        elif entry[Event] == AdditionalExchange:
-            d[key]['addexc'] = True
-        elif entry[Event] in [DuplicateUnit, DuplicatePreunit]:
+        elif entry[Message] in [DuplicateUnit, DuplicatePreunit]:
             d[key]['dupl'] += 1
         elif entry[Level] == '3':
             d[key]['fail'] = True
@@ -236,7 +234,6 @@ class GossipStats(Plugin):
         ret +=  '    Incoming:                 %5d\n'%len(self.inc)
         ret +=  '    Outgoing:                 %5d\n'%len(self.out)
         ret +=  '    Failed:                   %5d\n'%self.failed
-        ret +=  '    Additional exchange:      %5d\n\n'%self.addexc
         if not self.times:
             return ret + sadpanda
         ret +=  '    Max time:            %10d    ms\n'%self.times[-1]

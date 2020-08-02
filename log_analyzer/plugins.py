@@ -36,10 +36,7 @@ def multimean(datasets):
     if not full:
         return sadpanda
     glob = mean(full)
-    ret =  '    Global average:     %13.2f\n' % glob
-    ret += '    Min Average:        %13.2f (%s)\n' % avgs[0]
-    ret += '    Max Average:        %13.2f (%s)\n' % avgs[-1]
-    ret += '    Average of medians: %13.2f\n' % mean(i[0] for i in meds)
+    ret  = '    Average of medians: %13.2f\n' % mean(i[0] for i in meds)
     ret += '    Min Median:         %13.2f (%s)\n' % meds[0]
     ret += '    Max Median:         %13.2f (%s)\n' % meds[-1]
     return ret
@@ -128,7 +125,7 @@ class Counter(Plugin):
         self.events = events if isinstance(events, list) else [events]
 
     def process(self, entry):
-        if entry[Event] in self.events:
+        if entry[Message] in self.events:
             self.data.append(self.val(entry))
         return entry
 
@@ -162,7 +159,7 @@ class Histogram(Plugin):
         self.events = events if isinstance(events, list) else [events]
 
     def process(self, entry):
-        if entry[Event] in self.events:
+        if entry[Message] in self.events:
             self.data.append(self.val(entry))
         return entry
 
@@ -209,7 +206,7 @@ class Delay(Plugin):
         self.startid, self.endid = func if isinstance(func, tuple) else (func, func)
 
     def process(self, entry):
-        if entry[Event] in self.start:
+        if entry[Message] in self.start:
             try:
                 key = self.startid(entry)
             except:
@@ -217,7 +214,7 @@ class Delay(Plugin):
             if key not in self.tmpdata:
                 self.tmpdata[key] = [None, None]
             self.tmpdata[key][0] = entry[Time]
-        if entry[Event] in self.end:
+        if entry[Message] in self.end:
             try:
                 key = self.endid(entry)
             except:
@@ -259,11 +256,4 @@ class Delay(Plugin):
         ret += '    Med: %13.2f ms\n\n' % median(times)
         data = self.data[self.skip:]
         data.sort(reverse=True)
-        ret += '  5 largest:\n'
-        for t,k in data[:5]:
-            ret += '%15s: %10d ms\n' % (k,t)
-        ret += '  Distribution:\n'
-        size, brackets = np.histogram(times, bins=10)
-        for i in zip(brackets[:-1], brackets[1:],size):
-            ret += '   %10.1f-%-8.1f: %10d\n' % i
         return ret

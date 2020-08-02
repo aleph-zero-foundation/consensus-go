@@ -11,28 +11,15 @@ class CreateCounter(Plugin):
     """
     name = 'Create counter'
     def __init__(self):
-        self.nonprimes = 0
         self.primes = 0
-        self.noparents = 0
-        self.streaks = []
-        self.streak = 0
 
     def process(self, entry):
-        if entry[Event] == UnitCreated:
-            self.nonprimes += 1
-            self.streak += 1
-        elif entry[Event] == NotEnoughParents:
-            self.noparents += 1
+        if entry[Message] == UnitCreated:
+            self.primes += 1
         return entry
 
     def report(self):
-        ret =  '    Prime units:              %5d\n'%self.primes
-        ret += '    Regular units:            %5d\n'%self.nonprimes
-        ret += '    All units:                %5d\n'%(self.primes+self.nonprimes)
-        ret += '    Failed (no parents):      %5d\n'%self.noparents
-        ret += '    Total calls:              %5d\n'%(self.noparents+self.nonprimes+self.primes)
-        ret += '    Longest nonprime streak:  %5d\n'%max(self.streaks)
-        ret += '    Avg nonprime streak:      %8.2f\n'%mean(self.streaks)
+        ret =  '    Units:              %5d\n'%self.primes
         return ret
 
 
@@ -73,12 +60,6 @@ class NetworkTraffic(Plugin):
         self.skip = skip_first
 
     def process(self, entry):
-        if entry[Event] == ConnectionClosed:
-            bracket = entry[Time] // 1000
-            if bracket not in self.data:
-                self.data[bracket] = [0, 0]
-            self.data[bracket][0] += entry[Sent]
-            self.data[bracket][1] += entry[Recv]
         return entry
 
     def finalize(self):
@@ -112,8 +93,6 @@ class MemoryStats(Plugin):
             self.unit, self.sh = unit, self.shifts[unit]
 
     def process(self, entry):
-        if entry[Event] == MemoryUsage:
-            self.data.append((entry[Time]/1000, entry[Size]>>self.sh , entry[Memory]>>self.sh))
         return entry
 
     def report(self):

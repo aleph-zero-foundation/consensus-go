@@ -29,7 +29,7 @@ def extract(path):
 
 parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gomel. Can be used in one of two modes: single file mode (extensive report based on the single log) or folder mode (general stats gathered from all the .json files in the given folder (also ZIP compressed). The file with pipelines (-p flag) can be a custom .py file or one of the predefined pipelines from the log analyzer source directory. Possible pipelines: '+ ', '.join(avail_pipes))
 parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archived folder')
-parser.add_argument('-p', '--pipe', default='default.py', metavar='name', help='file with pipelines definitions')
+parser.add_argument('-p', '--pipe', default='basic.py', metavar='name', help='file with pipelines definitions')
 parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
 parser.add_argument('-c', '--config', default='config.json', metavar='file', help='file with the JSON config of the experiment')
 args = parser.parse_args()
@@ -70,7 +70,7 @@ if isfile(args.path) and args.path.endswith('.json'):
 else:
     path = args.path if isdir(args.path) else extract(args.path)
     os.chdir(path)
-    filelist = list(sorted(filter(lambda x: x.endswith('.json') and not x.startswith('setup_'), os.listdir('.'))))
+    filelist = list(sorted(filter(lambda x: x.endswith('.json') and not 'setup' in x and x != 'config.json', os.listdir('.'))))
     for filename in filelist if args.all else tqdm(filelist):
         name = filename[:-4]
         driver.new_dataset(name)
