@@ -47,19 +47,20 @@ else:
     print(f'{args.pipe}: invalid file')
     sys.exit(1)
 
-config = None
-if isfile(args.config):
-    with open(args.config) as f:
-        config = json.load(f)
-
-driver = Driver()
-exec(compile(open(pipelines).read(), pipelines, 'exec'))
-
 if not (isdir(args.path) or (isfile(args.path) and (args.path.endswith('.json') or args.path.endswith('.zip')))):
     print(f'{args.path}: invalid path')
     sys.exit(1)
 
 if isfile(args.path) and args.path.endswith('.json'):
+
+    config = None
+    if isfile(args.config):
+        with open(args.config) as f:
+            config = json.load(f)
+
+    driver = Driver()
+    exec(compile(open(pipelines).read(), pipelines, 'exec'))
+
     name = basename(args.path)[:-4]
     driver.new_dataset(name)
     with open(args.path) as f:
@@ -70,6 +71,14 @@ if isfile(args.path) and args.path.endswith('.json'):
 else:
     path = args.path if isdir(args.path) else extract(args.path)
     os.chdir(path)
+
+    if isfile('config.json'):
+        with open('config.json') as f:
+            config = json.load(f)
+
+    driver = Driver()
+    exec(compile(open(pipelines).read(), pipelines, 'exec'))
+
     filelist = list(sorted(filter(lambda x: x.endswith('.json') and not 'setup' in x and x != 'config.json', os.listdir('.'))))
     for filename in filelist if args.all else tqdm(filelist):
         name = filename[:-4]
