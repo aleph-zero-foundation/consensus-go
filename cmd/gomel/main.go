@@ -46,7 +46,6 @@ type cliOptions struct {
 	cpuProfFilename   string
 	memProfFilename   string
 	traceFilename     string
-	data              int
 	epochs            int
 	units             int
 	output            int
@@ -61,7 +60,6 @@ func getOptions() cliOptions {
 	flag.BoolVar(&result.setup, "setup", true, "a flag whether a setup should be run")
 	flag.StringVar(&result.privFilename, "priv", "", "a file with private keys and process id")
 	flag.StringVar(&result.keysAddrsFilename, "keys_addrs", "", "a file with keys and associated addresses")
-	flag.IntVar(&result.data, "data", 0, "size [kB] of random data to be put in every unit (-1 to enable reading unit data from stdin)")
 	flag.IntVar(&result.epochs, "epochs", 0, "number of epochs to run")
 	flag.IntVar(&result.units, "units", 0, "number of levels to produce in each epoch")
 	flag.IntVar(&result.output, "output", 1, "type of preblock consumer (0 ignore, 1 control sum, 2 data")
@@ -74,6 +72,8 @@ func getOptions() cliOptions {
 	flag.Parse()
 	return result
 }
+
+const rbpu = 300 // random bytes to put in every unit; equivalent of smallest etherum tx
 
 func main() {
 	options := getOptions()
@@ -137,12 +137,7 @@ func main() {
 	}
 
 	// create mock data source
-	var dataSource core.DataSource
-	if options.data == -1 {
-		dataSource = tests.StdinDataSource()
-	} else {
-		dataSource = tests.RandomDataSource(1024 * options.data)
-	}
+	dataSource := tests.RandomDataSource(rbpu)
 
 	// create preblock sink with mock consumer
 	preblockSink := make(chan *core.Preblock)

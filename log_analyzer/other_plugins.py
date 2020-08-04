@@ -27,7 +27,7 @@ class TXPS(Plugin):
     """Plugin calculating the average number of units ordered per second."""
     multistats = multimean
 
-    def __init__(self, units_per_level, timing_freq, config):
+    def __init__(self, units_per_level, timing_freq, config=None):
         self.units_per_level = units_per_level
         self.timing_freq = timing_freq
         if config and 'Txpu' in config:

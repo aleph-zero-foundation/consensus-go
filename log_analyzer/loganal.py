@@ -31,7 +31,6 @@ parser = argparse.ArgumentParser(description='Log analyzer for JSON logs of Gome
 parser.add_argument('path', metavar='path', help='single JSON log, whole folder or ZIP archived folder')
 parser.add_argument('-p', '--pipe', default='basic.py', metavar='name', help='file with pipelines definitions')
 parser.add_argument('-a', '--all', action='store_true', help='print full report for each file in "folder mode"')
-parser.add_argument('-c', '--config', default='config.json', metavar='file', help='file with the JSON config of the experiment')
 args = parser.parse_args()
 
 
@@ -53,11 +52,6 @@ if not (isdir(args.path) or (isfile(args.path) and (args.path.endswith('.json') 
 
 if isfile(args.path) and args.path.endswith('.json'):
 
-    config = None
-    if isfile(args.config):
-        with open(args.config) as f:
-            config = json.load(f)
-
     driver = Driver()
     exec(compile(open(pipelines).read(), pipelines, 'exec'))
 
@@ -72,14 +66,10 @@ else:
     path = args.path if isdir(args.path) else extract(args.path)
     os.chdir(path)
 
-    if isfile('config.json'):
-        with open('config.json') as f:
-            config = json.load(f)
-
     driver = Driver()
     exec(compile(open(pipelines).read(), pipelines, 'exec'))
 
-    filelist = list(sorted(filter(lambda x: x.endswith('.json') and not 'setup' in x and x != 'config.json', os.listdir('.'))))
+    filelist = list(sorted(filter(lambda x: x.endswith('.json') and not 'setup' in x, os.listdir('.'))))
     for filename in filelist if args.all else tqdm(filelist):
         name = filename[:-4]
         driver.new_dataset(name)

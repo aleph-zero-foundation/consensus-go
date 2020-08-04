@@ -585,9 +585,6 @@ def get_logs(regions, name, logs_per_region=1, with_prof=False, pids=None, ip2pi
 
     color_print(f'{len(os.listdir("../results"))} files in ../results')
 
-    with open('data/config.json') as f:
-        config = json.loads(''.join(f.readlines()))
-
     n_processes = len(ip2pid)
 
     result_path = f'{name}'
@@ -609,12 +606,6 @@ def get_logs(regions, name, logs_per_region=1, with_prof=False, pids=None, ip2pi
             path = os.path.join(result_path, path)
             zf.write(path)
             os.remove(path)
-
-        # write config
-        path = os.path.join(result_path, 'config.json')
-        shutil.copyfile('data/config.json', path)
-        zf.write(path)
-        os.remove(path)
 
         # write pids
         path = os.path.join(result_path, 'pids')

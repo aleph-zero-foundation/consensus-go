@@ -14,7 +14,7 @@ driver.add_pipeline('Ordering', [
     units_per_level,
     Filter(Message, NewTimingUnit),
     timing_freq,
-    TXPS(units_per_level, timing_freq, config)
+    TXPS(units_per_level, timing_freq)
 ])
 
 driver.add_pipeline('Latency', [
