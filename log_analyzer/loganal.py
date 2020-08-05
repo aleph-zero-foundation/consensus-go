@@ -46,6 +46,8 @@ else:
     print(f'{args.pipe}: invalid file')
     sys.exit(1)
 
+pipelines = os.path.abspath(pipelines)
+
 if not (isdir(args.path) or (isfile(args.path) and (args.path.endswith('.json') or args.path.endswith('.zip')))):
     print(f'{args.path}: invalid path')
     sys.exit(1)
