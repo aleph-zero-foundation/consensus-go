@@ -1,5 +1,7 @@
 [![Build Status](https://gitlab.com/alephledger/consensus-go/badges/devel/build.svg)](https://gitlab.com/alephledger/consensus-go/commits/devel) [![Coverage Report](https://gitlab.com/alephledger/consensus-go/badges/devel/coverage.svg)](https://gitlab.com/alephledger/consensus-go/commits/devel)
 
+# This is a mirror of GitLab [repository](https://gitlab.com/alephledger/consensus-go)
+
 # consensus-go
 
 The main implementation of the aleph's consensus protocol in go.
